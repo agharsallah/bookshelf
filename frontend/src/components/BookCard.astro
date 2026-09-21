@@ -1,0 +1,14 @@
+---
+interface Props {
+  title: string;
+  author: string;
+}
+
+const { title, author } = Astro.props;
+---
+
+<article class="book-card">
+  <h2>{title}</h2>
+  <p>{author}</p>
+  <slot />
+</article>
