@@ -1,4 +1,5 @@
 ---
+import { PUBLIC_APP_NAME, PUBLIC_API_URL } from 'astro:env/client';
 import BookCard from '../components/BookCard.astro';
 ---
 
@@ -9,11 +10,12 @@ import BookCard from '../components/BookCard.astro';
 		<link rel="icon" href="/favicon.ico" />
 		<meta name="viewport" content="width=device-width" />
 		<meta name="generator" content={Astro.generator} />
-		<title>Bookshelf</title>
+		<title>{PUBLIC_APP_NAME}</title>
 	</head>
 	<body>
-		<h1>Bookshelf</h1>
-		<BookCard title="The Pragmatic Programmer" author="Hunt &amp; Thomas">
+		<h1>{PUBLIC_APP_NAME}</h1>
+		<p>API: {PUBLIC_API_URL ?? 'not configured'}</p>
+		<BookCard title="The Pragmatic Programmer" author="Hunt & Thomas">
 			Distilled: fix broken windows early.
 		</BookCard>
 	</body>
