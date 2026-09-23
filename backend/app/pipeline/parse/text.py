@@ -13,8 +13,9 @@ _HYPHEN_END = re.compile(r"[A-Za-z\u00c0-\u024f][-\u00ad]$")
 def join_lines(lines: list[str]) -> str:
     """Join wrapped lines into prose, undoing end-of-line hyphenation.
 
-    `para-` + `graph` becomes `paragraph`; a hyphen before an uppercase word or a digit is
-    kept (`Jean-` + `Paul`, `pre-` + `2000`), since those are usually real compounds.
+    `para-` + `graph` becomes `paragraph`; before an uppercase word or a digit the hyphen
+    is kept but the break still closes up (`Jean-` + `Paul` → `Jean-Paul`), since those
+    are usually real compounds. Soft hyphens always disappear.
     """
     out = ""
     for raw in lines:
@@ -23,8 +24,9 @@ def join_lines(lines: list[str]) -> str:
             continue
         if not out:
             out = line
-        elif _HYPHEN_END.search(out) and line[0].islower():
-            out = out[:-1] + line
+        elif _HYPHEN_END.search(out):
+            soft = out.endswith("\u00ad")
+            out = out[:-1] + line if soft or line[0].islower() else out + line
         else:
             out = f"{out} {line}"
     return out.replace("\u00ad", "")

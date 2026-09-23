@@ -21,7 +21,7 @@ from app.pipeline.parse.pdf.layout import Block
 from app.pipeline.parse.text import FIGURE_CAPTION, TABLE_CAPTION, aside_label, table_text
 
 _CAPTION_GAP = 72.0  # max vertical distance between a graphic and its caption (pt)
-_CLUSTER_PAD = 8.0  # drawings closer than this belong to the same figure
+_CLUSTER_PAD = 20.0  # drawings closer than this belong to the same figure
 
 
 @dataclass
@@ -157,9 +157,9 @@ def _figures(
             images.append(box)
     for path in paths:
         box = path.bbox
-        rule = (box[2] - box[0] < 3 or box[3] - box[1] < 3) and path.items <= 1
-        if rule or geo.area(box) > page_area * 0.9:
-            continue  # separators and page backgrounds
+        wide_rule = box[3] - box[1] < 3 and box[2] - box[0] > page_box[2] * 0.4
+        if wide_rule or geo.area(box) > page_area * 0.9:
+            continue  # separators and page backgrounds; short connectors stay in
         if not any(geo.intersects(box, area) for area in excluded):
             boxes.append(box)
     for area, members in cluster(boxes):

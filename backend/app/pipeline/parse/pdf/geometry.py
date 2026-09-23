@@ -15,7 +15,8 @@ def pad(box: Bbox, by: float) -> Bbox:
 
 
 def intersects(a: Bbox, b: Bbox) -> bool:
-    return a[0] < b[2] and b[0] < a[2] and a[1] < b[3] and b[1] < a[3]
+    """Overlapping or touching (a zero-height connector line touches what it joins)."""
+    return a[0] <= b[2] and b[0] <= a[2] and a[1] <= b[3] and b[1] <= a[3]
 
 
 def contains(outer: Bbox, inner: Bbox) -> bool:

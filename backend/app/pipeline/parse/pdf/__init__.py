@@ -1,6 +1,7 @@
 """PDF → `ParsedDocument`, following the §8 tier ladder.
 
-    text chars per page < 200   → tier 3: Tesseract OCR, then tier 2   (needs_review)
+    text chars per page < 200   → tier 3: Tesseract OCR of page-sized images, then tier 2
+                                  (needs_review)
     embedded outline            → tier 1: chapters/sections from the outline
     otherwise                   → tier 2: headings by font size/weight  (needs_review)
 
@@ -17,6 +18,7 @@ import pymupdf
 from app.pipeline.parse.anchors import assign_anchors
 from app.pipeline.parse.model import ParsedDocument, ParsedNode, ParseError
 from app.pipeline.parse.override import OverrideChapter
+from app.pipeline.parse.pdf import geometry as geo
 from app.pipeline.parse.pdf import mupdf
 from app.pipeline.parse.pdf.furniture import strip_furniture
 from app.pipeline.parse.pdf.headings import (
@@ -66,15 +68,29 @@ def _describe(doc: pymupdf.Document, parsed: ParsedDocument) -> None:
         parsed.year = int(year.group(1))
 
 
+def _looks_scanned(page: pymupdf.Page, blocks: list[Block]) -> bool:
+    """Little text on top of an image covering most of the page: a scan to OCR."""
+    if _chars(blocks) >= SCANNED_CHARS_PER_PAGE:
+        return False
+    page_area = geo.area(mupdf.page_box(page))
+    return any(geo.area(box) >= page_area * 0.5 for box in mupdf.image_boxes(page))
+
+
 def _read_pages(doc_pages: list[pymupdf.Page]) -> tuple[list[list[Block]], bool]:
-    """Every page's blocks, OCR'ing near-empty pages when the document is scanned."""
+    """Every page's blocks, OCR'ing scanned pages when the document reads as scanned.
+
+    Tier 3 needs both signals: fewer than 200 text chars per page on average (§8) *and*
+    page-sized images, so a sparse but digital PDF (slides, diagrams) is never OCR'd.
+    """
     pages = [extract_blocks(page, i + 1) for i, page in enumerate(doc_pages)]
     total = sum(_chars(blocks) for blocks in pages)
-    scanned = bool(pages) and total / len(pages) < SCANNED_CHARS_PER_PAGE
-    if scanned:
-        for i, page in enumerate(doc_pages):
-            if _chars(pages[i]) < SCANNED_CHARS_PER_PAGE:
-                pages[i] = extract_blocks(page, i + 1, mupdf.ocr_textpage(page))
+    if not pages or total / len(pages) >= SCANNED_CHARS_PER_PAGE:
+        return pages, False
+    scanned = False
+    for i, page in enumerate(doc_pages):
+        if _looks_scanned(page, pages[i]):
+            pages[i] = extract_blocks(page, i + 1, mupdf.ocr_textpage(page))
+            scanned = True
     return pages, scanned
 
 
