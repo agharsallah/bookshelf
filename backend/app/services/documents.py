@@ -17,6 +17,7 @@ from app.jobs.queue import JobSpec
 from app.models import Artifact, Document, Job, Node, Note
 from app.models.enums import DocumentStatus, JobKind, JobState, NodeKind, Review
 from app.pipeline.hashing import input_hash
+from app.services.blurbs import blurbs
 from app.services.errors import InvalidInputError
 from app.services.jobs import enqueue_or_live
 from app.services.sql import contains_pattern
@@ -77,10 +78,11 @@ class DocumentStats:
     notes: int = 0
     artifacts: dict[str, int] = field(default_factory=dict)
     latest_job: Job | None = None
+    blurb: str | None = None
 
 
 def document_stats(session: Session, ids: Sequence[uuid.UUID]) -> dict[uuid.UUID, DocumentStats]:
-    """Node, note, artifact and latest-job stats for many documents in four queries."""
+    """Node, note, artifact, latest-job and blurb stats for many documents in five queries."""
     stats = {doc_id: DocumentStats() for doc_id in ids}
     if not ids:
         return stats
@@ -130,6 +132,9 @@ def document_stats(session: Session, ids: Sequence[uuid.UUID]) -> dict[uuid.UUID
     for job in latest:
         assert job.document_id is not None  # noqa: S101 - filtered above
         stats[job.document_id].latest_job = job
+
+    for doc_id, blurb in blurbs(session, ids).items():
+        stats[doc_id].blurb = blurb
     return stats
 
 

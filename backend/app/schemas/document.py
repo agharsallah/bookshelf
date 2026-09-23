@@ -154,6 +154,13 @@ class DocumentSummary(DocumentPublic):
     counts: DocumentCounts
     artifacts: ArtifactCounts
     latest_job: JobBrief | None
+    blurb: Annotated[
+        str | None,
+        Field(
+            description="Card text (≤ 280 chars): the approved book summary's first paragraph, "
+            "else the brief's thesis, else the first chapter summary."
+        ),
+    ] = None
     paused: Annotated[
         PausedState | None,
         Field(description="Set when the run ceiling paused the document; clear it via resume."),
@@ -175,6 +182,7 @@ class DocumentSummary(DocumentPublic):
                 if stats.latest_job
                 else None,
                 "paused": document.meta.get("paused"),
+                "blurb": stats.blurb,
                 **extra,
             }
         )
