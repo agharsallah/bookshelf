@@ -9,7 +9,7 @@ from sqlmodel import Session, select
 
 from app.api.pipeline import get_skills_dir
 from app.main import create_app
-from app.models import Artifact, Document, Job
+from app.models import Artifact, Document, Job, Note
 from app.models.enums import ArtifactType, JobKind, Origin, Review
 from tests.conftest import AUTH
 from tests.pipeline.runtime.conftest import body, paragraph
@@ -209,3 +209,23 @@ def test_review_with_an_invalid_edit_is_rejected(api, session, book):
 
     assert response.status_code == 422
     assert session.exec(select(Artifact).where(Artifact.review == Review.APPROVED)).all() == []
+
+
+def test_note_inputs_by_note_id_import_against_the_note_anchor(api, session, book):
+    note = Note(document_id=book.id, anchor="ch02/p001", raw="goal seeking")
+    session.add(note)
+    session.commit()
+    params = {"document": "meadows-systems", "note_id": str(note.id)}
+    inputs = api.get(f"{API}/skills/structure-note/inputs", params=params).json()
+    envelope = {
+        "skill": "structure-note",
+        "document": "meadows-systems",
+        "note_id": str(note.id),  # no anchor: the note's passage is the scope
+        "input_hash": inputs["input_hash"],
+        "output": body(paragraph("Goal seeking.", "ch02/p001")),
+    }
+
+    imported = api.post(f"{API}/artifacts/import", json=envelope, headers=AUTH).json()
+
+    assert inputs["inputs"]["note"]["raw"] == "goal seeking"
+    assert (imported["anchor"], imported["note_id"]) == ("ch02/p001", str(note.id))

@@ -88,6 +88,8 @@ def prepare(
     selection = select_inputs(
         session, skill.meta.selector, document, anchor, note_id=note_id, media_dir=media_dir
     )
+    if anchor is None and note_id is not None:  # a note's scope is the passage it annotates
+        anchor = selection.inputs.get("scope", {}).get("anchor")
     return Prepared(
         skill=skill,
         document=document,
