@@ -1,0 +1,113 @@
+"""`parse` job (stage 1): the document's file → `nodes` tree, status → parsed/needs_review.
+
+The handler only parses and stores; the worker's orchestrator enqueues the next stage
+after it returns. Input problems (missing file, unsupported or unreadable file, invalid
+outline override) are permanent: the document goes to `parse_failed` and the job fails
+without retrying. Anything else is re-raised so the worker retries it.
+"""
+
+import re
+from pathlib import Path
+
+from sqlmodel import Session
+
+from app.core.config import get_settings
+from app.jobs.registry import HandlerResult, JobContext, PermanentJobError, handler
+from app.models import Document
+from app.models.enums import DocumentStatus, JobKind
+from app.pipeline.parse import ParsedDocument, ParseError, load_override, parse_file, store_tree
+
+MAX_REPORTED_WARNINGS = 50
+_NON_SLUG = re.compile(r"[^a-z0-9]+")
+
+
+def resolve_source(library_dir: Path, source_path: str | None) -> Path:
+    """The document's file. `source_path` is repo-relative (`library/x.pdf`, D13).
+
+    Raises `ParseError` for a missing path or one that escapes the repo root.
+    """
+    if not source_path:
+        raise ParseError("document has no source file")
+    root = library_dir.resolve().parent
+    path = (root / source_path).resolve()
+    if not path.is_relative_to(root):
+        raise ParseError(f"source path escapes the repository: {source_path}")
+    return path
+
+
+def _slugish(value: str) -> str:
+    return _NON_SLUG.sub("-", value.casefold()).strip("-")
+
+
+def _is_placeholder_title(document: Document) -> bool:
+    """Ingest names a document after its file until the parser knows better."""
+    stem = Path(document.source_path or "").stem
+    return _slugish(document.title) in {document.slug, _slugish(stem)}
+
+
+def _fill_metadata(document: Document, parsed: ParsedDocument) -> None:
+    """Fill title / authors / year from the file, never overwriting what a person set."""
+    if parsed.title and _is_placeholder_title(document):
+        document.title = parsed.title[:500]
+    if parsed.authors and not document.authors:
+        document.authors = parsed.authors
+    if parsed.year is not None and document.year is None and -3000 <= parsed.year <= 3000:
+        document.year = parsed.year
+
+
+def _mark_failed(session: Session, document: Document) -> None:
+    session.rollback()
+    document.status = DocumentStatus.PARSE_FAILED
+    session.add(document)
+    session.commit()
+
+
+@handler(JobKind.PARSE)
+def run_parse(ctx: JobContext) -> HandlerResult:
+    session, job = ctx.session, ctx.job
+    document = session.get(Document, job.document_id) if job.document_id else None
+    if document is None:
+        raise PermanentJobError("parse job has no existing document")
+
+    document.status = DocumentStatus.PARSING
+    session.add(document)
+    session.commit()
+
+    settings = get_settings()
+    try:
+        path = resolve_source(settings.library_dir, document.source_path)
+        parsed = parse_file(
+            path,
+            slug=document.slug,
+            media_dir=settings.media_dir,
+            outline_override=load_override(document.outline_override),
+        )
+    except (ParseError, ValueError) as exc:
+        _mark_failed(session, document)
+        raise PermanentJobError(f"parse failed: {exc}") from exc
+    except Exception:
+        _mark_failed(session, document)  # an unexpected parser crash: let the worker retry
+        raise
+
+    try:
+        count = store_tree(session, document, parsed)
+        _fill_metadata(document, parsed)
+        document.page_count = parsed.page_count
+        document.parse_tier = parsed.tier
+        document.status = (
+            DocumentStatus.NEEDS_REVIEW if parsed.needs_review else DocumentStatus.PARSED
+        )
+        session.add(document)
+        session.commit()
+    except Exception:
+        _mark_failed(session, document)
+        raise
+
+    return HandlerResult(
+        result={
+            "nodes": count,
+            "tier": parsed.tier,
+            "needs_review": parsed.needs_review,
+            "warnings": parsed.warnings[:MAX_REPORTED_WARNINGS],
+        }
+    )
