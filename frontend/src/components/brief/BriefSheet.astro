@@ -1,0 +1,263 @@
+---
+/**
+ * The brief as one printed sheet: the thesis set large across the top, the ideas
+ * and the argument's structure side by side, then what it changes and where it is
+ * weak, and read-next pointers into the shelf along the foot. Server-rendered; cite
+ * chips link into the reader.
+ */
+import { Blocks } from '../blocks/Blocks';
+import { Spans } from '../blocks/Spans';
+import type { PreparedBlock } from '../../lib/prepare';
+import type { BriefSection, ReadNextItem } from './brief';
+
+interface Props {
+  slug: string;
+  title: string;
+  authors: string[];
+  year: number | null;
+  sections: (BriefSection & { blocks: PreparedBlock[] })[];
+  readNext: ReadNextItem[];
+  approvedOn: string | null;
+  version: number;
+}
+
+const { slug, title, authors, year, sections, readNext, approvedOn, version } = Astro.props;
+const citeHref = (anchor: string) => `/documents/${slug}/read/${anchor}`;
+const byKey = new Map(sections.map((s) => [s.key, s]));
+const thesis = byKey.get('thesis');
+const columns = [
+  ['ideas', 'structure'],
+  ['changes', 'weaknesses'],
+] as const;
+const readNextTitle = byKey.get('read_next')?.title ?? 'Read next';
+---
+
+<article class="sheet" aria-labelledby="brief-title">
+  <header class="head">
+    <p class="kind">Brief</p>
+    <h1 id="brief-title">{title}</h1>
+    <p class="byline">
+      {authors.join(', ')}{year ? `, ${year}` : ''}
+    </p>
+    <p class="stamp">
+      Version {version}{approvedOn ? `, approved ${approvedOn}` : ''}
+    </p>
+  </header>
+
+  {
+    thesis && (
+      <section class="thesis" aria-labelledby="brief-thesis">
+        <h2 id="brief-thesis">{thesis.title}</h2>
+        <Blocks blocks={thesis.blocks} citeHref={citeHref} />
+      </section>
+    )
+  }
+
+  {
+    columns.map((pair) => (
+      <div class="pair">
+        {pair.map((key) => {
+          const section = byKey.get(key);
+          return section ? (
+            <section class={`part part-${key}`} aria-labelledby={`brief-${key}`}>
+              <h2 id={`brief-${key}`}>{section.title}</h2>
+              <Blocks blocks={section.blocks} citeHref={citeHref} />
+            </section>
+          ) : null;
+        })}
+      </div>
+    ))
+  }
+
+  {
+    readNext.length > 0 && (
+      <section class="next" aria-labelledby="brief-next">
+        <h2 id="brief-next">{readNextTitle}</h2>
+        <ul>
+          {readNext.map((item) => (
+            <li>
+              {item.title ? (
+                <a class="next-title" href={`/documents/${item.slug}`}>
+                  {item.title}
+                </a>
+              ) : (
+                <span class="next-title gone">{item.slug} (no longer on the shelf)</span>
+              )}
+              {item.authors.length > 0 && <span class="next-authors">{item.authors.join(', ')}</span>}
+              <p class="next-reason">
+                <Spans spans={item.reason} />
+              </p>
+            </li>
+          ))}
+        </ul>
+      </section>
+    )
+  }
+</article>
+
+<style>
+  .sheet {
+    --sheet-pad: clamp(1.25rem, 4vw, 3.5rem);
+    display: grid;
+    gap: var(--space-6);
+    max-width: 62rem;
+    margin-inline: auto;
+    padding: var(--sheet-pad);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-l);
+    background: var(--paper-raised);
+    box-shadow: var(--shadow-lift);
+  }
+
+  .head {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: var(--space-1) var(--space-5);
+    padding-block-end: var(--space-4);
+    border-block-end: 2px solid var(--ink);
+  }
+
+  .kind {
+    grid-column: 1 / -1;
+    color: var(--accent);
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+    font-weight: 600;
+  }
+
+  h1 {
+    grid-column: 1 / -1;
+    font-size: clamp(2rem, 4.5vw, 3rem);
+    font-weight: 450;
+    letter-spacing: -0.02em;
+  }
+
+  .byline {
+    color: var(--ink-2);
+    font-style: italic;
+  }
+
+  .stamp {
+    align-self: end;
+    color: var(--ink-3);
+    font-family: var(--font-ui);
+    font-size: var(--text-xs);
+    text-align: end;
+  }
+
+  h2 {
+    margin-block-end: var(--space-3);
+    padding-block-end: var(--space-1);
+    border-block-end: 1px solid var(--rule);
+    color: var(--ink-2);
+    font-size: var(--text-ui);
+    font-style: italic;
+    font-weight: 500;
+  }
+
+  /* The thesis is the one thing to read if you read nothing else. */
+  .thesis :global(p) {
+    font-size: var(--text-md);
+    line-height: 1.5;
+  }
+
+  .pair {
+    display: grid;
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+    gap: var(--space-6);
+  }
+
+  .next ul {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+    gap: var(--space-4) var(--space-6);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .next li {
+    display: grid;
+    gap: var(--space-1);
+    padding-inline-start: var(--space-3);
+    border-inline-start: 2px solid var(--accent);
+  }
+
+  .next-title {
+    font-weight: 560;
+  }
+
+  .gone {
+    color: var(--ink-3);
+  }
+
+  .next-authors {
+    color: var(--ink-3);
+    font-family: var(--font-ui);
+    font-size: var(--text-xs);
+  }
+
+  .next-reason {
+    color: var(--ink-2);
+    font-size: var(--text-ui);
+  }
+
+  @media (max-width: 48rem) {
+    .pair {
+      grid-template-columns: 1fr;
+    }
+
+    .head {
+      grid-template-columns: 1fr;
+    }
+
+    .stamp {
+      text-align: start;
+    }
+  }
+
+  /* One page where possible: small type, tight rhythm, no chrome. */
+  @media print {
+    .sheet {
+      gap: 9pt;
+      max-width: none;
+      padding: 0;
+      border: 0;
+      box-shadow: none;
+      background: none;
+      font-size: 9.5pt;
+      line-height: 1.38;
+    }
+
+    h1 {
+      font-size: 20pt;
+    }
+
+    h2 {
+      margin-block-end: 3pt;
+      font-size: 10pt;
+    }
+
+    .thesis :global(p) {
+      font-size: 11pt;
+    }
+
+    .pair {
+      grid-template-columns: 1.25fr 1fr;
+      gap: 14pt;
+    }
+
+    .sheet :global([data-block] + [data-block]) {
+      margin-block-start: 4pt;
+    }
+
+    .sheet a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    section {
+      break-inside: avoid;
+    }
+  }
+</style>

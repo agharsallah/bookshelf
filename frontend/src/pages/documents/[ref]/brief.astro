@@ -1,0 +1,198 @@
+---
+/**
+ * The book brief: the latest approved `book_brief`, typeset as one printable page.
+ * Without an approved brief, says why and points to the review queue.
+ */
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import BriefSheet from '../../../components/brief/BriefSheet.astro';
+import { parseBrief, type ReadNextItem } from '../../../components/brief/brief';
+import { Problem } from '../../../components/document/Problem';
+import { serverApi } from '../../../lib/api/server';
+import type { DocumentPublic } from '../../../lib/api/types/documents';
+import { pickBest } from '../../../lib/documents/artifacts';
+import { getArtifacts, getDocument, load } from '../../../lib/documents/server';
+import { prepareBlocks } from '../../../lib/prepare';
+
+export const prerender = false;
+
+const ref = Astro.params.ref ?? '';
+const loaded = await load(async () => {
+  const doc = await getDocument(ref);
+  const briefs = await getArtifacts(doc.id, { type: 'book_brief' });
+  const approved = pickBest(briefs.filter((b) => b.review === 'approved'), 'book_brief', null);
+  const pending = briefs.some((b) => b.review === 'draft' || b.review === 'needs_review');
+  const brief = approved ? parseBrief(approved.artifact.body) : null;
+  if (!approved || !brief) return { doc, pending, sheet: null };
+  const sections = await Promise.all(brief.sections.map(async (s) => ({ ...s, blocks: await prepareBlocks(s.blocks) })));
+  const api = serverApi();
+  const readNext: ReadNextItem[] = await Promise.all(
+    brief.readNext.map(async (item) => {
+      try {
+        const other = await api.get<DocumentPublic>(`documents/${encodeURIComponent(item.slug)}`);
+        return { slug: other.slug, title: other.title, authors: other.authors, reason: item.reason };
+      } catch {
+        return { slug: item.slug, title: null, authors: [], reason: item.reason };
+      }
+    }),
+  );
+  const at = approved.artifact.reviewed_at ?? approved.artifact.created_at;
+  return {
+    doc,
+    pending,
+    sheet: {
+      sections,
+      readNext,
+      version: approved.artifact.version,
+      approvedOn: new Date(at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
+    },
+  };
+});
+if (!loaded.ok && loaded.notFound) Astro.response.status = 404;
+const data = loaded.ok ? loaded.value : null;
+---
+
+<BaseLayout title={data ? `Brief: ${data.doc.title}` : 'Brief'} width="wide">
+  {
+    !data ? (
+      !loaded.ok && loaded.notFound ? (
+        <div class="empty">
+          <h1>Not on the shelf</h1>
+          <p>No document is called “{ref}”. <a href="/library">Back to the library</a></p>
+        </div>
+      ) : (
+        !loaded.ok && <Problem title="The brief could not be loaded." problem={loaded.problem} />
+      )
+    ) : data.sheet ? (
+      <>
+        <nav class="tools" aria-label="Brief">
+          <a href={`/documents/${data.doc.slug}`}>Back to the document</a>
+          <button type="button" data-print>Print</button>
+        </nav>
+        <BriefSheet
+          slug={data.doc.slug}
+          title={data.doc.title}
+          authors={data.doc.authors}
+          year={data.doc.year}
+          sections={data.sheet.sections}
+          readNext={data.sheet.readNext}
+          approvedOn={data.sheet.approvedOn}
+          version={data.sheet.version}
+        />
+      </>
+    ) : (
+      <div class="empty">
+        <p class="kind">Brief</p>
+        <h1>{data.doc.title} has no approved brief yet</h1>
+        <p>
+          {data.pending
+            ? 'A draft is waiting for you in the review queue. Approve it there and it appears here.'
+            : 'The brief is written from the approved chapter distillations. Once they are reviewed, queue “Write the brief” from the document page.'}
+        </p>
+        <p class="links">
+          {data.pending && <a class="primary" href="/review">Open the review queue</a>}
+          <a href={`/documents/${data.doc.slug}`}>Back to the document</a>
+        </p>
+      </div>
+    )
+  }
+</BaseLayout>
+
+<script>
+  for (const button of document.querySelectorAll<HTMLButtonElement>('[data-print]')) {
+    button.addEventListener('click', () => window.print());
+  }
+</script>
+
+<style>
+  .tools {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    max-width: 62rem;
+    margin: 0 auto var(--space-4);
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+  }
+
+  .tools a {
+    color: var(--ink-3);
+  }
+
+  .tools button {
+    padding: var(--space-1) var(--space-4);
+    border: 1px solid var(--rule-strong);
+    border-radius: var(--radius-m);
+    background: var(--paper-raised);
+    color: var(--ink);
+    cursor: pointer;
+  }
+
+  .empty {
+    display: grid;
+    gap: var(--space-3);
+    max-width: 40rem;
+  }
+
+  .kind {
+    color: var(--accent);
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+    font-weight: 600;
+  }
+
+  .empty h1 {
+    font-size: var(--text-xl);
+    font-weight: 450;
+  }
+
+  .empty p {
+    color: var(--ink-2);
+  }
+
+  .links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-4);
+    align-items: center;
+    font-family: var(--font-ui);
+    font-size: var(--text-ui);
+  }
+
+  .primary {
+    padding: var(--space-2) var(--space-4);
+    border-radius: var(--radius-m);
+    background: var(--ink);
+    color: var(--paper) !important;
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  @page {
+    size: auto;
+    margin: 14mm 16mm;
+  }
+
+  @media print {
+    :global(:root) {
+      color-scheme: light !important;
+    }
+
+    :global(.masthead),
+    :global(.colophon),
+    :global(.skip-link),
+    .tools {
+      display: none !important;
+    }
+
+    :global(body) {
+      display: block !important;
+      background: #fff !important;
+      color: #000 !important;
+    }
+
+    :global(main.main) {
+      max-width: none !important;
+      padding: 0 !important;
+    }
+  }
+</style>
