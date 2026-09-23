@@ -52,6 +52,14 @@ describe('jobStreamReducer', () => {
     expect(state.jobs.j1).toMatchObject({ state: 'queued', attempts: 2 });
   });
 
+  it('ignores an event from an earlier attempt', () => {
+    const state = apply(
+      { type: 'job', job: job({ state: 'queued', attempts: 2 }) },
+      { type: 'job', job: job({ state: 'failed', attempts: 1 }) },
+    );
+    expect(state.jobs.j1).toMatchObject({ state: 'queued', attempts: 2 });
+  });
+
   it('tracks the connection: open is live, error and end are reconnecting', () => {
     expect(apply({ type: 'open' }).status).toBe('live');
     expect(apply({ type: 'open' }, { type: 'error' }).status).toBe('reconnecting');

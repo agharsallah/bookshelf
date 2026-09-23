@@ -3,7 +3,7 @@
  * measure | the distillation leaf, which stays in view with its own scroll.
  */
 .reader {
-  --bleed: min(100vw - 2.5rem, 104rem);
+  --bleed: min(100vw - 2.5rem, 92rem);
   /* The site masthead's height (BaseLayout), which the sticky toolbar sits under. */
   --masthead: 3.5rem;
   --toolbar: 4.5rem;

@@ -13,11 +13,28 @@ export function sourceBlock(root: ParentNode, anchor: string): HTMLElement | nul
   return root.querySelector<HTMLElement>(`[${SOURCE_ATTR}="${CSS.escape(anchor)}"]`);
 }
 
-/** Scroll a block into view, focus it and flash it. Returns false when it is not on this page. */
+/**
+ * Scroll a block into view, focus it and flash it. Returns false when it is not on
+ * this page. Far targets jump rather than glide: blocks off-screen are laid out
+ * with estimated heights (content-visibility), so the jump is corrected over the
+ * next frames as the blocks around the target render at their real size.
+ */
 export function revealBlock(root: ParentNode, anchor: string): boolean {
   const el = sourceBlock(root, anchor);
   if (!el) return false;
-  el.scrollIntoView({ block: 'center', behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
+  const { top } = el.getBoundingClientRect();
+  const near = Math.abs(top) < window.innerHeight * 1.5;
+  if (near && !prefersReducedMotion()) {
+    el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  } else {
+    el.scrollIntoView({ block: 'center' });
+    let corrections = 3;
+    const settle = () => {
+      el.scrollIntoView({ block: 'center' });
+      if ((corrections -= 1) > 0) requestAnimationFrame(settle);
+    };
+    requestAnimationFrame(settle);
+  }
   el.focus({ preventScroll: true });
   el.classList.remove('is-flashing');
   // Restart the animation even when the same block is flashed twice in a row.

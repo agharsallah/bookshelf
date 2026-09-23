@@ -90,9 +90,20 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
   const prev = units[index - 1] ?? null;
   const next = units[index + 1] ?? null;
 
+  // A shared link keeps its anchor until the reader moves on their own.
+  const holdUrl = useRef(Boolean(initialAnchor));
+  useEffect(() => {
+    const release = () => {
+      holdUrl.current = false;
+    };
+    const events = ['wheel', 'touchstart', 'keydown', 'mousedown'] as const;
+    events.forEach((e) => window.addEventListener(e, release, { once: true, passive: true }));
+    return () => events.forEach((e) => window.removeEventListener(e, release));
+  }, []);
+
   // The URL follows the block in view (replaceState, so history is not flooded).
   useEffect(() => {
-    if (!active) return;
+    if (!active || holdUrl.current) return;
     const timer = setTimeout(() => window.history.replaceState(window.history.state, '', readHref(active)), 250);
     return () => clearTimeout(timer);
   }, [active, readHref]);

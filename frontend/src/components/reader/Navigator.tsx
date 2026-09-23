@@ -63,7 +63,8 @@ export function Navigator({ slug, units, current, sections, activeSection, progr
                             onSection(s.anchor);
                           }}
                         >
-                          <span className={styles.label}>{anchorLabel(s.anchor)}</span> {s.heading}
+                          {/^\d/.test(s.heading) ? null : <span className={styles.label}>{anchorLabel(s.anchor)} </span>}
+                          {s.heading}
                         </a>
                       </li>
                     );
