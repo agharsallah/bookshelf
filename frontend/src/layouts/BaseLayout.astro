@@ -8,6 +8,7 @@ import { PUBLIC_APP_NAME } from 'astro:env/client';
 import '../styles/base.css';
 import ApiStatus from '../components/shell/ApiStatus.astro';
 import ThemeToggle from '../components/shell/ThemeToggle.astro';
+import CommandPalette from '../components/search/CommandPalette';
 import { themeBootstrapScript } from '../lib/theme';
 
 interface Props {
@@ -68,6 +69,7 @@ const isCurrent = (href: string) => path === href || path.startsWith(`${href}/`)
         </nav>
         <div class="actions">
           <slot name="actions" />
+          <CommandPalette client:idle />
           <ThemeToggle />
         </div>
       </div>

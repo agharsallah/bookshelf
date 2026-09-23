@@ -1,0 +1,152 @@
+/* The palette is an index card laid over the page: one line to type on, then places to go. */
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0.2rem var(--space-2) 0.2rem var(--space-3);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-m);
+  background: var(--paper-raised);
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.trigger:hover {
+  border-color: var(--ink-3);
+  color: var(--ink);
+}
+
+.kbd {
+  padding: 0 0.35em;
+  border: 1px solid var(--rule-strong);
+  border-block-end-width: 2px;
+  border-radius: var(--radius-s);
+  background: var(--paper);
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: 0.72rem;
+}
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  justify-items: center;
+  align-items: start;
+  padding: 12vh var(--space-4) var(--space-4);
+  background: color-mix(in oklab, var(--ink) 28%, transparent);
+}
+
+.dialog {
+  display: grid;
+  inline-size: min(40rem, 100%);
+  max-block-size: 70vh;
+  overflow: hidden;
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-l);
+  background: var(--paper-raised);
+  box-shadow: var(--shadow-lift);
+}
+
+.input {
+  padding: var(--space-4) var(--space-5);
+  border: none;
+  border-block-end: 1px solid var(--rule);
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--font-read);
+  font-size: var(--text-md);
+}
+
+.input::placeholder {
+  color: var(--ink-3);
+  font-style: italic;
+}
+
+.input:focus-visible {
+  outline: none;
+}
+
+.list {
+  margin: 0;
+  padding: var(--space-2) 0;
+  overflow: auto;
+  list-style: none;
+}
+
+.option {
+  display: grid;
+  grid-template-columns: 5rem minmax(0, 1fr);
+  gap: 0 var(--space-3);
+  padding: var(--space-2) var(--space-5);
+  cursor: pointer;
+}
+
+.option[aria-selected='true'] {
+  background: var(--accent-wash);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.kind {
+  grid-row: span 2;
+  padding-block-start: 0.15rem;
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+}
+
+.label {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: var(--text-ui);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.option[data-kind='concept'] .label,
+.option[data-kind='document'] .label {
+  font-style: italic;
+}
+
+.option[data-kind='search'] .label,
+.option[data-kind='ask'] .label {
+  color: var(--accent);
+  font-family: var(--font-ui);
+  font-weight: 600;
+}
+
+.detail {
+  overflow: hidden;
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hint,
+.keys {
+  padding: var(--space-3) var(--space-5);
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.keys {
+  padding-block: var(--space-2);
+  border-block-start: 1px solid var(--rule);
+  font-size: var(--text-xs);
+}
+
+@media (max-width: 40rem) {
+  .trigger span {
+    display: none;
+  }
+
+  .backdrop {
+    padding-block-start: var(--space-4);
+  }
+}
