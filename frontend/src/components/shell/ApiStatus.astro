@@ -1,7 +1,9 @@
 ---
 /**
- * Footer indicator for the backend. Checked from the browser through the /api proxy,
- * so static pages stay static and the result reflects the reader's connection.
+ * Footer indicator for the backend: up, degraded (Qdrant unreachable, so only
+ * meaning-based search is off) or down. Checked from the browser through the /api
+ * proxy (`/health` + `/health/ready`), so static pages stay static and the result
+ * reflects the reader's connection. The reason sits in the tooltip.
  */
 ---
 
@@ -11,20 +13,19 @@
 </p>
 
 <script>
-  import { browserApi, type Health } from '../../lib/api';
+  import { browserApi, type Health, type Readiness } from '../../lib/api';
   import { describeHealth } from '../../lib/api/health';
 
   const el = document.querySelector<HTMLElement>('[data-api-status]');
   const text = el?.querySelector<HTMLElement>('[data-api-status-text]');
+  const settle = <T,>(request: Promise<T>) => request.catch((error: unknown) => error);
   if (el && text) {
-    browserApi
-      .get<Health>('health')
-      .then((health) => describeHealth(health))
-      .catch((error: unknown) => describeHealth(error))
-      .then(({ state, message }) => {
-        el.dataset.apiStatus = state;
-        text.textContent = message;
-      });
+    Promise.all([settle(browserApi.get<Health>('health')), settle(browserApi.get<Readiness>('health/ready'))]).then(([health, ready]) => {
+      const { state, message, detail } = describeHealth(health, ready);
+      el.dataset.apiStatus = state;
+      text.textContent = message;
+      if (detail) el.title = detail;
+    });
   }
 </script>
 
@@ -47,6 +48,10 @@
 
   [data-api-status='up'] .dot {
     background: var(--tone-insight);
+  }
+
+  [data-api-status='degraded'] .dot {
+    background: var(--tone-caution);
   }
 
   [data-api-status='down'] .dot {
