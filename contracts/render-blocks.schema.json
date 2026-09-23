@@ -1,0 +1,250 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bookshelf.local/contracts/render-blocks.schema.json",
+  "title": "Bookshelf render contract",
+  "description": "The closed set of render blocks every artifact body is made of (ARCHITECTURE.md §9). Adding a block type is a deliberate change to this file, the backend gates, and frontend/src/components/blocks in the same commit.",
+  "type": "object",
+  "required": ["blocks"],
+  "properties": {
+    "blocks": { "$ref": "#/$defs/blocks" }
+  },
+  "$defs": {
+    "anchor": {
+      "type": "string",
+      "description": "Stable block address, e.g. ch03/s02/p014.",
+      "pattern": "^[a-z]+[0-9]+(/[a-z]+[0-9]+)*$",
+      "maxLength": 200
+    },
+    "cites": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/anchor" },
+      "uniqueItems": true,
+      "maxItems": 20
+    },
+    "span": {
+      "type": "object",
+      "required": ["text", "cites"],
+      "additionalProperties": false,
+      "properties": {
+        "text": { "type": "string", "minLength": 1, "maxLength": 4000 },
+        "cites": { "$ref": "#/$defs/cites" },
+        "mark": { "enum": ["strong", "em", "highlight", "code"] }
+      }
+    },
+    "spans": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/span" },
+      "minItems": 1,
+      "maxItems": 40
+    },
+    "confidence": { "enum": ["high", "medium", "low"] },
+    "block": {
+      "oneOf": [
+        { "$ref": "#/$defs/heading" },
+        { "$ref": "#/$defs/paragraph" },
+        { "$ref": "#/$defs/bullets" },
+        { "$ref": "#/$defs/steps" },
+        { "$ref": "#/$defs/table" },
+        { "$ref": "#/$defs/chart" },
+        { "$ref": "#/$defs/diagram" },
+        { "$ref": "#/$defs/callout" },
+        { "$ref": "#/$defs/code" },
+        { "$ref": "#/$defs/math" },
+        { "$ref": "#/$defs/quote" },
+        { "$ref": "#/$defs/definition" }
+      ]
+    },
+    "blocks": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/block" },
+      "maxItems": 400
+    },
+    "heading": {
+      "type": "object",
+      "required": ["type", "level", "text"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "heading" },
+        "level": { "enum": [2, 3, 4] },
+        "text": { "type": "string", "minLength": 1, "maxLength": 300 }
+      }
+    },
+    "paragraph": {
+      "type": "object",
+      "required": ["type", "spans"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "paragraph" },
+        "spans": { "$ref": "#/$defs/spans" }
+      }
+    },
+    "bullets": {
+      "type": "object",
+      "required": ["type", "items"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "bullets" },
+        "items": { "type": "array", "items": { "$ref": "#/$defs/spans" }, "minItems": 1, "maxItems": 50 }
+      }
+    },
+    "steps": {
+      "type": "object",
+      "required": ["type", "items"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "steps" },
+        "items": { "type": "array", "items": { "$ref": "#/$defs/spans" }, "minItems": 1, "maxItems": 50 }
+      }
+    },
+    "table": {
+      "type": "object",
+      "required": ["type", "header", "rows"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "table" },
+        "caption": { "type": "string", "maxLength": 500 },
+        "header": { "type": "array", "items": { "type": "string", "maxLength": 200 }, "minItems": 1, "maxItems": 20 },
+        "rows": {
+          "type": "array",
+          "maxItems": 200,
+          "items": { "type": "array", "items": { "$ref": "#/$defs/span" }, "minItems": 1, "maxItems": 20 }
+        }
+      }
+    },
+    "chart": {
+      "type": "object",
+      "required": ["type", "kind", "x", "series", "cites"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "chart" },
+        "kind": { "enum": ["bar", "line", "scatter"] },
+        "title": { "type": "string", "maxLength": 300 },
+        "x": {
+          "type": "object",
+          "required": ["label", "values"],
+          "additionalProperties": false,
+          "properties": {
+            "label": { "type": "string", "maxLength": 100 },
+            "values": { "type": "array", "items": { "type": ["string", "number"] }, "minItems": 2, "maxItems": 500 }
+          }
+        },
+        "y": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": { "label": { "type": "string", "maxLength": 100 } }
+        },
+        "series": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 12,
+          "items": {
+            "type": "object",
+            "required": ["name", "values"],
+            "additionalProperties": false,
+            "properties": {
+              "name": { "type": "string", "maxLength": 100 },
+              "values": { "type": "array", "items": { "type": ["number", "null"] }, "minItems": 2, "maxItems": 500 }
+            }
+          }
+        },
+        "cites": { "$ref": "#/$defs/cites" },
+        "confidence": { "$ref": "#/$defs/confidence" }
+      }
+    },
+    "diagram": {
+      "type": "object",
+      "required": ["type", "nodes", "edges", "cites"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "diagram" },
+        "direction": { "enum": ["LR", "TD"] },
+        "nodes": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 60,
+          "items": {
+            "type": "object",
+            "required": ["id", "label"],
+            "additionalProperties": false,
+            "properties": {
+              "id": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_]{0,39}$" },
+              "label": { "type": "string", "minLength": 1, "maxLength": 120 }
+            }
+          }
+        },
+        "edges": {
+          "type": "array",
+          "maxItems": 150,
+          "items": {
+            "type": "object",
+            "required": ["from", "to"],
+            "additionalProperties": false,
+            "properties": {
+              "from": { "type": "string" },
+              "to": { "type": "string" },
+              "label": { "type": "string", "maxLength": 80 }
+            }
+          }
+        },
+        "cites": { "$ref": "#/$defs/cites" },
+        "confidence": { "$ref": "#/$defs/confidence" }
+      }
+    },
+    "callout": {
+      "type": "object",
+      "required": ["type", "tone", "spans"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "callout" },
+        "tone": { "enum": ["important", "remember", "antipattern", "insight", "caution", "contrast", "question"] },
+        "title": { "type": "string", "maxLength": 200 },
+        "spans": { "$ref": "#/$defs/spans" }
+      }
+    },
+    "code": {
+      "type": "object",
+      "required": ["type", "text", "cites"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "code" },
+        "language": { "type": "string", "maxLength": 40 },
+        "text": { "type": "string", "minLength": 1, "maxLength": 20000 },
+        "caption": { "type": "string", "maxLength": 300 },
+        "cites": { "$ref": "#/$defs/cites" }
+      }
+    },
+    "math": {
+      "type": "object",
+      "required": ["type", "latex", "cites"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "math" },
+        "latex": { "type": "string", "minLength": 1, "maxLength": 4000 },
+        "meaning": { "$ref": "#/$defs/spans" },
+        "cites": { "$ref": "#/$defs/cites" }
+      }
+    },
+    "quote": {
+      "type": "object",
+      "required": ["type", "text", "cites", "page"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "quote" },
+        "text": { "type": "string", "minLength": 1, "maxLength": 4000 },
+        "attribution": { "type": "string", "maxLength": 200 },
+        "cites": { "$ref": "#/$defs/cites" },
+        "page": { "type": ["integer", "null"], "minimum": 0 }
+      }
+    },
+    "definition": {
+      "type": "object",
+      "required": ["type", "term", "spans"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "definition" },
+        "term": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "spans": { "$ref": "#/$defs/spans" }
+      }
+    }
+  }
+}
