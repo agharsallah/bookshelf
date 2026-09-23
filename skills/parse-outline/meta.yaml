@@ -1,0 +1,11 @@
+name: parse-outline
+version: 1
+description: Propose a document's chapter and section outline (with PDF page ranges) from its table of contents and first pages, for the human outline fix.
+tier: explore
+job_kind: null          # interactive only: no JobKind runs it; the parse job guesses outlines in Python
+artifact_type: outline_override
+scope: document
+selector: outline_pages
+vision: false
+gates:
+  grounding_min: 0      # an outline has no spans to ground; page ranges are checked by the human

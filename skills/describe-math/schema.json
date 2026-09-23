@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bookshelf.local/skills/describe-math/schema.json",
+  "title": "describe-math output",
+  "description": "The formula as LaTeX, then a math block (same LaTeX + cited meaning), one definition block per symbol, and optional conditions or worked example.",
+  "type": "object",
+  "required": ["latex", "blocks", "confidence"],
+  "additionalProperties": false,
+  "properties": {
+    "latex": { "type": "string", "minLength": 1, "maxLength": 4000 },
+    "blocks": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 16,
+      "prefixItems": [
+        { "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/math" }
+      ],
+      "items": {
+        "anyOf": [
+          { "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/definition" },
+          { "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/paragraph" },
+          { "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/bullets" },
+          { "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/callout" }
+        ]
+      }
+    },
+    "confidence": { "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/confidence" }
+  }
+}

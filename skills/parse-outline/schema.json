@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bookshelf.local/skills/parse-outline/schema.json",
+  "title": "parse-outline output",
+  "description": "Chapters in reading order with PDF page ranges (as numbered in the input's pages[].page), each with its sections' start pages.",
+  "type": "object",
+  "required": ["chapters"],
+  "additionalProperties": false,
+  "properties": {
+    "chapters": {
+      "type": "array",
+      "maxItems": 200,
+      "items": {
+        "type": "object",
+        "required": ["title", "page_from", "page_to", "sections"],
+        "additionalProperties": false,
+        "properties": {
+          "title": { "type": "string", "minLength": 1, "maxLength": 300 },
+          "page_from": { "type": "integer", "minimum": 0 },
+          "page_to": { "type": "integer", "minimum": 0 },
+          "sections": {
+            "type": "array",
+            "maxItems": 100,
+            "items": {
+              "type": "object",
+              "required": ["title", "page_from"],
+              "additionalProperties": false,
+              "properties": {
+                "title": { "type": "string", "minLength": 1, "maxLength": 300 },
+                "page_from": { "type": "integer", "minimum": 0 }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

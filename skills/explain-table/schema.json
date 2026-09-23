@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bookshelf.local/skills/explain-table/schema.json",
+  "title": "explain-table output",
+  "description": "A 'what this table shows' paragraph first, up to three optional pattern/caveat blocks, a cited takeaway and confidence. Never a copy of the table: the verbatim table is the source block.",
+  "type": "object",
+  "required": ["blocks", "takeaway", "confidence"],
+  "additionalProperties": false,
+  "properties": {
+    "blocks": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 4,
+      "prefixItems": [
+        { "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/paragraph" }
+      ],
+      "items": {
+        "anyOf": [
+          { "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/paragraph" },
+          { "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/bullets" },
+          { "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/callout" }
+        ]
+      }
+    },
+    "takeaway": { "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/span" },
+    "confidence": { "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/confidence" }
+  }
+}

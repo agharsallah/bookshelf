@@ -1,0 +1,11 @@
+name: explain-table
+version: 1
+description: Say what one table shows and the comparison that matters, without re-transcribing the verbatim table.
+tier: explore
+job_kind: explain_table
+artifact_type: table_explanation
+scope: block
+selector: element_context   # the runtime only queues tables with > 6 rows or no caption (§8)
+vision: false
+gates:
+  grounding_min: 0.9        # every span can cite the table anchor

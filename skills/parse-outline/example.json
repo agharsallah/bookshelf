@@ -1,0 +1,39 @@
+{
+  "chapters": [
+    { "title": "Introduction", "page_from": 9, "page_to": 16, "sections": [] },
+    { "title": "Why Work Waits", "page_from": 17, "page_to": 32, "sections": [] },
+    {
+      "title": "Little's Law",
+      "page_from": 33,
+      "page_to": 50,
+      "sections": [
+        { "title": "The law", "page_from": 34 },
+        { "title": "Forecasting with it", "page_from": 40 },
+        { "title": "Where it breaks", "page_from": 45 }
+      ]
+    },
+    {
+      "title": "Utilization Is a Trap",
+      "page_from": 51,
+      "page_to": 82,
+      "sections": [
+        { "title": "The hockey stick", "page_from": 52 },
+        { "title": "Variability", "page_from": 61 },
+        { "title": "Slack as a feature", "page_from": 73 }
+      ]
+    },
+    {
+      "title": "Limiting Work in Progress",
+      "page_from": 83,
+      "page_to": 124,
+      "sections": [
+        { "title": "What a limit does", "page_from": 84 },
+        { "title": "Three policies compared", "page_from": 97 },
+        { "title": "A toy simulation", "page_from": 112 }
+      ]
+    },
+    { "title": "Batch Size", "page_from": 125, "page_to": 162, "sections": [] },
+    { "title": "Queues You Can't See", "page_from": 163, "page_to": 216, "sections": [] },
+    { "title": "Managing by Flow", "page_from": 217, "page_to": 244, "sections": [] }
+  ]
+}

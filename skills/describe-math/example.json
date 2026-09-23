@@ -1,0 +1,57 @@
+{
+  "latex": "E[W_q] \\approx \\left(\\frac{\\rho}{1-\\rho}\\right)\\left(\\frac{c_a^2 + c_s^2}{2}\\right) t_s",
+  "blocks": [
+    {
+      "type": "math",
+      "latex": "E[W_q] \\approx \\left(\\frac{\\rho}{1-\\rho}\\right)\\left(\\frac{c_a^2 + c_s^2}{2}\\right) t_s",
+      "meaning": [
+        {
+          "text": "Expected time in the queue is roughly the product of three factors: how busy the server is, how variable the work is, and how long each item takes.",
+          "cites": ["ch03/s02/m001", "ch03/s02/p006"]
+        }
+      ],
+      "cites": ["ch03/s02/m001"]
+    },
+    {
+      "type": "definition",
+      "term": "E[W_q]",
+      "spans": [
+        {
+          "text": "Expected value (E[·]) of W_q. W_q is not defined in the surrounding text, which frames the formula as the time you wait.",
+          "cites": ["ch03/s02/m001", "ch03/s02/p006"]
+        }
+      ]
+    },
+    {
+      "type": "definition",
+      "term": "ρ",
+      "spans": [{ "text": "Utilization of the server.", "cites": ["ch03/s02/p007"] }]
+    },
+    {
+      "type": "definition",
+      "term": "c_a, c_s",
+      "spans": [
+        {
+          "text": "Coefficients of variation of the time between arrivals and of the service time.",
+          "cites": ["ch03/s02/p007"]
+        }
+      ]
+    },
+    {
+      "type": "definition",
+      "term": "t_s",
+      "spans": [{ "text": "Mean service time.", "cites": ["ch03/s02/p007"] }]
+    },
+    {
+      "type": "callout",
+      "tone": "caution",
+      "spans": [
+        {
+          "text": "An approximation for a single server under heavy load; at low utilization it overstates the wait.",
+          "cites": ["ch03/s02/p008"]
+        }
+      ]
+    }
+  ],
+  "confidence": "medium"
+}

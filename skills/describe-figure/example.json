@@ -1,0 +1,31 @@
+{
+  "kind": "chart",
+  "caption": "Figure 3.1 Waiting time as utilization rises",
+  "alt": "Line chart of average waiting time, in multiples of the service time, against server utilization from 50 to 95 percent; the curve is nearly flat until 70 percent and climbs steeply after 80.",
+  "blocks": [
+    {
+      "type": "chart",
+      "kind": "line",
+      "title": "Waiting time as utilization rises",
+      "x": { "label": "Utilization (%)", "values": [50, 60, 70, 80, 90, 95] },
+      "y": { "label": "Average wait (× service time)" },
+      "series": [{ "name": "Average wait", "values": [1, 1.5, 2.3, 4, 9, 19] }],
+      "cites": ["ch03/s01/f001"],
+      "confidence": "medium"
+    },
+    {
+      "type": "paragraph",
+      "spans": [
+        {
+          "text": "The vertical axis counts multiples of the time one item takes to serve, not minutes or hours.",
+          "cites": ["ch03/s01/f001", "ch03/s01/p004"]
+        }
+      ]
+    }
+  ],
+  "takeaway": {
+    "text": "Waiting time stays modest up to about 70% utilization and then rises steeply, reaching roughly 19 times the service time at 95%.",
+    "cites": ["ch03/s01/f001", "ch03/s01/p004"]
+  },
+  "confidence": "medium"
+}

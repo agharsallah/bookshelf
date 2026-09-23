@@ -1,0 +1,11 @@
+name: explain-code
+version: 1
+description: Explain one code listing — its purpose, how it works, the concepts it demonstrates and the pitfalls it shows — without ever rewriting the listing.
+tier: explore
+job_kind: explain_code
+artifact_type: code_explanation
+scope: block
+selector: element_context
+vision: false
+gates:
+  grounding_min: 0.9    # every span can cite the listing anchor

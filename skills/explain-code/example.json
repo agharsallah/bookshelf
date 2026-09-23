@@ -1,0 +1,44 @@
+{
+  "blocks": [
+    {
+      "type": "paragraph",
+      "spans": [
+        {
+          "text": "Simulates a single worker pulling from a queue that refuses new work once it holds wip_limit items, and returns throughput and average wait so that runs with and without a limit can be compared.",
+          "cites": ["ch04/s03/c001", "ch04/s03/p002"]
+        }
+      ]
+    },
+    {
+      "type": "steps",
+      "items": [
+        [
+          { "text": "Each tick, an item arrives with probability ", "cites": ["ch04/s03/c001"] },
+          { "text": "arrival_rate", "cites": ["ch04/s03/c001"], "mark": "code" },
+          { "text": " and joins the queue only if it is below the limit.", "cites": ["ch04/s03/c001"] }
+        ],
+        [
+          { "text": "With probability ", "cites": ["ch04/s03/c001"] },
+          { "text": "service_rate", "cites": ["ch04/s03/c001"], "mark": "code" },
+          { "text": " the oldest item finishes and its wait (current tick minus arrival tick) is recorded.", "cites": ["ch04/s03/c001"] }
+        ],
+        [
+          { "text": "After all ticks it returns completed items per tick and the mean recorded wait.", "cites": ["ch04/s03/c001"] }
+        ]
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "caution",
+      "title": "Rejected work disappears",
+      "spans": [
+        {
+          "text": "Arrivals over the limit are simply not appended, so the model never counts the work waiting upstream; the author notes that in a real team that hidden queue still exists.",
+          "cites": ["ch04/s03/c001", "ch04/s03/p003"]
+        }
+      ]
+    }
+  ],
+  "concepts": ["work in progress limit", "discrete-event simulation", "first-in first-out queue"],
+  "confidence": "high"
+}

@@ -1,0 +1,41 @@
+{
+  "blocks": [
+    {
+      "type": "paragraph",
+      "spans": [
+        {
+          "text": "Each row is a work-in-progress policy the author tracked for twelve weeks; the columns give the average number of items in progress, items finished per week, and average days from start to finish.",
+          "cites": ["ch04/s02/t001"]
+        }
+      ]
+    },
+    {
+      "type": "bullets",
+      "items": [
+        [
+          {
+            "text": "Throughput barely moves across policies, from 9.5 to 10.1 items per week.",
+            "cites": ["ch04/s02/t001"]
+          }
+        ],
+        [
+          {
+            "text": "Average cycle time falls from 31 days with no limit to 10 days with a team limit of 15 and 8.5 days with a per-person limit of 2.",
+            "cites": ["ch04/s02/t001"]
+          }
+        ],
+        [
+          {
+            "text": "The per-person limit holds the least work in progress (12) and has the shortest cycle time.",
+            "cites": ["ch04/s02/t001"]
+          }
+        ]
+      ]
+    }
+  ],
+  "takeaway": {
+    "text": "Limiting work in progress cut cycle time to about a third while throughput stayed flat: the teams finished work sooner without working faster.",
+    "cites": ["ch04/s02/t001", "ch04/s02/p005"]
+  },
+  "confidence": "high"
+}

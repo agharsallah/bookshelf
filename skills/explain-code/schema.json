@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bookshelf.local/skills/explain-code/schema.json",
+  "title": "explain-code output",
+  "description": "A purpose paragraph first, then optional walk-through, concept bullets and pitfall callouts. The listing itself is never reproduced: the verbatim code block is the source block the explanation cites.",
+  "type": "object",
+  "required": ["blocks", "concepts", "confidence"],
+  "additionalProperties": false,
+  "properties": {
+    "blocks": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8,
+      "prefixItems": [
+        { "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/paragraph" }
+      ],
+      "items": {
+        "anyOf": [
+          { "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/paragraph" },
+          { "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/bullets" },
+          { "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/steps" },
+          { "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/callout" },
+          { "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/table" }
+        ]
+      }
+    },
+    "concepts": {
+      "type": "array",
+      "maxItems": 8,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1, "maxLength": 80, "pattern": "^[^A-Z]+$" }
+    },
+    "confidence": { "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/confidence" }
+  }
+}

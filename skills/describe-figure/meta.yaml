@@ -1,0 +1,11 @@
+name: describe-figure
+version: 1
+description: Turn one figure into usable content — charts into data, diagrams into structure, pictures into description — with a cited takeaway.
+tier: explore
+job_kind: describe_figure
+artifact_type: figure_description
+scope: block
+selector: element_context
+vision: true            # the prompt carries element.image_path; the CLI reads the PNG
+gates:
+  grounding_min: 0.9    # every span can cite the figure anchor, so anything less is a miss

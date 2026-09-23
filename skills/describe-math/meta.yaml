@@ -1,0 +1,11 @@
+name: describe-math
+version: 1
+description: Transcribe one formula to LaTeX and explain what it means, symbol by symbol, in the book's own terms.
+tier: explore
+job_kind: describe_math
+artifact_type: math_description
+scope: block
+selector: element_context
+vision: true            # display formulas carry a cropped PNG in element.image_path
+gates:
+  grounding_min: 0.9    # every span can cite the formula anchor
