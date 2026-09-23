@@ -29,6 +29,10 @@ describe('createSseParser', () => {
     expect(feed([...STREAM])).toEqual(EXPECTED);
   });
 
+  it('does not read a CRLF split across chunks as two line endings', () => {
+    expect(feed(['data: 1\r', '\ndata: 2\r\n\r\n'])).toEqual([{ event: 'message', data: '1\n2', id: null }]);
+  });
+
   it('accepts CRLF and lone CR line endings, even when a CRLF straddles two chunks', () => {
     expect(feed(['event: a\r\ndata: 1\r', '\n\r\n', 'data: 2\r\r'])).toEqual([
       { event: 'a', data: '1', id: null },
