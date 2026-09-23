@@ -8,7 +8,7 @@
  *   (never past 150 nodes). Focus and view live in the URL; back/forward work.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Problem } from '../document/Problem';
+import { Problem } from '../common/Problem';
 import { browserApi, type ApiClient } from '../../lib/api/client';
 import type { GraphRef, Neighborhood } from '../../lib/api/types/graph';
 import { useNeighborhood } from '../../lib/hooks/useNeighborhood';

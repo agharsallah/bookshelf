@@ -40,18 +40,24 @@ export interface JobPublic {
   finished_at: string | null;
 }
 
-/** Short alias of `JobPublic`. */
-export type Job = JobPublic;
-
-/** `POST /jobs`. `force` re-runs even when an artifact for the same input exists. */
+/**
+ * `POST /jobs`. `force` re-runs even when an artifact for the same input exists.
+ * `skill` is required for `derive` (else it must match `kind`); `note_id` is required
+ * for `structure_note`. Live work is deduplicated per kind, scope, skill and note.
+ */
 export interface JobCreate {
   kind: JobKind;
   document_id?: string | null;
   anchor?: string | null;
   force?: boolean;
+  skill?: string | null;
+  note_id?: string | null;
 }
 
-/** `202` body of `POST /jobs`: the queued job, or the live one already covering it. */
+/**
+ * `202` body of `POST /jobs` and `POST /jobs/{id}/retry`: the queued job, or the live
+ * one already covering it. (`DELETE /jobs/{id}` answers the cancelled `JobPublic`.)
+ */
 export interface JobAccepted {
   job: JobPublic;
   deduplicated: boolean;

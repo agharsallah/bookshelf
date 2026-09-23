@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import type { Job } from '../api/types/jobs';
+import type { JobPublic } from '../api/types/jobs';
 import { initialJobStreamState, jobStreamReducer, parseJobEvent, sortedJobs } from './stream';
 
-function job(overrides: Partial<Job> = {}): Job {
+function job(overrides: Partial<JobPublic> = {}): JobPublic {
   return {
     id: 'j1',
     kind: 'parse',

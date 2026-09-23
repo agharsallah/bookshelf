@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '../../lib/api/errors';
 import type { LibraryFile } from '../../lib/api/types/documents';
-import type { Job } from '../../lib/api/types/jobs';
+import type { JobPublic } from '../../lib/api/types/jobs';
 import { IngestPanel } from './IngestPanel';
 
 const api = vi.hoisted(() => ({
@@ -43,7 +43,7 @@ const file: LibraryFile = {
   suggested_slug: 'meadows',
 };
 
-const job = (state: Job['state'], attempts = 0): Job => ({
+const job = (state: JobPublic['state'], attempts = 0): JobPublic => ({
   id: 'job-1',
   kind: 'parse',
   document_id: 'doc-1',

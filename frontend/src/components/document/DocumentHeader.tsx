@@ -5,7 +5,7 @@
 import { useState, type SubmitEvent } from 'react';
 import { browserApi } from '../../lib/api/client';
 import type { DocumentPublic, DocumentUpdate } from '../../lib/api/types/documents';
-import { Problem, problemOf, type ProblemInfo } from './Problem';
+import { Problem, problemOf, type ProblemInfo } from '../common/Problem';
 import { toast } from './toast';
 import styles from './DocumentHeader.module.css';
 

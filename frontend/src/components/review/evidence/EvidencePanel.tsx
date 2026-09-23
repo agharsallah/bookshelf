@@ -4,7 +4,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { anchorLabel } from '../../../lib/anchors';
-import { problemOf, Problem, type ProblemInfo } from '../../document/Problem';
+import { problemOf, Problem, type ProblemInfo } from '../../common/Problem';
 import type { SourceBlock } from '../api';
 import styles from './EvidencePanel.module.css';
 

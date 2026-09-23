@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import type { Artifact } from '../api/types/artifacts';
+import type { ArtifactPublic } from '../api/types/artifacts';
 import type { TreeNode } from '../api/types/documents';
 import { chapterStatus, pickBest, pickBestUnder } from './artifacts';
-import { fetchAll } from './fetch-all';
+import { fetchAll } from '../api/fetch-all';
 import { pipelineFraction, stepState } from './pipeline';
 import { defaultUnit, flatten, isUnder, pageSpan, readingUnits, unitFor } from './tree';
 
-function artifact(overrides: Partial<Artifact>): Artifact {
+function artifact(overrides: Partial<ArtifactPublic>): ArtifactPublic {
   return {
     id: `${overrides.type}-${overrides.anchor}-${overrides.version}`,
     document_id: 'd1',

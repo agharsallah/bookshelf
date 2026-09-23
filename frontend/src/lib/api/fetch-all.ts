@@ -1,9 +1,9 @@
 /**
  * Read every page of a paginated list endpoint (the API caps pages at 100), up to a
- * safety limit. Server frontmatter uses it for a chapter's artifacts and notes.
+ * safety limit. Used by page frontmatter (artifacts, notes, jobs, documents) and islands.
  */
-import type { ApiClient, Query } from '../api/client';
-import type { Page } from '../api/types';
+import type { ApiClient, Query } from './client';
+import type { Page } from './types';
 
 export const PAGE_SIZE = 100;
 

@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import type { Artifact } from '../../lib/api/types/artifacts';
+import type { ArtifactPublic } from '../../lib/api/types/artifacts';
 import type { NoteDetail } from '../../lib/api/types/notes';
 import { groupMarks, marksFor, notedBlocks } from './marks';
 import { bodyBlocks, buildPanes } from './panes';
 
-function artifact(overrides: Partial<Artifact>): Artifact {
+function artifact(overrides: Partial<ArtifactPublic>): ArtifactPublic {
   return {
     id: `${overrides.type}@${overrides.anchor}#${overrides.version ?? 1}`, document_id: 'd', anchor: 'ch01', note_id: null,
     type: 'chapter_distillation', version: 1, origin: 'skill', skill: null, skill_version: null, model: null, run_mode: null,

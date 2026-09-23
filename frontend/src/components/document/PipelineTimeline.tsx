@@ -7,7 +7,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { browserApi } from '../../lib/api/client';
 import type { DocumentPublic, DocumentStatus } from '../../lib/api/types/documents';
-import type { Job } from '../../lib/api/types/jobs';
+import type { JobPublic } from '../../lib/api/types/jobs';
 import { PIPELINE_STEPS, pipelineProgress, stepState } from '../../lib/documents/pipeline';
 import { useJobStream } from '../../lib/hooks/useJobStream';
 import { isFinished, sortedJobs } from '../../lib/jobs/stream';
@@ -18,10 +18,10 @@ export interface PipelineTimelineProps {
   documentId: string;
   slug: string;
   initialStatus: DocumentStatus;
-  initialJobs: Job[];
+  initialJobs: JobPublic[];
 }
 
-const STATE_WORDS: Record<Job['state'], string> = {
+const STATE_WORDS: Record<JobPublic['state'], string> = {
   queued: 'queued',
   running: 'running',
   done: 'done',

@@ -5,7 +5,7 @@
  * or rejected here; an edge you cannot verify is a liability (§11).
  */
 import { useEffect, useState } from 'react';
-import { Problem, problemOf, type ProblemInfo } from '../document/Problem';
+import { Problem, problemOf, type ProblemInfo } from '../common/Problem';
 import type { ApiClient } from '../../lib/api/client';
 import type { EdgeDetail, EdgeStatus } from '../../lib/api/types/graph';
 import { PassageList } from '../concepts/PassageList';

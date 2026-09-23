@@ -5,7 +5,7 @@
  * Keys on the current proposal: M merge · R reject · S skip.
  */
 import { useReducer, useState, type KeyboardEvent } from 'react';
-import { problemOf } from '../document/Problem';
+import { problemOf } from '../common/Problem';
 import { Toaster, useToasts } from '../review/common/Toasts';
 import { browserApi, type ApiClient } from '../../lib/api/client';
 import type { ConceptSummary, MergeProposal } from '../../lib/api/types/graph';

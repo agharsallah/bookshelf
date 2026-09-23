@@ -9,7 +9,7 @@ import type { Page } from '../../lib/api/types';
 import type { LibraryFile } from '../../lib/api/types/documents';
 import type { JobState } from '../../lib/api/types/jobs';
 import { useJobStream } from '../../lib/hooks/useJobStream';
-import { Problem, problemOf, type ProblemInfo } from '../document/Problem';
+import { Problem, problemOf, type ProblemInfo } from '../common/Problem';
 import { isFinished } from '../../lib/jobs/stream';
 import { formatSize, ingest, jobPhrase, type IngestOutcome } from './ingest';
 import styles from './IngestPanel.module.css';

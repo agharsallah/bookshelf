@@ -79,12 +79,19 @@ export interface ConceptRelation {
   evidence: string[];
 }
 
+/**
+ * Vector intents only: `empty` (nothing indexed yet) or `unavailable` (Qdrant
+ * unreachable) explain empty `groups`; addressed and lexical never set it.
+ */
+export type IndexState = 'ready' | 'empty' | 'unavailable';
+
 export interface SearchResponse {
   intent: Intent;
   resolved?: ResolvedAddress | null;
   groups: SearchGroup[];
   /** Synthesis only: relations between concepts in the result books, contradictions first. */
   relations?: ConceptRelation[];
+  index_state?: IndexState | null;
   took_ms: number;
 }
 
@@ -121,9 +128,14 @@ export interface AnswerError {
 
 // --- Suggest --------------------------------------------------------------------------
 
+/**
+ * Documents and chapters carry `document` and chapters their `anchor`; concepts (and
+ * documents) carry `id`.
+ */
 export interface SuggestItem {
   kind: 'document' | 'chapter' | 'concept';
   label: string;
+  id?: string | null;
   document?: SearchDocument | null;
   anchor?: string | null;
 }

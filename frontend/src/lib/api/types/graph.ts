@@ -59,7 +59,13 @@ export interface ConceptSummary {
   merged_into: string | null;
   /** `human` once a person created or edited it. */
   origin: Origin;
+  /** Accepted edges, with the concepts merged into it folded in (lists only). */
+  edge_count?: number;
 }
+
+/** `GET /concepts?sort=`: by name, most edges, or newest. */
+export const CONCEPT_SORTS = ['alpha', 'connected', 'recent'] as const;
+export type ConceptSort = (typeof CONCEPT_SORTS)[number];
 
 export interface ConceptPublic extends ConceptSummary {
   blurb_cites: string[];

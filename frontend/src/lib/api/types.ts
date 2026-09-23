@@ -10,6 +10,17 @@ export interface Health {
   environment: string;
 }
 
+/**
+ * GET /health/ready (backend root). `degraded` (still 200) when Qdrant is unreachable:
+ * only vector search needs it. A database outage is a 503 error envelope instead.
+ */
+export interface Readiness {
+  status: 'ready' | 'degraded';
+  database: string;
+  qdrant: 'ok' | 'unavailable';
+  qdrant_error?: string | null;
+}
+
 /** Offset pagination envelope used by list endpoints. */
 export interface Page<T> {
   items: T[];
@@ -29,4 +40,4 @@ export type * from './types/notes';
 export type * from './types/search';
 export { INTENTS, SEARCH_MODES } from './types/search';
 export type * from './types/graph';
-export { CONCEPT_KINDS, EDGE_STATUSES, ENTITY_KINDS, RELATIONS } from './types/graph';
+export { CONCEPT_KINDS, CONCEPT_SORTS, EDGE_STATUSES, ENTITY_KINDS, RELATIONS } from './types/graph';

@@ -3,12 +3,12 @@
  * A missing document is `{ notFound: true }` so the page can answer 404; any other
  * failure is a `ProblemInfo` to show.
  */
-import { problemOf, type ProblemInfo } from '../../components/document/Problem';
+import { problemOf, type ProblemInfo } from '../../components/common/Problem';
 import { ApiError } from '../api/errors';
 import { serverApi } from '../api/server';
-import type { Artifact, ArtifactType } from '../api/types/artifacts';
+import type { ArtifactPublic, ArtifactType } from '../api/types/artifacts';
 import type { DocumentDetail, DocumentTree } from '../api/types/documents';
-import { fetchAll } from './fetch-all';
+import { fetchAll } from '../api/fetch-all';
 
 export type Loaded<T> = { ok: true; value: T } | { ok: false; notFound: boolean; problem: ProblemInfo };
 
@@ -31,8 +31,8 @@ export function getOutline(ref: string): Promise<DocumentTree> {
 
 export async function getArtifacts(
   documentId: string,
-  filter: { type?: ArtifactType; anchor_prefix?: string; review?: Artifact['review'] } = {},
-): Promise<Artifact[]> {
-  const { items } = await fetchAll<Artifact>(serverApi(), 'artifacts', { document_id: documentId, ...filter });
+  filter: { type?: ArtifactType; anchor_prefix?: string; review?: ArtifactPublic['review'] } = {},
+): Promise<ArtifactPublic[]> {
+  const { items } = await fetchAll<ArtifactPublic>(serverApi(), 'artifacts', { document_id: documentId, ...filter });
   return items;
 }

@@ -8,7 +8,7 @@
  * the query.
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react';
-import { Problem } from '../document/Problem';
+import { Problem } from '../common/Problem';
 import { browserApi, type ApiClient } from '../../lib/api/client';
 import type { SearchMode } from '../../lib/api/types/search';
 import { useAnswerStream } from '../../lib/hooks/useAnswerStream';

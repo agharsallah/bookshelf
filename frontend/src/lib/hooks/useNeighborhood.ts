@@ -6,7 +6,7 @@
  *   const { hood, answered, loading, problem, reload } = useNeighborhood(api, ref, view, initial);
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { problemOf, type ProblemInfo } from '../../components/document/Problem';
+import { problemOf, type ProblemInfo } from '../../components/common/Problem';
 import type { ApiClient } from '../api/client';
 import type { GraphRef, Neighborhood } from '../api/types/graph';
 

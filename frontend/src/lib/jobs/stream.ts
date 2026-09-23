@@ -7,10 +7,10 @@
  * reconnects by itself, so the reducer must tolerate replays: an event only
  * replaces what we hold when it is not older than it.
  */
-import type { Job } from '../api/types/jobs';
+import type { JobPublic } from '../api/types/jobs';
 
 export type JobStreamEvent =
-  | { type: 'job'; job: Job }
+  | { type: 'job'; job: JobPublic }
   | { type: 'open' }
   | { type: 'error' }
   | { type: 'end' };
@@ -20,12 +20,12 @@ export type StreamStatus = 'connecting' | 'live' | 'reconnecting' | 'closed';
 export interface JobStreamState {
   status: StreamStatus;
   /** Latest known version of each job, by id. */
-  jobs: Readonly<Record<string, Job>>;
+  jobs: Readonly<Record<string, JobPublic>>;
 }
 
 export const initialJobStreamState: JobStreamState = { status: 'connecting', jobs: {} };
 
-const STATE_RANK: Record<Job['state'], number> = {
+const STATE_RANK: Record<JobPublic['state'], number> = {
   queued: 0,
   running: 1,
   done: 2,
@@ -37,7 +37,7 @@ const STATE_RANK: Record<Job['state'], number> = {
  * True when `next` describes the same job at a later (or equal) point in its life.
  * Retries go back to `queued` with more attempts, so attempts dominate state.
  */
-export function isNewer(next: Job, current: Job | undefined): boolean {
+export function isNewer(next: JobPublic, current: JobPublic | undefined): boolean {
   if (!current) return true;
   if (next.attempts !== current.attempts) return next.attempts > current.attempts;
   return STATE_RANK[next.state] >= STATE_RANK[current.state];
@@ -60,11 +60,11 @@ export function jobStreamReducer(state: JobStreamState, event: JobStreamEvent): 
 }
 
 /** Parse one SSE `data` payload; `null` for anything that is not a job. */
-export function parseJobEvent(data: string): Job | null {
+export function parseJobEvent(data: string): JobPublic | null {
   try {
-    const value = JSON.parse(data) as Partial<Job> | null;
+    const value = JSON.parse(data) as Partial<JobPublic> | null;
     if (value && typeof value.id === 'string' && typeof value.state === 'string' && typeof value.kind === 'string') {
-      return value as Job;
+      return value as JobPublic;
     }
   } catch {
     // Malformed frames are dropped; the next poll re-sends the job.
@@ -74,15 +74,15 @@ export function parseJobEvent(data: string): Job | null {
 
 /** Jobs newest first, optionally narrowed. */
 export function sortedJobs(
-  jobs: Readonly<Record<string, Job>>,
-  keep: (job: Job) => boolean = () => true,
-): Job[] {
+  jobs: Readonly<Record<string, JobPublic>>,
+  keep: (job: JobPublic) => boolean = () => true,
+): JobPublic[] {
   return Object.values(jobs)
     .filter(keep)
     .sort((a, b) => b.created_at.localeCompare(a.created_at));
 }
 
 /** A job that will not change any more. */
-export function isFinished(state: Job['state'] | undefined): boolean {
+export function isFinished(state: JobPublic['state'] | undefined): boolean {
   return state === 'done' || state === 'failed' || state === 'skipped';
 }

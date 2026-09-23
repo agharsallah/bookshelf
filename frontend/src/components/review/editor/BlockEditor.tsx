@@ -5,7 +5,7 @@
  */
 import { useEffect, useId, useMemo, useReducer, useRef, useState } from 'react';
 import { ApiError } from '../../../lib/api/errors';
-import { problemOf, Problem, type ProblemInfo } from '../../document/Problem';
+import { problemOf, Problem, type ProblemInfo } from '../../common/Problem';
 import type { SourceBlock } from '../api';
 import { BlockSlip } from './BlockSlip';
 import { INSERTABLE, type InsertableType } from './model';

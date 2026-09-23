@@ -21,6 +21,3 @@ export interface SkillPublic {
   vision: boolean;
   gates: SkillGates;
 }
-
-/** Short alias of `SkillPublic`. */
-export type Skill = SkillPublic;

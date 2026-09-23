@@ -2,7 +2,7 @@
  * Document, library and tree wire shapes (backend/app/schemas/{document,node}.py).
  * `ref` in paths is a document id or slug.
  */
-import type { Job, JobKind, JobState } from './jobs';
+import type { JobPublic, JobKind, JobState } from './jobs';
 
 export type DocumentKind = 'pdf' | 'article';
 
@@ -95,11 +95,23 @@ export interface JobBrief {
   finished_at: string | null;
 }
 
+/** Why the run ceiling stopped spending model runs on a document (§14). */
+export interface PausedState {
+  reason: string;
+  at: string;
+  runs: number;
+  limit: number;
+}
+
 /** `GET /documents` item. */
 export interface DocumentSummary extends DocumentPublic {
   counts: DocumentCounts;
   artifacts: ArtifactCounts;
   latest_job: JobBrief | null;
+  /** Card text (≤ 280 chars): book summary, else brief thesis, else first chapter summary. */
+  blurb: string | null;
+  /** Set when the run ceiling paused the document; `POST /documents/{ref}/resume` clears it. */
+  paused: PausedState | null;
 }
 
 /** `GET /documents/{ref}`. */
@@ -110,10 +122,28 @@ export interface DocumentDetail extends DocumentSummary {
   jobs: Partial<Record<JobKind, Partial<Record<JobState, number>>>>;
 }
 
+/** `POST /documents/{ref}/resume`; without `max_runs` the document gets another full allowance. */
+export interface ResumeRequest {
+  max_runs?: number;
+}
+
+/** `200` body of `POST /documents/{ref}/resume`. */
+export interface DocumentResumed {
+  document: DocumentDetail;
+  /** Jobs the ceiling had stopped, queued again. */
+  requeued: JobPublic[];
+}
+
+/** `200` body of `POST /documents/{ref}/outline/confirm`: now `parsed`, plus the first jobs. */
+export interface OutlineConfirmed {
+  document: DocumentPublic;
+  jobs: JobPublic[];
+}
+
 /** `202` body of `POST /documents` and `PATCH /documents/{ref}/outline`. */
 export interface DocumentAccepted {
   document: DocumentPublic;
-  job: Job;
+  job: JobPublic;
   deduplicated: boolean;
 }
 
@@ -124,10 +154,16 @@ export interface OutlineSection {
   page_from: number;
 }
 
+/**
+ * The parser's override shape (backend/app/schemas/outline.py). Without `page_to` a
+ * chapter runs until the next one starts (or the document ends); `skip` keeps it
+ * readable but out of distillation (front/back matter).
+ */
 export interface OutlineChapter {
   title: string;
   page_from: number;
-  page_to: number;
+  page_to?: number | null;
+  skip?: boolean;
   sections: OutlineSection[];
 }
 
@@ -160,6 +196,8 @@ export interface NodeMeta {
   label?: string | null;
   /** Front-matter chapter (`fm01`). */
   front_matter?: boolean;
+  /** Containers not distilled (back matter, bibliography, index, or `skip` in an override). */
+  skip?: boolean;
   [key: string]: unknown;
 }
 

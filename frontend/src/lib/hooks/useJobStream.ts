@@ -10,7 +10,7 @@
  */
 import { useCallback, useEffect, useReducer } from 'react';
 import { browserApi } from '../api/client';
-import type { Job } from '../api/types/jobs';
+import type { JobPublic } from '../api/types/jobs';
 import {
   initialJobStreamState,
   jobStreamReducer,
@@ -22,12 +22,12 @@ export interface UseJobStreamOptions {
   documentId?: string | null | undefined;
   enabled?: boolean;
   /** Jobs known before the stream opens; merged through the same reducer. */
-  seed?: readonly Job[];
+  seed?: readonly JobPublic[];
 }
 
 export const JOB_STREAM_PATH = 'jobs/stream';
 
-function seeded(seed: readonly Job[] | undefined): JobStreamState {
+function seeded(seed: readonly JobPublic[] | undefined): JobStreamState {
   return (seed ?? []).reduce(
     (state, job) => jobStreamReducer(state, { type: 'job', job }),
     initialJobStreamState,
@@ -53,7 +53,7 @@ export function useJobStream({ documentId, enabled = true, seed }: UseJobStreamO
     return () => source.close();
   }, [documentId, enabled]);
 
-  const track = useCallback((job: Job) => dispatch({ type: 'job', job }), []);
+  const track = useCallback((job: JobPublic) => dispatch({ type: 'job', job }), []);
 
   return {
     status: state.status,

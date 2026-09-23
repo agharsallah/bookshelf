@@ -5,7 +5,7 @@
  *   const { response, loading, problem } = useSearchResults(api, request, delayMs);
  */
 import { useEffect, useState } from 'react';
-import { problemOf, type ProblemInfo } from '../../components/document/Problem';
+import { problemOf, type ProblemInfo } from '../../components/common/Problem';
 import type { ApiClient } from '../api/client';
 import type { SearchRequest, SearchResponse } from '../api/types/search';
 

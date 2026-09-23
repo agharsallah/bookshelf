@@ -4,7 +4,7 @@
  * (kept in this browser) come first when nothing is typed.
  */
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
-import { Problem, problemOf, type ProblemInfo } from '../document/Problem';
+import { Problem, problemOf, type ProblemInfo } from '../common/Problem';
 import { browserApi, type ApiClient } from '../../lib/api/client';
 import type { Page } from '../../lib/api/types';
 import { CONCEPT_KINDS, type ConceptKind, type ConceptSummary } from '../../lib/api/types/graph';

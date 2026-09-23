@@ -6,11 +6,11 @@
 import type { ApiClient } from '../../lib/api/client';
 import { ApiError } from '../../lib/api/errors';
 import type { DocumentAccepted, DocumentCreate } from '../../lib/api/types/documents';
-import type { Job } from '../../lib/api/types/jobs';
-import { problemOf, type ProblemInfo } from '../document/Problem';
+import type { JobPublic } from '../../lib/api/types/jobs';
+import { problemOf, type ProblemInfo } from '../common/Problem';
 
 export type IngestOutcome =
-  | { kind: 'accepted'; slug: string; title: string; jobId: string; job: Job }
+  | { kind: 'accepted'; slug: string; title: string; jobId: string; job: JobPublic }
   | { kind: 'duplicate'; slug: string | null; message: string }
   | { kind: 'failed'; problem: ProblemInfo };
 
@@ -34,7 +34,7 @@ export async function ingest(api: Pick<ApiClient, 'post'>, body: DocumentCreate)
 }
 
 /** What to tell the reader about a parse job, in their words. */
-export function jobPhrase(state: Job['state'] | undefined): string {
+export function jobPhrase(state: JobPublic['state'] | undefined): string {
   switch (state) {
     case 'running':
       return 'Parsing';

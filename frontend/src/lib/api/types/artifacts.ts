@@ -69,12 +69,11 @@ export interface ArtifactPublic {
   created_at: string;
 }
 
-/** Short alias of `ArtifactPublic`. */
-export type Artifact = ArtifactPublic;
-
 /** `GET /artifacts` item: with `?tone=`, the matching callout blocks. */
 export interface ArtifactListItem extends ArtifactPublic {
   matched_blocks?: Record<string, unknown>[] | null;
+  /** A newer non-rejected version of this scope exists (e.g. a human edit). */
+  superseded: boolean;
 }
 
 /** `POST /artifacts`: a human-authored artifact, approved on arrival. */
@@ -86,7 +85,8 @@ export interface ArtifactCreate {
   body: Record<string, unknown>;
 }
 
-export type ReviewAction = 'approve' | 'reject' | 'edit';
+/** `reopen` returns an approved or rejected artifact to `draft` (409 if it cannot). */
+export type ReviewAction = 'approve' | 'reject' | 'edit' | 'reopen';
 
 /** `POST /artifacts/{id}/review`; `body` is required for `edit`. */
 export interface ReviewRequest {
@@ -101,6 +101,8 @@ export interface ArtifactQuery {
   review?: Review;
   tone?: string;
   anchor_prefix?: string;
+  /** Hide superseded rows. */
+  latest?: boolean;
   limit?: number;
   offset?: number;
 }

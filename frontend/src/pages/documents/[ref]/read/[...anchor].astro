@@ -6,12 +6,12 @@
  */
 import BaseLayout from '../../../../layouts/BaseLayout.astro';
 import Reader from '../../../../components/reader/Reader';
-import { Problem } from '../../../../components/document/Problem';
+import { Problem } from '../../../../components/common/Problem';
 import { buildPanes, paneEntries } from '../../../../components/reader/panes';
 import { serverApi } from '../../../../lib/api/server';
 import type { NodeSubtree } from '../../../../lib/api/types/documents';
 import type { NoteDetail } from '../../../../lib/api/types/notes';
-import { fetchAll } from '../../../../lib/documents/fetch-all';
+import { fetchAll } from '../../../../lib/api/fetch-all';
 import { getArtifacts, getDocument, getOutline, load } from '../../../../lib/documents/server';
 import { defaultUnit, flatten, readingUnits, unitFor } from '../../../../lib/documents/tree';
 import { highlightCode } from '../../../../lib/highlight';

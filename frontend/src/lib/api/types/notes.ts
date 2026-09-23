@@ -1,11 +1,12 @@
 /**
  * Notes and highlights (backend/app/schemas/note.py). `raw` is your words, set once
- * and never edited (D11); only `color` can change. The structured version is a
- * separate derived artifact (`structured_note`).
+ * and never edited (D11). A plain highlight has no `raw` (no model call) and may be
+ * given words exactly once. The structured version is a separate derived artifact
+ * (`structured_note`).
  */
 import type { Review } from './artifacts';
 import type { HighlightColor, RenderBlock } from '../../contract';
-import type { Job } from './jobs';
+import type { JobPublic } from './jobs';
 
 /** Character offsets into the node's `text`: `0 <= start < end <= len(text)`. */
 export interface NoteRange {
@@ -13,26 +14,28 @@ export interface NoteRange {
   end: number;
 }
 
-/** `POST /notes`. */
+/** `POST /notes`. Omit `raw` for a plain highlight. */
 export interface NoteCreate {
   document_id: string;
   anchor: string;
   range?: NoteRange | null;
-  raw: string;
+  raw?: string;
   color?: HighlightColor | null;
 }
 
-/** `PATCH /notes/{id}`: colour is the only editable field (`null` clears it). */
-export interface NoteUpdate {
-  color: HighlightColor | null;
-}
+/**
+ * `PATCH /notes/{id}`: `color` any time (`null` clears it); `raw` only while the note
+ * has none; a note that already has words answers 409 (D11).
+ */
+export type NoteUpdate = { color: HighlightColor | null; raw?: string } | { raw: string };
 
 export interface NotePublic {
   id: string;
   document_id: string;
   anchor: string;
   range: NoteRange | null;
-  raw: string;
+  /** Null for a plain highlight. */
+  raw: string | null;
   color: HighlightColor | null;
   created_at: string;
 }
@@ -61,7 +64,7 @@ export interface NoteDetail extends NotePublic {
   detached: boolean;
 }
 
-/** `201` body of `POST /notes`: the stored note plus the queued `structure_note` job. */
+/** `201` body of `POST /notes`: the stored note plus its `structure_note` job (null for a highlight). */
 export interface NoteCreated extends NotePublic {
-  job: Job;
+  job: JobPublic | null;
 }

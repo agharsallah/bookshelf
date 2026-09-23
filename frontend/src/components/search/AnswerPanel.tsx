@@ -4,7 +4,7 @@
  */
 import { useMemo } from 'react';
 import { Blocks } from '../blocks';
-import { Problem } from '../document/Problem';
+import { Problem } from '../common/Problem';
 import { anchorLabel } from '../../lib/anchors';
 import { collectCites } from '../../lib/contract';
 import type { AnswerStage } from '../../lib/api/types/search';

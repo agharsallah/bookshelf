@@ -6,7 +6,7 @@
  *   const { state, ask, cancel } = useAnswerStream();
  */
 import { useCallback, useEffect, useReducer, useRef } from 'react';
-import { problemOf } from '../../components/document/Problem';
+import { problemOf } from '../../components/common/Problem';
 import { answerReducer, idleAnswer, streamAnswer, type AnswerState } from '../../components/search/answer';
 import type { SearchRequest } from '../api/types/search';
 

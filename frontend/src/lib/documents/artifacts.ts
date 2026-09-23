@@ -2,12 +2,12 @@
  * Choosing which artifact version to show. Approved beats unapproved; within the
  * same standing the newest version wins; rejected versions are never shown.
  */
-import type { Artifact, ArtifactType, Review } from '../api/types/artifacts';
+import type { ArtifactPublic, ArtifactType, Review } from '../api/types/artifacts';
 import { isUnder } from './tree';
 
 export type Standing = 'approved' | 'draft' | 'needs_review';
 
-export interface Chosen<A extends Artifact = Artifact> {
+export interface Chosen<A extends ArtifactPublic = ArtifactPublic> {
   artifact: A;
   /** Approved, or an unapproved draft the UI must badge as such. */
   standing: Standing;
@@ -18,7 +18,7 @@ function standingOf(review: Review): Standing | null {
 }
 
 /** The best version of one scope (`type` at exactly `anchor`), or null. */
-export function pickBest<A extends Artifact>(
+export function pickBest<A extends ArtifactPublic>(
   artifacts: readonly A[],
   type: ArtifactType,
   anchor: string | null,
@@ -39,7 +39,7 @@ export function pickBest<A extends Artifact>(
 }
 
 /** Best version per anchor for a type, for every anchor under `prefix`, in anchor order. */
-export function pickBestUnder<A extends Artifact>(
+export function pickBestUnder<A extends ArtifactPublic>(
   artifacts: readonly A[],
   type: ArtifactType,
   prefix: string,
@@ -67,7 +67,7 @@ export interface ChapterStatus {
 }
 
 /** What exists for a chapter, for the outline chips. */
-export function chapterStatus(artifacts: readonly Artifact[], chapter: string): ChapterStatus {
+export function chapterStatus(artifacts: readonly ArtifactPublic[], chapter: string): ChapterStatus {
   const waiting = new Set<string>();
   for (const a of artifacts) {
     if (a.anchor !== null && isUnder(a.anchor, chapter) && (a.review === 'draft' || a.review === 'needs_review')) {

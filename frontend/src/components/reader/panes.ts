@@ -4,7 +4,7 @@
  * explanation per figure/table/code/math block. Each entry is reduced to render
  * blocks, so the pane renders everything with `<Blocks>`.
  */
-import type { Artifact, ArtifactType } from '../../lib/api/types/artifacts';
+import type { ArtifactPublic, ArtifactType } from '../../lib/api/types/artifacts';
 import type { RenderBlock, Span } from '../../lib/contract';
 import { EXPLANATION_TYPES, pickBest, pickBestUnder, type Chosen, type Standing } from '../../lib/documents/artifacts';
 
@@ -14,7 +14,7 @@ export interface PaneEntry {
   type: ArtifactType;
   standing: Standing;
   version: number;
-  origin: Artifact['origin'];
+  origin: ArtifactPublic['origin'];
   /** A heading for lists of entries (section title, figure caption). */
   title: string | null;
   blocks: RenderBlock[];
@@ -59,11 +59,11 @@ function entry(chosen: Chosen, title: string | null): PaneEntry {
   };
 }
 
-const caption = (a: Artifact): string | null => (typeof a.body.caption === 'string' ? a.body.caption : null);
+const caption = (a: ArtifactPublic): string | null => (typeof a.body.caption === 'string' ? a.body.caption : null);
 
 /** `headings` maps an anchor to its section heading or block caption, for entry titles. */
 export function buildPanes(
-  artifacts: readonly Artifact[],
+  artifacts: readonly ArtifactPublic[],
   unit: string,
   headings: Readonly<Record<string, string>> = {},
 ): Panes {

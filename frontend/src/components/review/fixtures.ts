@@ -21,6 +21,7 @@ export function artifact(overrides: Partial<ArtifactListItem> = {}): ArtifactLis
     input_hash: 'f'.repeat(64),
     body: { blocks: [{ type: 'paragraph', spans: [{ text: 'Stocks change through flows.', cites: ['ch01/s01/p001'] }] }] },
     citations: ['ch01/s01/p001'],
+    superseded: false,
     gates: { grounding: 1, compression: 0.18, words: 5, flags: [], schema_retry: false },
     review: 'draft',
     reviewed_at: null,

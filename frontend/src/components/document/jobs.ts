@@ -5,7 +5,7 @@
  */
 import type { ApiClient } from '../../lib/api/client';
 import type { JobAccepted, JobKind } from '../../lib/api/types/jobs';
-import { problemOf } from './Problem';
+import { problemOf } from '../common/Problem';
 import { toast } from './toast';
 
 export const JOB_LABELS: Partial<Record<JobKind, string>> = {
