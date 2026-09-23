@@ -183,3 +183,12 @@ htmlcov/
 *.db
 *.db-shm
 *.db-wal
+
+# Bookshelf data (D1, D13): originals stay local, everything derived is rebuildable
+library/*
+!library/.gitkeep
+.media/
+.qdrant/
+exports/
+skills/.outbox/
+.pgdata/

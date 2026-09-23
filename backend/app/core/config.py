@@ -5,9 +5,10 @@ Docs: https://fastapi.tiangolo.com/advanced/settings/
 
 from enum import StrEnum
 from functools import lru_cache
+from pathlib import Path
 from typing import Annotated, Literal
 
-from pydantic import Field, computed_field, field_validator, model_validator
+from pydantic import AliasChoices, Field, computed_field, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
@@ -18,9 +19,14 @@ class Environment(StrEnum):
     TEST = "test"
 
 
+# backend/app/core/config.py -> repo root
+REPO_ROOT = Path(__file__).resolve().parents[3]
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env",
+        # Later files win: the shared frontend/.env (see its header), then backend/.env.
+        env_file=(REPO_ROOT / "frontend" / ".env", ".env"),
         env_file_encoding="utf-8",
         env_prefix="BOOKSHELF_",
         extra="ignore",
@@ -34,8 +40,37 @@ class Settings(BaseSettings):
     api_prefix: str = "/api/v1"
 
     # --- Persistence ----------------------------------------------------
-    database_url: str = "sqlite:///./bookshelf.db"
+    # Postgres only (JSONB, arrays, FTS, SKIP LOCKED). Default: `scripts/pg-local.sh`.
+    database_url: str = "postgresql+psycopg://bookshelf@127.0.0.1:54329/bookshelf"
     database_echo: bool = False
+
+    # --- Files (D13) -----------------------------------------------------
+    library_dir: Path = REPO_ROOT / "library"  # originals, ingested by path, never mutated
+    media_dir: Path = REPO_ROOT / ".media"  # derived: figure crops, rendered pages
+    exports_dir: Path = REPO_ROOT / "exports"  # derived: .md / .json / .csv bundles
+    skills_dir: Path = REPO_ROOT / "skills"
+
+    # --- Qdrant (§10) -----------------------------------------------------
+    # With a URL: remote cluster. Without: embedded on-disk store at `qdrant_path`.
+    qdrant_url: str | None = Field(
+        default=None, validation_alias=AliasChoices("BOOKSHELF_QDRANT_URL", "QDRANT_URL")
+    )
+    qdrant_api_key: str | None = Field(
+        default=None, validation_alias=AliasChoices("BOOKSHELF_QDRANT_API_KEY", "QDRANT_API_KEY")
+    )
+    qdrant_path: Path = REPO_ROOT / ".qdrant"
+    qdrant_collection_prefix: str = ""  # tests set this so they never touch real collections
+    dense_model: str = "BAAI/bge-small-en-v1.5"
+    sparse_model: str = "Qdrant/bm25"
+    rerank_model: str = "Xenova/ms-marco-MiniLM-L-6-v2"
+
+    # --- Model runtime (D18) ---------------------------------------------
+    claude_bin: str = "claude"
+    claude_timeout_seconds: Annotated[int, Field(gt=0)] = 900
+    worker_concurrency: Annotated[int, Field(ge=1, le=8)] = 2
+    worker_poll_seconds: Annotated[float, Field(gt=0)] = 2.0
+    # Run ceiling (§14): per-document cap on CLI runs before the document is paused.
+    max_runs_per_document: Annotated[int, Field(ge=1)] = 400
 
     # --- Guardrails: network --------------------------------------------
     # `NoDecode` keeps pydantic-settings from JSON-parsing these, so the validator
@@ -46,7 +81,7 @@ class Settings(BaseSettings):
     allowed_hosts: Annotated[list[str], NoDecode] = Field(default_factory=lambda: ["*"])
 
     # --- Guardrails: request limits --------------------------------------
-    max_request_bytes: Annotated[int, Field(gt=0)] = 1 * 1024 * 1024
+    max_request_bytes: Annotated[int, Field(gt=0)] = 4 * 1024 * 1024
     rate_limit_requests: Annotated[int, Field(ge=0)] = 120
     rate_limit_window_seconds: Annotated[int, Field(gt=0)] = 60
 
@@ -70,6 +105,12 @@ class Settings(BaseSettings):
         if isinstance(value, str) and not value.startswith("["):
             return [item.strip() for item in value.split(",") if item.strip()]
         return value
+
+    @field_validator("qdrant_url", "qdrant_api_key", "api_key", mode="before")
+    @classmethod
+    def _blank_is_unset(cls, value: object) -> object:
+        """`KEY=` in a .env file means "not configured", not "the empty string"."""
+        return None if isinstance(value, str) and not value.strip() else value
 
     @model_validator(mode="after")
     def _production_must_be_locked_down(self) -> "Settings":

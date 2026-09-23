@@ -21,7 +21,6 @@ from app.core.logging import configure_logging
 from app.core.middleware import MaxBodySizeMiddleware, RequestContextMiddleware
 from app.core.ratelimit import RateLimitMiddleware
 from app.core.security import API_KEY_HEADER
-from app.db.session import init_db
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +32,6 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # Re-applied here: uvicorn installs its own handlers after import time, so the
     # configuration done in `create_app()` would otherwise be overwritten.
     configure_logging(settings.log_level, json_output=settings.log_json)
-    init_db()
     logger.info(
         "Application started",
         extra={
