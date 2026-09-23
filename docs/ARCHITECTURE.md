@@ -31,8 +31,8 @@ Named so they stop showing up in scope discussions:
 | Web crawling / feed ingestion | Ingest is deliberate: you choose what enters the shelf |
 | EPUB, DOCX, audio | PDF and HTML cover the real corpus; the parser interface leaves the seam |
 
-Quizzes, flashcards, and quote extraction **are** in scope, but last (§13) — they are cheap once
-the distillation layer exists and worthless before it.
+Quizzes, FAQs, flashcards, glossaries, and quote extraction **are** in scope, but last (§15) —
+they are cheap once the distillation layer exists and worthless before it.
 
 ---
 
@@ -65,63 +65,82 @@ what makes it safe to iterate aggressively on prompts and parsers.
 
 ## 3. Four layers
 
-```
-┌──────────────────────────────────────────────────────────────────────┐
-│ CONNECTION   concepts · typed edges · neighborhoods                  │  derived
-├──────────────────────────────────────────────────────────────────────┤
-│ DISTILLATION section notes → chapter distillations → book brief      │  derived
-│              + your notes, structured (raw kept verbatim)            │  ← human
-├──────────────────────────────────────────────────────────────────────┤
-│ STRUCTURE    document → parts → chapters → sections → blocks         │  source of truth
-│              stable anchors · content hashes · page spans            │
-├──────────────────────────────────────────────────────────────────────┤
-│ SOURCE       original PDF / HTML, byte-identical, never mutated      │  source of truth
-└──────────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart BT
+  classDef truth fill:#e8f1fb,stroke:#3b6ea5,color:#0b2545
+  classDef derived fill:#f4f0fa,stroke:#7c5cbf,color:#2b1a4d
+  classDef human fill:#fdf3e1,stroke:#c98a1b,color:#4a2f00
+
+  SRC["SOURCE<br/>original PDF / HTML in <code>library/</code><br/>byte-identical, never mutated"]:::truth
+  STR["STRUCTURE<br/>document → parts → chapters → sections → blocks<br/>stable anchors · content hashes · page spans · figures"]:::truth
+  DIS["DISTILLATION<br/>section notes → chapter distillations → book brief<br/>summaries (short) · distillations (developed)"]:::derived
+  NOTE["YOUR NOTES<br/>raw text kept verbatim · structured version derived"]:::human
+  DRV["DERIVED ARTIFACTS<br/>quiz · FAQ · quotes · flashcards · glossary"]:::derived
+  CON["CONNECTION<br/>concepts · typed edges · neighborhoods"]:::derived
+
+  SRC --> STR --> DIS --> CON
+  STR --> NOTE --> DIS
+  DIS --> DRV
 ```
 
 Each layer only reads the layer below it. A distillation never reads another distillation of the
 same rank; a chapter distillation is built from *its* section notes, nothing else. That
 constraint is what prevents the duplication the idea dump worries about (§9).
 
+Two layers are **source of truth** (blue) and are never regenerated. Everything purple is derived
+and rebuildable. Your notes (amber) sit in between: the raw text is source of truth, the
+structured version is derived.
+
 ---
 
 ## 4. System shape
 
-```
-                ┌─────────────────────────────────────────────┐
-  upload PDF ──▶│  FastAPI  (backend/, already scaffolded)    │
-  paste URL     │                                             │
-                │  routes ─ services ─ jobs                   │
-                └───┬──────────────┬───────────────┬──────────┘
-                    │              │               │
-             ┌──────▼─────┐  ┌─────▼──────┐  ┌─────▼────────┐
-             │ Postgres   │  │ Object     │  │ Job worker   │
-             │ structure  │  │ store      │  │ (arq/Celery) │
-             │ notes      │  │ PDFs,      │  │              │
-             │ artifacts  │  │ exports    │  │  ├ parse     │
-             │ edges      │  └────────────┘  │  ├ distil    │◀── skills/
-             └──────┬─────┘                  │  ├ embed     │    (versioned
-                    │                        │  ├ concepts  │     prompt
-                    │                        │  └ export    │     packages)
-             ┌──────▼─────┐                  └──────┬───────┘
-             │  Qdrant    │◀────────────────────────┘
-             │  blocks    │        embeddings
-             │  distills  │
-             │  documents │
-             └────────────┘
-                    ▲
-                    │  REST
-        ┌───────────┴──────────────────────────────┐
-        │  Astro shell + React islands             │
-        │  library · reader · brief · search ·     │
-        │  graph · review queue                    │
-        └──────────────────────────────────────────┘
+```mermaid
+flowchart LR
+  classDef truth fill:#e8f1fb,stroke:#3b6ea5,color:#0b2545
+  classDef derived fill:#f4f0fa,stroke:#7c5cbf,color:#2b1a4d
+  classDef human fill:#fdf3e1,stroke:#c98a1b,color:#4a2f00
+  classDef infra fill:#eef5ee,stroke:#4f8a4f,color:#153515
+
+  subgraph REPO["repo (local)"]
+    LIB["library/*.pdf<br/>originals, git-lfs or ignored"]:::truth
+    SKILLS["skills/*/<br/>SKILL.md · schema.json · meta.yaml"]:::infra
+    PY["backend/app/pipeline<br/>parsers · runner · gates"]:::infra
+  end
+
+  API["FastAPI<br/>routes · services · jobs"]:::infra
+  WORKER["Job worker (arq)<br/>parse · describe-figure · summarize<br/>distil · brief · derive · embed · link"]:::infra
+  CLI["Claude Code CLI (local)<br/>claude -p --model haiku|sonnet|opus<br/>or interactive /skill in a session"]:::infra
+
+  PG[("Supabase Postgres<br/>documents · nodes · notes<br/>artifacts · concepts · edges · jobs")]:::truth
+  QD[("Qdrant<br/>blocks · distills · documents")]:::derived
+  EXP["exports/<br/>.md · .json · .csv"]:::derived
+
+  FE["Astro shell + React islands<br/>library · reader · notes · brief<br/>search · graph · review queue"]:::human
+
+  LIB -- "ingest by path" --> API
+  API --> PG
+  API --> WORKER
+  PY --> WORKER
+  WORKER <-- "subprocess · JSON on stdout" --> CLI
+  CLI -- "reads" --> SKILLS
+  WORKER --> PG
+  WORKER --> QD
+  WORKER --> EXP
+  FE <-- "REST /api/v1" --> API
+  FE -- "write notes" --> API
+  API -- "structure-note job" --> WORKER
 ```
 
 **Mapping to what exists today**: `backend/` already provides the app factory, settings,
 guardrails, error envelope, and a `books` resource — that resource becomes `documents`.
 `frontend/` is Astro; it stays Astro with React islands (§12). The Qdrant key in `.env` is for
-the index in §10.
+the index in §10. Postgres is the Supabase project; schema changes go through Supabase
+migrations.
+
+**PDFs stay in the repo for now** (D13). `library/` holds the originals; ingest takes a path,
+not an upload. `documents.source_path` points at the file, `sha256` guards against duplicates.
+An object store is a later swap behind the same `SourceStore` interface, not a phase-0 concern.
 
 ---
 
@@ -143,6 +162,12 @@ Each decision states the call, the reason, and what it costs.
 | D10 | **Astro shell + React islands, no framework rewrite** | The existing frontend already works; only three surfaces are genuinely interactive | Islands must own their own state; no global client store |
 | D11 | **AI never edits your words** | Your notes are the one irreplaceable artifact | `note.raw` immutable; structured version is a separate derived row |
 | D12 | **No quantization, single Qdrant node** | Hundreds of documents ≈ 10²–10⁵ vectors; quantization adds complexity and recall loss for nothing | Revisit past ~1M vectors |
+| D13 | **Originals live in `library/` inside the repo; ingest by path** | No upload plumbing, no object store, no auth on binaries for a single-user tool | `SourceStore` interface so the swap to S3/Supabase Storage later is one adapter |
+| D14 | **Summary and distillation are different artifact types** | A summary is short and lossy (what is this about?); a distillation is developed and keeps the load-bearing content (what do I need to retain?) | Two skills, two schemas, two compression bands (§9, §14) |
+| D15 | **Humans and skills author the same artifact types** | You can write a chapter distillation by hand; the system treats it like an approved skill output | `artifacts.origin` = `human` \| `skill:<name>@<v>`; human artifacts skip the grounding gate but still carry `cites` |
+| D16 | **Model ladder: cheapest model that passes the gates** | Exploration and classification are high-volume, low-stakes; briefs and concept linking are the opposite | Every skill declares its tier in `meta.yaml`; `artifacts.model` records what actually ran, so quality vs. cost is measurable per skill |
+| D18 | **Claude Code CLI is the model runtime; no API key in the backend** | Skills already run there; subscription covers the cost; interactive exploration is free-form | Worker shells out to `claude -p`; structured output enforced by post-validation; concurrency capped; a `ModelRunner` seam keeps the API swap possible |
+| D17 | **Non-prose content is parsed, not skipped** | Charts, diagrams, tables, code, and formulas often carry the argument; a distillation that ignores them is of a weaker book | Region classifier at parse time; per-kind skills (`describe-figure`, `explain-code`, `describe-math`, `explain-table`) emit structured, cited blocks; one call per element, never per page |
 
 ---
 
@@ -161,7 +186,7 @@ create table documents (
   authors       text[] not null default '{}',
   year          int,
   source_uri    text,                        -- original URL, if any
-  storage_key   text,                        -- object-store key of the original file
+  source_path   text,                        -- 'library/meadows-systems.pdf' (D13)
   sha256        text not null,               -- dedupe: same file never ingested twice
   page_count    int,
   language      text default 'en',
@@ -178,7 +203,7 @@ create table nodes (
   document_id   uuid not null references documents on delete cascade,
   parent_id     uuid references nodes on delete cascade,
   anchor        text not null,               -- 'ch03/s02/p014'  (stable, deterministic)
-  kind          text not null,               -- part|chapter|section|paragraph|list|table|figure|quote
+  kind          text not null,               -- part|chapter|section|paragraph|list|table|figure|code|math|aside|quote
   ordinal       int  not null,               -- sibling order
   depth         int  not null,
   heading       text,                        -- set on part/chapter/section
@@ -186,7 +211,7 @@ create table nodes (
   content_hash  text,                        -- sha256 of normalized text; drives incremental re-runs
   page_from     int,
   page_to       int,
-  meta          jsonb not null default '{}', -- table shape, figure caption, footnote refs
+  meta          jsonb not null default '{}', -- table shape, figure caption + image_path, footnote refs
   unique (document_id, anchor)
 );
 create index on nodes (document_id, parent_id, ordinal);
@@ -210,12 +235,14 @@ create table artifacts (
   id            uuid primary key,
   document_id   uuid not null references documents on delete cascade,
   anchor        text,                        -- scope: null = whole document
-  type          text not null,               -- section_note|chapter_distillation|book_brief
-                                             -- |structured_note|quote_set|quiz|flashcards
+  type          text not null,               -- see artifact catalogue (§7)
   version       int  not null,
-  skill         text not null,               -- 'distil-chapter'
-  skill_version text not null,               -- '3'
-  model         text not null,               -- 'claude-opus-5'
+  origin        text not null,               -- 'human' | 'skill' (D15)
+  skill         text,                        -- 'distil-chapter'; null when origin = human
+  skill_version text,                        -- '3'
+  model         text,                        -- resolved model from CLI result; null when origin = human
+  run_mode      text,                        -- batch | interactive
+  tier          text,                        -- explore|distil|reason (D16)
   input_hash    text not null,               -- hash of the exact inputs; makes re-runs idempotent
   body          jsonb not null,              -- render-contract blocks (§9)
   citations     text[] not null default '{}', -- every anchor referenced by body
@@ -257,8 +284,8 @@ create index on edges (src_kind, src_id, relation);
 -- ORCHESTRATION --------------------------------------------------------
 create table jobs (
   id            uuid primary key,
-  kind          text not null,               -- parse|distil_section|distil_chapter|brief
-                                             -- |embed|link_concepts|export
+  kind          text not null,               -- parse|describe_figure|summarize|distil_section
+                                             -- |distil_chapter|brief|derive|embed|link_concepts|export
   document_id   uuid references documents on delete cascade,
   anchor        text,
   skill         text,
@@ -267,7 +294,8 @@ create table jobs (
   state         text not null,               -- queued|running|done|failed|skipped
   attempts      int not null default 0,
   error         text,
-  cost_tokens   int,
+  cost_tokens   int,                         -- from CLI JSON usage when present
+  run_mode      text,                        -- batch | interactive
   duration_ms   int,
   created_at    timestamptz not null default now(),
   finished_at   timestamptz
@@ -287,27 +315,72 @@ distillation without three separate tables.
 One state machine per document. Each transition is a job; jobs are idempotent and keyed by
 `input_hash`, so re-running any stage on unchanged input is a no-op.
 
-```
- uploaded ──▶ parsing ──▶ parsed ──▶ distilling ──▶ distilled ──▶ indexed ──▶ linked
-     │            │           │           │              │
-     │            └─▶ parse_failed        └─▶ needs_review (low grounding score, §14)
-     └─▶ duplicate (sha256 already present)
+```mermaid
+stateDiagram-v2
+  [*] --> registered : path added to library/
+  registered --> duplicate : sha256 already present
+  registered --> parsing
+  parsing --> parse_failed
+  parsing --> parsed : nodes tree + figure blocks
+  parsed --> needs_review : outline guessed (tier 2/3)
+  needs_review --> parsed : human fixes outline
+  parsed --> enriching : describe-figure · explain-code · describe-math · summarize
+  enriching --> distilling : distil-section → distil-chapter → write-brief
+  distilling --> needs_review : grounding < 0.9
+  needs_review --> distilling : human approves / edits / re-runs
+  distilling --> distilled : brief approved
+  distilled --> indexed : embed
+  indexed --> linked : link-concepts
+  linked --> deriving : quiz · FAQ · quotes · flashcards (optional)
+  deriving --> linked
+  linked --> [*]
 ```
 
-| Stage | Job | Input | Output | Human touchpoint |
-|---|---|---|---|---|
-| 1 | `parse` | original file | `nodes` tree | fix chapter boundaries if the outline was guessed |
-| 2 | `distil_section` | one section's blocks | `section_note` artifact | — |
-| 3 | `distil_chapter` | that chapter's section notes | `chapter_distillation` | review & approve |
-| 4 | `brief` | all chapter distillations | `book_brief` (+ cross-chapter dedup) | review & approve |
-| 5 | `embed` | blocks + approved artifacts | Qdrant points | — |
-| 6 | `link_concepts` | approved artifacts | `concepts` + `edges` | merge duplicate concepts |
-| 7 | `export` | tree + approved artifacts | Markdown bundle | — |
+| Stage | Job | Input | Output | Tier (D16) | Human touchpoint |
+|---|---|---|---|---|---|
+| 1 | `parse` | original file | `nodes` tree incl. `figure` blocks | none (Python) | fix chapter boundaries if the outline was guessed |
+| 2 | `describe_figure` · `explain_code` · `describe_math` · `explain_table` | one non-prose block + caption + ±2 blocks | per-kind explanation artifact (§8) | explore, vision where needed | flag misread charts / mis-split tables |
+| 3 | `summarize` | one chapter's blocks | `chapter_summary` (short) | explore | — |
+| 4 | `distil_section` | one section's blocks (+ figure descriptions) | `section_note` | distil | — |
+| 5 | `distil_chapter` | that chapter's section notes | `chapter_distillation` | distil | review & approve |
+| 6 | `brief` | all chapter distillations | `book_brief` (+ cross-chapter dedup) | reason | review & approve |
+| 7 | `structure_note` | one raw note + its anchor context | `structured_note` | explore | edit; raw never touched |
+| 8 | `embed` | blocks + approved artifacts | Qdrant points | none | — |
+| 9 | `link_concepts` | approved artifacts | `concepts` + `edges` | reason | merge duplicate concepts |
+| 10 | `derive` | approved distillations | `quiz` · `faq` · `quote_set` · `flashcards` · `glossary` | distil | approve |
+| 11 | `export` | tree + approved artifacts | `.md` · `.json` · `.csv` bundle | none | — |
 
-Stage 3 and 4 only ever consume **approved** output from the stage below when a human has
+Stages 5 and 6 only ever consume **approved** output from the stage below when a human has
 reviewed it; otherwise they consume drafts and mark their own output `draft` too. Approval
 propagates upward, so a corrected section note invalidates the chapter distillation above it
 (same `input_hash` mechanism, new hash → re-run).
+
+### Python vs. skill: who does what
+
+```mermaid
+flowchart LR
+  classDef py fill:#eef5ee,stroke:#4f8a4f,color:#153515
+  classDef sk fill:#f4f0fa,stroke:#7c5cbf,color:#2b1a4d
+
+  P1["parse PDF / HTML<br/>PyMuPDF · OCR · outline"]:::py
+  P2["detect figures<br/>crop images · pair captions"]:::py
+  P3["hash · dedupe · select inputs"]:::py
+  S1["describe-figure<br/>(vision, explore)"]:::sk
+  S2["summarize<br/>(explore)"]:::sk
+  S3["distil-section / distil-chapter<br/>(distil)"]:::sk
+  S4["write-brief · link-concepts<br/>(reason)"]:::sk
+  S5["make-quiz · make-faq<br/>extract-quotes · make-flashcards"]:::sk
+  P4["validate schema · check anchors<br/>grounding score · compression band"]:::py
+  P5["insert artifact · embed · export"]:::py
+
+  P1 --> P2 --> P3 --> S1 & S2 & S3
+  S3 --> S4 --> S5
+  S1 & S2 & S3 & S4 & S5 --> P4 --> P5
+```
+
+Python owns everything deterministic: parsing, hashing, input selection, validation, storage.
+Skills own everything that needs judgement. The boundary is a JSON document in both directions,
+so a skill can be swapped, versioned, or run by hand without touching the pipeline.
 
 ### The skill contract
 
@@ -318,19 +391,120 @@ skills/
   distil-chapter/
     SKILL.md          # the prompt: role, method, hard rules, few-shot
     schema.json       # JSON Schema the output must satisfy
-    meta.yaml         # version, model, max_tokens, inputs selector
+    meta.yaml         # version, tier, model, max_tokens, inputs selector, output type
 ```
 
-The runner: select inputs → hash them → check `artifacts` for a hit → render prompt → call the
-model → validate against `schema.json` → compute the grounding score (§14) → insert artifact as
-`draft`. A prompt change means a version bump, which changes `input_hash`, which queues re-runs
-of exactly the affected scopes. Prompt iteration becomes a reviewable diff with a measurable
-effect.
+```mermaid
+sequenceDiagram
+  participant W as Worker
+  participant DB as Postgres
+  participant S as skills/<name>
+  participant C as claude -p (CLI)
 
-Initial skill set — one artifact type each, deliberately small:
+  W->>DB: select inputs (meta.yaml selector)
+  W->>W: input_hash = sha256(inputs + skill_version)
+  W->>DB: artifact exists for (type, input_hash, skill_version)?
+  alt hit
+    DB-->>W: yes → skip (never pay twice)
+  else miss
+    W->>S: render SKILL.md with inputs
+    W->>C: claude -p --model <tier alias> --output-format json < prompt
+    C-->>W: JSON on stdout (parsed from result text)
+    W->>W: validate schema · anchors exist · grounding ≥ 0.9 · compression band
+    W->>DB: insert artifact (review = draft | needs_review)
+  end
+```
 
-`parse-outline` · `distil-section` · `distil-chapter` · `write-brief` · `structure-note` ·
-`link-concepts`. Phase 4 adds `extract-quotes` · `make-quiz` · `make-flashcards`.
+A prompt change means a version bump, which changes `input_hash`, which queues re-runs of
+exactly the affected scopes. Prompt iteration becomes a reviewable diff with a measurable effect.
+
+### No API key: the CLI is the model runtime
+
+There is no Anthropic API integration in the backend. Skills run through Claude Code, in one of
+two modes, and both land in the same `artifacts` table:
+
+```mermaid
+flowchart LR
+  classDef py fill:#eef5ee,stroke:#4f8a4f,color:#153515
+  classDef sk fill:#f4f0fa,stroke:#7c5cbf,color:#2b1a4d
+  classDef human fill:#fdf3e1,stroke:#c98a1b,color:#4a2f00
+  classDef out fill:#e8f1fb,stroke:#3b6ea5,color:#0b2545
+
+  subgraph BATCH["Batch mode (worker)"]
+    W["worker renders prompt<br/>from SKILL.md + inputs"]:::py
+    P["subprocess:<br/>claude -p --model sonnet<br/>--output-format json"]:::sk
+    W --> P
+  end
+
+  subgraph INTER["Interactive mode (you, in a Claude Code session)"]
+    U["/distil-chapter meadows-systems ch06"]:::human
+    T["skill calls the backend:<br/>GET /documents/{id}/blocks?anchor_prefix=ch06<br/>writes result to skills/.outbox/*.json"]:::sk
+    U --> T
+  end
+
+  V["Python: validate schema · anchors<br/>grounding · compression"]:::py
+  A[("artifacts<br/>origin = skill · run_mode = batch|interactive")]:::out
+
+  P --> V
+  T -- "POST /artifacts/import" --> V
+  V --> A
+```
+
+**Batch mode** is for bulk work: the worker shells out to `claude -p` with the rendered prompt on
+stdin, `--model` set from the tier alias, and `--output-format json`. The result text is parsed as
+JSON and pushed through the same gates as anything else. Concurrency is capped (2–3 processes);
+the CLI shares your subscription's rate limits, so `jobs` records duration rather than tokens.
+
+**Interactive mode** is for exploration and hard cases: you open a Claude Code session in the
+repo and invoke a skill by name. The skill reads inputs from the local API, works with you, and
+drops a JSON file in `skills/.outbox/`. A tiny import endpoint (or `pnpm import-artifacts`)
+validates it and inserts it. This is where the "cheap models for exploration" idea actually
+lives: `/model haiku` in the session, poke at a chapter, promote what's good.
+
+Consequences:
+
+- `SKILL.md` must read as a Claude Code skill (frontmatter, `$ARGUMENTS`), and also render as a
+  bare prompt for `-p`. One file, two entry points; the runner strips the frontmatter.
+- Structured output is enforced after the fact by `schema.json`, not by the runtime. Skills end
+  with "output only the JSON object", and the runner retries once on a parse failure.
+- Vision (`describe-figure`) works in both modes: the CLI reads the cropped PNG path from the
+  prompt.
+- Swapping in the API later is one adapter (`ModelRunner` protocol: `run(prompt, tier) -> str`),
+  same as the source store.
+
+### Skill and artifact catalogue
+
+| Skill | Artifact type | Scope | Tier | Output shape |
+|---|---|---|---|---|
+| `parse-outline` | outline override | document | explore | `{chapters: [{title, page_from, page_to}]}` |
+| `describe-figure` | `figure_description` | figure block | explore (vision) | `caption`, `kind` (chart\|diagram\|table\|photo), `data` as `table` or `chart` block, `takeaway` span |
+| `explain-code` | `code_explanation` | code block | explore | `purpose` paragraph, `concepts[]`, `pitfalls` as `callout antipattern`, cites listing anchor |
+| `describe-math` | `math_description` | math block | explore (vision) | `latex`, `meaning` paragraph, `symbols[]` as `definition` blocks |
+| `explain-table` | `table_explanation` | table block (large or uncaptioned) | explore | one `paragraph` "what it shows" + `takeaway` |
+| `summarize` | `chapter_summary` · `book_summary` | chapter · document | explore | 3–5 `paragraph` blocks, ≤ 150 words |
+| `distil-section` | `section_note` | section | distil | render blocks, every span cited |
+| `distil-chapter` | `chapter_distillation` | chapter | distil | render blocks incl. `callout` tones `important` `remember` `antipattern` |
+| `write-brief` | `book_brief` | document | reason | fixed one-page shape (§9) |
+| `structure-note` | `structured_note` | note | explore | render blocks + `concepts[]`, cites the highlighted anchor |
+| `link-concepts` | concepts + edges | document | reason | `{concepts: [...], edges: [{src, dst, relation, evidence[]}]}` |
+| `extract-quotes` | `quote_set` | chapter | distil | `quote` blocks with `page` |
+| `make-faq` | `faq` | chapter · document | distil | `[{question, answer_spans[]}]` |
+| `make-quiz` | `quiz` | chapter | distil | `[{question, choices[], answer, cites[]}]` |
+| `make-flashcards` | `flashcards` | chapter | distil | `[{front, back, cites[]}]` |
+| `make-glossary` | `glossary` | document | distil | `definition` blocks |
+
+Tier → model mapping lives in one place (`backend/app/pipeline/models.py`) and is the only file
+that names CLI model aliases:
+
+| Tier | `claude --model` | Used for | Why |
+|---|---|---|---|
+| `explore` | `haiku` | summaries, figure descriptions, note structuring, outline guessing, query intent | High volume, low stakes, fast; output is either disposable or human-edited |
+| `distil` | `sonnet` | section/chapter distillations, derived artifacts | The bulk of the work; needs faithfulness more than depth |
+| `reason` | `opus` | book brief, concept linking, concept merge confirmation | Sees the whole book at once; mistakes here propagate everywhere |
+
+Aliases resolve to whatever the CLI currently maps them to; the resolved model name is read from
+the CLI's JSON result and stored in `artifacts.model`, so promoting a skill up a tier is a
+one-line change whose effect on grounding score you can read off the `artifacts` table.
 
 ---
 
@@ -365,14 +539,149 @@ Cross-tier rules that matter more than the tier choice:
 - **Manual fix-up is a first-class feature, not an admission of failure.** A small editor to
   merge/split/rename chapters, saved as an outline override that survives re-parsing.
 
+### Non-prose content: charts, pictures, code, tables, math (D17)
+
+A book is not only paragraphs. Every non-prose element becomes its own block kind with its own
+anchor, so it can be cited, searched, and turned into something. Parsing does the deterministic
+half (detect, crop, extract, anchor); a skill does the interpretive half (describe, transcribe,
+explain). The split is the same for every kind:
+
+```mermaid
+flowchart LR
+  classDef py fill:#eef5ee,stroke:#4f8a4f,color:#153515
+  classDef sk fill:#f4f0fa,stroke:#7c5cbf,color:#2b1a4d
+  classDef out fill:#e8f1fb,stroke:#3b6ea5,color:#0b2545
+
+  PDF["page (PyMuPDF)"]:::py
+  CLS["classify region<br/>text · image · vector drawing<br/>monospace run · table grid · math font"]:::py
+
+  PDF --> CLS
+  CLS --> P["paragraph / list / quote<br/>(prose path, §8 tiers)"]:::out
+  CLS --> F["figure<br/>crop PNG · pair caption"]:::out
+  CLS --> T["table<br/>find_tables() → header + rows"]:::out
+  CLS --> C["code<br/>monospace lines · language guess · indentation kept"]:::out
+  CLS --> M["math<br/>inline: keep glyphs · display: crop PNG + LaTeX later"]:::out
+  CLS --> S["sidebar / box / exercise<br/>bordered region · label"]:::out
+
+  F --> DF["describe-figure<br/>(vision)"]:::sk
+  T --> DT["explain-table<br/>(only if > 6 rows or no caption)"]:::sk
+  C --> DC["explain-code<br/>(purpose · concepts · pitfalls)"]:::sk
+  M --> DM["describe-math<br/>(vision → LaTeX + meaning)"]:::sk
+```
+
+#### Block kinds and what each becomes
+
+| Source element | Detection (Python) | Block kind · `meta` | Skill | Artifact / render block | Downstream use |
+|---|---|---|---|---|---|
+| **Chart** (bar, line, scatter, pie) | image or vector cluster + caption `Figure N.M`; skill decides `kind` | `figure` · `caption`, `image_path`, `bbox`, `page` | `describe-figure` | `chart {kind, x, series[]}` or `table` fallback, `takeaway`, `confidence` | rendered natively; numbers searchable; quiz asks "what happens to X when Y"; brief cites the curve |
+| **Diagram** (flow, system map, 2×2, hierarchy) | same as chart | `figure` | `describe-figure` | `diagram {nodes[], edges[]}` rendered as Mermaid, `takeaway` | edges feed `link-concepts` directly (a systems map *is* a concept graph); flashcards from node definitions |
+| **Picture / photo / illustration** | image without axes or arrows | `figure` | `describe-figure` | `paragraph` description, `kind: photo`, `alt` | alt text for reader; embedded for search; rarely cited by distillations |
+| **Table** | `page.find_tables()`; fallback: aligned x-coordinates | `table` · `{header, rows, caption}` | `explain-table` (optional) | `table` block verbatim + one `paragraph` "what this table shows" | rendered as table; exported to `tables.csv`; comparisons feed quizzes; rows embedded as text |
+| **Code listing** | monospace font run ≥ 2 lines, or `Listing N.M` caption | `code` · `{language, caption, listing_no}` | `explain-code` | `code` block verbatim + `paragraph` purpose + `bullets` concepts + `callout antipattern` if the book shows a bad example | rendered with syntax highlight; runnable snippets exportable per book; quiz "what does this print / what's wrong here"; concept edges `example_of` |
+| **Math / formula** | math fonts (CMMI, CMSY, STIX) or display-centered short line | `math` · `{latex?, image_path, inline}` | `describe-math` | `math {latex, meaning}` rendered with KaTeX, `definition` for each symbol | glossary of symbols; flashcards "what does σ stand for here"; searchable by meaning, not glyphs |
+| **Sidebar / box / exercise / key takeaway** | bordered or shaded region, or heading like `Exercise`, `Key point`, `Warning` | `aside` · `{label}` | none (prose path) | `callout` with tone inferred from label (`remember`, `caution`, `question`) | exercises become quiz seeds; author's own key points get `important` tone for free |
+| **Footnote / endnote** | superscript ref + matching page-bottom run | attached to owning block as `meta.footnotes[]` | none | shown on hover | citations still resolve to the owning anchor |
+| **Bibliography / index** | back-matter headings | `part` marked `skip: true` | none | not distilled, not embedded | keeps compression band honest |
+
+#### Rules that hold across kinds
+
+- **Verbatim first, interpretation second.** Tables, code and formulas are stored exactly as
+  extracted; the skill's explanation is a separate artifact that cites the block. Nothing
+  paraphrases source data.
+- **Charts become data, diagrams become structure.** A chart transcribes to numbers you can
+  re-plot; a diagram transcribes to nodes and edges you can walk. When axes are unreadable the
+  skill falls back to a `table` with what it can read and marks `confidence: low`.
+- **Takeaway is cited.** Every description ends with a one-sentence `takeaway` citing the figure
+  anchor and the block that introduces it, so a distillation references a figure like any other
+  passage.
+- **One vision call per element**, never per page. A 300-page book with 40 figures and 20
+  formulas costs 60 small calls, not 300 large ones.
+- **Code runs nowhere.** Listings are never executed by the pipeline. `explain-code` reads them;
+  you copy them.
+- **Manual override is normal.** Vector diagrams PyMuPDF can't cluster, tables it splits, code it
+  mistakes for prose: all land in `needs_review` with the page rendered as an image. You fix the
+  region once; the override is saved like an outline fix and survives re-parsing.
+
+#### What this buys downstream
+
+```mermaid
+flowchart LR
+  classDef out fill:#e8f1fb,stroke:#3b6ea5,color:#0b2545
+  classDef use fill:#f4f0fa,stroke:#7c5cbf,color:#2b1a4d
+
+  CH["chart data"]:::out --> R1["re-plotted in reader<br/>numbers in search"]:::use
+  DG["diagram nodes/edges"]:::out --> R2["seed edges for link-concepts"]:::use
+  TB["table rows"]:::out --> R3["tables.csv export<br/>comparison quizzes"]:::use
+  CD["code + explanation"]:::out --> R4["snippet library per book<br/>antipattern callouts"]:::use
+  MA["math + meaning"]:::out --> R5["symbol glossary<br/>flashcards"]:::use
+  AS["asides"]:::out --> R6["author's own emphasis<br/>→ callout tones"]:::use
+  CH & DG & TB & CD & MA & AS --> D["distillations cite them<br/>like any paragraph"]:::use
+```
+
+The point is not completeness of extraction. It is that the argument-carrying parts of technical
+books are usually *not* in the prose: the systems map, the comparison table, the reference
+implementation, the one equation. If those are blocks with anchors, distillations can lean on
+them; if they are dropped at parse time, the distillation is of a different, weaker book.
+
+#### Other input formats
+
+| Input | Path to blocks |
+|---|---|
+| PDF | tiers 1–3 above, plus region classifier |
+| HTML article | Readability extraction; `h1..h3` tree; `<img>`/`<figcaption>` → `figure`; `<table>` → `table`; `<pre><code>` → `code` with `class="language-*"`; MathML/`\( \)` → `math` |
+| Markdown / notebooks (`.md`, `.ipynb`) | headings → tree; fenced blocks → `code`; pipe tables → `table`; `$$` → `math`; notebook outputs → `figure` |
+| Slides (`.pdf` export) | one section per slide; title as heading; everything else through the region classifier |
+| Scanned PDF | OCR tier 3; figures/tables via layout only, low confidence by default |
+
+All of them end in the same `nodes` table with the same kinds, so every skill downstream is
+format-agnostic.
+
 Articles (HTML) go through the same interface: Readability-style extraction, `h1..h3` as the
-tree, treated as a single-chapter document. Same blocks, same anchors, same distillation.
+tree, `<img>` + `<figcaption>` as figure blocks, treated as a single-chapter document. Same
+blocks, same anchors, same distillation.
 
 ---
 
 ## 9. Distillation
 
 The part that decides whether the system is worth using.
+
+### Summary is not distillation (D14)
+
+| | Summary | Distillation |
+|---|---|---|
+| Question it answers | What is this chapter about? | What must I retain from it? |
+| Length | ≤ 150 words, prose | 10–25 % of the source, structured |
+| Keeps | Topic, thesis, scope | Arguments, mechanisms, definitions, examples that carry weight, caveats, figures' takeaways |
+| Drops | Everything else | Rhetoric, repetition, transitions |
+| Tier | explore (Haiku) | distil (Sonnet) |
+| Used by | Library cards, search result headers, "should I reread this?" | Reader right pane, brief, quiz/FAQ generation, concept linking |
+
+Both exist for every chapter. The summary is the cheap map; the distillation is the territory
+compressed. Generating quizzes or FAQs from a summary produces trivia; from a distillation it
+produces something worth answering.
+
+### Who writes distillations (D15)
+
+```mermaid
+flowchart LR
+  classDef human fill:#fdf3e1,stroke:#c98a1b,color:#4a2f00
+  classDef sk fill:#f4f0fa,stroke:#7c5cbf,color:#2b1a4d
+  classDef out fill:#e8f1fb,stroke:#3b6ea5,color:#0b2545
+
+  H["You, in the reader<br/>write / edit blocks, cite by clicking"]:::human
+  S["distil-chapter skill"]:::sk
+  A[("artifacts<br/>type = chapter_distillation<br/>origin = human | skill")]:::out
+  R["review queue<br/>diff · approve · edit → new human version"]:::human
+
+  H --> A
+  S --> A --> R
+  R -- "edited" --> A
+```
+
+A skill draft you edit becomes a new artifact version with `origin = human`. The skill's version
+stays for diffing. Downstream stages (brief, quiz, FAQ) don't care who wrote it; they consume the
+approved version.
 
 ### Hierarchical, bottom-up, rank-isolated
 
@@ -406,9 +715,29 @@ consistently:
 }
 ```
 
-Closed block set: `heading` · `paragraph` · `bullets` · `steps` · `table` · `callout`
-(`insight|caution|contrast|question`) · `quote` · `definition`. Nothing else. Adding a ninth
-type is a deliberate change to the render contract and the frontend, in the same commit.
+Closed block set:
+
+| Block | Purpose | Notes |
+|---|---|---|
+| `heading` | structure | `level` 2–4 |
+| `paragraph` | developed point | `spans[]`, each cited |
+| `bullets` · `steps` | lists, ordered or not | items are `spans[]` |
+| `table` | comparisons, taxonomies, transcribed chart data | header + rows of cited cells |
+| `chart` | quantitative figure transcription | `{kind: bar\|line\|scatter, x, series[]}`; rendered natively |
+| `diagram` | flows, systems, hierarchies | `{nodes[], edges[]}`; rendered as Mermaid |
+| `callout` | emphasis with a fixed meaning | `tone` = `important` · `remember` · `antipattern` · `insight` · `caution` · `contrast` · `question` |
+| `code` | verbatim listing | `{language, text, caption}`; never paraphrased |
+| `math` | formula | `{latex, meaning}`; rendered with KaTeX |
+| `quote` | verbatim passage | `page` required |
+| `definition` | term + cited explanation | feeds the glossary and concept linking |
+
+Callout tones are the "different formats" the LLM output serves: `important` is what the author
+insists on, `remember` is what you should be able to recall cold, `antipattern` is what the author
+warns against. They render distinctly, filter distinctly (`GET /artifacts?tone=antipattern` across
+the shelf is a real query), and map onto flashcards and quizzes without a second prompt.
+
+Nothing else. Adding a twelfth type is a deliberate change to the render contract and the frontend,
+in the same commit.
 
 **Every leaf span carries `cites`.** A distillation with uncited claims fails validation (§14).
 
@@ -418,12 +747,68 @@ type is a deliberate change to the render contract and the frontend, in the same
 contract — tidied, tagged, linked to concepts, and cited back to the passage you highlighted.
 The raw text is never touched and stays visible next to the structured version (D11).
 
+```mermaid
+sequenceDiagram
+  participant U as You (reader island)
+  participant API as FastAPI
+  participant DB as Postgres
+  participant W as Worker · structure-note (Haiku)
+
+  U->>API: POST /notes {anchor, range, raw}
+  API->>DB: insert notes (raw immutable)
+  API-->>U: 201 · raw shown immediately
+  API->>W: enqueue structure_note
+  W->>DB: read note + anchor's blocks + neighbouring distillation
+  W->>W: render blocks · tags · concept candidates · cites
+  W->>DB: insert artifacts (type = structured_note, review = draft)
+  U->>API: GET /notes?document_id= (poll or SSE)
+  API-->>U: raw + structured side by side · accept / edit / dismiss
+```
+
+Enrichment is additive: the structured version can add links to concepts already on the shelf
+("you wrote about this in Meadows ch.6"), suggested tags, and a cleaned rendering. It never
+replaces what you typed, and dismissing it leaves the raw note exactly as it was.
+
 ### Format of a brief
 
 One page, fixed shape, so briefs are comparable across books: *thesis in three sentences ·
 five to seven load-bearing ideas · the argument's structure · what it changes about how you act ·
 where it is weak or dated · read-next pointers into your own shelf*. That last section is the
 one only this system can write.
+
+### Derived artifacts
+
+Once approved distillations exist, everything below is a cheap, separate skill over them. None of
+them read the source blocks directly; they read distillations and cite through them, so their
+citations are already verified.
+
+```mermaid
+flowchart TD
+  classDef sk fill:#f4f0fa,stroke:#7c5cbf,color:#2b1a4d
+  classDef out fill:#e8f1fb,stroke:#3b6ea5,color:#0b2545
+
+  CD[("approved chapter_distillation(s)")]:::out
+  B["write-brief"]:::sk --> BR["book_brief<br/>one page"]:::out
+  Q["make-quiz"]:::sk --> QZ["quiz<br/>MCQ + open, cited answers"]:::out
+  F["make-faq"]:::sk --> FQ["faq<br/>questions a reader would ask"]:::out
+  X["extract-quotes"]:::sk --> QT["quote_set<br/>verbatim, paged"]:::out
+  C["make-flashcards"]:::sk --> FC["flashcards<br/>from remember callouts"]:::out
+  G["make-glossary"]:::sk --> GL["glossary<br/>from definition blocks"]:::out
+
+  CD --> B & Q & F & X & C & G
+```
+
+| Artifact | From | Shape | Why it earns a slot |
+|---|---|---|---|
+| `book_brief` | all chapter distillations | fixed one-page (above) | the thing you reread a year later |
+| `quiz` | one chapter | `{question, choices[], answer, cites[]}` | active recall; wrong answers link to the passage |
+| `faq` | chapter or document | `{question, answer_spans[]}` | how a colleague would ask; good search seed |
+| `quote_set` | one chapter | `quote` blocks with `page` | citable verbatim material for your own writing |
+| `flashcards` | `remember` callouts + definitions | `{front, back, cites[]}` | spaced repetition later, zero extra prompting |
+| `glossary` | `definition` blocks across the book | `definition` blocks, deduped | feeds concept linking and the graph |
+
+Each is its own skill directory, its own schema, and its own row type, so adding one never
+touches another.
 
 ---
 
@@ -545,7 +930,8 @@ a pile of plausible AI text. It ships in phase 1, with the first distillation.
 ## 13. API surface
 
 ```
-POST   /documents                      ingest (multipart PDF | {url})   → 202 + job
+POST   /documents                      ingest {path: 'library/x.pdf'} | {url}   → 202 + job
+GET    /library                        files in library/ not yet ingested
 GET    /documents                      list, filter by tag/status/author
 GET    /documents/{id}                 metadata + pipeline state
 GET    /documents/{id}/tree            outline; ?depth=, ?include=blocks
@@ -557,7 +943,8 @@ GET    /nodes/{document_id}/{anchor}   one block or subtree
 POST   /notes                          create highlight/note
 GET    /notes?document_id=&anchor=
 
-GET    /artifacts?document_id=&type=&review=
+GET    /artifacts?document_id=&type=&review=&tone=
+POST   /artifacts                      human-authored artifact (origin = human)
 POST   /artifacts/{id}/review          approve | reject | edit
 POST   /jobs                           enqueue {kind, document_id, anchor?, force?}
 GET    /jobs?state=&kind=              queue view for the review UI
@@ -566,6 +953,8 @@ POST   /search                         {query, mode?, filters?}  → grouped, ci
 GET    /concepts?q=                    typeahead
 GET    /graph/neighborhood?node=&depth=
 GET    /exports/{document_id}.md       Markdown bundle
+GET    /exports/{document_id}.json     tree + approved artifacts, render-contract JSON
+GET    /exports/{document_id}/tables.csv  every table/chart block flattened
 ```
 
 All of it sits behind the existing `/api/v1` prefix, error envelope, and API-key guard on writes.
@@ -583,9 +972,11 @@ of the transport-level guardrails already in `backend/`.
 | **Schema** | Output validated against the skill's `schema.json` | Retry once, then `failed` |
 | **Grounding** | Share of leaf spans carrying ≥1 valid `cites` anchor | < 0.9 → `needs_review` |
 | **Anchor validity** | Every cited anchor exists in this document | Reject, re-run |
-| **Compression** | Distillation length vs. source length within expected band | Outside → flag (too long = copying, too short = skipping) |
+| **Compression** | Length vs. source within the type's band: summary ≤ 150 words, distillation 10–25 % | Outside → flag (too long = copying, too short = skipping) |
+| **Non-prose confidence** | per-kind skills self-report `confidence`; chart data needs ≥ 2 points, code must round-trip byte-identical, LaTeX must parse | `low` → `needs_review`, never cited by distillations until approved |
+| **Human bypass** | `origin = human` skips grounding and compression, keeps schema + anchor validity | Reject only on invalid anchors |
 | **Duplication** | Similarity between sibling distillations | Above threshold → flag for the brief's dedup pass |
-| **Cost ceiling** | Per-document token budget, tracked in `jobs` | Pause the document, surface in the queue |
+| **Run ceiling** | Per-document count of CLI runs and wall-clock, tracked in `jobs` | Pause the document, surface in the queue |
 | **Idempotency** | `(type, input_hash, skill_version)` unique | Skip; never pay twice |
 
 Grounding score is the important one: it turns "does the AI make things up?" from a vibe into a
@@ -597,15 +988,30 @@ number you can watch across prompt versions.
 
 Each phase ends with something usable on its own.
 
+```mermaid
+flowchart LR
+  classDef ph fill:#e8f1fb,stroke:#3b6ea5,color:#0b2545
+  P0["0 · Shelf & reader<br/>library/ ingest · parse · figure blocks<br/>reader · notes · md/json export"]:::ph
+  P1["1 · Distillation<br/>runner · skills · model ladder<br/>summarize · describe-figure · distil · brief<br/>structure-note · review queue"]:::ph
+  P2["2 · Retrieval<br/>embeddings · Qdrant · intent router<br/>hybrid search · cited answers"]:::ph
+  P3["3 · Graph<br/>link-concepts · dedup · neighborhoods"]:::ph
+  P4["4 · Derived (optional)<br/>quiz · FAQ · quotes<br/>flashcards · glossary"]:::ph
+  P0 --> P1 --> P2 --> P3 --> P4
+```
+
 **Phase 0 — Shelf & reader** *(no AI at all)*
-Ingest a PDF, parse tiers 1–2, browse the tree, read blocks in the reader, highlight, write raw
-notes, export Markdown. Rename `books` → `documents`, add `nodes` and `notes`, move to Postgres.
-*Done when*: you can drop in a PDF and read it in the app with your highlights.
+Drop a PDF in `library/`, parse tiers 1–2 including figure blocks with cropped images, browse the
+tree, read blocks in the reader, highlight, write raw notes, export Markdown and JSON. Rename
+`books` → `documents`, add `nodes` and `notes`, move to Supabase Postgres.
+*Done when*: you can drop in a PDF and read it in the app with your highlights and figures.
 
 **Phase 1 — Distillation**
-Job runner, skill loader, `distil-section` → `distil-chapter` → `write-brief`,
-`structure-note`, render contract, review queue, grounding score.
-*Done when*: a book yields chapter distillations and a one-page brief you'd actually reread.
+Job runner, skill loader, model ladder, `summarize` and `describe-figure` (Haiku),
+`distil-section` → `distil-chapter` (Sonnet) → `write-brief` (Opus), `structure-note`, render
+contract incl. `chart`/`diagram`/callout tones, human-authored artifacts, review queue, grounding
+score.
+*Done when*: a book yields chapter summaries, chapter distillations that include its figures, and
+a one-page brief you'd actually reread.
 
 **Phase 2 — Retrieval**
 Embeddings, the three Qdrant collections, intent router, two-tier hybrid search, reranking,
@@ -616,9 +1022,9 @@ cited answers.
 `link-concepts`, concept dedup with human merge, neighborhood endpoint and view.
 *Done when*: you can start at a concept and walk to passages in three different books.
 
-**Phase 4 — Generated artifacts** *(optional, cheap once 1–3 exist)*
-`extract-quotes`, `make-quiz`, `make-flashcards`, spaced-repetition review. Same skill runner,
-same review queue, same citations. No new architecture.
+**Phase 4 — Derived artifacts** *(optional, cheap once 1–3 exist)*
+`make-quiz`, `make-faq`, `extract-quotes`, `make-flashcards`, `make-glossary`, spaced-repetition
+review. Same skill runner, same review queue, same citations. No new architecture.
 
 ---
 
@@ -629,10 +1035,12 @@ same review queue, same citations. No new architecture.
 | 1 | Postgres now or at phase 1? | At phase 1. SQLite is fine while there is no JSONB, array, or FTS work |
 | 2 | Which embedding model? | `bge-small-en-v1.5` via FastEmbed locally — free, fast, good enough at this scale. `model_id` on every point makes a later swap a filtered re-embed |
 | 3 | Job queue? | `arq` on Redis. Celery is heavier than this workload deserves |
-| 4 | Distillation model? | Opus for `write-brief` and `link-concepts`; Sonnet for section notes. Recorded per artifact, so the trade-off is measurable |
-| 5 | Where do exports live? | Object store, regenerated on approval. Never read back as input (D2) |
+| 4 | Distillation model? | Settled as the three-tier ladder (D16) over CLI aliases `haiku` / `sonnet` / `opus` (D18). Resolved model recorded per artifact, so promotions are measurable |
+| 9 | Does `claude -p` hold up for 100+ jobs per book? | Unknown until tried. Mitigations: cap at 2–3 concurrent processes, cache aggressively by `input_hash`, run heavy stages overnight. If it doesn't, the `ModelRunner` seam is where the API goes |
+| 5 | Where do exports live? | `exports/` next to `library/`, gitignored, regenerated on approval. Never read back as input (D2) |
 | 6 | Multi-language books? | Defer. Record `language`, keep BM25 tokenization configurable, do nothing else until a non-English book actually arrives |
-| 7 | Figures and diagrams? | Phase 0 keeps them as image blocks with captions. Vision-model description is a phase 4 skill |
+| 7 | Figures, code, math? | Settled (D17): phase 0 classifies regions and anchors them, phase 1 per-kind skills explain them. Open: vector diagrams PyMuPDF can't cluster, and math without a LaTeX source — vision + manual override for now |
+| 8 | PDFs in git? | `library/` with git-lfs if the repo is shared, plain gitignore if not. Decide when the second machine appears |
 
 ---
 
