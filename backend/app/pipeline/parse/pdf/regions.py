@@ -42,8 +42,8 @@ class PageRegions:
         self.blocks = [b for b in self.blocks if b not in inside]
         return inside
 
-    def take_caption(self, area: Bbox, pattern: re.Pattern[str]) -> tuple[Block, str] | None:
-        """Pop the nearest caption below (preferred) or above `area` that overlaps it."""
+    def find_caption(self, area: Bbox, pattern: re.Pattern[str]) -> Block | None:
+        """The nearest caption below (preferred) or above `area` that overlaps it."""
         best: tuple[float, Block] | None = None
         for block in self.blocks:
             x0, y0, x1, y1 = block.bbox
@@ -58,11 +58,16 @@ class PageRegions:
                 continue
             if gap <= _CAPTION_GAP and (best is None or gap < best[0]):
                 best = (gap, block)
-        if best is None:
+        return best[1] if best else None
+
+    def take_caption(self, area: Bbox, pattern: re.Pattern[str]) -> tuple[Block, str] | None:
+        """Pop the nearest caption (see `find_caption`) with its number."""
+        block = self.find_caption(area, pattern)
+        if block is None:
             return None
-        self.blocks.remove(best[1])
-        number = pattern.match(best[1].text)
-        return best[1], number.group(1) if number else ""
+        self.blocks.remove(block)
+        number = pattern.match(block.text)
+        return block, number.group(1) if number else ""
 
 
 def _cell(value: str | None) -> str:
@@ -95,18 +100,53 @@ def _tables(page: pymupdf.Page, page_no: int, out: PageRegions) -> list[Bbox]:
     return areas
 
 
+_SHAPE_LABEL_CHARS = 30  # less unlabelled text than this in a box: a diagram shape
+
+
+def _caption_below(box: Bbox, blocks: list[Block]) -> bool:
+    """A `Figure N` caption right under the box. (One above it usually captions whatever
+    sits above, e.g. an image, so it does not count.)"""
+    return any(
+        FIGURE_CAPTION.match(b.text)
+        and -2 <= b.bbox[1] - box[3] <= _CAPTION_GAP
+        and b.bbox[0] <= box[2]
+        and b.bbox[2] >= box[0]
+        for b in blocks
+    )
+
+
+def _is_aside_box(path: mupdf.Drawing, paths: list[mupdf.Drawing], out: PageRegions) -> bool:
+    """A framed text box, not a shape of a diagram.
+
+    Rejected when other drawings touch or sit inside it (connectors, arrows, a framed
+    chart), when a `Figure N` caption sits under it, or when all it holds is a short
+    unlabelled text (a node label such as `Stock`).
+    """
+    box = path.bbox
+    if not path.box or box[2] - box[0] < 80 or box[3] - box[1] < 24:
+        return False
+    inner = [b for b in out.blocks if geo.center_in(b.bbox, box)]
+    if not inner or _caption_below(box, out.blocks):
+        return False
+    others = [p for p in paths if p is not path and p.bbox != box]
+    framed = sum(1 for p in others if geo.contains(box, p.bbox))
+    touching = any(
+        geo.intersects(geo.pad(box, 2), p.bbox) and not geo.contains(box, p.bbox) for p in others
+    )
+    if framed >= 3 or touching:
+        return False
+    text = " ".join(b.text for b in inner)
+    return len(inner) > 1 or len(text) >= _SHAPE_LABEL_CHARS or aside_label(text) is not None
+
+
 def _asides(paths: list[mupdf.Drawing], page_no: int, out: PageRegions) -> list[Bbox]:
     boxes: list[Bbox] = []
     for path in paths:
-        box = path.bbox
-        if not path.box or box[2] - box[0] < 80 or box[3] - box[1] < 24:
+        if not _is_aside_box(path, paths, out):
             continue
-        framed = sum(1 for p in paths if p is not path and geo.contains(box, p.bbox))
-        inner = [b for b in out.blocks if geo.center_in(b.bbox, box)]
-        if not inner or framed >= 3:
-            continue  # an empty frame, or a framed diagram
+        box = path.bbox
         boxes.append(box)
-        out.absorb(box)
+        inner = out.absorb(box)
         first, rest = inner[0].text, [b.text for b in inner[1:]]
         label: str | None = None
         if parsed := aside_label(first):
