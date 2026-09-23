@@ -15,4 +15,6 @@ query is a recursive CTE over it. Modules, bottom up:
 * `neighborhood`   one focal node, depth ≤ 2, ≤ 150 nodes, edges ranked by weight x evidence.
 * `evidence`       labels and passages for any endpoint or evidence ref, across documents.
 * `curation`       human writes: concepts, edges, review of proposals.
+* `views`          read models for the API (typeahead, concept pages, merge proposals).
+* `pipeline`       the orchestrator effect (`refresh_document`) and the dedup job body.
 """
