@@ -230,7 +230,7 @@ def execute_skill_job(
     ceiling.check(
         session, job, document, SKILL_JOB_KINDS, max_runs or settings.max_runs_per_document
     )
-    prompt = render_prompt(skill.prompt, prepared.selection.inputs)
+    prompt = render_prompt(skill.prompt, prepared.selection.prompt_inputs())
     try:
         run = run_structured(
             runner,

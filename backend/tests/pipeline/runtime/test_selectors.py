@@ -69,7 +69,7 @@ def test_figures_prefer_approved_and_exclude_unapproved_low_confidence(session, 
 def test_element_context_carries_neighbours_and_the_image(session, book):
     selection = select(session, "element_context", book, "ch01/s01/f001")
 
-    assert selection.inputs["element"]["image_path"] == "/media/f001.png"
+    assert selection.inputs["element"]["image_path"] == "f001.png"  # media-relative (hashed)
     assert selection.images == (Path("/media/f001.png"),)
     assert [b["anchor"] for b in selection.inputs["context"]] == [
         "ch01/s01/p001", "ch01/s02/p001", "ch02/p001",

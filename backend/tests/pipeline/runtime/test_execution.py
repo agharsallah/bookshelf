@@ -9,8 +9,9 @@ from app.jobs import queue
 from app.jobs.registry import PermanentJobError, get_handler
 from app.models import Artifact, Document, Note
 from app.models.enums import ArtifactType, JobKind, JobState, Origin, Review, RunMode, Tier
-from app.pipeline.execution import execute_skill_job
+from app.pipeline.execution import execute_skill_job, prepare
 from app.pipeline.runner import FakeRunner
+from app.pipeline.skills import load_catalogue
 from tests.pipeline.runtime.conftest import body, paragraph, reply
 
 GROUNDED = reply(body(paragraph("A stock remembers its flows.", "ch01/s01/p001")))
@@ -132,6 +133,21 @@ def test_vision_skill_receives_the_figure_image_path(session, book, make_job, sk
 
     assert runner.calls[0]["images"] == [Path("/media/f001.png")]
     assert runner.calls[0]["tier"] is Tier.EXPLORE
+
+
+def test_image_paths_are_hashed_relative_and_resolved_only_in_the_prompt(
+    session, book, make_job, skills_dir
+):
+    skill = load_catalogue(skills_dir)["describe-figure"]
+    here = prepare(session, skill, book, "ch01/s01/f001", media_dir=Path("/checkout/a/.media"))
+    there = prepare(session, skill, book, "ch01/s01/f001", media_dir=Path("/elsewhere/.media"))
+    runner = FakeRunner(reply(body(paragraph("A bathtub.", "ch01/s01/f001"), confidence="high")))
+
+    run(session, make_job(JobKind.DESCRIBE_FIGURE, book, "ch01/s01/f001"), runner, skills_dir)
+
+    assert here.input_hash == there.input_hash
+    assert here.selection.inputs["element"]["image_path"] == "f001.png"
+    assert '"image_path": "/media/f001.png"' in runner.calls[0]["prompt"]
 
 
 def test_run_ceiling_fails_permanently_before_calling_the_model(

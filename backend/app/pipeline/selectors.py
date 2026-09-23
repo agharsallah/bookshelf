@@ -36,8 +36,17 @@ class Selection:
     inputs: dict[str, Any]
     source_words: int  # words of source text under the scope: the compression denominator
     valid_anchors: frozenset[str]
-    images: tuple[Path, ...] = ()
+    images: tuple[Path, ...] = ()  # absolute, for the CLI's `--add-dir`; never hashed
     element: dict[str, Any] | None = None
+
+    def prompt_inputs(self) -> dict[str, Any]:
+        """`inputs` as the batch prompt shows them: the element's media-relative
+        `image_path` resolved to the absolute file the CLI must read. `inputs` itself (and
+        so `input_hash`, and the interactive inputs endpoint) keeps the relative path."""
+        element = self.inputs.get("element")
+        if not self.images or not isinstance(element, dict) or "image_path" not in element:
+            return self.inputs
+        return {**self.inputs, "element": {**element, "image_path": str(self.images[0])}}
 
 
 @dataclass(frozen=True, slots=True)
@@ -180,7 +189,9 @@ def element_context(ctx: Context) -> Selection:
     raw_path = node.meta.get("image_path")
     if isinstance(raw_path, str) and raw_path:
         path = Path(raw_path) if Path(raw_path).is_absolute() else ctx.media_dir / raw_path
-        element["image_path"] = str(path)
+        # Hashed inputs carry the path relative to the media dir (as the parser stores it),
+        # so `input_hash` does not depend on where the checkout lives.
+        element["image_path"] = _media_relative(path, ctx.media_dir)
         images = (path,)
     words = count_words(node.text or "") or count_words(str(node.meta.get("caption", "")))
     return ctx.selection(
@@ -189,6 +200,13 @@ def element_context(ctx: Context) -> Selection:
         images=images,
         element=element,
     )
+
+
+def _media_relative(path: Path, media_dir: Path) -> str:
+    try:
+        return path.relative_to(media_dir).as_posix()
+    except ValueError:  # an absolute path outside the media dir (legacy rows): keep it
+        return path.as_posix()
 
 
 def scope_blocks(ctx: Context) -> Selection:
