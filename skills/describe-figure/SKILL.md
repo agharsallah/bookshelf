@@ -9,14 +9,14 @@ argument-hint: <document-slug> <figure-anchor>
 
 `$ARGUMENTS` is `<document-slug> <figure-anchor>`, for example `okafor-queueing ch03/s01/f001`.
 
-1. Fetch the input — the exact JSON the batch runner would send, including its `input_hash`:
+1. Fetch the input — the response's `inputs` is the exact JSON the batch runner would send; keep its `input_hash`:
    `curl -s -H "X-API-Key: $BOOKSHELF_API_KEY" "$BOOKSHELF_API/skills/describe-figure/inputs?document=<slug>&anchor=<anchor>"`
    (`$BOOKSHELF_API` defaults to `http://127.0.0.1:8000/api/v1`.)
 2. `element.image_path` is relative to the repository's `.media/` directory: open
    `.media/<image_path>` with the Read tool to see the figure. Show the user what you read
    (values, labels, arrows) and agree on anything illegible before finalising.
 3. Do the work below, then write
-   `{"skill": "describe-figure", "document": "<slug>", "anchor": "<the input's scope.anchor>", "input_hash": "<from the inputs response>", "output": <the JSON object>}`
+   `{"skill": "describe-figure", "document": "<slug>", "anchor": "<inputs.scope.anchor>", "input_hash": "<input_hash from the response>", "output": <the JSON object>}`
    to `skills/.outbox/describe-figure-<slug>-<anchor with / replaced by ->.json`.
 4. Import it; the server runs the same schema, anchor and grounding gates as batch mode:
    `curl -s -X POST "$BOOKSHELF_API/artifacts/import" -H "X-API-Key: $BOOKSHELF_API_KEY" -H 'content-type: application/json' --data @skills/.outbox/<file>.json`

@@ -9,12 +9,12 @@ argument-hint: <document-slug>
 
 `$ARGUMENTS` is `<document-slug>`, for example `okafor-queueing`.
 
-1. Fetch the input — the exact JSON the batch runner would send, including its `input_hash`:
+1. Fetch the input — the response's `inputs` is the exact JSON the batch runner would send; keep its `input_hash`:
    `curl -s -H "X-API-Key: $BOOKSHELF_API_KEY" "$BOOKSHELF_API/skills/write-brief/inputs?document=<slug>"`
    (document scope: no `anchor`; `$BOOKSHELF_API` defaults to `http://127.0.0.1:8000/api/v1`.)
 2. Do the work below, talking it through with the user: agree on the thesis and the list of
    ideas before writing the rest; discuss the weaknesses honestly.
-3. Write `{"skill": "write-brief", "document": "<slug>", "anchor": <the input's scope.anchor>, "input_hash": "<from the inputs response>", "output": <the JSON object>}`
+3. Write `{"skill": "write-brief", "document": "<slug>", "anchor": <inputs.scope.anchor>, "input_hash": "<input_hash from the response>", "output": <the JSON object>}`
    to `skills/.outbox/write-brief-<slug>.json`.
 4. Import it; the server runs the same schema, anchor, grounding and length gates as batch mode:
    `curl -s -X POST "$BOOKSHELF_API/artifacts/import" -H "X-API-Key: $BOOKSHELF_API_KEY" -H 'content-type: application/json' --data @skills/.outbox/<file>.json`

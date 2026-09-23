@@ -57,6 +57,11 @@ Run with `$ARGUMENTS` = `<slug> <anchor>`.
 Output only the JSON object. No prose, no code fences.
 ```
 
+The inputs response is `{skill, skill_version, document_id, anchor, input_hash, inputs}`; the
+skill works on `inputs`. Document-scope skills omit `anchor` (the envelope's `anchor` is then
+`null`, as in `inputs.scope.anchor`). The note-scope skill (`structure-note`) passes
+`note_id=<uuid>` instead of an anchor, and its outbox envelope adds `"note_id": "<uuid>"`.
+
 The batch runner strips the frontmatter and the `interactive` section, then appends:
 
 ```

@@ -10,13 +10,13 @@ argument-hint: <document-slug>
 `$ARGUMENTS` is `<document-slug>`, for example `okafor-queueing`. This skill has no batch
 job; it exists for the human outline fix.
 
-1. Fetch the input — the exact JSON a runner would send, including its `input_hash`:
+1. Fetch the input — the response's `inputs` is the exact JSON a runner would send; keep its `input_hash`:
    `curl -s -H "X-API-Key: $BOOKSHELF_API_KEY" "$BOOKSHELF_API/skills/parse-outline/inputs?document=<slug>"`
    (document scope: no `anchor`; `$BOOKSHELF_API` defaults to `http://127.0.0.1:8000/api/v1`.)
 2. Do the work below. Show the user the proposed outline as a table (chapter, pages, sections)
    and the page offset you derived; ask about anything ambiguous (parts, appendices,
    unnumbered introductions) and revise until they agree.
-3. Write `{"skill": "parse-outline", "document": "<slug>", "anchor": <the input's scope.anchor>, "input_hash": "<from the inputs response>", "output": <the JSON object>}`
+3. Write `{"skill": "parse-outline", "document": "<slug>", "anchor": <inputs.scope.anchor>, "input_hash": "<input_hash from the response>", "output": <the JSON object>}`
    to `skills/.outbox/parse-outline-<slug>.json`.
 4. Import it; the server validates it against the schema and stores the outline override:
    `curl -s -X POST "$BOOKSHELF_API/artifacts/import" -H "X-API-Key: $BOOKSHELF_API_KEY" -H 'content-type: application/json' --data @skills/.outbox/<file>.json`
