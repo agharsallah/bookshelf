@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { artifact } from './fixtures';
-import { compareAnchors, filterQueue, flatOrder, groupQueue } from './queue';
+import { compareAnchors, filterQueue, flatOrder, groupQueue, latestPerScope } from './queue';
 
 describe('compareAnchors', () => {
   it.each([
@@ -55,5 +55,17 @@ describe('filterQueue', () => {
     [{ type: '' as const, skill: '' }, ['note', 'summary']],
   ])('%o keeps %o', (filters, ids) => {
     expect(filterQueue(items, filters).map((i) => i.id)).toEqual(ids);
+  });
+});
+
+describe('latestPerScope', () => {
+  it('keeps only the newest version of each scope', () => {
+    const items = [
+      artifact({ id: 'old', anchor: 'ch01/s02', version: 1, review: 'needs_review' }),
+      artifact({ id: 'new', anchor: 'ch01/s02', version: 2 }),
+      artifact({ id: 'other-type', anchor: 'ch01/s02', type: 'chapter_summary', version: 1 }),
+      artifact({ id: 'other-anchor', anchor: 'ch01/s03', version: 1 }),
+    ];
+    expect(latestPerScope(items).map((i) => i.id)).toEqual(['new', 'other-type', 'other-anchor']);
   });
 });

@@ -99,3 +99,20 @@ export function facet<T extends ArtifactPublic, K extends keyof T>(items: readon
   }
   return [...values].sort();
 }
+
+/**
+ * One item per scope (document, type, anchor, note): the highest version. The backend
+ * keeps an older pending version's review state after a newer one is written, so
+ * without this an edited artifact would still show its superseded draft.
+ */
+const scopeKey = (a: ArtifactPublic) => [a.document_id, a.type, a.anchor ?? '', a.note_id ?? ''].join('|');
+
+export function latestPerScope<T extends ArtifactPublic>(items: readonly T[]): T[] {
+  const best = new Map<string, T>();
+  for (const item of items) {
+    const key = scopeKey(item);
+    const current = best.get(key);
+    if (!current || item.version > current.version) best.set(key, item);
+  }
+  return items.filter((item) => best.get(scopeKey(item)) === item);
+}

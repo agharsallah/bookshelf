@@ -25,6 +25,7 @@ function Segments({ segments }: { segments: readonly DiffSegment[] }) {
   );
 }
 
+const words = (n: number) => `${n} word${n === 1 ? '' : 's'}`;
 const textOf = (a: ArtifactPublic) => normalizeBlocks(adaptBody(a.type, a.body).blocks);
 const versionLabel = (a: ArtifactPublic) => `Version ${a.version}, ${authorship(a)}, ${REVIEW_LABELS[a.review].toLowerCase()}`;
 
@@ -66,7 +67,7 @@ export function VersionDiff({ current, versions }: VersionDiffProps) {
           Side by side
         </label>
         <p className={styles.stats} aria-live="polite">
-          {unchanged ? 'No text changes.' : `${stats.inserted} words added, ${stats.deleted} removed.`}
+          {unchanged ? 'No text changes.' : `${words(stats.inserted)} added, ${stats.deleted} removed.`}
         </p>
       </div>
       {sideBySide ? (

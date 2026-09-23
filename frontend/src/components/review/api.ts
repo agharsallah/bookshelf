@@ -12,6 +12,7 @@ import type {
   ReviewRequest,
 } from '../../lib/api/types/artifacts';
 import type { JobAccepted, JobKind } from '../../lib/api/types/jobs';
+import { latestPerScope } from './queue';
 
 /** A source block as `GET /documents/{ref}/blocks` returns it (NodePublic). */
 export interface SourceBlock {
@@ -56,7 +57,7 @@ export async function loadQueue(api: ApiClient, maxPerState = 500): Promise<Arti
       ),
     ),
   );
-  return lists.flat();
+  return latestPerScope(lists.flat());
 }
 
 export async function loadDocuments(api: ApiClient): Promise<DocumentLabel[]> {

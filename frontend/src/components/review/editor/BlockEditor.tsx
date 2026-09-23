@@ -58,7 +58,8 @@ export function BlockEditor({ initialBody, sources, onSave, onCancel, saveLabel 
   const list = state.lists[state.active];
 
   useEffect(() => {
-    root.current?.querySelector<HTMLElement>('textarea, input:not([type=checkbox]), select')?.focus();
+    const first = root.current?.querySelector<HTMLElement>('textarea') ?? root.current?.querySelector<HTMLElement>('input:not([type=checkbox]), select');
+    first?.focus();
   }, []);
 
   useEffect(() => {
@@ -108,7 +109,7 @@ export function BlockEditor({ initialBody, sources, onSave, onCancel, saveLabel 
     }
   };
 
-  const blocked = saving || (!raw && problems.length > 0);
+  const blocked = saving || (!raw && (problems.length > 0 || !state.dirty));
 
   return (
     <div className={styles.editor} ref={root} onKeyDown={(e) => e.key === 'Escape' && e.target === e.currentTarget && onCancel()}>
