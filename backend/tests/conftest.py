@@ -70,7 +70,9 @@ migrate(get_settings().database_url)
 
 API_KEY = "test-secret-key"
 AUTH = {"X-API-Key": API_KEY}
-_TABLES = "documents, nodes, notes, artifacts, concepts, edges, jobs"
+# Children first, so plain DELETEs satisfy foreign keys. DELETE on a handful of rows is
+# ~10x cheaper than TRUNCATE, whose fixed per-table cost dominated the suite's runtime.
+_TABLES = ("edges", "concepts", "jobs", "artifacts", "notes", "nodes", "documents")
 
 
 def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
@@ -83,7 +85,8 @@ def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
 def _clean_tables() -> Iterator[None]:
     yield
     with engine.begin() as conn:
-        conn.execute(text(f"truncate {_TABLES} restart identity cascade"))
+        for table in _TABLES:
+            conn.execute(text(f"delete from {table}"))  # noqa: S608  (constant names)
 
 
 @pytest.fixture

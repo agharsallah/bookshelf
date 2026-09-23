@@ -9,7 +9,6 @@ from datetime import date
 from urllib.parse import urlsplit
 
 import httpx
-from trafilatura.metadata import extract_metadata
 
 from app.services.errors import InvalidInputError, UpstreamError
 
@@ -94,6 +93,9 @@ def _too_large() -> InvalidInputError:
 
 def page_metadata(html: bytes, url: str) -> PageMetadata:
     """Title, authors and year from the page's own metadata (trafilatura)."""
+    # Imported lazily: trafilatura costs ~1 s at import time, paid only on URL ingest.
+    from trafilatura.metadata import extract_metadata
+
     meta = extract_metadata(html.decode("utf-8", errors="replace"), default_url=url)
     authors = [a.strip() for a in (meta.author or "").split(";") if a.strip()]
     year: int | None = None
