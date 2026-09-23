@@ -1,19 +1,38 @@
 import { describe, expect, it } from 'vitest';
 import type { SkillPublic } from '../../lib/api/types/skills';
-import { authorship, relativeTime, rerunKind } from './labels';
+import { authorship, relativeTime, rerunRequest } from './labels';
 
-describe('rerunKind', () => {
+describe('rerunRequest', () => {
+  const scope = { document_id: 'd1', anchor: 'ch03', note_id: null };
+
   it('uses the job kind the producing skill declares', () => {
     const skills = [{ name: 'distil-section', job_kind: 'distil_section' } as SkillPublic];
-    expect(rerunKind({ type: 'section_note', skill: 'distil-section' }, skills)).toBe('distil_section');
+    expect(rerunRequest({ ...scope, type: 'section_note', skill: 'distil-section' }, skills)).toEqual({ kind: 'distil_section', document_id: 'd1', anchor: 'ch03' });
   });
 
   it('falls back to the type’s producer for hand-written artifacts', () => {
-    expect(rerunKind({ type: 'chapter_distillation', skill: null })).toBe('distil_chapter');
+    expect(rerunRequest({ ...scope, type: 'chapter_distillation', skill: null })?.kind).toBe('distil_chapter');
   });
 
-  it.each(['quiz', 'faq', 'structured_note', 'outline_override'] as const)('has no re-run for %s', (type) => {
-    expect(rerunKind({ type, skill: null })).toBeNull();
+  it('re-runs a derived artifact through derive with its skill', () => {
+    expect(rerunRequest({ ...scope, type: 'quiz', skill: 'make-quiz' })).toEqual({ kind: 'derive', document_id: 'd1', anchor: 'ch03', skill: 'make-quiz' });
+  });
+
+  it('re-runs a structured note through structure_note with its note', () => {
+    expect(rerunRequest({ ...scope, type: 'structured_note', skill: 'structure-note', note_id: 'n1' })).toEqual({
+      kind: 'structure_note',
+      document_id: 'd1',
+      anchor: 'ch03',
+      note_id: 'n1',
+    });
+  });
+
+  it.each([
+    ['quiz', null, null],
+    ['structured_note', 'structure-note', null],
+    ['outline_override', null, null],
+  ] as const)('has no re-run for %s from skill %s without a note', (type, skill, note_id) => {
+    expect(rerunRequest({ ...scope, type, skill, note_id })).toBeNull();
   });
 });
 

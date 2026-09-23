@@ -3,7 +3,7 @@
  * `serverApi()` in page frontmatter) so components stay testable with a fake client.
  */
 import type { ApiClient } from '../../lib/api/client';
-import type { Page } from '../../lib/api/types';
+import { fetchAll } from '../../lib/api/fetch-all';
 import type {
   ArtifactCreate,
   ArtifactListItem,
@@ -11,8 +11,8 @@ import type {
   Review,
   ReviewRequest,
 } from '../../lib/api/types/artifacts';
-import type { JobAccepted, JobKind } from '../../lib/api/types/jobs';
-import { latestPerScope } from './queue';
+import type { JobAccepted, JobCreate } from '../../lib/api/types/jobs';
+import type { PausedState } from '../../lib/api/types/documents';
 
 /** A source block as `GET /documents/{ref}/blocks` returns it (NodePublic). */
 export interface SourceBlock {
@@ -32,36 +32,25 @@ export interface DocumentLabel {
   slug: string;
   title: string;
   status?: string;
+  /** Set when the run ceiling paused the document. */
+  paused?: PausedState | null;
 }
 
-const PAGE = 100;
-
-async function allPages<T>(fetchPage: (offset: number) => Promise<Page<T>>, maxItems: number): Promise<T[]> {
-  const items: T[] = [];
-  for (let offset = 0; offset < maxItems; offset += PAGE) {
-    const page = await fetchPage(offset);
-    items.push(...page.items);
-    if (items.length >= page.total || page.items.length === 0) break;
-  }
-  return items;
-}
-
-/** Everything still waiting for a human: `needs_review` and `draft`, newest first per state. */
-export async function loadQueue(api: ApiClient, maxPerState = 500): Promise<ArtifactListItem[]> {
+/**
+ * Everything still waiting for a human: `needs_review` and `draft`, newest first per
+ * state, without versions a newer live one replaces (`latest=true`, e.g. a draft a
+ * human edit retired).
+ */
+export async function loadQueue(api: ApiClient, maxPages = 5): Promise<ArtifactListItem[]> {
   const states: Review[] = ['needs_review', 'draft'];
   const lists = await Promise.all(
-    states.map((review) =>
-      allPages(
-        (offset) => api.get<Page<ArtifactListItem>>('artifacts', { query: { review, limit: PAGE, offset } }),
-        maxPerState,
-      ),
-    ),
+    states.map(async (review) => (await fetchAll<ArtifactListItem>(api, 'artifacts', { review, latest: true }, maxPages)).items),
   );
-  return latestPerScope(lists.flat());
+  return lists.flat();
 }
 
 export async function loadDocuments(api: ApiClient): Promise<DocumentLabel[]> {
-  return allPages((offset) => api.get<Page<DocumentLabel>>('documents', { query: { limit: PAGE, offset } }), 500);
+  return (await fetchAll<DocumentLabel>(api, 'documents', {}, 5)).items;
 }
 
 export function reviewArtifact(api: ApiClient, id: string, request: ReviewRequest): Promise<ArtifactPublic> {
@@ -76,20 +65,15 @@ export function createArtifact(api: ApiClient, payload: ArtifactCreate): Promise
   return api.post<ArtifactPublic>('artifacts', payload);
 }
 
-/** Regenerate one scope: the producing job, forced past the idempotency skip. */
-export function rerun(api: ApiClient, kind: JobKind, artifact: Pick<ArtifactPublic, 'document_id' | 'anchor'>): Promise<JobAccepted> {
-  return api.post<JobAccepted>('jobs', { kind, document_id: artifact.document_id, anchor: artifact.anchor, force: true });
+/** Regenerate one scope: the producing job (see `rerunRequest`), forced past the idempotency skip. */
+export function rerun(api: ApiClient, request: JobCreate): Promise<JobAccepted> {
+  return api.post<JobAccepted>('jobs', { ...request, force: true });
 }
 
 /** Leaf blocks under an anchor (segment-aware prefix: `ch03` never matches `ch030`). */
-export async function blocksUnder(api: ApiClient, documentId: string, anchor: string | null, maxItems = 300): Promise<SourceBlock[]> {
-  return allPages(
-    (offset) =>
-      api.get<Page<SourceBlock>>(`documents/${documentId}/blocks`, {
-        query: { anchor_prefix: anchor ?? undefined, limit: PAGE, offset },
-      }),
-    maxItems,
-  );
+export async function blocksUnder(api: ApiClient, documentId: string, anchor: string | null, maxPages = 3): Promise<SourceBlock[]> {
+  const query = { anchor_prefix: anchor ?? undefined };
+  return (await fetchAll<SourceBlock>(api, `documents/${documentId}/blocks`, query, maxPages)).items;
 }
 
 /** Memoised per document + anchor, so re-clicking a cite never refetches. */
@@ -98,7 +82,7 @@ export function sourceLookup(api: ApiClient, documentId: string) {
   return (anchor: string): Promise<SourceBlock[]> => {
     let hit = cache.get(anchor);
     if (!hit) {
-      hit = blocksUnder(api, documentId, anchor, PAGE);
+      hit = blocksUnder(api, documentId, anchor, 1);
       hit.catch(() => cache.delete(anchor));
       cache.set(anchor, hit);
     }

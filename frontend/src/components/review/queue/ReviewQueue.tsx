@@ -1,25 +1,24 @@
 /**
  * The review queue island (§12): everything waiting for a human, keyboard-first.
- * Approve / reject are optimistic: the item leaves at once and the request is held for
- * the undo window (see ../pending.ts), then sent. Focus follows the cursor.
+ * Approve / reject are sent at once and the item leaves the queue; Undo reopens it
+ * (./useVerdicts.ts). Focus follows the cursor.
  */
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { anchorLabel } from '../../../lib/anchors';
 import { browserApi, type ApiClient } from '../../../lib/api/client';
-import type { ArtifactListItem, ReviewAction } from '../../../lib/api/types/artifacts';
+import type { ArtifactListItem } from '../../../lib/api/types/artifacts';
 import type { SkillPublic } from '../../../lib/api/types/skills';
-import { problemOf } from '../../document/Problem';
-import { reviewArtifact, type DocumentLabel } from '../api';
+import type { DocumentLabel } from '../api';
 import { ShortcutHelp } from '../common/ShortcutHelp';
 import { Toaster, useToasts } from '../common/Toasts';
 import { deriveGates } from '../gates';
-import { propagationNote, TYPE_LABELS } from '../labels';
-import { createScheduler } from '../pending';
+import { TYPE_LABELS } from '../labels';
 import { filterQueue, flatOrder, groupQueue, type QueueFilters as Filters } from '../queue';
 import { currentId, initialTriage, keyToCommand, triageReducer, type TriageCommand } from '../triage';
 import { ArtifactPreview, reviewHref } from './ArtifactPreview';
 import { QueueFilters } from './QueueFilters';
 import { QueueRow } from './QueueRow';
+import { useVerdicts, type Verdict } from './useVerdicts';
 import styles from './Queue.module.css';
 
 export interface ReviewQueueProps {
@@ -29,24 +28,24 @@ export interface ReviewQueueProps {
   headings: Record<string, Record<string, string>>;
   skills: SkillPublic[];
   api?: ApiClient;
-  /** How long an approve/reject can be undone before it is sent. */
-  undoMs?: number;
   navigate?: (href: string) => void;
 }
 
 /** Below this width the preview pane is hidden, so a row opens the full review. */
 const NARROW = '(max-width: 60rem)';
 
-const PAST: Record<Exclude<ReviewAction, 'edit'>, string> = { approve: 'Approved', reject: 'Rejected' };
+/** How long a verdict's toast (and its Undo button) stays up. */
+const TOAST_MS = 8000;
 
-export function ReviewQueue({ items: initial, documents, headings, skills, api = browserApi, undoMs = 6000, navigate = (h) => window.location.assign(h) }: ReviewQueueProps) {
+export function ReviewQueue({ items: initial, documents, headings, skills, api = browserApi, navigate = (h) => window.location.assign(h) }: ReviewQueueProps) {
   const [items, setItems] = useState(initial);
   const [hidden, setHidden] = useState<ReadonlySet<string>>(new Set());
   const [filters, setFilters] = useState<Filters>({});
-  const { toasts, push, dismiss, settle } = useToasts(undoMs + 400);
-  const scheduler = useMemo(() => createScheduler(undoMs), [undoMs]);
+  const { toasts, push, dismiss } = useToasts(TOAST_MS);
   const rows = useRef(new Map<string, HTMLButtonElement>());
   const wantFocus = useRef(false);
+  /** An item coming back (undo) to focus once it is in the walk order again. */
+  const focusWhenBack = useRef<string | null>(null);
 
   const titles = useMemo(() => Object.fromEntries(documents.map((d) => [d.id, d.title])), [documents]);
   const thresholds = useMemo(() => Object.fromEntries(skills.map((s) => [s.name, s.gates])), [skills]);
@@ -56,7 +55,15 @@ export function ReviewQueue({ items: initial, documents, headings, skills, api =
   const byId = useMemo(() => new Map(items.map((i) => [i.id, i])), [items]);
 
   const [triage, dispatch] = useReducer(triageReducer, order, initialTriage);
-  useEffect(() => dispatch({ type: 'sync', order }), [order]);
+  useEffect(() => {
+    dispatch({ type: 'sync', order });
+    const back = focusWhenBack.current;
+    if (back && order.includes(back)) {
+      focusWhenBack.current = null;
+      wantFocus.current = true;
+      dispatch({ type: 'focus', id: back });
+    }
+  }, [order]);
   const focusedId = currentId(triage);
   const focused = focusedId ? byId.get(focusedId) : undefined;
 
@@ -66,57 +73,40 @@ export function ReviewQueue({ items: initial, documents, headings, skills, api =
     rows.current.get(focusedId)?.focus();
   }, [focusedId, triage.order]);
 
-  useEffect(() => {
-    const flush = () => scheduler.flush();
-    window.addEventListener('pagehide', flush);
-    return () => {
-      window.removeEventListener('pagehide', flush);
-      flush();
-    };
-  }, [scheduler]);
-
   const heading = (item: ArtifactListItem) => (item.anchor ? headings[item.document_id]?.[item.anchor] : undefined);
-  const label = (item: ArtifactListItem) => `${TYPE_LABELS[item.type]}${item.anchor ? ` ${anchorLabel(item.anchor)}` : ''}`;
+  const label = useCallback((item: ArtifactListItem) => `${TYPE_LABELS[item.type]}${item.anchor ? ` ${anchorLabel(item.anchor)}` : ''}`, []);
+  const unhide = useCallback((ids: readonly string[]) => setHidden((h) => new Set([...h].filter((id) => !ids.includes(id)))), []);
+
+  const verdict = useVerdicts({
+    api,
+    push,
+    label,
+    hide: useCallback((ids: readonly string[]) => {
+      wantFocus.current = true;
+      dispatch({ type: 'remove', ids: [...ids] });
+      setHidden((h) => new Set([...h, ...ids]));
+    }, []),
+    restore: useCallback(
+      (back: readonly ArtifactListItem[]) => {
+        const ids = back.map((b) => b.id);
+        focusWhenBack.current = ids[0] ?? null;
+        setItems((all) => [...all.filter((i) => !ids.includes(i.id)), ...back]);
+        unhide(ids);
+      },
+      [unhide],
+    ),
+    settleItems: useCallback(
+      (ids: readonly string[]) => {
+        setItems((all) => all.filter((i) => !ids.includes(i.id)));
+        unhide(ids);
+      },
+      [unhide],
+    ),
+  });
 
   const act = useCallback(
-    (action: Exclude<ReviewAction, 'edit'>, ids: string[]) => {
-      const targets = ids.map((id) => byId.get(id)).filter((i): i is ArtifactListItem => Boolean(i));
-      if (targets.length === 0) return;
-      const key = `${action}:${ids.join(',')}`;
-      wantFocus.current = true;
-      dispatch({ type: 'remove', ids });
-      setHidden((h) => new Set([...h, ...ids]));
-      const unhide = (gone: string[]) => setHidden((h) => new Set([...h].filter((id) => !gone.includes(id))));
-      const first = targets[0];
-      const what = targets.length === 1 && first ? label(first) : `${targets.length} drafts`;
-
-      push({
-        id: key,
-        message: `${PAST[action]} ${what}.`,
-        undo: () => {
-          if (!scheduler.cancel(key)) return;
-          wantFocus.current = true;
-          dispatch({ type: 'restore' });
-          unhide(ids);
-        },
-      });
-      scheduler.schedule(key, () => {
-        settle(key);
-        void Promise.allSettled(targets.map((t) => reviewArtifact(api, t.id, { action }))).then((results) => {
-          const done = targets.filter((_, n) => results[n]?.status === 'fulfilled').map((t) => t.id);
-          const failed = results.find((r): r is PromiseRejectedResult => r.status === 'rejected');
-          setItems((all) => all.filter((i) => !done.includes(i.id)));
-          unhide(ids);
-          if (failed) {
-            const problem = problemOf(failed.reason);
-            push({ id: `${key}:error`, tone: 'error', message: `Not ${PAST[action].toLowerCase()}: ${problem.message}${problem.requestId ? ` (request ${problem.requestId})` : ''}` });
-          }
-          const note = action === 'approve' && targets.length === 1 && first ? propagationNote(first.type) : null;
-          if (note && done.length) push({ id: `${key}:next`, tone: 'info', message: note });
-        });
-      });
-    },
-    [api, byId, push, scheduler, settle],
+    (action: Verdict, ids: string[]) => verdict(action, ids.map((id) => byId.get(id)).filter((i): i is ArtifactListItem => Boolean(i))),
+    [byId, verdict],
   );
 
   const approvable = triage.selected.filter((id) => {

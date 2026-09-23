@@ -11,9 +11,11 @@ export interface DetailHeaderProps {
   documentTitle: string;
   heading: string | undefined;
   thresholds: SkillGates | null | undefined;
+  /** A newer non-rejected version of this scope exists. */
+  superseded?: boolean;
 }
 
-export function DetailHeader({ artifact, documentTitle, heading, thresholds }: DetailHeaderProps) {
+export function DetailHeader({ artifact, documentTitle, heading, thresholds, superseded = false }: DetailHeaderProps) {
   const facts: [string, string][] = [
     ['Written', authorship(artifact)],
     ['Model', artifact.model ?? '—'],
@@ -37,6 +39,11 @@ export function DetailHeader({ artifact, documentTitle, heading, thresholds }: D
         <span className={styles.state} data-review={artifact.review}>
           {REVIEW_LABELS[artifact.review]}
         </span>
+        {superseded ? (
+          <span className={styles.state} data-review="superseded" title="A newer version of this scope replaces it">
+            Superseded
+          </span>
+        ) : null}
       </div>
       {heading ? <p className={styles.heading}>{heading}</p> : null}
       <dl className={styles.facts}>

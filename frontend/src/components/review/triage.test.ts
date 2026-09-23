@@ -49,13 +49,6 @@ describe('triageReducer', () => {
     expect(currentId(run(['a', 'b', 'c'], { type: 'focus', id: 'c' }, { type: 'remove', ids: ['a'] }))).toBe('c');
   });
 
-  it('restore puts removed items back where they were and focuses the first', () => {
-    const state = run(['a', 'b', 'c', 'd'], { type: 'remove', ids: ['d', 'b'] }, { type: 'restore' });
-    expect(state.order).toEqual(['a', 'b', 'c', 'd']);
-    expect(currentId(state)).toBe('b');
-    expect(state.removed).toEqual([]);
-  });
-
   it('sync keeps focus on the same id when the order changes', () => {
     expect(currentId(run(['a', 'b'], { type: 'focus', id: 'b' }, { type: 'sync', order: ['b', 'x', 'a'] }))).toBe('b');
   });

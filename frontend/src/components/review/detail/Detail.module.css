@@ -55,6 +55,11 @@
   font-weight: 600;
 }
 
+.state[data-review='superseded'] {
+  border-style: dashed;
+  color: var(--ink-3);
+}
+
 .heading {
   color: var(--ink-2);
   font-size: var(--text-md);

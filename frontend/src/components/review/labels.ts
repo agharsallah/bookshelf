@@ -3,7 +3,7 @@
  * Everything a reviewer reads goes through here, so the vocabulary stays consistent.
  */
 import type { ArtifactPublic, ArtifactType, Review } from '../../lib/api/types/artifacts';
-import type { JobKind } from '../../lib/api/types/jobs';
+import type { JobCreate, JobKind } from '../../lib/api/types/jobs';
 import type { SkillPublic } from '../../lib/api/types/skills';
 
 export const TYPE_LABELS: Record<ArtifactType, string> = {
@@ -34,8 +34,9 @@ export const REVIEW_LABELS: Record<Review, string> = {
 };
 
 /**
- * The job kind that produces each artifact type (§7). `derive` and `structure_note`
- * need a skill name or note id that `POST /jobs` cannot carry, so they are not re-runnable here.
+ * The job kind that produces each artifact type (§7). Derived artifacts (quiz, FAQ…)
+ * come from `derive` with their skill's name; structured notes from `structure_note`
+ * with their note's id.
  */
 const PRODUCER: Partial<Record<ArtifactType, JobKind>> = {
   figure_description: 'describe_figure',
@@ -48,16 +49,30 @@ const PRODUCER: Partial<Record<ArtifactType, JobKind>> = {
   chapter_distillation: 'distil_chapter',
   book_brief: 'brief',
   concept_links: 'link_concepts',
+  structured_note: 'structure_note',
+  quote_set: 'derive',
+  faq: 'derive',
+  quiz: 'derive',
+  flashcards: 'derive',
+  glossary: 'derive',
 };
 
-/** The job to enqueue (with `force`) to regenerate this artifact's scope, if any. */
-export function rerunKind(
-  artifact: Pick<ArtifactPublic, 'type' | 'skill'>,
+/**
+ * The `POST /jobs` body (sent with `force`) that regenerates this artifact's scope, or
+ * null when nothing can: a hand-written derived artifact names no skill, a structured
+ * note without its note id has nothing to structure, and outline overrides are not jobs.
+ */
+export function rerunRequest(
+  artifact: Pick<ArtifactPublic, 'type' | 'skill' | 'document_id' | 'anchor' | 'note_id'>,
   skills: readonly SkillPublic[] = [],
-): JobKind | null {
+): JobCreate | null {
   const declared = skills.find((s) => s.name === artifact.skill)?.job_kind;
-  const kind = declared ?? PRODUCER[artifact.type] ?? null;
-  return kind === 'derive' || kind === 'structure_note' ? null : kind;
+  const kind: JobKind | null = declared ?? PRODUCER[artifact.type] ?? null;
+  if (!kind) return null;
+  const scope = { kind, document_id: artifact.document_id, anchor: artifact.anchor };
+  if (kind === 'derive') return artifact.skill ? { ...scope, skill: artifact.skill } : null;
+  if (kind === 'structure_note') return artifact.note_id ? { ...scope, note_id: artifact.note_id } : null;
+  return scope;
 }
 
 /** What approving this artifact sets in motion upstream (§7 "approval propagates upward"). */

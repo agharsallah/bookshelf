@@ -2,8 +2,8 @@
  * Keyboard-first triage: the key map and the cursor/selection reducer.
  *
  * The queue is a list of ids in walk order. Approving or rejecting removes an item
- * optimistically; the cursor keeps its index, so it lands on the next item. Undo puts
- * the item back where it was.
+ * optimistically; the cursor keeps its index, so it lands on the next item. Undo
+ * reopens the artifact, which brings it back through `sync`; `focus` then lands on it.
  */
 
 export type TriageCommand =
@@ -71,8 +71,6 @@ export interface TriageState {
   cursor: number;
   selected: string[];
   help: boolean;
-  /** Removed items and where they were, most recent last (the undo stack). */
-  removed: { id: string; at: number }[][];
 }
 
 export type TriageAction =
@@ -83,11 +81,10 @@ export type TriageAction =
   | { type: 'selectOnly'; ids: string[] }
   | { type: 'clearSelection' }
   | { type: 'help'; open?: boolean }
-  | { type: 'remove'; ids: string[] }
-  | { type: 'restore' };
+  | { type: 'remove'; ids: string[] };
 
 export function initialTriage(order: string[]): TriageState {
-  return { order, cursor: 0, selected: [], help: false, removed: [] };
+  return { order, cursor: 0, selected: [], help: false };
 }
 
 const clamp = (index: number, length: number) => Math.max(0, Math.min(index, Math.max(length - 1, 0)));
@@ -124,29 +121,16 @@ export function triageReducer(state: TriageState, action: TriageAction): TriageS
     case 'help':
       return { ...state, help: action.open ?? !state.help };
     case 'remove': {
-      // Ascending positions, so re-inserting in this order rebuilds the original list.
-      const entries = action.ids
-        .map((id) => ({ id, at: state.order.indexOf(id) }))
-        .filter((e) => e.at >= 0)
-        .sort((a, b) => a.at - b.at);
-      if (entries.length === 0) return state;
-      const gone = new Set(action.ids);
+      const gone = new Set(action.ids.filter((id) => state.order.includes(id)));
+      if (gone.size === 0) return state;
       const order = state.order.filter((id) => !gone.has(id));
-      const before = entries.filter((e) => e.at < state.cursor).length;
+      const before = state.order.slice(0, state.cursor).filter((id) => gone.has(id)).length;
       return {
         ...state,
         order,
         cursor: clamp(state.cursor - before, order.length),
         selected: state.selected.filter((id) => !gone.has(id)),
-        removed: [...state.removed, entries],
       };
-    }
-    case 'restore': {
-      const last = state.removed.at(-1);
-      if (!last) return state;
-      const order = [...state.order];
-      for (const entry of last) order.splice(entry.at, 0, entry.id);
-      return { ...state, order, cursor: last[0]?.at ?? state.cursor, removed: state.removed.slice(0, -1) };
     }
   }
 }

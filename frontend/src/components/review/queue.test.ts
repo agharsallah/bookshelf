@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { artifact } from './fixtures';
-import { compareAnchors, filterQueue, flatOrder, groupQueue, latestPerScope } from './queue';
+import { compareAnchors, filterQueue, flatOrder, groupQueue, isSuperseded } from './queue';
 
 describe('compareAnchors', () => {
   it.each([
@@ -58,14 +58,22 @@ describe('filterQueue', () => {
   });
 });
 
-describe('latestPerScope', () => {
-  it('keeps only the newest version of each scope', () => {
-    const items = [
-      artifact({ id: 'old', anchor: 'ch01/s02', version: 1, review: 'needs_review' }),
-      artifact({ id: 'new', anchor: 'ch01/s02', version: 2 }),
-      artifact({ id: 'other-type', anchor: 'ch01/s02', type: 'chapter_summary', version: 1 }),
-      artifact({ id: 'other-anchor', anchor: 'ch01/s03', version: 1 }),
-    ];
-    expect(latestPerScope(items).map((i) => i.id)).toEqual(['new', 'other-type', 'other-anchor']);
+describe('isSuperseded', () => {
+  const versions = [
+    artifact({ version: 1, review: 'draft' }),
+    artifact({ version: 2, review: 'rejected' }),
+    artifact({ version: 3, review: 'approved' }),
+  ];
+
+  it.each([
+    [1, true],
+    [2, true],
+    [3, false],
+  ])('version %i superseded: %s', (version, expected) => {
+    expect(isSuperseded({ version }, versions)).toBe(expected);
+  });
+
+  it('does not count a newer version that was rejected', () => {
+    expect(isSuperseded({ version: 1 }, [artifact({ version: 1 }), artifact({ version: 2, review: 'rejected' })])).toBe(false);
   });
 });

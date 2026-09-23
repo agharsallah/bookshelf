@@ -6,6 +6,7 @@ import { useId, useMemo, useState } from 'react';
 import type { ArtifactPublic } from '../../../lib/api/types/artifacts';
 import { adaptBody } from '../body/adapters';
 import { authorship, REVIEW_LABELS } from '../labels';
+import { isSuperseded } from '../queue';
 import { diffSegments, diffStats, normalizeBlocks, splitSides, type DiffSegment } from './normalize';
 import styles from './VersionDiff.module.css';
 
@@ -27,7 +28,8 @@ function Segments({ segments }: { segments: readonly DiffSegment[] }) {
 
 const words = (n: number) => `${n} word${n === 1 ? '' : 's'}`;
 const textOf = (a: ArtifactPublic) => normalizeBlocks(adaptBody(a.type, a.body).blocks);
-const versionLabel = (a: ArtifactPublic) => `Version ${a.version}, ${authorship(a)}, ${REVIEW_LABELS[a.review].toLowerCase()}`;
+const versionLabel = (a: ArtifactPublic, all: readonly ArtifactPublic[]) =>
+  `Version ${a.version}, ${authorship(a)}, ${REVIEW_LABELS[a.review].toLowerCase()}${isSuperseded(a, all) ? ', superseded' : ''}`;
 
 export interface VersionDiffProps {
   current: ArtifactPublic;
@@ -58,7 +60,7 @@ export function VersionDiff({ current, versions }: VersionDiffProps) {
         <select id={selectId} value={base.id} onChange={(e) => setBaseId(e.target.value)}>
           {earlier.map((v) => (
             <option key={v.id} value={v.id}>
-              {versionLabel(v)}
+              {versionLabel(v, versions)}
             </option>
           ))}
         </select>
@@ -73,13 +75,13 @@ export function VersionDiff({ current, versions }: VersionDiffProps) {
       {sideBySide ? (
         <div className={styles.columns}>
           <section aria-label={`Version ${base.version}`}>
-            <h3 className={styles.columnTitle}>{versionLabel(base)}</h3>
+            <h3 className={styles.columnTitle}>{versionLabel(base, versions)}</h3>
             <p className={styles.text}>
               <Segments segments={sides.before} />
             </p>
           </section>
           <section aria-label={`Version ${current.version}`}>
-            <h3 className={styles.columnTitle}>{versionLabel(current)}</h3>
+            <h3 className={styles.columnTitle}>{versionLabel(current, versions)}</h3>
             <p className={styles.text}>
               <Segments segments={sides.after} />
             </p>

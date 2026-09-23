@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react
 import { browserApi, type ApiClient } from '../../../lib/api/client';
 import type { ArtifactPublic, ReviewAction } from '../../../lib/api/types/artifacts';
 import type { SkillPublic } from '../../../lib/api/types/skills';
-import { problemOf, type ProblemInfo } from '../../document/Problem';
+import { problemOf, type ProblemInfo } from '../../common/Problem';
 import { blocksUnder, createArtifact, rerun, reviewArtifact, sourceLookup, type SourceBlock } from '../api';
 import { adaptBody } from '../body/adapters';
 import { ArtifactBody } from '../body/ArtifactBody';
@@ -16,10 +16,18 @@ import { BlockEditor } from '../editor/BlockEditor';
 import { EvidencePanel } from '../evidence/EvidencePanel';
 import { tallyGrounding } from '../evidence/grounding';
 import { ProofView } from '../evidence/ProofView';
-import { propagationNote, rerunKind, TYPE_LABELS } from '../labels';
+import { propagationNote, rerunRequest, TYPE_LABELS } from '../labels';
+import { isSuperseded } from '../queue';
 import { DetailActions } from './DetailActions';
 import { DetailHeader } from './DetailHeader';
 import styles from './Detail.module.css';
+
+const REVIEWING = { approve: 'Approving', reject: 'Rejecting', reopen: 'Reopening' } as const;
+const REVIEWED = {
+  approve: 'Approved.',
+  reject: 'Rejected. It will not be used downstream; re-run it or write it by hand.',
+  reopen: 'Back to draft. Search and the graph drop what this version had given them.',
+} as const;
 
 export type DetailMode = 'read' | 'proof' | 'changes' | 'edit' | 'write';
 type View = Exclude<DetailMode, 'edit' | 'write'>;
@@ -61,7 +69,7 @@ export function ArtifactDetail({
   const adapted = useMemo(() => adaptBody(artifact.type, artifact.body), [artifact]);
   const tally = useMemo(() => tallyGrounding(adapted.blocks), [adapted]);
   const editing = mode === 'edit' || mode === 'write';
-  const rerunJob = rerunKind(artifact, skills);
+  const rerunJob = rerunRequest(artifact, skills);
 
   useEffect(() => {
     if (!editing || sources.length > 0) return;
@@ -86,14 +94,14 @@ export function ArtifactDetail({
   );
 
   const review = (action: Exclude<ReviewAction, 'edit'>) =>
-    perform(action === 'approve' ? 'Approving' : 'Rejecting', async () => {
+    perform(REVIEWING[action], async () => {
       const next = await reviewArtifact(api, artifact.id, { action });
       setArtifact(next);
       setVersions((all) => all.map((v) => (v.id === next.id ? next : v)));
       const note = action === 'approve' ? propagationNote(next.type) : null;
       return (
         <p>
-          {action === 'approve' ? 'Approved.' : 'Rejected. It will not be used downstream; re-run it or write it by hand.'} {note}
+          {REVIEWED[action]} {note}
         </p>
       );
     });
@@ -120,10 +128,11 @@ export function ArtifactDetail({
   const onRerun = () => {
     if (!rerunJob) return;
     void perform('Queueing', async () => {
-      const accepted = await rerun(api, rerunJob, artifact);
+      const accepted = await rerun(api, rerunJob);
+      const what = rerunJob.skill ?? rerunJob.kind;
       return (
         <p>
-          {accepted.deduplicated ? 'A run for this scope is already queued.' : `Queued ${rerunJob} for ${artifact.anchor ?? 'the whole document'}.`}{' '}
+          {accepted.deduplicated ? 'A run for this scope is already queued.' : `Queued ${what} for ${artifact.anchor ?? 'the whole document'}.`}{' '}
           <a href={`/pipeline?document=${artifact.document_id}`}>Follow it on the pipeline</a>.
         </p>
       );
@@ -140,16 +149,17 @@ export function ArtifactDetail({
 
   return (
     <div className={styles.detail}>
-      <DetailHeader artifact={artifact} documentTitle={documentTitle} heading={heading} thresholds={skill?.gates} />
+      <DetailHeader artifact={artifact} documentTitle={documentTitle} heading={heading} thresholds={skill?.gates} superseded={isSuperseded(artifact, versions)} />
       <DetailActions
         artifact={artifact}
-        rerun={rerunJob}
+        rerun={rerunJob ? (rerunJob.skill ?? rerunJob.kind) : null}
         busy={busy}
         editing={editing}
         status={status}
         problem={problem}
         onApprove={() => void review('approve')}
         onReject={() => void review('reject')}
+        onReopen={() => void review('reopen')}
         onEdit={() => setMode('edit')}
         onRerun={onRerun}
         onWrite={() => setMode('write')}

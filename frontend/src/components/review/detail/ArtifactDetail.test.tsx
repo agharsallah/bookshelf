@@ -57,6 +57,36 @@ describe('<ArtifactDetail> editing', () => {
   });
 });
 
+describe('<ArtifactDetail> verdicts and re-runs', () => {
+  it('re-runs a quiz through derive with its skill, forced', async () => {
+    const quiz = artifact({ id: 'quiz', type: 'quiz', skill: 'make-quiz', anchor: 'ch03', body: { items: [] } });
+    const { api, calls } = fakeApi({ 'POST jobs': () => ({ job: { id: 'j1' }, deduplicated: false }) });
+    render(<ArtifactDetail artifact={quiz} versions={[quiz]} documentTitle="Systems" skills={[]} api={api} navigate={vi.fn()} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Re-run' }));
+    await waitFor(() =>
+      expect(calls).toEqual([{ method: 'POST', path: 'jobs', body: { kind: 'derive', document_id: 'doc1', anchor: 'ch03', skill: 'make-quiz', force: true } }]),
+    );
+    expect(await screen.findByText(/Queued make-quiz for ch03/)).toBeTruthy();
+  });
+
+  it('sends an approved artifact back to draft with reopen', async () => {
+    const approved = artifact({ id: 'done', review: 'approved' });
+    const { api, calls } = fakeApi({ 'POST artifacts/done/review': () => ({ ...approved, review: 'draft' }) });
+    render(<ArtifactDetail artifact={approved} versions={[approved]} documentTitle="Systems" skills={[]} api={api} navigate={vi.fn()} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Back to draft' }));
+    await waitFor(() => expect(calls.map((c) => c.body)).toEqual([{ action: 'reopen' }]));
+    expect(await screen.findByText(/Back to draft\./)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Back to draft' })).toBeNull();
+  });
+
+  it('marks a version a newer live one replaces as superseded', () => {
+    const v1 = artifact({ id: 'v1', version: 1 });
+    const v2 = artifact({ id: 'v2', version: 2, origin: 'human', review: 'approved' });
+    render(<ArtifactDetail artifact={v1} versions={[v1, v2]} documentTitle="Systems" skills={[]} api={fakeApi().api} navigate={vi.fn()} />);
+    expect(screen.getByText('Superseded')).toBeTruthy();
+  });
+});
+
 describe('<ProofView>', () => {
   it('marks uncited spans and counts them', () => {
     const { container } = render(
