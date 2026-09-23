@@ -1,0 +1,11 @@
+name: make-quiz
+version: 1
+description: Multiple-choice questions that test understanding of a chapter, with cited explanations.
+tier: distil
+job_kind: derive
+artifact_type: quiz
+scope: chapter
+selector: chapter_distillation
+vision: false
+gates:
+  grounding_min: 0.9

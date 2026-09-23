@@ -1,0 +1,11 @@
+name: make-faq
+version: 1
+description: Questions a colleague would ask about a chapter, answered from its distillation with citations.
+tier: distil
+job_kind: derive
+artifact_type: faq
+scope: chapter
+selector: chapter_distillation  # the prompt also accepts several chapter_distillations (document_chapters shape) for a document-wide FAQ
+vision: false
+gates:
+  grounding_min: 0.9

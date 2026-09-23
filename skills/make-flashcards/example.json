@@ -1,0 +1,44 @@
+{
+  "items": [
+    {
+      "front": "Little's law: average items in a system equal what?",
+      "back": [
+        {
+          "text": "Their arrival rate times the average time each spends inside (L = λW).",
+          "cites": ["ch02/s01/p001", "ch02/s01/m001"]
+        }
+      ]
+    },
+    {
+      "front": "What must be true of a system for Little's law to hold?",
+      "back": [
+        {
+          "text": "It must be stable: on average, items leave as fast as they arrive.",
+          "cites": ["ch02/s01/p003"]
+        }
+      ]
+    },
+    {
+      "front": "How do you forecast an item's time in the system from Little's law?",
+      "back": [
+        {
+          "text": "Divide work in progress by throughput.",
+          "cites": ["ch02/s01/p004", "ch02/s02/p002"]
+        }
+      ]
+    },
+    {
+      "front": "A team has 30 items in progress and finishes 10 a week. How long should a new item take?",
+      "back": [{ "text": "About three weeks.", "cites": ["ch02/s01/p004"] }]
+    },
+    {
+      "front": "At the same throughput, what does doubling work in progress do to waiting time?",
+      "back": [
+        {
+          "text": "It doubles it: waits grow in exactly the same proportion as work in progress.",
+          "cites": ["ch02/s01/p005"]
+        }
+      ]
+    }
+  ]
+}

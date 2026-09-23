@@ -1,0 +1,11 @@
+name: link-concepts
+version: 1
+description: Extract a document's concepts (reusing the shelf's canonical names) and propose evidence-backed edges between concepts and passages for the idea graph.
+tier: reason
+job_kind: link_concepts
+artifact_type: concept_links
+scope: document
+selector: document_chapters
+vision: false
+gates:
+  grounding_min: 0.9    # concept blurbs are spans; every edge's evidence array is anchor-checked too

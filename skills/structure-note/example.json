@@ -1,0 +1,33 @@
+{
+  "blocks": [
+    {
+      "type": "quote",
+      "text": "Planning to 100% capacity guarantees queues, because unplanned work has nowhere to go.",
+      "cites": ["ch03/s03/p002"],
+      "page": 76
+    },
+    {
+      "type": "callout",
+      "tone": "question",
+      "spans": [
+        {
+          "text": "Is our \"fully booked\" sprint planning exactly this? We plan to 100% every time.",
+          "cites": ["ch03/s03/p002"]
+        }
+      ]
+    },
+    {
+      "type": "bullets",
+      "items": [
+        [
+          {
+            "text": "To do: ask the team about leaving 20% free.",
+            "cites": ["ch03/s03/p002"]
+          }
+        ]
+      ]
+    }
+  ],
+  "tags": ["question", "application", "todo", "sprint-planning"],
+  "concepts": ["utilization", "slack"]
+}

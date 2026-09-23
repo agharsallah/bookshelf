@@ -1,0 +1,154 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bookshelf.local/skills/link-concepts/schema.json",
+  "title": "link-concepts output",
+  "description": "Concepts this document treats (canonical names lowercase and singular, reusing the shelf's) and proposed edges between concepts and passages, each carrying evidence anchors. Every edge is a proposal; same_as is never applied without a human.",
+  "type": "object",
+  "required": [
+    "concepts",
+    "edges"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "concepts": {
+      "type": "array",
+      "maxItems": 60,
+      "items": {
+        "type": "object",
+        "required": [
+          "canonical",
+          "aliases",
+          "kind",
+          "blurb"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "canonical": {
+            "$ref": "#/$defs/canonical"
+          },
+          "aliases": {
+            "type": "array",
+            "maxItems": 10,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 120
+            }
+          },
+          "kind": {
+            "enum": [
+              "concept",
+              "framework",
+              "person",
+              "work",
+              "term"
+            ]
+          },
+          "blurb": {
+            "allOf": [
+              {
+                "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/spans"
+              },
+              {
+                "maxItems": 3
+              }
+            ]
+          }
+        }
+      }
+    },
+    "edges": {
+      "type": "array",
+      "maxItems": 150,
+      "items": {
+        "type": "object",
+        "required": [
+          "src",
+          "dst",
+          "relation",
+          "weight",
+          "evidence"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "src": {
+            "$ref": "#/$defs/endpoint"
+          },
+          "dst": {
+            "$ref": "#/$defs/endpoint"
+          },
+          "relation": {
+            "enum": [
+              "mentions",
+              "defines",
+              "supports",
+              "contradicts",
+              "extends",
+              "example_of",
+              "same_as"
+            ]
+          },
+          "weight": {
+            "type": "number",
+            "minimum": 0.3,
+            "maximum": 1
+          },
+          "evidence": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 10,
+            "uniqueItems": true,
+            "items": {
+              "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/anchor"
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "canonical": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120,
+      "pattern": "^[^A-Z\\s](.*[^A-Z\\s])?$"
+    },
+    "endpoint": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "ref"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "concept"
+            },
+            "ref": {
+              "$ref": "#/$defs/canonical"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "ref"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "node"
+            },
+            "ref": {
+              "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/anchor"
+            }
+          }
+        }
+      ]
+    }
+  }
+}

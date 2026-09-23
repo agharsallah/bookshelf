@@ -1,0 +1,121 @@
+{
+  "concepts": [
+    {
+      "canonical": "little's law",
+      "aliases": [],
+      "kind": "framework",
+      "blurb": [
+        {
+          "text": "Average items in a stable system equal the arrival rate times the average time each spends inside.",
+          "cites": ["ch02/s01/p001"]
+        }
+      ]
+    },
+    {
+      "canonical": "work in progress",
+      "aliases": ["work-in-process"],
+      "kind": "concept",
+      "blurb": [
+        {
+          "text": "Items started but not finished; at fixed throughput, more of it means proportionally longer waits.",
+          "cites": ["ch02/s01/p005"]
+        }
+      ]
+    },
+    {
+      "canonical": "work in progress limit",
+      "aliases": ["wip limit"],
+      "kind": "concept",
+      "blurb": [
+        {
+          "text": "A cap on items in progress; the book's main lever for shorter cycle times.",
+          "cites": ["ch04/s01/p002", "ch04/s02/t001"]
+        }
+      ]
+    },
+    {
+      "canonical": "slack",
+      "aliases": ["unallocated capacity"],
+      "kind": "concept",
+      "blurb": [
+        {
+          "text": "Capacity deliberately left unplanned so unpredictable work can be absorbed without a queue.",
+          "cites": ["ch03/s03/p001"]
+        }
+      ]
+    },
+    {
+      "canonical": "kingman's formula",
+      "aliases": ["kingman's approximation"],
+      "kind": "framework",
+      "blurb": [
+        {
+          "text": "Approximates queue time as a utilization term times a variability term times the mean service time.",
+          "cites": ["ch03/s02/m001", "ch03/s02/p006"]
+        }
+      ]
+    },
+    {
+      "canonical": "flow efficiency",
+      "aliases": [],
+      "kind": "term",
+      "blurb": [
+        {
+          "text": "The share of an item's elapsed time during which someone is actually working on it.",
+          "cites": ["ch06/s02/p001"]
+        }
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "src": { "kind": "node", "ref": "ch02/s01/p001" },
+      "dst": { "kind": "concept", "ref": "little's law" },
+      "relation": "defines",
+      "weight": 1,
+      "evidence": ["ch02/s01/p001"]
+    },
+    {
+      "src": { "kind": "concept", "ref": "work in progress limit" },
+      "dst": { "kind": "concept", "ref": "work in progress" },
+      "relation": "extends",
+      "weight": 0.7,
+      "evidence": ["ch04/s01/p002"]
+    },
+    {
+      "src": { "kind": "concept", "ref": "little's law" },
+      "dst": { "kind": "concept", "ref": "work in progress limit" },
+      "relation": "supports",
+      "weight": 1,
+      "evidence": ["ch04/s01/p003"]
+    },
+    {
+      "src": { "kind": "node", "ref": "ch04/s02/t001" },
+      "dst": { "kind": "concept", "ref": "work in progress limit" },
+      "relation": "supports",
+      "weight": 0.7,
+      "evidence": ["ch04/s02/t001", "ch04/s02/p005"]
+    },
+    {
+      "src": { "kind": "node", "ref": "ch04/s03/c001" },
+      "dst": { "kind": "concept", "ref": "work in progress limit" },
+      "relation": "example_of",
+      "weight": 0.7,
+      "evidence": ["ch04/s03/c001", "ch04/s03/p002"]
+    },
+    {
+      "src": { "kind": "concept", "ref": "slack" },
+      "dst": { "kind": "concept", "ref": "utilization" },
+      "relation": "contradicts",
+      "weight": 0.4,
+      "evidence": ["ch03/s03/p001", "ch03/s03/p002"]
+    },
+    {
+      "src": { "kind": "concept", "ref": "flow efficiency" },
+      "dst": { "kind": "concept", "ref": "throughput efficiency" },
+      "relation": "same_as",
+      "weight": 0.5,
+      "evidence": ["ch06/s02/p001"]
+    }
+  ]
+}

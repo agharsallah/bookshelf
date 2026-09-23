@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bookshelf.local/skills/make-flashcards/schema.json",
+  "title": "make-flashcards output",
+  "description": "One-fact cards: a plain-text front and a short cited back.",
+  "type": "object",
+  "required": [
+    "items"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "items": {
+      "type": "array",
+      "maxItems": 40,
+      "items": {
+        "type": "object",
+        "required": [
+          "front",
+          "back"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "front": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 300
+          },
+          "back": {
+            "allOf": [
+              {
+                "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/spans"
+              },
+              {
+                "maxItems": 4
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

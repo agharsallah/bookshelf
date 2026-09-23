@@ -1,0 +1,11 @@
+name: make-glossary
+version: 1
+description: A deduplicated, alphabetical glossary of the terms the book defines, from its chapter distillations.
+tier: distil
+job_kind: derive
+artifact_type: glossary
+scope: document
+selector: document_chapters
+vision: false
+gates:
+  grounding_min: 0.9

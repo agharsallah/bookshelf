@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bookshelf.local/skills/make-faq/schema.json",
+  "title": "make-faq output",
+  "description": "Questions a colleague would ask, each answered with cited spans drawn from the distillation(s).",
+  "type": "object",
+  "required": [
+    "items"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "items": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "required": [
+          "question",
+          "answer"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "question": {
+            "type": "string",
+            "minLength": 8,
+            "maxLength": 300,
+            "pattern": "\\?$"
+          },
+          "answer": {
+            "allOf": [
+              {
+                "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/spans"
+              },
+              {
+                "maxItems": 8
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

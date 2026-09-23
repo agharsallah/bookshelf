@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bookshelf.local/skills/make-quiz/schema.json",
+  "title": "make-quiz output",
+  "description": "Multiple-choice questions with 3-5 choices, a 0-based answer index and a cited explanation. That answer < len(choices) is checked by the runtime.",
+  "type": "object",
+  "required": [
+    "items"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "items": {
+      "type": "array",
+      "maxItems": 15,
+      "items": {
+        "type": "object",
+        "required": [
+          "question",
+          "choices",
+          "answer",
+          "explanation"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "question": {
+            "type": "string",
+            "minLength": 8,
+            "maxLength": 400
+          },
+          "choices": {
+            "type": "array",
+            "minItems": 3,
+            "maxItems": 5,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          },
+          "answer": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4
+          },
+          "explanation": {
+            "allOf": [
+              {
+                "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/spans"
+              },
+              {
+                "maxItems": 6
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

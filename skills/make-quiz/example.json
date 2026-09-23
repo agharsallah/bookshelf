@@ -1,0 +1,51 @@
+{
+  "items": [
+    {
+      "question": "A team's utilization rises from 80% to 90%. By the chapter's curve, what happens to the average wait?",
+      "choices": [
+        "It rises by about an eighth, in line with the extra load",
+        "It more than doubles, from about 4 to about 9 times the service time",
+        "It stays flat until utilization reaches 100%",
+        "It falls, because busier teams finish work faster"
+      ],
+      "answer": 1,
+      "explanation": [
+        {
+          "text": "The curve turns steep past 80%: the wait goes from about 4 to about 9 times the service time, far faster than the rise in load.",
+          "cites": ["ch03/s01/f001", "ch03/s01/p004"]
+        }
+      ]
+    },
+    {
+      "question": "Two teams run at the same 85% utilization, but one gets requests in unpredictable bursts. Which team waits longer, according to the chapter?",
+      "choices": [
+        "Neither: at equal utilization the waits are equal",
+        "The team with steady arrivals, because it never gets a break",
+        "The team with bursty arrivals, because variability multiplies the effect of utilization"
+      ],
+      "answer": 2,
+      "explanation": [
+        {
+          "text": "Waiting scales with utilization and variability together, so at equal load the more variable arrivals produce longer queues.",
+          "cites": ["ch03/s02/p003", "ch03/s02/p006"]
+        }
+      ]
+    },
+    {
+      "question": "Which planning practice does the chapter warn against?",
+      "choices": [
+        "Keeping 15–20% of capacity unallocated",
+        "Planning every sprint to 100% of available capacity",
+        "Spending slack on interruptions before improvement work",
+        "Measuring utilization over several weeks before changing plans"
+      ],
+      "answer": 1,
+      "explanation": [
+        {
+          "text": "Planning to full capacity leaves unplanned work nowhere to go, so queues are guaranteed; the other three are the chapter's own recommendations.",
+          "cites": ["ch03/s03/p002", "ch03/s03/p006"]
+        }
+      ]
+    }
+  ]
+}

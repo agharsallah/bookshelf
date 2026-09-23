@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bookshelf.local/skills/make-glossary/schema.json",
+  "title": "make-glossary output",
+  "description": "Definition blocks only, one per term, deduplicated across the book and ordered alphabetically.",
+  "type": "object",
+  "required": [
+    "blocks"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "blocks": {
+      "type": "array",
+      "maxItems": 300,
+      "items": {
+        "allOf": [
+          {
+            "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/definition"
+          },
+          {
+            "properties": {
+              "spans": {
+                "maxItems": 6
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

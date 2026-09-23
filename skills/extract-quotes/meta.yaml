@@ -1,0 +1,11 @@
+name: extract-quotes
+version: 1
+description: Pick the chapter's most citable passages as verbatim, paged quote blocks.
+tier: distil
+job_kind: derive
+artifact_type: quote_set
+scope: chapter
+selector: scope_blocks
+vision: false
+gates:
+  grounding_min: 0.9    # each quote is a leaf (text + cites); reads source blocks, since quotes must be verbatim

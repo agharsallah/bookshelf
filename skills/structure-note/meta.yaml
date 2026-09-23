@@ -1,0 +1,11 @@
+name: structure-note
+version: 1
+description: Tidy one raw reader note into a structured, tagged, concept-linked version cited to the highlighted passage — never changing what the user meant.
+tier: explore
+job_kind: structure_note
+artifact_type: structured_note
+scope: note
+selector: note_context
+vision: false
+gates:
+  grounding_min: 0.9    # every span cites at least the note's own anchor (the passage it hangs on)

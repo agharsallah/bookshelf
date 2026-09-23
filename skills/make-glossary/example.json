@@ -1,0 +1,78 @@
+{
+  "blocks": [
+    {
+      "type": "definition",
+      "term": "flow efficiency",
+      "spans": [
+        {
+          "text": "The share of an item's elapsed time during which someone is actually working on it.",
+          "cites": ["ch06/s02/p001"]
+        }
+      ]
+    },
+    {
+      "type": "definition",
+      "term": "Kingman's formula",
+      "spans": [
+        {
+          "text": "An approximation of expected queue time as a utilization term times a variability term times the mean service time, for a single server under heavy load.",
+          "cites": ["ch03/s02/m001", "ch03/s02/p008"]
+        }
+      ]
+    },
+    {
+      "type": "definition",
+      "term": "Little's law",
+      "spans": [
+        {
+          "text": "Over a long enough period, the average number of items in a system equals their arrival rate times the average time each spends inside.",
+          "cites": ["ch02/s01/p001"]
+        }
+      ]
+    },
+    {
+      "type": "definition",
+      "term": "slack",
+      "spans": [
+        {
+          "text": "Capacity deliberately left unallocated so that unpredictable work can be absorbed without forming a queue.",
+          "cites": ["ch03/s03/p001"]
+        }
+      ]
+    },
+    {
+      "type": "definition",
+      "term": "stable system",
+      "spans": [
+        {
+          "text": "A system whose arrivals and completions balance over the measurement window.",
+          "cites": ["ch04/s01/p004"]
+        },
+        {
+          "text": "Introduced earlier as one where items leave, on average, as fast as they arrive.",
+          "cites": ["ch02/s01/p003"]
+        }
+      ]
+    },
+    {
+      "type": "definition",
+      "term": "work in progress (WIP)",
+      "spans": [
+        {
+          "text": "Items that have been started but not finished.",
+          "cites": ["ch02/s01/p005"]
+        }
+      ]
+    },
+    {
+      "type": "definition",
+      "term": "work in progress limit (WIP limit)",
+      "spans": [
+        {
+          "text": "An explicit cap on the number of items a team or person may have started but not finished.",
+          "cites": ["ch04/s01/p002"]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "blocks": [
+    {
+      "type": "quote",
+      "text": "This chapter argues that the love is misplaced: past a point, every extra percent of utilization buys a disproportionate amount of waiting.",
+      "attribution": "Ines Okafor",
+      "cites": ["ch03/s01/p001"],
+      "page": 51
+    },
+    {
+      "type": "quote",
+      "text": "Below 70 percent the line is almost flat; past 80 it turns into a wall.",
+      "attribution": "Ines Okafor",
+      "cites": ["ch03/s01/p004"],
+      "page": 53
+    },
+    {
+      "type": "quote",
+      "text": "Utilization is only half the story; the other half is variability.",
+      "attribution": "Ines Okafor",
+      "cites": ["ch03/s02/p003"],
+      "page": 62
+    },
+    {
+      "type": "quote",
+      "text": "If waiting is the price of busyness, slack is not waste. It is capacity held in reserve for the work you cannot predict.",
+      "attribution": "Ines Okafor",
+      "cites": ["ch03/s03/p001"],
+      "page": 73
+    },
+    {
+      "type": "quote",
+      "text": "Nobody ever got a promotion for the fire that didn't start.",
+      "attribution": "A plant manager interviewed by Ines Okafor",
+      "cites": ["ch03/s03/q001"],
+      "page": 74
+    }
+  ]
+}

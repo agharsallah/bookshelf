@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bookshelf.local/skills/extract-quotes/schema.json",
+  "title": "extract-quotes output",
+  "description": "Verbatim, paged quote blocks only; each quote cites exactly the one block it is copied from and names who said it.",
+  "type": "object",
+  "required": [
+    "blocks"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "blocks": {
+      "type": "array",
+      "maxItems": 15,
+      "items": {
+        "allOf": [
+          {
+            "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/quote"
+          },
+          {
+            "required": [
+              "attribution"
+            ],
+            "properties": {
+              "cites": {
+                "minItems": 1,
+                "maxItems": 1
+              },
+              "text": {
+                "maxLength": 600
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}
