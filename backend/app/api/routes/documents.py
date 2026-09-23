@@ -21,6 +21,7 @@ from app.schemas.document import (
     DocumentResumed,
     DocumentSummary,
     DocumentUpdate,
+    OutlineConfirmed,
     OutlineUpdate,
     ResumeRequest,
 )
@@ -191,20 +192,42 @@ def get_tree(
     dependencies=[Depends(require_api_key)],
     summary="Override the chapter/section outline and re-parse",
     description=(
-        "Stores the override (it survives re-parsing) and queues a forced `parse`. "
-        "Pages must increase monotonically and stay within `page_count`. "
-        "`{chapters: []}` removes the override."
+        "Stores the override (it survives re-parsing) and queues a forced `parse` keyed by "
+        "the override, so a parse already running cannot swallow it. Same shape and rules "
+        "as the parser: pages 1-based and in order, `page_to` optional, `skip` marks a "
+        "chapter that is not distilled, all within `page_count`. `{chapters: []}` removes "
+        "the override."
     ),
 )
 def set_outline(ref: DocumentRef, body: OutlineUpdate, session: SessionDep) -> DocumentAccepted:
     document = documents.get_document(session, ref)
-    chapters = [c.model_dump() for c in body.chapters]
+    chapters = [c.model_dump(exclude_none=True) for c in body.chapters]
     job, deduplicated = documents.set_outline(session, document, chapters)
     session.refresh(document)
     return DocumentAccepted(
         document=DocumentPublic.model_validate(document),
         job=JobPublic.model_validate(job),
         deduplicated=deduplicated,
+    )
+
+
+@router.post(
+    "/{ref}/outline/confirm",
+    response_model=OutlineConfirmed,
+    dependencies=[Depends(require_api_key)],
+    summary="Accept a guessed outline without editing it",
+    description=(
+        "`needs_review` → `parsed`, then the pipeline starts (element explanations, "
+        "summaries, section notes). `409` unless the outline is waiting for review."
+    ),
+)
+def confirm_outline(ref: DocumentRef, session: SessionDep) -> OutlineConfirmed:
+    document = documents.get_document(session, ref)
+    queued = documents.confirm_outline(session, document)
+    session.refresh(document)
+    return OutlineConfirmed(
+        document=DocumentPublic.model_validate(document),
+        jobs=[JobPublic.model_validate(j) for j in queued],
     )
 
 

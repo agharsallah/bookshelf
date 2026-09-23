@@ -18,64 +18,13 @@ When present it *replaces* the detected chapter/section boundaries: each heading
 at its title's line on `page_from` when that line is found, else at the top of the page.
 Text before the first chapter goes to front matter; text after the last chapter's
 `page_to` goes to a trailing `Back matter` container marked `skip`. Only PDFs have pages,
-so HTML / Markdown ignore it. Validate with `OUTLINE_OVERRIDE.validate_python(raw)`.
+so HTML / Markdown ignore it. The shape and its rules live in `app.schemas.outline`, shared
+with `PATCH /documents/{ref}/outline`; `load_override` re-validates what is stored.
 """
 
-from typing import Annotated
+from app.schemas.outline import OUTLINE_OVERRIDE, OverrideChapter, OverrideSection
 
-from pydantic import (
-    AfterValidator,
-    BaseModel,
-    ConfigDict,
-    Field,
-    StringConstraints,
-    TypeAdapter,
-    model_validator,
-)
-
-Title = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)]
-Page = Annotated[int, Field(ge=1)]
-
-
-class OverrideSection(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    title: Title
-    page_from: Page
-
-
-class OverrideChapter(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    title: Title
-    page_from: Page
-    page_to: Page | None = None
-    skip: bool = False
-    sections: list[OverrideSection] = Field(default_factory=list)
-
-    @model_validator(mode="after")
-    def _sections_inside_chapter(self) -> "OverrideChapter":
-        if self.page_to is not None and self.page_to < self.page_from:
-            raise ValueError("page_to must be >= page_from")
-        for section in self.sections:
-            if section.page_from < self.page_from or (
-                self.page_to is not None and section.page_from > self.page_to
-            ):
-                raise ValueError(f"section {section.title!r} lies outside its chapter's pages")
-        if [s.page_from for s in self.sections] != sorted(s.page_from for s in self.sections):
-            raise ValueError("sections must be in page order")
-        return self
-
-
-def _chapters_in_order(chapters: list[OverrideChapter]) -> list[OverrideChapter]:
-    if [c.page_from for c in chapters] != sorted(c.page_from for c in chapters):
-        raise ValueError("chapters must be in page order")
-    return chapters
-
-
-OUTLINE_OVERRIDE: TypeAdapter[list[OverrideChapter]] = TypeAdapter(
-    Annotated[list[OverrideChapter], Field(min_length=1), AfterValidator(_chapters_in_order)]
-)
+__all__ = ["OUTLINE_OVERRIDE", "OverrideChapter", "OverrideSection", "load_override"]
 
 
 def load_override(raw: object) -> list[OverrideChapter] | None:

@@ -4,11 +4,19 @@ import uuid
 from datetime import datetime
 from typing import Annotated, Any, Self
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
+from pydantic import (
+    AfterValidator,
+    BaseModel,
+    ConfigDict,
+    Field,
+    StringConstraints,
+    model_validator,
+)
 
 from app.models import Document
 from app.models.enums import DocumentKind, DocumentStatus, JobKind, JobState
 from app.schemas.job import JobPublic
+from app.schemas.outline import OverrideChapter, check_chapters
 from app.services.documents import DocumentStats
 
 Title = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)]
@@ -72,50 +80,15 @@ class DocumentUpdate(BaseModel):
     language: Annotated[Language, Field(default=None, max_length=16)]
 
 
-class OutlineSection(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    title: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=300)]
-    page_from: Annotated[int, Field(ge=1)]
-
-
-class OutlineChapter(BaseModel):
-    """One chapter, in the same shape `parse-outline` emits."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    title: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=300)]
-    page_from: Annotated[int, Field(ge=1)]
-    page_to: Annotated[int, Field(ge=1)]
-    sections: Annotated[list[OutlineSection], Field(default_factory=list, max_length=200)]
-
-    @model_validator(mode="after")
-    def _pages_are_ordered(self) -> Self:
-        if self.page_to < self.page_from:
-            raise ValueError(f"'{self.title}': page_to is before page_from.")
-        previous = self.page_from
-        for section in self.sections:
-            if not self.page_from <= section.page_from <= self.page_to:
-                raise ValueError(f"'{section.title}' starts outside its chapter's pages.")
-            if section.page_from < previous:
-                raise ValueError(f"'{section.title}' starts before the section above it.")
-            previous = section.page_from
-        return self
-
-
 class OutlineUpdate(BaseModel):
-    """Manual chapter/section fix-up (§8). An empty list removes the override."""
+    """Manual chapter/section fix-up (§8), in the parser's own override shape and rules
+    (`app.schemas.outline`). An empty list removes the override."""
 
     model_config = ConfigDict(extra="forbid")
 
-    chapters: Annotated[list[OutlineChapter], Field(max_length=500)]
-
-    @model_validator(mode="after")
-    def _chapters_do_not_overlap(self) -> Self:
-        for before, after in zip(self.chapters, self.chapters[1:], strict=False):
-            if after.page_from < before.page_to:
-                raise ValueError(f"'{after.title}' starts before '{before.title}' ends.")
-        return self
+    chapters: Annotated[
+        list[OverrideChapter], Field(max_length=500), AfterValidator(check_chapters)
+    ]
 
 
 class DocumentPublic(BaseModel):
@@ -234,6 +207,13 @@ class DocumentResumed(BaseModel):
     requeued: Annotated[
         list[JobPublic], Field(description="Jobs the ceiling had stopped, queued again.")
     ]
+
+
+class OutlineConfirmed(BaseModel):
+    """The document, now `parsed`, and the first pipeline jobs its confirmation queued."""
+
+    document: DocumentPublic
+    jobs: list[JobPublic]
 
 
 class DocumentAccepted(BaseModel):

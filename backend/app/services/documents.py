@@ -12,10 +12,11 @@ from sqlalchemy import case, func, null
 from sqlmodel import Session, col, select
 from sqlmodel.sql.expression import SelectOfScalar
 
-from app.core.errors import NotFoundError
+from app.core.errors import ConflictError, NotFoundError
 from app.jobs.queue import JobSpec
 from app.models import Artifact, Document, Job, Node, Note
 from app.models.enums import DocumentStatus, JobKind, JobState, NodeKind, Review
+from app.pipeline.hashing import input_hash
 from app.services.errors import InvalidInputError
 from app.services.jobs import enqueue_or_live
 from app.services.sql import contains_pattern
@@ -168,19 +169,33 @@ def delete_document(session: Session, document: Document) -> None:
     session.commit()
 
 
+def outline_job(document: Document, chapters: list[dict[str, Any]]) -> JobSpec:
+    """The forced re-parse for an outline override. Its `input_hash` comes from the
+    override, so it is a new job even while another parse of the document is live (that
+    one would miss the override; the parse handler discards its stale result)."""
+    return JobSpec(
+        kind=JobKind.PARSE,
+        document_id=document.id,
+        input_hash=input_hash("outline-override", "1", {"chapters": chapters}),
+        payload={"force": True},
+    )
+
+
 def set_outline(
     session: Session, document: Document, chapters: list[dict[str, Any]]
 ) -> tuple[Job, bool]:
     """Store (or, with `[]`, clear) the outline override and queue a forced re-parse.
 
-    Page ranges are validated against `page_count` when it is known. Returns the parse
-    job and whether an already-live parse job was reused.
+    Pages are checked against `page_count` when it is known (the shape and ordering rules
+    are the parser's own, `app.schemas.outline`). Returns the parse job and whether an
+    identical live job (same override) was reused.
     """
     if document.page_count is not None:
         for chapter in chapters:
-            if chapter["page_to"] > document.page_count:
+            last = max(chapter["page_from"], chapter.get("page_to") or 0)
+            if last > document.page_count:
                 raise InvalidInputError(
-                    f"'{chapter['title']}' ends on page {chapter['page_to']}, "
+                    f"'{chapter['title']}' reaches page {last}, "
                     f"but the document has {document.page_count} pages.",
                     field="body.chapters",
                 )
@@ -188,9 +203,24 @@ def set_outline(
     document.outline_override = chapters or null()  # type: ignore[assignment]
     session.add(document)
     session.flush()
-    return enqueue_or_live(
-        session, JobSpec(kind=JobKind.PARSE, document_id=document.id, payload={"force": True})
-    )
+    return enqueue_or_live(session, outline_job(document, chapters))
+
+
+def confirm_outline(session: Session, document: Document) -> list[Job]:
+    """A human accepts the guessed outline as is: `needs_review` → `parsed`, and the
+    pipeline starts (§7 "human fixes outline"). Returns the jobs it queued."""
+    from app.pipeline import orchestrator  # the pipeline imports services; keep this one-way
+
+    if document.status is not DocumentStatus.NEEDS_REVIEW:
+        raise ConflictError(
+            f"Only a document whose outline needs review can be confirmed "
+            f"(this one is {document.status.value}).",
+            details=[{"field": "status", "status": document.status.value}],
+        )
+    document.status = DocumentStatus.PARSED
+    session.add(document)
+    session.commit()
+    return orchestrator.on_document_parsed(session, document)
 
 
 def resume(

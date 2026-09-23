@@ -14,25 +14,12 @@ from sqlmodel import Session
 from app.core.config import get_settings
 from app.jobs.registry import HandlerResult, JobContext, PermanentJobError, handler
 from app.models import Document
-from app.models.enums import DocumentStatus, JobKind
+from app.models.enums import DocumentStatus, JobKind, JobState
 from app.pipeline.parse import ParsedDocument, ParseError, load_override, parse_file, store_tree
+from app.services.library import resolve_source_path
 
 MAX_REPORTED_WARNINGS = 50
 _NON_SLUG = re.compile(r"[^a-z0-9]+")
-
-
-def resolve_source(library_dir: Path, source_path: str | None) -> Path:
-    """The document's file. `source_path` is repo-relative (`library/x.pdf`, D13).
-
-    Raises `ParseError` for a missing path or one that escapes the repo root.
-    """
-    if not source_path:
-        raise ParseError("document has no source file")
-    root = library_dir.resolve().parent
-    path = (root / source_path).resolve()
-    if not path.is_relative_to(root):
-        raise ParseError(f"source path escapes the repository: {source_path}")
-    return path
 
 
 def _slugish(value: str) -> str:
@@ -74,13 +61,14 @@ def run_parse(ctx: JobContext) -> HandlerResult:
     session.commit()
 
     settings = get_settings()
+    override = document.outline_override
     try:
-        path = resolve_source(settings.library_dir, document.source_path)
+        path = resolve_source_path(settings.library_dir, document.source_path)
         parsed = parse_file(
             path,
             slug=document.slug,
             media_dir=settings.media_dir,
-            outline_override=load_override(document.outline_override),
+            outline_override=load_override(override),
         )
     except (ParseError, ValueError) as exc:
         _mark_failed(session, document)
@@ -88,6 +76,13 @@ def run_parse(ctx: JobContext) -> HandlerResult:
     except Exception:
         _mark_failed(session, document)  # an unexpected parser crash: let the worker retry
         raise
+
+    session.refresh(document, ["outline_override"])
+    if document.outline_override != override:  # a human changed the outline meanwhile
+        return HandlerResult(
+            state=JobState.SKIPPED,
+            result={"reason": "outline changed during the parse; the newer parse job applies it"},
+        )
 
     try:
         count = store_tree(session, document, parsed)

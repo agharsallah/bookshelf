@@ -41,9 +41,23 @@ def display_path(library_dir: Path, file: Path) -> str:
     return (Path(root.name) / file.resolve().relative_to(root)).as_posix()
 
 
-def resolve_source_path(library_dir: Path, source_path: str) -> Path:
-    """Inverse of `display_path`: the file a stored `source_path` points at."""
-    return library_dir.resolve().parent / source_path
+class SourcePathError(ValueError):
+    """A stored `source_path` is missing or points outside the repository."""
+
+
+def resolve_source_path(library_dir: Path, source_path: str | None) -> Path:
+    """Inverse of `display_path`: the file a stored `source_path` points at.
+
+    The one repo-escape check for stored paths: raises `SourcePathError` for a missing
+    path or one that resolves (symlinks included) outside the library's parent.
+    """
+    if not source_path:
+        raise SourcePathError("document has no source file")
+    root = library_dir.resolve().parent
+    path = (root / source_path).resolve()
+    if not path.is_relative_to(root):
+        raise SourcePathError(f"source path escapes the repository: {source_path}")
+    return path
 
 
 def resolve_library_file(library_dir: Path, raw: str) -> Path:
