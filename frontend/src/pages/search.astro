@@ -1,0 +1,64 @@
+---
+/**
+ * Search (§10): ask, don't dig. The query lives in the URL (`?q=&mode=&doc=&tag=&type=`),
+ * so a search is shareable; the island runs it and streams cited answers. The shelf is
+ * loaded here only to offer book and tag filters.
+ */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import SearchPage from '../components/search/SearchPage';
+import { tagCloud } from '../components/library/filters';
+import { parseSearchParams } from '../components/search/url-state';
+import type { Page } from '../lib/api/types';
+import type { DocumentSummary } from '../lib/api/types/documents';
+import { serverApi } from '../lib/api/server';
+
+export const prerender = false;
+
+const initial = parseSearchParams(Astro.url.searchParams);
+const askOnLoad = Astro.url.searchParams.get('ask') === '1' && initial.q.trim() !== '';
+
+let documents: { id: string; title: string }[] = [];
+let tags: string[] = [];
+try {
+  const shelf = await serverApi().get<Page<DocumentSummary>>('documents', { query: { limit: 100 } });
+  documents = shelf.items.map((d) => ({ id: d.id, title: d.title })).sort((a, b) => a.title.localeCompare(b.title));
+  tags = tagCloud(shelf.items).map((t) => t.tag);
+} catch {
+  // Filters are optional: search still works if the shelf list is unavailable.
+}
+const title = initial.q ? `“${initial.q}”` : 'Search';
+---
+
+<BaseLayout title={title} description="Search what you have read, or ask for a cited answer.">
+  <div class="page">
+    <header class="head">
+      <h1>Search</h1>
+      <p class="lede">
+        Everything you have distilled comes first, then the passages it rests on. Ask for an answer and it is written from
+        those passages, each claim cited.
+      </p>
+    </header>
+    <SearchPage client:load initial={initial} askOnLoad={askOnLoad} documents={documents} tags={tags} />
+  </div>
+</BaseLayout>
+
+<style>
+  .page {
+    display: grid;
+    gap: var(--space-6);
+  }
+
+  .head {
+    display: grid;
+    gap: var(--space-2);
+    max-inline-size: var(--measure);
+  }
+
+  h1 {
+    font-size: var(--text-xl);
+  }
+
+  .lede {
+    color: var(--ink-2);
+  }
+</style>

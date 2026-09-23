@@ -1,0 +1,219 @@
+/*
+ * The answer is set like a gloss written for you: the question as its italic head,
+ * the reply in the reading face, the witnesses (sources) listed beneath by siglum.
+ */
+.panel {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-5) var(--space-6);
+  border: 1px solid var(--rule);
+  border-inline-start: 3px solid var(--accent);
+  border-radius: 0 var(--radius-l) var(--radius-l) 0;
+  background: var(--paper-raised);
+}
+
+.head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.question {
+  font-size: var(--text-md);
+  font-style: italic;
+  font-weight: 400;
+  line-height: var(--leading-tight);
+}
+
+.actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.button,
+.quiet,
+.link {
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.button {
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-m);
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.button:hover {
+  border-color: var(--ink-3);
+}
+
+.quiet {
+  padding: var(--space-1) var(--space-2);
+  border: none;
+  background: none;
+  color: var(--ink-3);
+}
+
+.quiet:hover {
+  color: var(--ink);
+}
+
+.link {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.progress {
+  display: grid;
+  gap: var(--space-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.stages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: stage;
+}
+
+.stages li {
+  counter-increment: stage;
+  color: var(--ink-3);
+}
+
+.stages li::before {
+  content: counter(stage) '. ';
+}
+
+.stages li[data-state='done'] {
+  color: var(--ink-2);
+  text-decoration: line-through;
+  text-decoration-color: var(--rule-strong);
+}
+
+.stages li[data-state='now'] {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.status {
+  color: var(--ink-2);
+  font-family: var(--font-read);
+  font-style: italic;
+}
+
+.status::after {
+  content: '';
+  display: inline-block;
+  inline-size: 0.8em;
+  margin-inline-start: 0.2em;
+  border-block-end: 1px solid var(--accent);
+  animation: pulse 1.4s var(--ease-out) infinite;
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.2;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status::after {
+    animation: none;
+  }
+}
+
+.body {
+  max-inline-size: var(--measure);
+}
+
+.sources {
+  display: grid;
+  gap: var(--space-2);
+  padding-block-start: var(--space-3);
+  border-block-start: 1px solid var(--rule);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.sources h3 {
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.sources ul {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sources li {
+  display: grid;
+  grid-template-columns: 1.6rem minmax(0, 1fr);
+  gap: 0 var(--space-2);
+}
+
+.sources li:not(:has(.siglum)) {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.siglum {
+  grid-row: span 2;
+  color: var(--accent);
+  font-family: var(--font-read);
+  font-size: var(--text-base);
+  font-style: italic;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.sourceTitle {
+  color: var(--ink);
+  font-family: var(--font-read);
+  font-style: italic;
+}
+
+.sourceCites {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+}
+
+.sourceCites a {
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.note {
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.error {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-2);
+}
+
+@media (max-width: 40rem) {
+  .panel {
+    padding: var(--space-4);
+  }
+}
