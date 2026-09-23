@@ -54,6 +54,17 @@ describe('SearchPage', () => {
     expect(within(note).getByRole('link', { name: '1 ¶3' }).getAttribute('href')).toBe('/documents/meadows/read/ch01/p003');
   });
 
+  it.each([
+    ['empty', /Nothing is indexed for search yet/],
+    ['unavailable', /Meaning-based search is unavailable/],
+  ])('explains an empty %s index and offers the exact-words search', async (indexState, message) => {
+    const { api, calls } = fakeApi({ 'POST search': () => ({ intent: 'discovery', took_ms: 3, groups: [], index_state: indexState }) });
+    render(<SearchPage initial={{ ...emptySearch, q: 'feedback' }} documents={[]} tags={[]} api={api} debounceMs={0} />);
+    expect((await screen.findByRole('status')).textContent).toMatch(message);
+    await userEvent.click(screen.getByRole('button', { name: 'search the exact words instead' }));
+    await waitFor(() => expect(calls.at(-1)?.body).toMatchObject({ query: 'feedback', mode: 'lexical' }));
+  });
+
   it('streams the answer: status first, then cited blocks linking into each book', async () => {
     const stream = streamingFetch();
     renderPage(stream.fetch);

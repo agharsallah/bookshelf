@@ -14,6 +14,7 @@ import type { SearchMode } from '../../lib/api/types/search';
 import { useAnswerStream } from '../../lib/hooks/useAnswerStream';
 import { useSearchResults } from '../../lib/hooks/useSearchResults';
 import { AnswerPanel } from './AnswerPanel';
+import { IndexStateNote } from './IndexStateNote';
 import { Filters, type FilterDocument } from './Filters';
 import { QueryBar } from './QueryBar';
 import { loadRecent, RECENT_SEARCHES_KEY, saveRecent, type RecentEntry } from './recent';
@@ -112,6 +113,7 @@ export function SearchPage({ initial, askOnLoad = false, documents, tags, api = 
   };
 
   const empty = !state.q.trim();
+  const indexState = results.response?.index_state;
   const intent = results.response && results.answered?.query === request?.query ? results.response.intent : null;
 
   return (
@@ -144,6 +146,8 @@ export function SearchPage({ initial, askOnLoad = false, documents, tags, api = 
           <Recent recent={recent} />
         ) : results.problem ? (
           <Problem title="The search could not run." problem={results.problem} />
+        ) : view && view.total === 0 && !view.resolved && (indexState === 'empty' || indexState === 'unavailable') ? (
+          <IndexStateNote state={indexState} onLexical={() => patch({ mode: 'lexical' })} />
         ) : view && view.total === 0 && !view.resolved ? (
           <p className={styles.empty}>
             Nothing on the shelf matches “{state.q.trim()}”. Try other words, switch to Lexical for an exact phrase, or clear the filters.
