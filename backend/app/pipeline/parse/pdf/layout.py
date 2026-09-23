@@ -119,7 +119,7 @@ def _line(page: int, raw: dict[str, Any], *, ocr: bool) -> Line | None:
             monospaced = span["flags"] & mupdf.MONOSPACED
             mono += n * bool(monospaced or _MONO_FONT.search(font))
             math += n * bool(_MATH_FONT.search(font))
-    text = "".join(parts).rstrip()
+    text = "".join(parts).replace("\u00a0", " ").rstrip()
     if not text.strip():
         return None
     x0, y0, x1, y1 = raw["bbox"]
@@ -150,8 +150,36 @@ def extract_blocks(
             for raw_line in raw_block["lines"]
             if (line := _line(page_no, raw_line, ocr=textpage is not None))
         ]
-        blocks.extend(split_runs(page_no, lines))
+        blocks.extend(split_runs(page_no, merge_baselines(lines)))
     return blocks
+
+
+def merge_baselines(lines: list[Line]) -> list[Line]:
+    """Join lines MuPDF split on one baseline, e.g. a bullet glyph drawn apart from its text."""
+    merged: list[Line] = []
+    for line in lines:
+        prev = merged[-1] if merged else None
+        size = max(line.size, prev.size if prev else 0.0, 1.0)
+        same_row = prev is not None and (
+            abs((prev.bbox[1] + prev.bbox[3]) - (line.bbox[1] + line.bbox[3])) / 2 < size * 0.35
+        )
+        if prev is None or not same_row or line.bbox[0] < prev.bbox[2] - 1:
+            merged.append(line)
+            continue
+        chars = len(prev.text) + len(line.text) or 1
+        merged[-1] = Line(
+            page=prev.page,
+            bbox=(prev.bbox[0], min(prev.bbox[1], line.bbox[1]), line.bbox[2],
+                  max(prev.bbox[3], line.bbox[3])),
+            text=f"{prev.text.rstrip()} {line.text.lstrip()}",
+            size=round((prev.size * len(prev.text) + line.size * len(line.text)) / chars, 1),
+            bold=prev.bold and line.bold,
+            italic=prev.italic and line.italic,
+            mono=prev.mono and line.mono,
+            math_chars=prev.math_chars + line.math_chars,
+            sup_markers=[*prev.sup_markers, *line.sup_markers],
+        )  # fmt: skip
+    return merged
 
 
 def _breaks(prev: Line, line: Line, run: list[Line]) -> bool:

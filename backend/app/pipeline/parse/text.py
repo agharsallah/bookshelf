@@ -34,14 +34,20 @@ def join_lines(lines: list[str]) -> str:
 
 # --- lists --------------------------------------------------------------------------------
 
-_BULLET = re.compile(r"^\s*([\u2022\u25e6\u25aa\u25cf\u2023\u2043\u2219\u00b7*\-\u2013])\s+(\S.*)$")
+# Bullet glyphs, incl. Symbol/Wingdings private-use bullets from Word exports; these may
+# touch the item text (`\u2022item`). ASCII `*` / `-` and dashes need a following space.
+_GLYPHS = (
+    "\u2022\u25e6\u25aa\u25ab\u25a0\u25a1\u25cf\u25cb\u25ba\u25b8\u2023\u2043\u2219\u00b7"
+    "\u2713\u2714\u27a2\u2756\u2605\uf0b7\uf0a7\uf076\uf0d8\uf0fc\uf0a8"
+)
+_BULLET = re.compile(rf"^\s*(?:[{_GLYPHS}]\s*|[*\-\u2013\u2014]\s+)(\S.*)$")
 _NUMBERED = re.compile(r"^\s*(\(?(?:\d{1,3}|[a-z])[.)])\s+(\S.*)$")
 
 
 def list_marker(line: str) -> tuple[bool, str] | None:
     """`(ordered, item_text)` when the line starts a list item, else None."""
     if m := _BULLET.match(line):
-        return False, m.group(2)
+        return False, m.group(1)
     if m := _NUMBERED.match(line):
         return True, m.group(2)
     return None
