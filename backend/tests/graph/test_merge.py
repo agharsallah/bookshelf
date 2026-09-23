@@ -105,10 +105,14 @@ def test_unmerge_keeps_a_concept_no_artifact_backs_any_more(client, session, que
     )
     session.add_all([orphan, keeper])
     session.flush()
-    session.add(Edge(src_kind=EntityKind.NODE, src_id=f"{queueing.id}#ch01/p002",
-                     dst_kind=EntityKind.CONCEPT, dst_id=str(orphan.id),
-                     relation=Relation.MENTIONS, evidence=[f"{queueing.id}#ch01/p002"],
-                     origin=gone))  # fmt: skip
+    evidence = [f"{queueing.id}#ch01/p002"]
+    session.add_all([
+        Edge(src_kind=EntityKind.NODE, src_id=evidence[0], dst_kind=EntityKind.CONCEPT,
+             dst_id=str(orphan.id), relation=Relation.MENTIONS, evidence=evidence, origin=gone),
+        Edge(src_kind=EntityKind.CONCEPT, src_id=str(orphan.id), dst_kind=EntityKind.CONCEPT,
+             dst_id=str(keeper.id), relation=Relation.SAME_AS, evidence=evidence, origin=gone,
+             status=EdgeStatus.PROPOSED),
+    ])  # fmt: skip
     session.commit()
     merge.merge(session, orphan.id, keeper.id)
 
