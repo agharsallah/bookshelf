@@ -57,6 +57,8 @@ const facts = [doc.year, doc.kind === 'article' ? 'Article' : doc.page_count ? `
     <p class="card-title">{doc.title}</p>
     {doc.authors.length > 0 && <p class="card-authors">{doc.authors.join(', ')}</p>}
     {facts && <p class="card-facts">{facts}</p>}
+    {doc.blurb && <p class="card-blurb">{doc.blurb}</p>}
+    {doc.paused && <p class="card-paused">Paused at the run ceiling</p>}
     <p class="card-status" data-attention={progress.attention ?? undefined}>{progress.label}</p>
     {counts.length > 0 && <p class="card-counts">{counts.join(', ')}</p>}
     {waiting > 0 && <p class="card-waiting">{plural(waiting, 'draft')} waiting for review</p>}
@@ -280,6 +282,19 @@ const facts = [doc.year, doc.kind === 'article' ? 'Article' : doc.page_count ? `
   .card-facts,
   .card-counts {
     color: var(--ink-2);
+  }
+
+  .card-blurb {
+    padding-block: var(--space-1);
+    color: var(--ink);
+    font-family: var(--font-read);
+    font-size: var(--text-sm);
+    line-height: var(--leading-read);
+  }
+
+  .card-paused {
+    color: var(--tone-caution);
+    font-weight: 600;
   }
 
   .card-status {
