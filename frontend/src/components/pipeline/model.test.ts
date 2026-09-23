@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { JobPublic } from '../../lib/api/types/jobs';
-import { countStates, elapsedMs, filterJobs, formatDuration, isRunCeiling, retrySpec, stageProgress } from './model';
+import { countStates, elapsedMs, filterJobs, formatDuration, stageProgress } from './model';
 
 function job(overrides: Partial<JobPublic> = {}): JobPublic {
   return {
@@ -81,21 +81,6 @@ describe('formatDuration', () => {
     [3_720_000, '1 h 02 min'],
   ])('%i ms → %s', (ms, text) => {
     expect(formatDuration(ms)).toBe(text);
-  });
-});
-
-describe('retry and run ceiling', () => {
-  it('retries the same kind and scope', () => {
-    expect(retrySpec(job({ kind: 'distil_chapter', anchor: 'ch03', state: 'failed' }))).toEqual({ kind: 'distil_chapter', document_id: 'd1', anchor: 'ch03' });
-  });
-
-  it.each(['derive', 'structure_note'] as const)('cannot retry %s, whose skill or note POST /jobs cannot name', (kind) => {
-    expect(retrySpec(job({ kind }))).toBeNull();
-  });
-
-  it('recognises the run-ceiling failure', () => {
-    expect(isRunCeiling(job({ error: 'run ceiling reached: 400 skill runs for this document' }))).toBe(true);
-    expect(isRunCeiling(job({ error: 'schema: <root>: bad' }))).toBe(false);
   });
 });
 

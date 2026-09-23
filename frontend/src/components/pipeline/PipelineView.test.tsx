@@ -13,19 +13,46 @@ function job(overrides: Partial<JobPublic>): JobPublic {
   };
 }
 
-const failed = job({ id: 'f1', kind: 'distil_chapter', anchor: 'ch03', state: 'failed', error: 'run ceiling reached: 400 skill runs' });
+const failed = job({ id: 'f1', kind: 'derive', anchor: 'ch03', skill: 'make-quiz', state: 'failed', error: 'schema: <root>: bad' });
+const queued = job({ id: 'q1', kind: 'summarize', anchor: 'ch04', state: 'queued', finished_at: null });
+const systems = { id: 'd1', slug: 'systems', title: 'Systems', status: 'distilling' };
+const paused = { reason: '400 skill runs reached the ceiling of 400', at: '2026-09-23T10:00:00Z', runs: 400, limit: 400 };
 
 describe('<PipelineView>', () => {
-  it('retries a failed job with the same kind and scope, and surfaces the run ceiling', async () => {
-    const { api, calls } = fakeApi({ 'POST jobs': () => ({ job: { ...failed, id: 'f2', state: 'queued', attempts: 0 }, deduplicated: false }) });
-    render(<PipelineView jobs={[job({}), failed]} documents={[{ id: 'd1', slug: 'd', title: 'Systems', status: 'distilling' }]} api={api} live={false} />);
+  it('retries a failed job through its retry endpoint and lists the new one as queued', async () => {
+    const { api, calls } = fakeApi({ 'POST jobs/f1/retry': () => ({ job: { ...failed, id: 'f2', state: 'queued', attempts: 0 }, deduplicated: false }) });
+    render(<PipelineView jobs={[job({}), failed]} documents={[systems]} api={api} live={false} />);
 
-    expect(screen.getByRole('alert').textContent).toMatch(/Run ceiling reached/);
     const failures = screen.getByRole('region', { name: /Failed/ });
     await userEvent.click(within(failures).getByRole('button', { name: 'Retry' }));
 
-    await waitFor(() => expect(calls).toEqual([{ method: 'POST', path: 'jobs', body: { kind: 'distil_chapter', document_id: 'd1', anchor: 'ch03' } }]));
+    await waitFor(() => expect(calls).toEqual([{ method: 'POST', path: 'jobs/f1/retry', body: undefined }]));
     expect(within(failures).getByText('Queued again.')).toBeTruthy();
+    expect(within(screen.getByRole('region', { name: /Running and queued/ })).getByText('Derive')).toBeTruthy();
+  });
+
+  it('cancels a queued job, which then leaves the running list', async () => {
+    const { api, calls } = fakeApi({ 'DELETE jobs/q1': () => ({ ...queued, state: 'skipped', error: 'cancelled by user' }) });
+    render(<PipelineView jobs={[queued]} documents={[systems]} api={api} live={false} />);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel Summarize for Systems' }));
+
+    await waitFor(() => expect(calls).toEqual([{ method: 'DELETE', path: 'jobs/q1' }]));
+    expect(screen.getByText(/Nothing is running/)).toBeTruthy();
+  });
+
+  it('shows a paused document from its own state and resumes it, requeueing what the ceiling stopped', async () => {
+    const stopped = job({ id: 's1', kind: 'distil_chapter', state: 'failed', error: 'run ceiling reached' });
+    const { api, calls } = fakeApi({ 'POST documents/systems/resume': () => ({ document: {}, requeued: [{ ...stopped, id: 's2', state: 'queued' }] }) });
+    render(<PipelineView jobs={[stopped]} documents={[{ ...systems, paused }]} api={api} live={false} />);
+
+    const notice = screen.getByRole('region', { name: 'Systems is paused' });
+    expect(notice.textContent).toMatch(/400 skill runs reached the ceiling of 400\./);
+    expect(within(screen.getByRole('region', { name: /Failed/ })).queryByRole('button', { name: 'Retry' })).toBeNull();
+    await userEvent.click(within(notice).getByRole('button', { name: 'Resume' }));
+
+    await waitFor(() => expect(calls).toEqual([{ method: 'POST', path: 'documents/systems/resume', body: {} }]));
+    expect(screen.queryByRole('region', { name: 'Systems is paused' })).toBeNull();
     expect(within(screen.getByRole('region', { name: /Running and queued/ })).getByText('Distil chapter')).toBeTruthy();
   });
 

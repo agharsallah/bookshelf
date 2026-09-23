@@ -1,0 +1,49 @@
+/* A run-ceiling pause: caution tone, like the other attention banners. */
+.notice {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-inline-start: 3px solid var(--tone-caution);
+  border-radius: 0 var(--radius-m) var(--radius-m) 0;
+  background: color-mix(in oklab, var(--tone-caution) 9%, var(--paper-raised));
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  line-height: var(--leading-ui);
+}
+
+.title {
+  color: var(--tone-caution);
+  font-weight: 650;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+
+.actions button {
+  padding: 0.2rem var(--space-3);
+  border: 1px solid var(--tone-caution);
+  border-radius: var(--radius-m);
+  background: var(--paper-raised);
+  color: var(--ink);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.actions button:disabled {
+  cursor: progress;
+  opacity: 0.6;
+}
+
+.hint {
+  color: var(--ink-3);
+}
+.done {
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}

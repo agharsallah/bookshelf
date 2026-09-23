@@ -1,11 +1,16 @@
-/** Running, failed and recent jobs: kind, document, scope, attempts, time, and errors. */
+/**
+ * Running, failed and recent jobs: kind, document, scope, attempts, time, and errors.
+ * A queued job can be cancelled (`DELETE /jobs/{id}`), a failed one retried
+ * (`POST /jobs/{id}/retry`: same kind, scope, skill, note and payload).
+ */
 import { useState } from 'react';
 import { anchorLabel } from '../../lib/anchors';
 import type { ApiClient } from '../../lib/api/client';
-import type { JobAccepted, JobPublic } from '../../lib/api/types/jobs';
+import type { JobPublic } from '../../lib/api/types/jobs';
+import { cancelJob, retryJob } from '../../lib/jobs/api';
 import { Problem, problemOf, type ProblemInfo } from '../common/Problem';
 import { relativeTime } from '../review/labels';
-import { elapsedMs, formatDuration, isRunCeiling, KIND_LABELS, retrySpec } from './model';
+import { elapsedMs, formatDuration, KIND_LABELS } from './model';
 import styles from './JobRows.module.css';
 
 export interface JobRowProps {
@@ -28,8 +33,24 @@ function Scope({ job, title }: { job: JobPublic; title: string }) {
   );
 }
 
-export function RunningRow({ job, title, now }: JobRowProps) {
+type Control = { state: 'idle' } | { state: 'sending' } | { state: 'sent'; deduplicated: boolean } | { state: 'error'; problem: ProblemInfo };
+
+type JobControlProps = JobRowProps & { api: Pick<ApiClient, 'post' | 'delete'>; onChanged: (job: JobPublic) => void };
+
+export function RunningRow({ job, title, now, api, onChanged }: JobControlProps) {
+  const [cancel, setCancel] = useState<Control>({ state: 'idle' });
   const ms = elapsedMs(job, now);
+
+  const send = async () => {
+    setCancel({ state: 'sending' });
+    try {
+      onChanged(await cancelJob(api, job.id));
+      setCancel({ state: 'idle' });
+    } catch (error) {
+      setCancel({ state: 'error', problem: problemOf(error) });
+    }
+  };
+
   return (
     <li className={styles.job} data-state={job.state}>
       <span className={styles.jobKind}>{KIND_LABELS[job.kind]}</span>
@@ -38,23 +59,26 @@ export function RunningRow({ job, title, now }: JobRowProps) {
         {job.state === 'running' ? (ms !== null ? formatDuration(ms) : 'starting') : `queued ${relativeTime(job.created_at, now)}`}
         {job.attempts > 1 ? <span className={styles.attempts}> attempt {job.attempts}</span> : null}
       </span>
+      {job.state === 'queued' ? (
+        <span className={styles.retry}>
+          <button type="button" onClick={() => void send()} disabled={cancel.state === 'sending'} aria-label={`Cancel ${KIND_LABELS[job.kind]} for ${title}`}>
+            {cancel.state === 'sending' ? 'Cancelling…' : 'Cancel'}
+          </button>
+        </span>
+      ) : null}
+      {cancel.state === 'error' ? <Problem title="The job was not cancelled." problem={cancel.problem} inline /> : null}
     </li>
   );
 }
 
-type Retry = { state: 'idle' } | { state: 'sending' } | { state: 'sent'; deduplicated: boolean } | { state: 'error'; problem: ProblemInfo };
-
-export function FailedRow({ job, title, now, api, onQueued }: JobRowProps & { api: ApiClient; onQueued: (job: JobPublic) => void }) {
-  const [retry, setRetry] = useState<Retry>({ state: 'idle' });
-  const spec = retrySpec(job);
-  const ceiling = isRunCeiling(job);
+export function FailedRow({ job, title, now, api, onChanged, paused = false }: JobControlProps & { paused?: boolean }) {
+  const [retry, setRetry] = useState<Control>({ state: 'idle' });
 
   const send = async () => {
-    if (!spec) return;
     setRetry({ state: 'sending' });
     try {
-      const accepted = await api.post<JobAccepted>('jobs', spec);
-      onQueued(accepted.job);
+      const accepted = await retryJob(api, job.id);
+      onChanged(accepted.job);
       setRetry({ state: 'sent', deduplicated: accepted.deduplicated });
     } catch (error) {
       setRetry({ state: 'error', problem: problemOf(error) });
@@ -62,7 +86,7 @@ export function FailedRow({ job, title, now, api, onQueued }: JobRowProps & { ap
   };
 
   return (
-    <li className={styles.job} data-state="failed" data-ceiling={ceiling || undefined}>
+    <li className={styles.job} data-state="failed" data-ceiling={paused || undefined}>
       <span className={styles.jobKind}>{KIND_LABELS[job.kind]}</span>
       <Scope job={job} title={title} />
       <span className={styles.jobTime}>
@@ -76,12 +100,12 @@ export function FailedRow({ job, title, now, api, onQueued }: JobRowProps & { ap
         </details>
       ) : null}
       <span className={styles.retry}>
-        {spec ? (
+        {paused ? (
+          <span className={styles.muted}>Its document is paused; resuming requeues it.</span>
+        ) : (
           <button type="button" onClick={() => void send()} disabled={retry.state === 'sending' || retry.state === 'sent'}>
             {retry.state === 'sending' ? 'Retrying…' : 'Retry'}
           </button>
-        ) : (
-          <span className={styles.muted}>Retry from the CLI (needs the skill name)</span>
         )}
         <span aria-live="polite" className={styles.muted}>
           {retry.state === 'sent' ? (retry.deduplicated ? 'Already queued.' : 'Queued again.') : null}

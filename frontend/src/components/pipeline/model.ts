@@ -1,6 +1,6 @@
 /**
  * Pipeline view model (§7): per-document progress through the stages, tallies by state
- * and kind, elapsed times, and what a retry re-enqueues. Pure; the view only draws it.
+ * and kind, elapsed times. Pure; the view only draws it.
  */
 import type { JobKind, JobPublic, JobState } from '../../lib/api/types/jobs';
 
@@ -89,11 +89,6 @@ export function formatDuration(ms: number): string {
   return `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')} min`;
 }
 
-/** §14 run ceiling: the worker fails the job with this message and pauses the document. */
-export function isRunCeiling(job: Pick<JobPublic, 'error'>): boolean {
-  return job.error?.startsWith('run ceiling reached') ?? false;
-}
-
 export interface JobFilters {
   state?: JobState | '';
   kind?: JobKind | '';
@@ -107,21 +102,6 @@ export function filterJobs(jobs: readonly JobPublic[], filters: JobFilters): Job
       (!filters.kind || j.kind === filters.kind) &&
       (!filters.document || j.document_id === filters.document),
   );
-}
-
-export interface RetrySpec {
-  kind: JobKind;
-  document_id: string | null;
-  anchor: string | null;
-}
-
-/**
- * What a retry enqueues: same kind and scope. `derive` needs its skill name and
- * `structure_note` its note id, which `POST /jobs` cannot carry, so those are not retryable.
- */
-export function retrySpec(job: JobPublic): RetrySpec | null {
-  if (job.kind === 'derive' || job.kind === 'structure_note') return null;
-  return { kind: job.kind, document_id: job.document_id, anchor: job.anchor };
 }
 
 export const KIND_LABELS: Record<JobKind, string> = {

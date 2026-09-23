@@ -109,22 +109,6 @@
   color: var(--active);
 }
 
-.ceiling {
-  display: grid;
-  gap: var(--space-1);
-  padding: var(--space-3) var(--space-4);
-  border-inline-start: 3px solid var(--tone-caution);
-  border-radius: 0 var(--radius-m) var(--radius-m) 0;
-  background: color-mix(in oklab, var(--tone-caution) 9%, var(--paper-raised));
-  color: var(--ink-2);
-  font-size: var(--text-sm);
-}
-
-.ceilingTitle {
-  color: var(--tone-caution);
-  font-weight: 650;
-}
-
 .filters {
   display: flex;
   flex-wrap: wrap;

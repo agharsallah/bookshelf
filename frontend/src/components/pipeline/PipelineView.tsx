@@ -1,16 +1,18 @@
 /**
  * The pipeline, live (§7): jobs from `GET /jobs` seeded server-side, then kept current by
  * `/jobs/stream` through the shared `useJobStream` hook. Tallies, per-document stage
- * tracks, running work with elapsed time, failures with retry, and the run ceiling.
+ * tracks, running work with elapsed time (queued jobs can be cancelled), failures with
+ * retry, and documents the run ceiling paused, with Resume.
  */
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { browserApi, type ApiClient } from '../../lib/api/client';
 import { JOB_KINDS, JOB_STATES, type JobKind, type JobPublic, type JobState } from '../../lib/api/types/jobs';
 import { useJobStream } from '../../lib/hooks/useJobStream';
 import { sortedJobs } from '../../lib/jobs/stream';
+import { PausedNotice } from '../common/PausedNotice';
 import type { DocumentLabel } from '../review/api';
 import { FailedRow, RecentRow, RunningRow } from './JobRows';
-import { countKinds, countStates, filterJobs, isRunCeiling, KIND_LABELS, stageProgress, type JobFilters } from './model';
+import { countKinds, countStates, filterJobs, KIND_LABELS, stageProgress, type JobFilters } from './model';
 import { StageTrack } from './StageTrack';
 import { useNow } from './useNow';
 import styles from './Pipeline.module.css';
@@ -27,8 +29,9 @@ export interface PipelineViewProps {
 const STREAM_WORDS = { connecting: 'Connecting…', live: 'Live', reconnecting: 'Reconnecting…', closed: 'Offline' } as const;
 const RECENT = 25;
 
-export function PipelineView({ jobs: seed, documents, initialFilters = {}, api = browserApi, live = true }: PipelineViewProps) {
+export function PipelineView({ jobs: seed, documents: initialDocuments, initialFilters = {}, api = browserApi, live = true }: PipelineViewProps) {
   const { jobs: byId, status, track } = useJobStream({ seed, enabled: live });
+  const [documents, setDocuments] = useState(initialDocuments);
   const [filters, setFilters] = useState<JobFilters>(initialFilters);
   const all = useMemo(() => sortedJobs(byId), [byId]);
   const titles = useMemo(() => Object.fromEntries(documents.map((d) => [d.id, d.title])), [documents]);
@@ -43,7 +46,15 @@ export function PipelineView({ jobs: seed, documents, initialFilters = {}, api =
   const recent = shown.filter((j) => j.state === 'done' || j.state === 'skipped').slice(0, RECENT);
   const now = useNow(running.some((j) => j.state === 'running'));
 
-  const ceilings = [...new Set(all.filter((j) => j.state === 'failed' && isRunCeiling(j)).map(title))];
+  const paused = documents.filter((d) => d.paused);
+  const pausedIds = new Set(paused.map((d) => d.id));
+  const resumed = useCallback(
+    (id: string, requeued: JobPublic[]) => {
+      setDocuments((all) => all.map((d) => (d.id === id ? { ...d, paused: null } : d)));
+      requeued.forEach(track);
+    },
+    [track],
+  );
   const trackedDocs = documents.filter((d) => !filters.document || d.id === filters.document);
 
   const toggleState = (state: JobState) => setFilters((f) => ({ ...f, state: f.state === state ? '' : state }));
@@ -66,15 +77,11 @@ export function PipelineView({ jobs: seed, documents, initialFilters = {}, api =
         </ul>
       </div>
 
-      {ceilings.length > 0 ? (
-        <div className={styles.ceiling} role="alert">
-          <p className={styles.ceilingTitle}>Run ceiling reached</p>
-          <p>
-            The worker paused {ceilings.join(', ')} after too many skill runs (§14). Review what it produced, then raise{' '}
-            <code>BOOKSHELF_MAX_RUNS_PER_DOCUMENT</code> if more runs are warranted.
-          </p>
-        </div>
-      ) : null}
+      {paused.map((doc) =>
+        doc.paused ? (
+          <PausedNotice key={doc.id} documentRef={doc.slug} paused={doc.paused} title={doc.title} api={api} onResumed={(jobs) => resumed(doc.id, jobs)} />
+        ) : null,
+      )}
 
       <form className={styles.filters} aria-label="Filter jobs" onSubmit={(e) => e.preventDefault()}>
         <label>
@@ -157,7 +164,7 @@ export function PipelineView({ jobs: seed, documents, initialFilters = {}, api =
         {running.length === 0 ? <p className={styles.muted}>Nothing is running. The worker picks up queued jobs as they arrive.</p> : null}
         <ul className={styles.jobs}>
           {running.map((job) => (
-            <RunningRow key={job.id} job={job} title={title(job)} now={now} />
+            <RunningRow key={job.id} job={job} title={title(job)} now={now} api={api} onChanged={track} />
           ))}
         </ul>
       </section>
@@ -169,7 +176,15 @@ export function PipelineView({ jobs: seed, documents, initialFilters = {}, api =
         {failed.length === 0 ? <p className={styles.muted}>No failures.</p> : null}
         <ul className={styles.jobs}>
           {failed.map((job) => (
-            <FailedRow key={job.id} job={job} title={title(job)} now={now} api={api} onQueued={track} />
+            <FailedRow
+              key={job.id}
+              job={job}
+              title={title(job)}
+              now={now}
+              api={api}
+              onChanged={track}
+              paused={job.document_id !== null && pausedIds.has(job.document_id)}
+            />
           ))}
         </ul>
       </section>
