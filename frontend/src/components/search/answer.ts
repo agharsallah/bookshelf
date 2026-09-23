@@ -10,7 +10,7 @@ import type {
   SearchRequest,
   SearchResponse,
 } from '../../lib/api/types/search';
-import { eventJson, readEventStream, type SseEvent } from './sse';
+import { eventJson, readEventStream, type SseEvent } from '../../lib/sse';
 
 export const ANSWER_PATH = '/api/search/answer';
 

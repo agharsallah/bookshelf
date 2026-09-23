@@ -1,8 +1,10 @@
 /**
- * A small Server-Sent Events frame parser (WHATWG "event stream interpretation").
+ * Server-Sent Events, shared by both streams: a small frame parser (WHATWG "event
+ * stream interpretation") and JSON `data` decoding.
  *
  * `EventSource` cannot POST, so the cited-answer stream is read with `fetch` and fed
- * through this parser chunk by chunk. Chunks may split anywhere: inside a field name,
+ * through this parser chunk by chunk; the job stream uses `EventSource` and only
+ * `parseData` from here. Chunks may split anywhere: inside a field name,
  * between `\r` and `\n`, or in the middle of a multi-byte character (the decoder in
  * `readEventStream` handles the last one).
  */
@@ -77,13 +79,18 @@ export function createSseParser(): SseParser {
   };
 }
 
-/** Parse a JSON `data` field, or null when it is not JSON. */
-export function eventJson<T>(event: SseEvent): T | null {
+/** Parse a JSON `data` payload, or null when it is not JSON. */
+export function parseData<T>(data: string): T | null {
   try {
-    return JSON.parse(event.data) as T;
+    return JSON.parse(data) as T;
   } catch {
     return null;
   }
+}
+
+/** Parse a frame's JSON `data` field, or null when it is not JSON. */
+export function eventJson<T>(event: SseEvent): T | null {
+  return parseData<T>(event.data);
 }
 
 /** Read a response body as an event stream, calling `onEvent` per frame. */

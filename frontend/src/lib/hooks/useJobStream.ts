@@ -6,17 +6,14 @@
  *
  * `seed` pre-fills jobs the island already knows (e.g. the one `POST /documents` just
  * returned) so they render before the first event arrives. Pass `enabled: false` to
- * hold the connection until there is something to watch.
+ * hold the connection until there is something to watch. The connection reconnects
+ * with backoff when the stream ends or fails (../jobs/connection.ts).
  */
 import { useCallback, useEffect, useReducer } from 'react';
 import { browserApi } from '../api/client';
 import type { JobPublic } from '../api/types/jobs';
-import {
-  initialJobStreamState,
-  jobStreamReducer,
-  parseJobEvent,
-  type JobStreamState,
-} from '../jobs/stream';
+import { connectJobStream } from '../jobs/connection';
+import { initialJobStreamState, jobStreamReducer, type JobStreamState } from '../jobs/stream';
 
 export interface UseJobStreamOptions {
   documentId?: string | null | undefined;
@@ -39,18 +36,11 @@ export function useJobStream({ documentId, enabled = true, seed }: UseJobStreamO
 
   useEffect(() => {
     if (!enabled || typeof EventSource === 'undefined') return;
-    const source = new EventSource(
-      browserApi.url(JOB_STREAM_PATH, documentId ? { document_id: documentId } : undefined),
-    );
-    const onJob = (event: MessageEvent<string>) => {
-      const job = parseJobEvent(event.data);
-      if (job) dispatch({ type: 'job', job });
-    };
-    source.addEventListener('open', () => dispatch({ type: 'open' }));
-    source.addEventListener('error', () => dispatch({ type: 'error' }));
-    source.addEventListener('end', () => dispatch({ type: 'end' }));
-    source.addEventListener('job', onJob as EventListener);
-    return () => source.close();
+    return connectJobStream({
+      url: browserApi.url(JOB_STREAM_PATH, documentId ? { document_id: documentId } : undefined),
+      onJob: (job) => dispatch({ type: 'job', job }),
+      onStatus: (type) => dispatch({ type }),
+    });
   }, [documentId, enabled]);
 
   const track = useCallback((job: JobPublic) => dispatch({ type: 'job', job }), []);

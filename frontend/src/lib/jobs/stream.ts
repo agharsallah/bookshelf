@@ -1,13 +1,14 @@
 /**
  * Pure state for `GET /jobs/stream` (backend/app/api/routes/job_events.py).
  *
- * The server emits `event: job` with a `Job` as data whenever a job's state,
+ * The server emits `event: job` with a `JobPublic` as data whenever a job's state,
  * attempts or finish time change (the first poll is a snapshot of live and recent
- * jobs), and `event: end` when the stream hits `max_seconds`. `EventSource`
- * reconnects by itself, so the reducer must tolerate replays: an event only
- * replaces what we hold when it is not older than it.
+ * jobs), and `event: end {reason}` when the stream hits `max_seconds` or the server
+ * shuts down. ./connection.ts reconnects, so the reducer must tolerate replays: an
+ * event only replaces what we hold when it is not older than it.
  */
 import type { JobPublic } from '../api/types/jobs';
+import { parseData } from '../sse';
 
 export type JobStreamEvent =
   | { type: 'job'; job: JobPublic }
@@ -61,13 +62,10 @@ export function jobStreamReducer(state: JobStreamState, event: JobStreamEvent): 
 
 /** Parse one SSE `data` payload; `null` for anything that is not a job. */
 export function parseJobEvent(data: string): JobPublic | null {
-  try {
-    const value = JSON.parse(data) as Partial<JobPublic> | null;
-    if (value && typeof value.id === 'string' && typeof value.state === 'string' && typeof value.kind === 'string') {
-      return value as JobPublic;
-    }
-  } catch {
-    // Malformed frames are dropped; the next poll re-sends the job.
+  // Malformed frames are dropped; the next poll (or reconnect snapshot) re-sends the job.
+  const value = parseData<Partial<JobPublic>>(data);
+  if (value && typeof value.id === 'string' && typeof value.state === 'string' && typeof value.kind === 'string') {
+    return value as JobPublic;
   }
   return null;
 }

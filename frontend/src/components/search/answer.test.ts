@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ApiError } from '../../lib/api/errors';
 import { answerReducer, idleAnswer, streamAnswer, type AnswerState } from './answer';
-import type { SseEvent } from './sse';
+import type { SseEvent } from '../../lib/sse';
 
 const ev = (event: string, data: unknown): SseEvent => ({ event, data: JSON.stringify(data), id: null });
 const hits = { intent: 'discovery', groups: [], took_ms: 3 };
