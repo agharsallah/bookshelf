@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bookshelf.local/skills/summarize/schema.json",
+  "title": "summarize output",
+  "description": "Three to five cited paragraph blocks, at most 150 words in total (the word cap is a gate, not a schema rule).",
+  "type": "object",
+  "required": ["blocks"],
+  "additionalProperties": false,
+  "properties": {
+    "blocks": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 5,
+      "items": {
+        "allOf": [
+          { "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/paragraph" },
+          { "properties": { "spans": { "maxItems": 6 } } }
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "blocks": [
+    {
+      "type": "definition",
+      "term": "Little's law",
+      "spans": [
+        {
+          "text": "Over a long enough period, the average number of items in a system equals their arrival rate times the average time each spends inside.",
+          "cites": ["ch02/s01/p001"]
+        }
+      ]
+    },
+    {
+      "type": "math",
+      "latex": "L = \\lambda W",
+      "meaning": [
+        {
+          "text": "Items in the system = arrival rate × time in the system.",
+          "cites": ["ch02/s01/m001", "ch02/s01/p001"]
+        }
+      ],
+      "cites": ["ch02/s01/m001"]
+    },
+    {
+      "type": "callout",
+      "tone": "caution",
+      "title": "Only for stable systems",
+      "spans": [
+        {
+          "text": "It holds whatever the arrival pattern, variability or order of service, ",
+          "cites": ["ch02/s01/p002"]
+        },
+        {
+          "text": "but only while items leave as fast as they arrive; a backlog that grows every week breaks it.",
+          "cites": ["ch02/s01/p003"]
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "spans": [
+        { "text": "Rearranged, it forecasts: ", "cites": ["ch02/s01/p004"] },
+        {
+          "text": "expected time in the system ≈ work in progress ÷ throughput",
+          "cites": ["ch02/s01/p004"],
+          "mark": "strong"
+        },
+        {
+          "text": " — thirty items in progress at ten finished a week means about three weeks for a new item.",
+          "cites": ["ch02/s01/p004"]
+        }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "antipattern",
+      "spans": [
+        {
+          "text": "Starting more work to speed up delivery: at the same throughput, more work in progress lengthens waits in exactly the same proportion.",
+          "cites": ["ch02/s01/p005"]
+        }
+      ]
+    }
+  ]
+}

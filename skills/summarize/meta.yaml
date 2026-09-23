@@ -1,0 +1,12 @@
+name: summarize
+version: 1
+description: The cheap map of a chapter (or a whole document) — topic, thesis and scope in 3–5 cited paragraphs, at most 150 words.
+tier: explore
+job_kind: summarize
+artifact_type: chapter_summary   # a document-scope run produces the book_summary from the same prompt
+scope: chapter
+selector: scope_blocks
+vision: false
+gates:
+  grounding_min: 0.9
+  max_words: 150                 # D14: a summary is a map, not a distillation; no compression band

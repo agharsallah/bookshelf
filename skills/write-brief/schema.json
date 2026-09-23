@@ -1,0 +1,281 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bookshelf.local/skills/write-brief/schema.json",
+  "title": "write-brief output",
+  "description": "The fixed one-page brief (§9): six sections in a fixed order, then read-next pointers into the user's own shelf. The read_next section carries no blocks; its content is the top-level read_next list.",
+  "type": "object",
+  "required": [
+    "sections",
+    "read_next"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "sections": {
+      "type": "array",
+      "minItems": 6,
+      "items": false,
+      "prefixItems": [
+        {
+          "type": "object",
+          "description": "Exactly one paragraph of three one-sentence spans.",
+          "required": [
+            "key",
+            "title",
+            "blocks"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "key": {
+              "const": "thesis"
+            },
+            "title": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "blocks": {
+              "type": "array",
+              "minItems": 1,
+              "prefixItems": [
+                {
+                  "allOf": [
+                    {
+                      "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/paragraph"
+                    },
+                    {
+                      "properties": {
+                        "spans": {
+                          "minItems": 3,
+                          "maxItems": 3
+                        }
+                      }
+                    }
+                  ]
+                }
+              ],
+              "items": false
+            }
+          }
+        },
+        {
+          "type": "object",
+          "description": "Exactly one bullets block of five to seven load-bearing ideas.",
+          "required": [
+            "key",
+            "title",
+            "blocks"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "key": {
+              "const": "ideas"
+            },
+            "title": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "blocks": {
+              "type": "array",
+              "minItems": 1,
+              "prefixItems": [
+                {
+                  "allOf": [
+                    {
+                      "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/bullets"
+                    },
+                    {
+                      "properties": {
+                        "items": {
+                          "minItems": 5,
+                          "maxItems": 7
+                        }
+                      }
+                    }
+                  ]
+                }
+              ],
+              "items": false
+            }
+          }
+        },
+        {
+          "type": "object",
+          "description": "How the argument is built.",
+          "required": [
+            "key",
+            "title",
+            "blocks"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "key": {
+              "const": "structure"
+            },
+            "title": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "blocks": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 3,
+              "items": {
+                "anyOf": [
+                  {
+                    "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/steps"
+                  },
+                  {
+                    "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/paragraph"
+                  },
+                  {
+                    "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/bullets"
+                  },
+                  {
+                    "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/diagram"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "description": "What it changes about how you act.",
+          "required": [
+            "key",
+            "title",
+            "blocks"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "key": {
+              "const": "changes"
+            },
+            "title": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "blocks": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 3,
+              "items": {
+                "anyOf": [
+                  {
+                    "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/bullets"
+                  },
+                  {
+                    "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/steps"
+                  },
+                  {
+                    "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/paragraph"
+                  },
+                  {
+                    "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/callout"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "description": "Where it is weak or dated.",
+          "required": [
+            "key",
+            "title",
+            "blocks"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "key": {
+              "const": "weaknesses"
+            },
+            "title": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "blocks": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 3,
+              "items": {
+                "anyOf": [
+                  {
+                    "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/bullets"
+                  },
+                  {
+                    "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/paragraph"
+                  },
+                  {
+                    "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/callout"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "description": "Always empty blocks; see the top-level read_next list.",
+          "required": [
+            "key",
+            "title",
+            "blocks"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "key": {
+              "const": "read_next"
+            },
+            "title": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "blocks": {
+              "type": "array",
+              "maxItems": 0
+            }
+          }
+        }
+      ]
+    },
+    "read_next": {
+      "type": "array",
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "required": [
+          "slug",
+          "reason"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "slug": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+            "maxLength": 120
+          },
+          "anchor": {
+            "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/anchor"
+          },
+          "reason": {
+            "allOf": [
+              {
+                "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/spans"
+              },
+              {
+                "maxItems": 3
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

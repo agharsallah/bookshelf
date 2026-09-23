@@ -1,0 +1,40 @@
+{
+  "blocks": [
+    {
+      "type": "paragraph",
+      "spans": [
+        {
+          "text": "Keeping a team fully booked backfires: beyond a certain point, each extra percent of utilization buys a disproportionate amount of waiting.",
+          "cites": ["ch03/s01/p001"]
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "spans": [
+        {
+          "text": "The chapter first shows how waiting grows slowly and then steeply as a single server gets busier.",
+          "cites": ["ch03/s01/p004", "ch03/s01/f001"]
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "spans": [
+        {
+          "text": "It then adds variability as the second cause of waiting, alongside utilization.",
+          "cites": ["ch03/s02/p003"]
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "spans": [
+        {
+          "text": "It closes by recasting slack as capacity held in reserve for unpredictable work rather than as waste.",
+          "cites": ["ch03/s03/p001"]
+        }
+      ]
+    }
+  ]
+}

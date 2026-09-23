@@ -1,0 +1,12 @@
+name: write-brief
+version: 1
+description: The fixed one-page book brief from all chapter distillations — thesis, load-bearing ideas, structure, what it changes, weaknesses, read-next into your own shelf.
+tier: reason
+job_kind: brief
+artifact_type: book_brief
+scope: document
+selector: document_chapters
+vision: false
+gates:
+  grounding_min: 0.9
+  max_words: 700    # "one page" (§9); no compression band — a brief is a fixed shape, not a ratio

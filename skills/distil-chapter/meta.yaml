@@ -1,0 +1,17 @@
+name: distil-chapter
+version: 1
+description: Merge a chapter's section notes into one cited chapter distillation — the chapter's argument, deduplicated, with important/remember/antipattern callouts.
+tier: distil
+job_kind: distil_chapter
+artifact_type: chapter_distillation
+scope: chapter
+selector: chapter_section_notes
+vision: false
+gates:
+  grounding_min: 0.9
+  # Basis: output words / the chapter's SOURCE words (all leaf blocks under the chapter),
+  # the same denominator distil-section uses — not the section notes' words. The runtime's
+  # Selection.source_words is the scope's leaf-block word count for this selector. So the
+  # band means what §9 says ("10–25% of the source") at both ranks; since section notes are
+  # already in that band, the prompt aims for ~70–100% of the notes' combined length.
+  compression: [0.10, 0.25]

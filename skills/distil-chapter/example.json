@@ -1,0 +1,113 @@
+{
+  "blocks": [
+    {
+      "type": "callout",
+      "tone": "important",
+      "spans": [
+        {
+          "text": "Busyness is not productivity: beyond about 80% utilization, each extra percent of load buys a disproportionate amount of waiting.",
+          "cites": ["ch03/s01/p001", "ch03/s01/p004"]
+        }
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "text": "Why waiting explodes"
+    },
+    {
+      "type": "chart",
+      "kind": "line",
+      "title": "Waiting time as utilization rises",
+      "x": { "label": "Utilization (%)", "values": [50, 60, 70, 80, 90, 95] },
+      "y": { "label": "Average wait (× service time)" },
+      "series": [{ "name": "Average wait", "values": [1, 1.5, 2.3, 4, 9, 19] }],
+      "cites": ["ch03/s01/f001"],
+      "confidence": "medium"
+    },
+    {
+      "type": "paragraph",
+      "spans": [
+        {
+          "text": "The curve is nearly flat to 70% and then turns into a wall: at 90% an item waits about nine times its service time, at 95% about nineteen.",
+          "cites": ["ch03/s01/p004", "ch03/s01/f001"]
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "spans": [
+        { "text": "Utilization is only half the cause; ", "cites": ["ch03/s02/p003"] },
+        { "text": "variability", "cites": ["ch03/s02/p003"], "mark": "strong" },
+        {
+          "text": " in arrivals and in the work multiplies the effect, and either alone is survivable.",
+          "cites": ["ch03/s02/p003", "ch03/s02/p006"]
+        }
+      ]
+    },
+    {
+      "type": "math",
+      "latex": "E[W_q] \\approx \\left(\\frac{\\rho}{1-\\rho}\\right)\\left(\\frac{c_a^2 + c_s^2}{2}\\right) t_s",
+      "meaning": [
+        {
+          "text": "Kingman's approximation: expected queue time ≈ utilization term × variability term × mean service time.",
+          "cites": ["ch03/s02/m001", "ch03/s02/p006"]
+        }
+      ],
+      "cites": ["ch03/s02/m001"]
+    },
+    {
+      "type": "callout",
+      "tone": "caution",
+      "spans": [
+        {
+          "text": "Kingman's formula is an approximation for a single server under heavy load; it overstates the wait at low utilization.",
+          "cites": ["ch03/s02/p008"]
+        }
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "text": "Slack as capacity"
+    },
+    {
+      "type": "definition",
+      "term": "slack",
+      "spans": [
+        {
+          "text": "Capacity deliberately left unallocated so that unpredictable work can be absorbed without forming a queue.",
+          "cites": ["ch03/s03/p001"]
+        }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "antipattern",
+      "spans": [
+        {
+          "text": "Planning to 100% capacity: unplanned work has nowhere to go, so queues are guaranteed.",
+          "cites": ["ch03/s03/p002"]
+        }
+      ]
+    },
+    {
+      "type": "steps",
+      "items": [
+        [{ "text": "Measure utilization per person or team over a few weeks.", "cites": ["ch03/s03/p005"] }],
+        [{ "text": "Keep 15–20% of capacity unallocated in the plan.", "cites": ["ch03/s03/p006"] }],
+        [{ "text": "Spend the slack on interruptions first and improvement work second.", "cites": ["ch03/s03/p007"] }]
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "remember",
+      "spans": [
+        {
+          "text": "Waiting depends on utilization and variability together; cut either to shorten queues.",
+          "cites": ["ch03/s02/p003", "ch03/s03/p004"]
+        }
+      ]
+    }
+  ]
+}

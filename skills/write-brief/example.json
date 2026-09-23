@@ -1,0 +1,183 @@
+{
+  "sections": [
+    {
+      "key": "thesis",
+      "title": "Thesis",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "spans": [
+            {
+              "text": "Knowledge work is slow mostly because it waits, not because people work slowly.",
+              "cites": ["ch01/s01/p002"]
+            },
+            {
+              "text": "Queueing arithmetic makes waiting grow in proportion to work in progress and explode once utilization passes about 80%.",
+              "cites": ["ch02/s01/p001", "ch03/s01/p004"]
+            },
+            {
+              "text": "So the lever is limiting work in progress and keeping slack, not pushing people harder.",
+              "cites": ["ch04/s01/p002", "ch03/s03/p002"]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "ideas",
+      "title": "Load-bearing ideas",
+      "blocks": [
+        {
+          "type": "bullets",
+          "items": [
+            [
+              { "text": "Little's law. ", "cites": ["ch02/s01/p001"], "mark": "strong" },
+              {
+                "text": "Average work in progress equals throughput times time in the system, so more WIP at the same throughput means proportionally longer waits; the author returns to it in the chapters on WIP limits and batch size.",
+                "cites": ["ch02/s01/p005", "ch04/s01/p003", "ch05/s02/p003"]
+              }
+            ],
+            [
+              { "text": "The utilization curve. ", "cites": ["ch03/s01/p004"], "mark": "strong" },
+              {
+                "text": "Waiting stays modest to about 70% utilization and then rises steeply, roughly nine times the service time at 90%.",
+                "cites": ["ch03/s01/p004", "ch03/s01/f001"]
+              }
+            ],
+            [
+              { "text": "Variability multiplies waiting. ", "cites": ["ch03/s02/p003"], "mark": "strong" },
+              {
+                "text": "Unpredictable arrivals and uneven work add to utilization's effect, which is why the same load feels fine one week and jammed the next.",
+                "cites": ["ch03/s02/p003", "ch03/s02/p006"]
+              }
+            ],
+            [
+              { "text": "WIP limits shorten cycle time. ", "cites": ["ch04/s02/t001"], "mark": "strong" },
+              {
+                "text": "In the author's twelve-week comparison, limits cut average cycle time from 31 to about 10 days while throughput stayed flat.",
+                "cites": ["ch04/s02/t001", "ch04/s02/p005"]
+              }
+            ],
+            [
+              { "text": "Small batches. ", "cites": ["ch05/s02/p003"], "mark": "strong" },
+              {
+                "text": "Smaller batches cut waiting for the same reason WIP limits do: less work sits in the system at once.",
+                "cites": ["ch05/s02/p003"]
+              }
+            ],
+            [
+              { "text": "Hidden queues. ", "cites": ["ch06/s01/p001"], "mark": "strong" },
+              {
+                "text": "Most waiting happens in places nobody measures — approvals, hand-offs, work turned away at a limit — so it must be made visible before it can be managed.",
+                "cites": ["ch06/s01/p001", "ch06/s02/p004", "ch04/s03/p003"]
+              }
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "key": "structure",
+      "title": "How the argument is built",
+      "blocks": [
+        {
+          "type": "steps",
+          "items": [
+            [{ "text": "Premise: delivery time is mostly waiting time.", "cites": ["ch01/s01/p002"] }],
+            [
+              {
+                "text": "Mechanism: Little's law and the utilization curve explain why waiting grows with load and variability.",
+                "cites": ["ch02/s01/p001", "ch03/s01/p004"]
+              }
+            ],
+            [
+              {
+                "text": "Evidence: team data on WIP limits and batch sizes shows cycle time falling without lost throughput.",
+                "cites": ["ch04/s02/t001", "ch05/s03/p002"]
+              }
+            ],
+            [
+              {
+                "text": "Implication: manage the flow of work, not the busyness of people.",
+                "cites": ["ch07/s01/p001"]
+              }
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "key": "changes",
+      "title": "What it changes",
+      "blocks": [
+        {
+          "type": "bullets",
+          "items": [
+            [
+              {
+                "text": "Forecast delivery from work in progress divided by throughput instead of from effort estimates.",
+                "cites": ["ch02/s02/p002"]
+              }
+            ],
+            [
+              {
+                "text": "Set an explicit WIP limit and stop starting before you start finishing.",
+                "cites": ["ch04/s01/p002"]
+              }
+            ],
+            [{ "text": "Plan with 15–20% of capacity unallocated.", "cites": ["ch03/s03/p006"] }]
+          ]
+        },
+        {
+          "type": "callout",
+          "tone": "antipattern",
+          "spans": [
+            {
+              "text": "Responding to slow delivery by starting more work.",
+              "cites": ["ch02/s01/p005"]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "weaknesses",
+      "title": "Where it is weak or dated",
+      "blocks": [
+        {
+          "type": "bullets",
+          "items": [
+            [
+              {
+                "text": "The WIP-limit evidence comes from teams the author worked with, over twelve weeks; the case rests on a small, self-selected sample.",
+                "cites": ["ch04/s02/p001", "ch04/s02/t001"]
+              }
+            ],
+            [
+              {
+                "text": "The formulas assume a single stable server; the author concedes they overstate waiting at low load and says little about teams where people share work.",
+                "cites": ["ch02/s01/p003", "ch03/s02/p008"]
+              }
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "key": "read_next",
+      "title": "Read next",
+      "blocks": []
+    }
+  ],
+  "read_next": [
+    {
+      "slug": "meadows-systems",
+      "reason": [
+        {
+          "text": "Treats the queue as a stock and a WIP limit as a balancing loop — the structural view behind this book's flow arithmetic.",
+          "cites": ["ch02/s01/p001", "ch04/s01/p002"]
+        }
+      ]
+    }
+  ]
+}
