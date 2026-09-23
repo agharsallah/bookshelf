@@ -1,15 +1,17 @@
 /**
  * The reader's notes state: the chapter's notes plus the writes on them. Colour
- * changes and deletions apply at once and roll back if the API refuses; creation
- * waits for the server so the note has its id.
+ * changes and deletions apply at once and roll back if the API refuses; creation and
+ * adding words to a highlight wait for the server (the note needs its id, the words
+ * are for good).
  */
 import { useCallback, useState } from 'react';
 import { browserApi } from '../../lib/api/client';
 import type { NoteDetail } from '../../lib/api/types/notes';
 import type { HighlightColor } from '../../lib/contract';
-import { problemOf } from '../document/Problem';
+import { problemOf } from '../common/Problem';
 import { toast } from '../document/toast';
-import { createNote, deleteNote, recolorNote, reviewStructured, type NewNote, type NotesApi } from './api';
+import { ApiError } from '../../lib/api/errors';
+import { addWords, createNote, deleteNote, getNote, recolorNote, reviewStructured, type NewNote, type NotesApi } from './api';
 
 export function useNotes(initial: NoteDetail[], api: NotesApi = browserApi) {
   const [notes, setNotes] = useState<NoteDetail[]>(initial);
@@ -26,11 +28,36 @@ export function useNotes(initial: NoteDetail[], api: NotesApi = browserApi) {
       try {
         const created = await createNote(api, note);
         setNotes((list) => [...list, created]);
-        toast(note.range && note.raw ? 'Saved. A structured version will appear beside it.' : 'Saved.', 'good');
+        toast(created.raw ? 'Saved. A structured version will appear beside it.' : 'Highlighted.', 'good');
         return created;
       } catch (error) {
         fail('The note was not saved', error);
         return null;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [api],
+  );
+
+  const annotate = useCallback(
+    async (target: NoteDetail, raw: string): Promise<boolean> => {
+      setSaving(true);
+      try {
+        const updated = await addWords(api, target.id, raw);
+        setNotes((list) => list.map((n) => (n.id === target.id ? updated : n)));
+        toast('Saved. A structured version will appear beside it.', 'good');
+        return true;
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 409) {
+          // Words arrived from elsewhere (another tab): show them, they cannot be replaced.
+          const current = await getNote(api, target.id).catch(() => null);
+          if (current) setNotes((list) => list.map((n) => (n.id === target.id ? current : n)));
+          toast('This note already has words, and they are kept as first written.', 'bad');
+        } else {
+          fail('Your words were not saved', error);
+        }
+        return false;
       } finally {
         setSaving(false);
       }
@@ -84,5 +111,5 @@ export function useNotes(initial: NoteDetail[], api: NotesApi = browserApi) {
     [api],
   );
 
-  return { notes, saving, add, recolor, remove, review };
+  return { notes, saving, add, annotate, recolor, remove, review };
 }

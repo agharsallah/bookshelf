@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { TreeNode } from '../../lib/api/types/documents';
+import type { NoteDetail } from '../../lib/api/types/notes';
 import type * as MermaidModule from '../../lib/mermaid';
 import type { Panes } from './panes';
 import { Reader } from './Reader';
@@ -41,14 +42,14 @@ const panes: Panes = {
   figures: [],
 };
 
-function renderReader() {
+function renderReader(notes: NoteDetail[] = []) {
   return render(
     <Reader
       document={{ id: 'doc-1', slug: 'flow', title: 'Flow' }}
       unit={unit}
       units={[{ anchor: 'ch01', heading: 'Stocks and flows' }]}
       panes={panes}
-      notes={[]}
+      notes={notes}
       codeHtml={{}}
       initialAnchor={null}
       truncated={false}
@@ -75,6 +76,7 @@ const created = (overrides: object) => ({
 
 beforeEach(() => {
   api.post.mockReset();
+  api.patch.mockReset();
   window.getSelection()?.removeAllRanges();
   Element.prototype.scrollIntoView = vi.fn();
 });
@@ -98,8 +100,8 @@ describe('<Reader>', () => {
     expect(chip.classList.contains('is-cited')).toBe(false);
   });
 
-  it('highlights a selection with the chosen colour, sending its offsets in the block text', async () => {
-    api.post.mockResolvedValue(created({ range: { start: 7, end: 18 }, raw: 'queue grows', color: 'sage' }));
+  it('highlights a selection with the chosen colour: offsets in the block text, no words', async () => {
+    api.post.mockResolvedValue(created({ range: { start: 7, end: 18 }, raw: null, color: 'sage', job: null }));
     renderReader();
     selectInBlock('ch01/s01/p001', 7, 18);
     await userEvent.click(await screen.findByRole('button', { name: 'Highlight sage' }));
@@ -108,7 +110,6 @@ describe('<Reader>', () => {
       document_id: 'doc-1',
       anchor: 'ch01/s01/p001',
       range: { start: 7, end: 18 },
-      raw: 'queue grows',
       color: 'sage',
     });
     const mark = await within(block('ch01/s01/p001')).findByText('queue grows');
@@ -123,6 +124,21 @@ describe('<Reader>', () => {
     await userEvent.type(screen.getByLabelText('Your note, kept exactly as you write it'), '  Is this the delay?{Enter}');
     await userEvent.click(screen.getByRole('button', { name: 'Save note' }));
     expect(api.post).toHaveBeenCalledWith('notes', expect.objectContaining({ range: { start: 0, end: 4 }, raw: '  Is this the delay?\n', color: 'amber' }));
+  });
+
+  it('gives an existing highlight its words once, with PATCH', async () => {
+    const highlight: NoteDetail = { ...created({ range: { start: 7, end: 18 }, raw: null, color: 'sky' }), structured: null, detached: false };
+    api.patch.mockResolvedValue({ ...highlight, raw: 'Why more work?' });
+    renderReader([highlight]);
+    await userEvent.click(screen.getByRole('button', { name: /Distillation/ }));
+    await userEvent.click(screen.getByRole('tab', { name: /^Your notes/ }));
+    await userEvent.click(screen.getByRole('button', { name: 'Add a note' }));
+    await userEvent.type(screen.getByLabelText(/Your words, kept exactly/), 'Why more work?');
+    await userEvent.click(screen.getByRole('button', { name: 'Save note' }));
+
+    expect(api.patch).toHaveBeenCalledWith('notes/n1', { raw: 'Why more work?' });
+    expect(await screen.findByText('Why more work?')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Add a note' })).toBeNull();
   });
 
   it('n opens a whole-block note on the focused block; Escape closes it', async () => {

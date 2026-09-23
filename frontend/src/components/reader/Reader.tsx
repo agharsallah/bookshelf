@@ -50,7 +50,7 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
   const [contentsOpen, setContentsOpen] = useState(false);
   const [composer, setComposer] = useState<{ target: ComposerTarget; compose: boolean } | null>(null);
   const [focusedNote, setFocusedNote] = useState<string | null>(null);
-  const { notes, saving, add, recolor, remove, review } = useNotes(initialNotes);
+  const { notes, saving, add, annotate, recolor, remove, review } = useNotes(initialNotes);
 
   const flat = useMemo(() => flatten(unit), [unit]);
   const anchors = useMemo(() => flat.map((f) => f.node.anchor), [flat]);
@@ -145,7 +145,8 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
     onNoteClick: openNote,
   });
 
-  const save = async (raw: string, color: HighlightColor | null) => {
+  /** `raw` null: a plain highlight (no words, no model call). */
+  const save = async (raw: string | null, color: HighlightColor | null) => {
     if (!composer) return;
     const { target } = composer;
     const created = await add({ documentId: doc.id, anchor: target.anchor, range: target.range, raw, color });
@@ -249,6 +250,7 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
                 onReveal={onCite}
                 onCite={onCite}
                 onColor={(note, color) => void recolor(note, color)}
+                onAddWords={annotate}
                 onDelete={(note) => void remove(note)}
                 onReview={(note, action) => void review(note, action)}
               />
@@ -263,7 +265,7 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
           target={composer.target}
           startComposing={composer.compose}
           saving={saving}
-          onHighlight={(color) => void save(composer.target.passage, color)}
+          onHighlight={(color) => void save(null, color)}
           onSave={(raw, color) => void save(raw, color)}
           onClose={() => setComposer(null)}
         />

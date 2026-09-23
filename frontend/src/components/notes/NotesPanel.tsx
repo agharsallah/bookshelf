@@ -17,6 +17,7 @@ export interface NotesPanelProps {
   onReveal: (anchor: string) => void;
   onCite: (anchor: string) => void;
   onColor: (note: NoteDetail, color: HighlightColor) => void;
+  onAddWords: (note: NoteDetail, raw: string) => Promise<boolean>;
   onDelete: (note: NoteDetail) => void;
   onReview: (note: NoteDetail, action: 'approve' | 'reject') => void;
 }

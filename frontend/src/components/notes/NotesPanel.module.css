@@ -95,6 +95,33 @@
   font-size: var(--text-xs);
 }
 
+.addWords {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+  cursor: pointer;
+}
+
+.wordsForm {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.wordsForm textarea {
+  width: 100%;
+  padding: var(--space-2);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-m);
+  background: var(--paper-raised);
+  font-size: var(--text-ui);
+  resize: vertical;
+}
+
 .rawText {
   font-size: var(--text-ui);
   white-space: pre-wrap;

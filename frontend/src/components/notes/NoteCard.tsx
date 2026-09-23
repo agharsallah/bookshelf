@@ -1,10 +1,11 @@
 /**
  * One note: the passage it marks, your words verbatim, and — when the
  * structure-note skill has run — its structured version beside them, which you can
- * accept or dismiss. Raw text is never editable (D11); colour is, and the note can
- * be deleted after a confirmation.
+ * accept or dismiss. A plain highlight has no words yet and can be given them once;
+ * after that they are never editable (D11). Colour is, and the note can be deleted
+ * after a confirmation.
  */
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { anchorLabel } from '../../lib/anchors';
 import type { NoteDetail } from '../../lib/api/types/notes';
 import { HIGHLIGHT_COLORS, type HighlightColor, type RenderBlock } from '../../lib/contract';
@@ -18,17 +19,61 @@ export interface NoteCardProps {
   onReveal: (anchor: string) => void;
   onCite: (anchor: string) => void;
   onColor: (note: NoteDetail, color: HighlightColor) => void;
+  /** Give a plain highlight its words; resolves true once they are stored. */
+  onAddWords: (note: NoteDetail, raw: string) => Promise<boolean>;
   onDelete: (note: NoteDetail) => void;
   onReview: (note: NoteDetail, action: 'approve' | 'reject') => void;
 }
 
 const REVIEW_WORDS = { draft: 'Suggested', needs_review: 'Suggested, flagged', approved: 'Accepted', rejected: 'Dismissed' } as const;
 
-export function NoteCard({ note, passage, focused, onReveal, onCite, onColor, onDelete, onReview }: NoteCardProps) {
+function AddWords({ note, onAddWords }: Pick<NoteCardProps, 'note' | 'onAddWords'>) {
+  const [open, setOpen] = useState(false);
+  const [raw, setRaw] = useState('');
+  const [saving, setSaving] = useState(false);
+  const id = useId();
+  if (!open) {
+    return (
+      <button type="button" className={styles.addWords} onClick={() => setOpen(true)}>
+        Add a note
+      </button>
+    );
+  }
+  const submit = async () => {
+    if (!raw.trim()) return;
+    setSaving(true);
+    const stored = await onAddWords(note, raw);
+    setSaving(false);
+    if (stored) setOpen(false);
+  };
+  return (
+    <form
+      className={styles.wordsForm}
+      onSubmit={(e) => {
+        e.preventDefault();
+        void submit();
+      }}
+    >
+      <label htmlFor={id} className={styles.caption}>
+        Your words, kept exactly as you write them (they cannot be changed later)
+      </label>
+      <textarea id={id} value={raw} onChange={(e) => setRaw(e.target.value)} rows={3} maxLength={20000} autoFocus />
+      <div className={styles.reviewRow}>
+        <button type="submit" disabled={!raw.trim() || saving}>
+          {saving ? 'Saving…' : 'Save note'}
+        </button>
+        <button type="button" onClick={() => setOpen(false)}>
+          Cancel
+        </button>
+      </div>
+    </form>
+  );
+}
+
+export function NoteCard({ note, passage, focused, onReveal, onCite, onColor, onAddWords, onDelete, onReview }: NoteCardProps) {
   const [confirming, setConfirming] = useState(false);
   const structured = note.structured;
   const showStructured = structured !== null && structured.review !== 'rejected';
-  const isHighlightOnly = passage !== null && note.raw.trim() === passage.trim();
 
   return (
     <article
@@ -48,12 +93,21 @@ export function NoteCard({ note, passage, focused, onReveal, onCite, onColor, on
         </time>
       </header>
 
-      {passage && !isHighlightOnly ? <blockquote className={styles.passage}>{passage}</blockquote> : null}
+      {passage ? <blockquote className={styles.passage}>{passage}</blockquote> : null}
 
       <div className={showStructured ? styles.sideBySide : undefined}>
         <div className={styles.raw}>
-          <p className={styles.caption}>{isHighlightOnly ? 'Highlight' : 'Your words'}</p>
-          <p className={styles.rawText}>{note.raw}</p>
+          {note.raw === null ? (
+            <>
+              <p className={styles.caption}>Highlight</p>
+              <AddWords note={note} onAddWords={onAddWords} />
+            </>
+          ) : (
+            <>
+              <p className={styles.caption}>Your words</p>
+              <p className={styles.rawText}>{note.raw}</p>
+            </>
+          )}
         </div>
         {showStructured ? (
           <div className={styles.structured} data-review={structured.review}>
