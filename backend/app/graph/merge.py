@@ -12,8 +12,10 @@
 
 The loser row stays, hidden everywhere by `merged_into`, so `unmerge` can bring it back:
 it clears `merged_into`, takes the loser's names off the survivor, reopens the `same_as`
-proposal, and re-syncs the documents that back either side so skill edges find the loser
-again. Hand-drawn edges that were repointed stay on the survivor.
+proposal, marks the restored concept `origin = human` (so a re-sync never garbage-collects
+it, even when no artifact backs its edges any more), and re-syncs the documents that back
+either side so skill edges find the loser again. Hand-drawn edges that were repointed stay
+on the survivor.
 """
 
 import uuid
@@ -152,6 +154,9 @@ def unmerge(session: Session, loser_id: uuid.UUID) -> Concept:
     taken = {names.normalize(n) for n in [loser.canonical, *loser.aliases]}
     survivor.aliases = [a for a in survivor.aliases if names.normalize(a) not in taken]
     loser.merged_into = None
+    # A person just decided it stands on its own: curated, so the re-sync below (which
+    # garbage-collects skill concepts no artifact backs any more) must never delete it.
+    loser.origin = Origin.HUMAN
     for edge in _pair_edges(session, loser.id, survivor.id):
         edge.status = EdgeStatus.PROPOSED
         session.add(edge)

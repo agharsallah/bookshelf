@@ -1,11 +1,14 @@
 """Human-confirmed merges repoint edges, combine collisions, and can be undone."""
 
+import uuid
+
 import pytest
 from sqlmodel import select
 
 from app.graph import apply, merge
-from app.models import Edge
-from app.models.enums import EdgeStatus, Relation
+from app.models import Concept, Edge
+from app.models.enums import ConceptKind, EdgeStatus, EntityKind, Relation
+from tests.conftest import AUTH
 from tests.graph.conftest import c, concept, concept_named, edge, links, n, relations, store
 
 
@@ -90,3 +93,27 @@ def test_unmerge_restores_the_concept_and_its_skill_edges(session, two_names):
     assert ("little's law", "supports", "wip cap", "accepted") in relations(session)
     same_as = session.exec(select(Edge).where(Edge.relation == Relation.SAME_AS)).one()
     assert same_as.status is EdgeStatus.PROPOSED
+
+
+def test_unmerge_keeps_a_concept_no_artifact_backs_any_more(client, session, queueing):
+    """Regression: edges whose concept_links artifact is gone made the re-sync prune the
+    concept being restored, and unmerge crashed ("Instance not persistent")."""
+    gone = f"skill:link-concepts@1#{uuid.uuid4()}"
+    orphan, keeper = (
+        Concept(canonical=name, kind=ConceptKind.CONCEPT, blurb_cites=[f"{queueing.id}#ch01/p002"])
+        for name in ("wip cap", "wip limit")
+    )
+    session.add_all([orphan, keeper])
+    session.flush()
+    session.add(Edge(src_kind=EntityKind.NODE, src_id=f"{queueing.id}#ch01/p002",
+                     dst_kind=EntityKind.CONCEPT, dst_id=str(orphan.id),
+                     relation=Relation.MENTIONS, evidence=[f"{queueing.id}#ch01/p002"],
+                     origin=gone))  # fmt: skip
+    session.commit()
+    merge.merge(session, orphan.id, keeper.id)
+
+    response = client.post(f"/api/v1/concepts/{orphan.id}/unmerge", headers=AUTH)
+
+    assert response.status_code == 200
+    assert (response.json()["merged_into"], response.json()["origin"]) == (None, "human")
+    assert concept_named(session, "wip cap").id == orphan.id
