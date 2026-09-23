@@ -24,6 +24,7 @@ from pydantic import BaseModel
 from qdrant_client import QdrantClient
 from sqlmodel import Session
 
+from app.core import lifecycle
 from app.models.enums import Tier
 from app.pipeline.bodies import iter_objects
 from app.pipeline.gates import RENDER_BODY_SCHEMA, schema_errors
@@ -151,6 +152,9 @@ def stream(
         evidence = gather(session, outcome.response)
         if not evidence.items:
             yield "error", ErrorEvent(code="no_evidence", message="Nothing in the library matches.")
+            return
+        if lifecycle.stopping.is_set():  # do not start a model run the reload would wait on
+            yield "error", ErrorEvent(code="shutting_down", message="The server is restarting.")
             return
         yield "status", StatusEvent(stage="writing", message="Writing a cited answer")
         yield "answer", synthesize(runner, request.query, evidence)

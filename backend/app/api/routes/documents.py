@@ -7,8 +7,7 @@ import httpx
 from fastapi import APIRouter, Depends, Query, Response, status
 from fastapi import Path as PathParam
 
-from app.api.deps import LimitDep, OffsetDep, SessionDep
-from app.api.routes.library import SettingsDep
+from app.api.deps import LimitDep, OffsetDep, SessionDep, SettingsDep
 from app.core.security import require_api_key
 from app.models import Document
 from app.models.enums import DocumentStatus

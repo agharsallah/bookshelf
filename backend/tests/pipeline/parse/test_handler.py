@@ -143,5 +143,28 @@ def test_markdown_article_is_parsed_without_review(session, library_dir: Path):
 
     result = _run(session, document)
 
-    assert result.result == {"nodes": 2, "tier": 1, "needs_review": False, "warnings": []}
+    assert {k: v for k, v in result.result.items() if k != "pruned_media"} == {
+        "nodes": 2, "tier": 1, "needs_review": False, "warnings": []
+    }  # fmt: skip
     assert (document.status, document.title) == (DocumentStatus.PARSED, "Notes")
+
+
+def test_reparse_deletes_crops_no_node_references_and_nothing_else(session, library_dir: Path):
+    from app.core.config import get_settings
+
+    media = get_settings().media_dir
+    stale = media / "prune-check" / "ch09" / "f001.png"
+    other = media / "senge-fifth" / "ch01" / "f001.png"
+    for file in (stale, other):
+        file.parent.mkdir(parents=True, exist_ok=True)
+        file.write_bytes(b"png")
+    (library_dir / "notes.md").write_text("# Notes\n\nA paragraph.\n")
+    document = _document(
+        session, "library/notes.md", kind=DocumentKind.ARTICLE, slug="prune-check"
+    )
+
+    result = _run(session, document)
+
+    assert result.result["pruned_media"] == 1
+    assert not (media / "prune-check" / "ch09").exists()
+    assert other.read_bytes() == b"png"

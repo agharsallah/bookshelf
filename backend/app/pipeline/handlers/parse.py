@@ -9,14 +9,15 @@ without retrying. Anything else is re-raised so the worker retries it.
 import re
 from pathlib import Path
 
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from app.core.config import get_settings
 from app.jobs.registry import HandlerResult, JobContext, PermanentJobError, handler
-from app.models import Document
+from app.models import Document, Node
 from app.models.enums import DocumentStatus, JobKind, JobState
 from app.pipeline.parse import ParsedDocument, ParseError, load_override, parse_file, store_tree
 from app.services.library import resolve_source_path
+from app.services.media import prune_document_media
 
 MAX_REPORTED_WARNINGS = 50
 _NON_SLUG = re.compile(r"[^a-z0-9]+")
@@ -40,6 +41,12 @@ def _fill_metadata(document: Document, parsed: ParsedDocument) -> None:
         document.authors = parsed.authors
     if parsed.year is not None and document.year is None and -3000 <= parsed.year <= 3000:
         document.year = parsed.year
+
+
+def _image_paths(session: Session, document: Document) -> list[str]:
+    """Media paths the document's nodes reference after the re-parse."""
+    metas = session.exec(select(Node.meta).where(Node.document_id == document.id)).all()
+    return [m["image_path"] for m in metas if isinstance(m.get("image_path"), str)]
 
 
 def _mark_failed(session: Session, document: Document) -> None:
@@ -98,9 +105,12 @@ def run_parse(ctx: JobContext) -> HandlerResult:
         _mark_failed(session, document)
         raise
 
+    referenced = _image_paths(session, document)
+    pruned = prune_document_media(settings.media_dir, document.slug, referenced)
     return HandlerResult(
         result={
             "nodes": count,
+            "pruned_media": len(pruned),
             "tier": parsed.tier,
             "needs_review": parsed.needs_review,
             "warnings": parsed.warnings[:MAX_REPORTED_WARNINGS],

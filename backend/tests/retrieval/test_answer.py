@@ -6,6 +6,7 @@ from typing import Any
 from pydantic import BaseModel
 from sqlmodel import Session
 
+from app.core import lifecycle
 from app.pipeline.runner import FakeRunner
 from app.retrieval import answer
 from app.retrieval.embedding import FakeEmbedder
@@ -51,6 +52,20 @@ def test_the_stream_reports_progress_then_hits_then_the_answer(
     assert [getattr(p, "stage", None) for _, p in events] == [
         "routing", "searching", None, "writing", None,
     ]  # fmt: skip
+
+
+def test_no_model_run_starts_once_the_server_is_shutting_down(
+    session: Session, indexed: Shelf, embedder: FakeEmbedder
+) -> None:
+    runner = FakeRunner(_reply(VALID))
+    lifecycle.stopping.set()
+    try:
+        name, payload = _stream(session, embedder, runner, "balancing feedback loops")[-1]
+    finally:
+        lifecycle.stopping.clear()
+
+    assert (name, getattr(payload, "code", None)) == ("error", "shutting_down")
+    assert runner.calls == []
 
 
 def test_invented_cites_are_dropped_and_reported(

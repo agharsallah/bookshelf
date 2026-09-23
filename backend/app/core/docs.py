@@ -44,6 +44,8 @@ TAGS_METADATA: list[dict[str, object]] = [
     {"name": "concepts", "description": "Typeahead, concept pages with evidence, merges."},
     {"name": "graph", "description": "Concepts and evidence-backed edges, by neighborhood."},
     {"name": "exports", "description": "Markdown, JSON and CSV bundles per document."},
+    {"name": "media", "description": "Derived images: figure and formula crops."},
+    {"name": "skills", "description": "Skill packages and interactive-mode inputs."},
     {
         "name": "health",
         "description": "Liveness and readiness probes for deployment tooling.",

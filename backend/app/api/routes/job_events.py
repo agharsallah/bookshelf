@@ -2,8 +2,10 @@
 
 The server polls the jobs table about once a second and emits one `job` event per job
 whose state changed (the first poll sends every live job as a snapshot). Streams are
-bounded by `max_seconds`, so a forgotten tab never holds a connection forever; the
-browser's `EventSource` reconnects on its own.
+bounded by `max_seconds`, so a forgotten tab never holds a connection forever, and end
+with `event: end` as soon as the server starts shutting down (`app.core.lifecycle`), so a
+`fastapi dev` reload never waits on them; the browser's `EventSource` reconnects on its
+own. A client that disconnects cancels the generator (Starlette's streaming response).
 
 Docs: https://fastapi.tiangolo.com/tutorial/server-sent-events/
 """
@@ -19,6 +21,7 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.sse import EventSourceResponse, ServerSentEvent
 from sqlmodel import Session, col, or_, select
 
+from app.core import lifecycle
 from app.models import Job
 from app.models.enums import JobState
 from app.schemas.job import JobPublic
@@ -82,6 +85,9 @@ async def stream_jobs(
                 id=f"{job.id}:{job.attempts}:{job.state.value}",
                 data=JobPublic.model_validate(job),
             )
+        if lifecycle.stopping.is_set():
+            yield ServerSentEvent(event="end", data={"reason": "shutdown"})
+            return
         if time.monotonic() >= deadline:
             yield ServerSentEvent(event="end", data={"reason": "max_seconds"})
             return

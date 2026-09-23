@@ -6,7 +6,7 @@ from fastapi import APIRouter
 from fastapi import Path as PathParam
 from fastapi.responses import FileResponse
 
-from app.api.routes.library import SettingsDep
+from app.api.deps import SettingsDep
 from app.services.media import IMAGE_TYPES, resolve_media_file
 
 router = APIRouter(prefix="/media", tags=["media"])

@@ -1,18 +1,13 @@
 """`library/` files waiting to be ingested (§13 `GET /library`)."""
 
-from typing import Annotated
+from fastapi import APIRouter
 
-from fastapi import APIRouter, Depends
-
-from app.api.deps import LimitDep, OffsetDep, SessionDep
-from app.core.config import Settings, get_settings
+from app.api.deps import LimitDep, OffsetDep, SessionDep, SettingsDep
 from app.schemas.common import Page
 from app.schemas.document import LibraryFilePublic
 from app.services import library
 
 router = APIRouter(prefix="/library", tags=["library"])
-
-SettingsDep = Annotated[Settings, Depends(get_settings)]
 
 
 @router.get(

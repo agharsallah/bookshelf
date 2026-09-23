@@ -1,12 +1,14 @@
-"""Shared dependencies: database session and bounded pagination."""
+"""Shared dependencies: settings, database session and bounded pagination."""
 
 from typing import Annotated
 
 from fastapi import Depends, Query
 from sqlmodel import Session
 
+from app.core.config import Settings, get_settings
 from app.db.session import get_session
 
+SettingsDep = Annotated[Settings, Depends(get_settings)]
 SessionDep = Annotated[Session, Depends(get_session)]
 
 # Hard ceiling on page size: an unbounded `limit` is a denial-of-service knob

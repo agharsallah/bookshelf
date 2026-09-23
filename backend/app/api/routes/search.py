@@ -34,6 +34,8 @@ if TYPE_CHECKING:  # `qdrant_client` (and fastembed/onnxruntime) load on the fir
 router = APIRouter(prefix="/search", tags=["search"])
 
 ROUTER_TIMEOUT_SECONDS = 20
+# One answer is one model run; bounded so a stream (and a reload waiting on it) is too.
+ANSWER_TIMEOUT_SECONDS = 180
 
 
 @lru_cache
@@ -50,7 +52,7 @@ def get_answer_router() -> QueryRouter:
 
 @lru_cache
 def get_answer_runner() -> ModelRunner:
-    return ClaudeCliRunner()
+    return ClaudeCliRunner(timeout_seconds=ANSWER_TIMEOUT_SECONDS)
 
 
 def get_qdrant() -> "QdrantClient":
@@ -109,7 +111,8 @@ def answer_question(
 ) -> Iterator[ServerSentEvent]:
     """Events: `status` {stage, message} · `hits` (a `SearchResponse`) · `answer`
     {blocks, sources, dropped_cites, model} with cites `<slug>:<anchor>` · `error`
-    {code, message}. The stream ends after `answer` or `error`."""
+    {code, message}. The stream ends after `answer` or `error`; the model run is bounded
+    (`ANSWER_TIMEOUT_SECONDS`) and skipped once the server is shutting down."""
     from app.retrieval import answer
 
     with Session(engine) as session:

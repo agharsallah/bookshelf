@@ -14,6 +14,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from app.api.router import api_router
 from app.api.routes import health
+from app.core import lifecycle
 from app.core.config import Settings, get_settings
 from app.core.docs import DESCRIPTION, TAGS_METADATA
 from app.core.errors import register_exception_handlers
@@ -46,6 +47,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             "auth_required": settings.auth_required,
         },
     )
+    restore_signals = lifecycle.install()  # SSE streams end as soon as shutdown begins
     runner = EmbedRunner() if settings.qdrant_url is None and settings.api_embed_runner else None
     app.state.embed_runner = runner
     if runner is not None:
@@ -53,6 +55,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     try:
         yield
     finally:
+        restore_signals()
         if runner is not None:
             runner.stop()
         logger.info("Application stopped")
