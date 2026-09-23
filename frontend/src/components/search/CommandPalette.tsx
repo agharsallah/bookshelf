@@ -1,9 +1,11 @@
 /**
  * The command palette (⌘K / Ctrl-K, or the masthead button): jump to a book, a chapter
  * or a concept as you type, or hand the words to Search or Ask. A combobox over a
- * listbox: ↑/↓ move, Enter opens, Esc closes and returns focus where it was.
+ * listbox: ↑/↓ move, Enter opens, Esc closes and returns focus where it was. The dialog
+ * is portalled to <body> so it covers the page, not just the masthead it is mounted in.
  */
 import { useCallback, useEffect, useReducer, useRef, type KeyboardEvent } from 'react';
+import { createPortal } from 'react-dom';
 import { browserApi, type ApiClient } from '../../lib/api/client';
 import type { Page } from '../../lib/api/types';
 import type { ConceptSummary } from '../../lib/api/types/graph';
@@ -114,7 +116,8 @@ export function CommandPalette({ api = browserApi, navigate = go, debounceMs = 1
         <span>Jump to…</span>
         <kbd className={styles.kbd}>⌘K</kbd>
       </button>
-      {state.open ? (
+      {state.open
+        ? createPortal(
         <div className={styles.backdrop} onMouseDown={(e) => e.target === e.currentTarget && close()}>
           <div className={styles.dialog} role="dialog" aria-modal="true" aria-label="Jump to">
             <input
@@ -157,8 +160,11 @@ export function CommandPalette({ api = browserApi, navigate = go, debounceMs = 1
               ↑↓ to move, Enter to open, Esc to close
             </p>
           </div>
-        </div>
-      ) : null}
+        </div>,
+            // The masthead's backdrop-filter would trap a fixed overlay inside it.
+            document.body,
+          )
+        : null}
     </>
   );
 }

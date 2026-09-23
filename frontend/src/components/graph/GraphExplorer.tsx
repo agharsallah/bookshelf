@@ -65,7 +65,13 @@ export function GraphExplorer({ focus: initialFocus, view: initialView, initial,
     if (hood && answered === focus && hood.focus !== focus) history.replaceState(null, '', graphHref(hood.focus, view));
   }, [hood, answered, focus, view]);
 
-  const changeView = (patch: Partial<GraphView>) => go(model?.focus ?? focus, { ...view, ...patch });
+  // Client-side re-focus keeps the tab title in step ("<focus> — <app>").
+  const focusLabel = focusNode?.label;
+  useEffect(() => {
+    if (focusLabel) document.title = document.title.replace(/^.*?(?= — )|^[^—]*$/, focusLabel);
+  }, [focusLabel]);
+
+  const changeView =(patch: Partial<GraphView>) => go(model?.focus ?? focus, { ...view, ...patch });
   const refocus = (id: string) => go(id, view);
 
   if (!model) {

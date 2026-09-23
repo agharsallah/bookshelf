@@ -3,7 +3,7 @@
  * at its end, the mode switch beneath, and the two actions: search (instant, free) and
  * ask (a cited answer, which spends a model run).
  */
-import { forwardRef, type FormEvent, type KeyboardEvent } from 'react';
+import { forwardRef, type SubmitEvent, type KeyboardEvent } from 'react';
 import type { Intent, SearchMode } from '../../lib/api/types/search';
 import styles from './Search.module.css';
 
@@ -37,7 +37,7 @@ export interface QueryBarProps {
 
 export const QueryBar = forwardRef<HTMLInputElement, QueryBarProps>(function QueryBar(props, ref) {
   const { query, mode, intent, loading, asking } = props;
-  const submit = (event: FormEvent) => {
+  const submit = (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
     props.onSubmit();
   };
