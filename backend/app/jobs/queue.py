@@ -131,6 +131,49 @@ def complete(
     session.commit()
 
 
+CANCELLED = "cancelled by user"
+
+
+def cancel(session: Session, job_id: uuid.UUID) -> Job | None:
+    """Atomically cancel a *queued* job: `skipped`, error "cancelled by user", finished now.
+
+    Returns None when the job is not queued (a worker may have just claimed it).
+    """
+    row = session.execute(
+        text(
+            """
+            update jobs set state = 'skipped', error = :error, finished_at = now(),
+                            locked_at = null
+            where id = :id and state = 'queued'
+            returning id
+            """
+        ),
+        {"id": job_id, "error": CANCELLED},
+    ).first()
+    session.commit()
+    if row is None:
+        return None
+    job = session.get(Job, row[0])
+    if job is not None:
+        session.refresh(job)
+    return job
+
+
+def retry_spec(job: Job) -> JobSpec:
+    """The same work again (kind, scope, skill, dedupe key, payload), without `force`."""
+    payload = {k: v for k, v in (job.payload or {}).items() if k != "force"}
+    return JobSpec(
+        kind=job.kind,
+        document_id=job.document_id,
+        anchor=job.anchor,
+        skill=job.skill,
+        input_hash=job.input_hash,
+        payload=payload or None,
+        priority=job.priority,
+        run_mode=job.run_mode or RunMode.BATCH,
+    )
+
+
 def fail(session: Session, job: Job, error: str, *, retry: bool = True) -> None:
     """Record a failure; requeue with backoff while attempts remain."""
     job.error = error[:4000]

@@ -4,9 +4,12 @@ import uuid
 from pathlib import Path
 
 from fastapi.testclient import TestClient
-from sqlmodel import Session
+from sqlmodel import Session, select
 
-from app.models import Document
+from app.jobs import queue
+from app.jobs.queue import JobSpec
+from app.models import Document, Job
+from app.models.enums import DocumentStatus, JobKind, JobState
 from tests.api.factories import make_note
 from tests.conftest import AUTH
 from tests.pipeline.runtime.conftest import write_skill
@@ -84,3 +87,76 @@ def test_structure_note_needs_a_note_of_the_same_document(
 
     assert [status for status, _ in (missing, elsewhere, unknown)] == [422, 422, 422]
     assert elsewhere[1]["error"]["details"][0]["field"] == "body.note_id"
+
+
+# --- Cancel and retry --------------------------------------------------------------------
+
+
+def job_of(session: Session, kind: JobKind, doc: Document, anchor: str | None = None, **payload):
+    job = queue.enqueue(session, JobSpec(kind=kind, document_id=doc.id, anchor=anchor,
+                                         payload=payload or None))  # fmt: skip
+    assert job is not None
+    return job
+
+
+def test_cancelling_a_queued_job_skips_it(api: TestClient, session: Session, book: Document):
+    job = job_of(session, JobKind.SUMMARIZE, book, "ch01")
+
+    response = api.delete(f"{URL}/{job.id}", headers=AUTH)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert (body["state"], body["error"]) == ("skipped", "cancelled by user")
+    assert body["finished_at"] is not None
+
+
+def test_only_queued_jobs_can_be_cancelled(api: TestClient, session: Session, book: Document):
+    running = job_of(session, JobKind.SUMMARIZE, book, "ch01")
+    queue.claim(session)
+
+    assert api.delete(f"{URL}/{running.id}", headers=AUTH).status_code == 409
+    assert api.delete(f"{URL}/{uuid.uuid4()}", headers=AUTH).status_code == 404
+
+
+def test_cancelling_the_last_element_job_releases_the_section_notes(
+    api: TestClient, session: Session, book: Document
+):
+    book.status = DocumentStatus.ENRICHING
+    session.add(book)
+    session.commit()
+    code = job_of(session, JobKind.EXPLAIN_CODE, book, "ch02/c001")
+    queue.complete(session, code)
+    figure = job_of(session, JobKind.DESCRIBE_FIGURE, book, "ch01/s01/f001")
+
+    api.delete(f"{URL}/{figure.id}", headers=AUTH)
+
+    queued = session.exec(select(Job).where(Job.kind == JobKind.DISTIL_SECTION)).all()
+    assert sorted(j.anchor or "" for j in queued) == ["ch01/s01", "ch01/s02", "ch02"]
+
+
+def test_retrying_a_failed_job_queues_the_same_work_without_force(
+    api: TestClient, session: Session, book: Document
+):
+    failed = job_of(session, JobKind.SUMMARIZE, book, "ch01", force=True)
+    queue.claim(session)
+    queue.fail(session, failed, "CLI rate limited", retry=False)
+
+    status, body = post_to(api, f"{URL}/{failed.id}/retry")
+
+    assert status == 202
+    again = session.get(Job, uuid.UUID(body["job"]["id"]))
+    assert again is not None and again.id != failed.id
+    assert (again.kind, again.anchor, again.state, again.payload) == (
+        JobKind.SUMMARIZE, "ch01", JobState.QUEUED, {},
+    )  # fmt: skip
+
+
+def test_only_failed_jobs_can_be_retried(api: TestClient, session: Session, book: Document):
+    queued = job_of(session, JobKind.SUMMARIZE, book, "ch01")
+
+    assert post_to(api, f"{URL}/{queued.id}/retry")[0] == 409
+
+
+def post_to(api: TestClient, url: str) -> tuple[int, dict]:
+    response = api.post(url, headers=AUTH)
+    return response.status_code, response.json()
