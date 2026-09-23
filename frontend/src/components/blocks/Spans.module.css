@@ -1,0 +1,47 @@
+.code {
+  padding: 0.08em 0.3em;
+  border-radius: var(--radius-s);
+  background: var(--paper-sunken);
+  font-size: 0.84em;
+}
+
+/*
+ * A highlighter stroke rather than a flat box: the wash sits low on the x-height
+ * and breaks cleanly across lines.
+ */
+.highlight {
+  --hl: var(--hl-amber);
+  padding: 0 0.12em;
+  border-radius: 0.2em 0.35em 0.25em 0.3em;
+  background: linear-gradient(
+    to bottom,
+    transparent 0.18em,
+    var(--hl) 0.18em,
+    var(--hl) calc(100% - 0.06em),
+    transparent calc(100% - 0.06em)
+  );
+  color: inherit;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+.highlight[data-color='rose'] {
+  --hl: var(--hl-rose);
+}
+.highlight[data-color='sage'] {
+  --hl: var(--hl-sage);
+}
+.highlight[data-color='sky'] {
+  --hl: var(--hl-sky);
+}
+.highlight[data-color='violet'] {
+  --hl: var(--hl-violet);
+}
+
+@media (forced-colors: active) {
+  .highlight {
+    forced-color-adjust: none;
+    background: Mark;
+    color: MarkText;
+  }
+}

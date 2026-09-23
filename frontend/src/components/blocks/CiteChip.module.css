@@ -1,0 +1,87 @@
+/* Cite chips read like marginalia: small, verdigris, never louder than the text. */
+.marks {
+  display: inline-flex;
+  gap: 0.18em;
+  margin-inline-start: 0.12em;
+  vertical-align: super;
+  font-size: 0.62em;
+  line-height: 0;
+}
+
+.chip {
+  position: relative;
+  display: inline-block;
+  padding: 0.28em 0.36em 0.22em;
+  border-radius: var(--radius-s);
+  color: var(--accent);
+  background: color-mix(in oklab, var(--accent-wash) 65%, transparent);
+  font-family: var(--font-ui);
+  font-weight: 560;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    background-color var(--dur-1) var(--ease-out),
+    color var(--dur-1) var(--ease-out);
+}
+
+.chip:hover,
+.chip:focus-visible {
+  background: var(--accent);
+  color: var(--paper-raised);
+}
+
+/* Full anchor, revealed on hover/focus like a pencilled note above the line. */
+.tip {
+  position: absolute;
+  inset-block-end: calc(100% + 0.55em);
+  inset-inline-start: 50%;
+  z-index: 10;
+  padding: 0.45em 0.6em;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-m);
+  background: var(--paper-raised);
+  box-shadow: var(--shadow-lift);
+  color: var(--ink-2);
+  font-family: var(--font-mono);
+  font-size: 1.15em;
+  font-weight: 400;
+  letter-spacing: 0;
+  opacity: 0;
+  pointer-events: none;
+  translate: -50% 0.25em;
+  transition:
+    opacity var(--dur-2) var(--ease-out),
+    translate var(--dur-2) var(--ease-out);
+}
+
+.chip:hover .tip,
+.chip:focus-visible .tip {
+  opacity: 1;
+  translate: -50% 0;
+}
+
+.sources {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  color: var(--ink-3);
+}
+
+.sourcesLabel {
+  margin-inline-end: var(--space-1);
+}
+
+.sources .chip {
+  font-size: var(--text-xs);
+}
+
+@media (forced-colors: active) {
+  .chip {
+    border: 1px solid LinkText;
+  }
+}

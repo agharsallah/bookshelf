@@ -1,0 +1,56 @@
+/* Tables: book-style — rules above and below, hairlines between rows, no boxes. */
+.scroller {
+  max-width: 100%;
+  overflow-x: auto;
+  border-radius: var(--radius-s);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-ui);
+  font-size: var(--text-ui);
+  line-height: var(--leading-ui);
+  font-variant-numeric: lining-nums;
+  border-block: 1.5px solid var(--ink-2);
+}
+
+.caption {
+  caption-side: top;
+  padding-block-end: var(--space-2);
+  text-align: start;
+  font-family: var(--font-read);
+  font-size: var(--text-base);
+  font-style: italic;
+  color: var(--ink-2);
+}
+
+.table th,
+.table td {
+  padding: var(--space-2) var(--space-3);
+  text-align: start;
+  vertical-align: top;
+}
+
+.table thead th {
+  border-block-end: 1px solid var(--ink-2);
+  color: var(--ink-2);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.table tbody tr + tr > * {
+  border-block-start: 1px solid var(--rule);
+}
+
+.table tbody th {
+  font-weight: 560;
+  color: var(--ink);
+}
+
+.table [data-numeric] {
+  /* Tabular figures only where numbers must align: in this face tnum also widens commas. */
+  font-variant-numeric: tabular-nums lining-nums;
+  text-align: end;
+  white-space: nowrap;
+}

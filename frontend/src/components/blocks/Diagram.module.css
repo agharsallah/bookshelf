@@ -1,0 +1,49 @@
+.canvas {
+  display: none;
+}
+
+/* Once Mermaid has drawn, show the drawing and keep the text version for screen readers. */
+[data-rendered] .canvas {
+  display: block;
+  padding: var(--space-4);
+  border-radius: var(--radius-l);
+  background: var(--paper-raised);
+  overflow-x: auto;
+}
+
+[data-rendered] .canvas :global(svg) {
+  margin-inline: auto;
+  height: auto;
+}
+
+[data-rendered] .fallback {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.text {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-l);
+  list-style: none;
+  font-family: var(--font-ui);
+  font-size: var(--text-ui);
+  line-height: var(--leading-ui);
+}
+
+.text li + li {
+  margin-block-start: var(--space-1);
+}
+
+.node {
+  font-weight: 560;
+}
+
+.arrow {
+  color: var(--accent);
+}

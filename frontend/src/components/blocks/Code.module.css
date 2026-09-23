@@ -1,0 +1,46 @@
+/*
+ * Code on a sunken leaf. Shiki emits CSS variables (--shiki-*); their colors are
+ * defined here so one highlighted output serves both themes.
+ */
+.frame {
+  --shiki-foreground: var(--ink);
+  --shiki-background: transparent;
+  --shiki-token-keyword: light-dark(#7a2f6e, #dc8fcf);
+  --shiki-token-string: light-dark(#1e6b5c, #8fd1bd);
+  --shiki-token-string-expression: light-dark(#1e6b5c, #8fd1bd);
+  --shiki-token-comment: light-dark(#6f6a5e, #8d8779);
+  --shiki-token-constant: light-dark(#85570a, #e2b560);
+  --shiki-token-function: light-dark(#34448f, #9daef0);
+  --shiki-token-parameter: light-dark(#454b5c, #cfc8b8);
+  --shiki-token-punctuation: light-dark(#5f6474, #9a9486);
+  --shiki-token-link: var(--accent);
+  --shiki-token-inserted: var(--tone-insight);
+  --shiki-token-deleted: var(--tone-important);
+
+  position: relative;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-l);
+  background: var(--paper-sunken);
+}
+
+.language {
+  display: block;
+  padding: var(--space-2) var(--space-4) 0;
+  text-align: end;
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  color: var(--ink-3);
+}
+
+.pre,
+.highlighted :global(pre) {
+  margin: 0;
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+  tab-size: 2;
+  color: var(--ink);
+  background: transparent !important;
+}

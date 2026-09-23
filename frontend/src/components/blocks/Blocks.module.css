@@ -1,0 +1,28 @@
+/*
+ * The block stack. A size container, so blocks adapt to their pane (a reader
+ * column, a search result, a note) rather than to the viewport.
+ */
+.blocks {
+  container: blocks / inline-size;
+  display: flow-root;
+  color: var(--ink);
+}
+
+.block + .block {
+  margin-block-start: var(--space-4);
+}
+
+/* Figures and callouts get more air than running text. */
+.block:is([data-block='chart'], [data-block='diagram'], [data-block='code'], [data-block='math'], [data-block='table'], [data-block='quote'], [data-block='callout']) {
+  margin-block: var(--space-5);
+}
+
+.block:first-child {
+  margin-block-start: 0;
+}
+
+.block[data-block='heading'] + .block {
+  margin-block-start: var(--space-3);
+}
+.block:first-child > :first-child { margin-block-start: 0; }
+.block:last-child { margin-block-end: 0; }

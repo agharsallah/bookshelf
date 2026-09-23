@@ -1,0 +1,107 @@
+/* Running text blocks: headings, paragraphs, lists, definitions, the unknown fallback. */
+.heading {
+  color: var(--ink);
+  scroll-margin-top: var(--space-7);
+}
+
+h2.heading {
+  font-size: var(--text-lg);
+  margin-block-start: var(--space-6);
+}
+
+h3.heading {
+  font-size: var(--text-md);
+  margin-block-start: var(--space-5);
+}
+
+h4.heading {
+  font-size: var(--text-base);
+  font-style: italic;
+  font-weight: 600;
+  margin-block-start: var(--space-4);
+}
+
+.paragraph {
+  max-width: var(--measure);
+  hanging-punctuation: first;
+}
+
+.bullets,
+.steps {
+  max-width: var(--measure);
+  padding-inline-start: 1.6em;
+}
+
+.bullets li,
+.steps li {
+  padding-inline-start: 0.2em;
+}
+
+.bullets li + li,
+.steps li + li {
+  margin-block-start: var(--space-2);
+}
+
+.bullets li::marker {
+  content: '–  ';
+  color: var(--ink-3);
+}
+
+.steps {
+  list-style: none;
+  counter-reset: step;
+}
+
+.steps li {
+  position: relative;
+  counter-increment: step;
+}
+
+.steps li::before {
+  content: counter(step);
+  position: absolute;
+  inset-inline-end: calc(100% + 0.55em);
+  inset-block-start: 0.02em;
+  min-width: 1.4em;
+  color: var(--accent);
+  font-variant-numeric: oldstyle-nums;
+  font-weight: 600;
+  text-align: end;
+}
+
+.definition {
+  max-width: var(--measure);
+  display: grid;
+  gap: var(--space-1);
+  padding-block: var(--space-2);
+  border-block-start: 1px solid var(--rule);
+}
+
+.term {
+  font-size: var(--text-md);
+  font-weight: 600;
+}
+
+.term dfn {
+  font-style: italic;
+}
+
+.explanation {
+  margin: 0;
+  color: var(--ink-2);
+}
+
+.unknown {
+  padding: var(--space-3) var(--space-4);
+  border: 1px dashed var(--tone-caution);
+  border-radius: var(--radius-m);
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.unknown pre {
+  margin-block-start: var(--space-2);
+  overflow-x: auto;
+  font-size: var(--text-xs);
+}

@@ -1,0 +1,121 @@
+/*
+ * Callouts are marginal annotations: a glyph hangs in a narrow gutter, a rule
+ * runs down the edge. Hue, glyph and rule style all vary by tone.
+ */
+.callout {
+  --tone: var(--tone-important);
+  --rule-style: solid;
+  --rule-width: 3px;
+  display: grid;
+  grid-template-columns: 2.25rem minmax(0, 1fr);
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4) var(--space-3) var(--space-2);
+  border-inline-start: var(--rule-width) var(--rule-style) var(--tone);
+  border-radius: 0 var(--radius-m) var(--radius-m) 0;
+  background: color-mix(in oklab, var(--tone) 6%, var(--paper-raised));
+}
+
+.glyph {
+  justify-self: center;
+  padding-block-start: 0.1em;
+  color: var(--tone);
+  font-family: var(--font-read);
+  font-size: var(--text-md);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.body {
+  min-width: 0;
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--space-2);
+  margin-block-end: var(--space-1);
+}
+
+.label {
+  color: var(--tone);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: 650;
+  letter-spacing: 0.01em;
+}
+
+.title {
+  font-weight: 600;
+}
+
+.text {
+  color: var(--ink);
+}
+
+.callout[data-tone='remember'] {
+  --tone: var(--tone-remember);
+  border: 1px solid color-mix(in oklab, var(--tone) 35%, transparent);
+  border-inline-start: 3px solid var(--tone);
+}
+
+.callout[data-tone='remember'] .glyph {
+  font-size: var(--text-sm);
+  font-style: italic;
+  padding-block-start: 0.3em;
+}
+
+/* Antipattern: a hatched rule, as if struck through. */
+.callout[data-tone='antipattern'] {
+  --tone: var(--tone-antipattern);
+  border-inline-start: 0;
+  padding-inline-start: calc(var(--space-2) + 5px);
+  background:
+    repeating-linear-gradient(-45deg, var(--tone) 0 2px, transparent 2px 5px) left / 5px 100% no-repeat,
+    color-mix(in oklab, var(--tone) 6%, var(--paper-raised));
+}
+
+.callout[data-tone='insight'] {
+  --tone: var(--tone-insight);
+}
+
+.callout[data-tone='caution'] {
+  --tone: var(--tone-caution);
+  --rule-style: dashed;
+}
+
+.callout[data-tone='caution'] .glyph {
+  font-family: var(--font-ui);
+  font-weight: 700;
+  width: 1.5rem;
+  height: 1.5rem;
+  margin-block-start: 0.1em;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+  font-size: var(--text-sm);
+}
+
+.callout[data-tone='contrast'] {
+  --tone: var(--tone-contrast);
+  --rule-style: double;
+  --rule-width: 5px;
+}
+
+.callout[data-tone='question'] {
+  --tone: var(--tone-question);
+  --rule-style: dotted;
+}
+
+.callout[data-tone='question'] .glyph {
+  font-style: italic;
+}
+
+@container (max-width: 28rem) {
+  .callout {
+    grid-template-columns: 1.5rem minmax(0, 1fr);
+    padding-inline-end: var(--space-3);
+  }
+}

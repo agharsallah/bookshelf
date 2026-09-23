@@ -1,0 +1,33 @@
+.figure {
+  min-width: 0;
+}
+
+.caption {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-3);
+  margin-block-start: var(--space-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  line-height: var(--leading-ui);
+  color: var(--ink-2);
+}
+
+.captionText {
+  font-family: var(--font-read);
+  font-style: italic;
+}
+
+.confidence {
+  padding: 0.1em 0.45em;
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-s);
+  color: var(--ink-2);
+  font-size: var(--text-xs);
+}
+
+.confidence[data-confidence='low'] {
+  border-color: var(--tone-caution);
+  color: var(--tone-caution);
+}

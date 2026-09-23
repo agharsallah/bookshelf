@@ -1,0 +1,43 @@
+.quote {
+  position: relative;
+  padding-inline-start: var(--space-6);
+}
+
+/* An oversized opening quote hangs in the gutter. */
+.quote::before {
+  content: '“';
+  position: absolute;
+  inset-inline-start: -0.05em;
+  inset-block-start: -0.18em;
+  color: var(--rule-strong);
+  font-family: var(--font-read);
+  font-size: 3.6em;
+  line-height: 1;
+}
+
+.text {
+  font-size: var(--text-md);
+  font-style: italic;
+  line-height: 1.5;
+  color: var(--ink);
+}
+
+.caption {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-3);
+  margin-block-start: var(--space-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+}
+
+.attribution::before {
+  content: '— ';
+}
+
+.page {
+  font-variant-numeric: oldstyle-nums;
+  color: var(--ink-3);
+}
