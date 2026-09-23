@@ -100,7 +100,7 @@
 
 .item {
   display: grid;
-  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  grid-template-columns: auto auto auto minmax(0, 1fr) auto;
   align-items: baseline;
   gap: 0 var(--space-3);
   padding-block: var(--space-2);
@@ -121,6 +121,7 @@
 }
 
 .kind,
+.links,
 .aliases {
   color: var(--ink-3);
   font-family: var(--font-ui);
@@ -133,8 +134,12 @@
   white-space: nowrap;
 }
 
+.links {
+  font-variant-numeric: tabular-nums;
+}
+
 .graph {
-  grid-column: 4;
+  grid-column: 5;
   grid-row: 1;
   color: var(--accent);
   font-family: var(--font-ui);
