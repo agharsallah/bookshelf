@@ -1,15 +1,17 @@
 /**
  * The outline: chapters (collapsible) with their sections and page ranges, chips for
- * what exists (summary, distillation, drafts waiting) and actions that queue work.
+ * what exists (summary, distillation, drafts waiting) and actions that queue work,
+ * including the chapter's study material (derive skills from `GET /skills`).
  * Server-rendered, hydrated only for the actions.
  */
 import { anchorLabel } from '../../lib/anchors';
 import { browserApi } from '../../lib/api/client';
 import type { TreeNode } from '../../lib/api/types/documents';
 import type { JobKind } from '../../lib/api/types/jobs';
+import type { SkillPublic } from '../../lib/api/types/skills';
 import type { ChapterStatus, Standing } from '../../lib/documents/artifacts';
 import { pageSpan, sectionsOf } from '../../lib/documents/tree';
-import { enqueue } from './jobs';
+import { deriveLabel, enqueue, needsDistillation } from './jobs';
 import styles from './Outline.module.css';
 
 export interface OutlineProps {
@@ -19,6 +21,8 @@ export interface OutlineProps {
   statuses: Record<string, ChapterStatus>;
   /** Whether jobs can be queued (the document is parsed). */
   actionable: boolean;
+  /** Chapter-scope derive skills (quiz, FAQ, quotes, flashcards). */
+  derive?: SkillPublic[];
 }
 
 const STANDING_WORDS: Record<Standing, string> = {
@@ -36,9 +40,10 @@ function Chip({ label, standing }: { label: string; standing: Standing | null })
   );
 }
 
-export function Outline({ documentId, slug, units, statuses, actionable }: OutlineProps) {
+export function Outline({ documentId, slug, units, statuses, actionable, derive = [] }: OutlineProps) {
   const read = (anchor: string) => `/documents/${slug}/read/${anchor}`;
   const run = (kind: JobKind, anchor: string) => void enqueue(browserApi, { kind, documentId, anchor });
+  const make = (skill: SkillPublic, anchor: string) => void enqueue(browserApi, { kind: 'derive', documentId, anchor, skill });
 
   if (units.length === 0) {
     return <p className={styles.empty}>No chapters yet. They appear once the document is parsed.</p>;
@@ -85,6 +90,25 @@ export function Outline({ documentId, slug, units, statuses, actionable }: Outli
                     </>
                   ) : null}
                 </div>
+                {actionable && derive.length > 0 && !unit.meta.front_matter && !unit.meta.skip ? (
+                  <div className={styles.derive} role="group" aria-label={`Study material for ${title}`}>
+                    <span className={styles.deriveLabel}>Study material</span>
+                    {derive.map((skill) => {
+                      const blocked = needsDistillation(skill) && status?.distillation !== 'approved';
+                      return (
+                        <button
+                          key={skill.name}
+                          type="button"
+                          disabled={blocked}
+                          title={blocked ? 'Needs an approved chapter distillation first' : skill.description}
+                          onClick={() => make(skill, unit.anchor)}
+                        >
+                          {deriveLabel(skill)}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : null}
                 {sections.length > 0 ? (
                   <ol className={styles.sections}>
                     {sections.map((section) => (

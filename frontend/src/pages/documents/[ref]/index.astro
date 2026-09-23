@@ -11,10 +11,13 @@ import Outline from '../../../components/document/Outline';
 import OutlineEditor from '../../../components/document/OutlineEditor';
 import PipelineTimeline from '../../../components/document/PipelineTimeline';
 import { Problem } from '../../../components/common/Problem';
+import PausedNotice from '../../../components/common/PausedNotice';
+import { deriveSkills } from '../../../components/document/jobs';
 import { outlineFromTree } from '../../../components/document/outline-model';
 import { plural } from '../../../components/library/spine';
 import type { Page } from '../../../lib/api/types';
 import type { JobPublic } from '../../../lib/api/types/jobs';
+import type { SkillPublic } from '../../../lib/api/types/skills';
 import { chapterStatus, pickBest, type ChapterStatus } from '../../../lib/documents/artifacts';
 import { getArtifacts, getDocument, getOutline, load } from '../../../lib/documents/server';
 import { defaultUnit, readingUnits } from '../../../lib/documents/tree';
@@ -25,12 +28,16 @@ export const prerender = false;
 const ref = Astro.params.ref ?? '';
 const loaded = await load(async () => {
   const doc = await getDocument(ref);
-  const [tree, artifacts, jobs] = await Promise.all([
+  const [tree, artifacts, jobs, skills] = await Promise.all([
     getOutline(doc.slug),
     getArtifacts(doc.id),
     serverApi().get<Page<JobPublic>>('jobs', { query: { document_id: doc.id, limit: 20 } }),
+    // The catalogue only adds the study-material actions; the page works without it.
+    serverApi()
+      .get<SkillPublic[]>('skills')
+      .catch(() => []),
   ]);
-  return { doc, tree, artifacts, jobs: jobs.items };
+  return { doc, tree, artifacts, jobs: jobs.items, skills };
 });
 if (!loaded.ok && loaded.notFound) Astro.response.status = 404;
 
@@ -41,6 +48,9 @@ const statuses: Record<string, ChapterStatus> = Object.fromEntries(
 );
 const brief = data ? pickBest(data.artifacts, 'book_brief', null) : null;
 const first = defaultUnit(units);
+const chapterDerive = data ? deriveSkills(data.skills, 'chapter') : [];
+const documentDerive = data ? deriveSkills(data.skills, 'document') : [];
+const distilled = Object.values(statuses).some((s) => s.distillation === 'approved');
 const parsed = data !== null && !['registered', 'parsing', 'parse_failed'].includes(data.doc.status);
 const needsReview = data?.doc.status === 'needs_review';
 const editable = data !== null && data.doc.kind === 'pdf' && parsed;
@@ -105,6 +115,7 @@ const exportsBase = data ? `/api/exports/${data.doc.slug}` : '';
 
         <div class="columns">
           <div class="main-col">
+            {data.doc.paused && <PausedNotice client:load documentRef={data.doc.slug} paused={data.doc.paused} />}
             {needsReview && (
               <section class="review-banner" aria-labelledby="fix-title">
                 <h2 id="fix-title">Check the chapters before distillation</h2>
@@ -124,6 +135,7 @@ const exportsBase = data ? `/api/exports/${data.doc.slug}` : '';
                 units={units}
                 statuses={statuses}
                 actionable={parsed}
+                derive={chapterDerive}
               />
             </section>
 
@@ -158,6 +170,14 @@ const exportsBase = data ? `/api/exports/${data.doc.slug}` : '';
               <h2 id="run-title" class="side-title">Run again</h2>
               <DocumentActions client:visible documentId={data.doc.id} kinds={parsed ? ['parse', 'brief'] : ['parse']} />
             </section>
+
+            {parsed && documentDerive.length > 0 && (
+              <section aria-labelledby="study-title" class="side-block">
+                <h2 id="study-title" class="side-title">Study material</h2>
+                <p class="side-hint">Per-chapter quizzes, FAQs, quotes and flashcards are under each chapter.</p>
+                <DocumentActions client:visible documentId={data.doc.id} derive={documentDerive} distilled={distilled} />
+              </section>
+            )}
 
             <section aria-labelledby="export-title" class="side-block">
               <h2 id="export-title" class="side-title">Export</h2>
@@ -301,6 +321,12 @@ const exportsBase = data ? `/api/exports/${data.doc.slug}` : '';
   .side-title {
     font-size: var(--text-md);
     font-weight: 560;
+  }
+
+  .side-hint {
+    color: var(--ink-3);
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
   }
 
   .exports {

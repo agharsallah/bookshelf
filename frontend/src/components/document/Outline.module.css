@@ -111,7 +111,21 @@
   color: var(--tone-caution);
 }
 
+.derive {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+}
+
+.deriveLabel {
+  margin-inline-end: var(--space-1);
+  color: var(--ink-3);
+  font-size: var(--text-xs);
+}
+
 .actions button,
+.derive button,
 .sectionAction {
   padding: 0.1rem var(--space-2);
   border: 1px solid transparent;
@@ -121,7 +135,14 @@
   cursor: pointer;
 }
 
+.derive button:disabled {
+  color: var(--ink-3);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 .actions button:hover,
+.derive button:hover:not(:disabled),
 .sectionAction:hover {
   border-color: var(--rule-strong);
   color: var(--ink);
