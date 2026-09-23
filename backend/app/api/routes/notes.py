@@ -24,7 +24,8 @@ router = APIRouter(prefix="/notes", tags=["notes"])
     summary="Create a highlight or note",
     description=(
         "The anchor must exist in the document; `range` must lie within the node's text. "
-        "Queues a `structure_note` job whose artifact appears on `GET /notes`."
+        "With `raw`, queues a `structure_note` job whose artifact appears on `GET /notes`; "
+        "without it the note is a plain highlight and `job` is null (no model call)."
     ),
 )
 def create_note(body: NoteCreate, session: SessionDep) -> NoteCreated:
@@ -37,7 +38,10 @@ def create_note(body: NoteCreate, session: SessionDep) -> NoteCreated:
     )
     note, job = notes.create_note(session, data)
     return NoteCreated.model_validate(
-        {**NotePublic.model_validate(note).model_dump(), "job": JobPublic.model_validate(job)}
+        {
+            **NotePublic.model_validate(note).model_dump(),
+            "job": JobPublic.model_validate(job) if job is not None else None,
+        }
     )
 
 
@@ -69,10 +73,19 @@ def get_note(note_id: uuid.UUID, session: SessionDep) -> NoteDetail:
     "/{note_id}",
     response_model=NoteDetail,
     dependencies=[Depends(require_api_key)],
-    summary="Change a note's color (the only editable field)",
+    summary="Change a note's color, or give a plain highlight its words (once)",
+    description=(
+        "`color` may change any time (`null` clears it). `raw` is accepted only while the "
+        "note has none (a plain highlight): it is stored for good and queues "
+        "`structure_note`. A note that already has words answers `409` (D11)."
+    ),
 )
 def update_note(note_id: uuid.UUID, body: NoteUpdate, session: SessionDep) -> NoteDetail:
-    note = notes.set_color(session, notes.get_note(session, note_id), body.color)
+    note = notes.get_note(session, note_id)
+    if body.raw is not None:
+        note, _ = notes.add_raw(session, note, body.raw)
+    if "color" in body.model_fields_set:
+        note = notes.set_color(session, note, body.color)
     return NoteDetail.from_view(notes.view_note(session, note))
 
 

@@ -266,6 +266,8 @@ def note_context(ctx: Context) -> Selection:
     note, node = ctx.note, ctx.node
     if note is None:
         raise SelectorError("note_context needs a note_id")
+    if note.raw is None:
+        raise SelectorError(f"note {note.id} is a plain highlight: no words to structure")
     if node is None:
         raise SelectorError(f"note {note.id} is detached: anchor {note.anchor} no longer exists")
     span = note.range or {}

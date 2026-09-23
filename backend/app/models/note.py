@@ -1,4 +1,5 @@
-"""HUMAN layer: highlights and notes. `raw` is immutable (D11, enforced by a trigger)."""
+"""HUMAN layer: highlights and notes. `raw` is immutable once written (D11, enforced by a
+trigger); a plain highlight has no `raw` and may gain it exactly once."""
 
 import uuid
 from datetime import datetime
@@ -19,6 +20,6 @@ class Note(SQLModel, table=True):
     range: dict[str, Any] | None = Field(
         default=None, sa_column=jsonb(nullable=True, server_default=None)
     )
-    raw: str
+    raw: str | None = None
     color: NoteColor | None = Field(default=None, sa_type=enum_type(NoteColor))
     created_at: datetime = Field(default_factory=utcnow, sa_column=timestamptz())

@@ -1,8 +1,10 @@
 """Highlights and notes (§9 "Your notes"). `raw` is written once and never rewritten (D11).
 
-Creating a note queues `structure_note`, whose `structured_note` artifact is shown next
-to the raw text. A note whose anchor disappears in a re-parse is kept and reported as
-`detached` rather than deleted.
+A note with words (`raw`) queues `structure_note`, whose `structured_note` artifact is
+shown next to the raw text. A plain highlight (`raw` null) queues nothing: no model call.
+A highlight may gain its words exactly once (`add_raw`), which then queues structuring;
+after that `raw` never changes. A note whose anchor disappears in a re-parse is kept and
+reported as `detached` rather than deleted.
 """
 
 import uuid
@@ -13,7 +15,7 @@ from typing import Any
 from sqlalchemy import func, tuple_
 from sqlmodel import Session, col, select
 
-from app.core.errors import NotFoundError
+from app.core.errors import ConflictError, NotFoundError
 from app.jobs.queue import JobSpec
 from app.models import Artifact, Document, Job, Node, Note
 from app.models.enums import ArtifactType, JobKind, NoteColor
@@ -26,7 +28,7 @@ from app.services.sql import anchor_under
 class NoteInput:
     document_id: uuid.UUID
     anchor: str
-    raw: str
+    raw: str | None = None
     range: tuple[int, int] | None = None
     color: NoteColor | None = None
 
@@ -55,8 +57,9 @@ def structure_job_spec(note: Note) -> JobSpec:
     )
 
 
-def create_note(session: Session, data: NoteInput) -> tuple[Note, Job]:
-    """Validate the anchor and range against the tree, insert, and queue structuring."""
+def create_note(session: Session, data: NoteInput) -> tuple[Note, Job | None]:
+    """Validate the anchor and range against the tree, insert, and queue structuring when
+    the note has words (a plain highlight gets no job)."""
     if session.get(Document, data.document_id) is None:
         raise NotFoundError(f"Document {data.document_id} does not exist.")
     node = session.exec(
@@ -81,7 +84,27 @@ def create_note(session: Session, data: NoteInput) -> tuple[Note, Job]:
     )
     session.add(note)
     session.flush()
-    job, _ = enqueue_or_live(session, structure_job_spec(note))  # commits note + job together
+    job: Job | None = None
+    if note.raw is not None:
+        job, _ = enqueue_or_live(session, structure_job_spec(note))  # commits note + job
+    else:
+        session.commit()
+    session.refresh(note)
+    return note, job
+
+
+def add_raw(session: Session, note: Note, raw: str) -> tuple[Note, Job]:
+    """Give a plain highlight its words, once (D11), and queue structuring."""
+    if note.raw is not None:
+        raise ConflictError(
+            "`raw` is immutable (D11): this note already has its words. "
+            "Delete it and create a new one instead.",
+            details=[{"field": "body.raw"}],
+        )
+    note.raw = raw
+    session.add(note)
+    session.flush()
+    job, _ = enqueue_or_live(session, structure_job_spec(note))  # commits raw + job together
     session.refresh(note)
     return note, job
 
@@ -151,7 +174,7 @@ def view_note(session: Session, note: Note) -> NoteView:
 
 
 def set_color(session: Session, note: Note, color: NoteColor | None) -> Note:
-    """The only edit a note allows: `raw` is immutable (D11)."""
+    """Change the highlight color (`raw` is immutable once written, D11)."""
     note.color = color
     session.add(note)
     session.commit()

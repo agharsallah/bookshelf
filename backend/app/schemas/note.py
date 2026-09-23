@@ -1,4 +1,5 @@
-"""Wire shapes for notes (§9 "Your notes"). `raw` is set once and never edited (D11)."""
+"""Wire shapes for notes (§9 "Your notes"). `raw` is set once and never edited (D11); a
+plain highlight has no `raw` and may gain it exactly once."""
 
 import uuid
 from datetime import datetime
@@ -46,26 +47,33 @@ class NoteCreate(BaseModel):
     document_id: uuid.UUID
     anchor: Anchor
     range: NoteRange | None = None
-    raw: Annotated[str, Field(min_length=1, max_length=20_000)]
+    raw: Annotated[
+        str | None,
+        Field(
+            min_length=1,
+            max_length=20_000,
+            description="Your words. Omit (or null) for a plain highlight: no model call.",
+        ),
+    ] = None
     color: NoteColor | None = None
 
 
 class NoteUpdate(BaseModel):
-    """Only `color` is editable (`null` clears it)."""
+    """`color` (`null` clears it), and `raw` only to give a plain highlight its words once:
+    a note that already has words answers `409` (D11)."""
 
     model_config = ConfigDict(extra="forbid")
 
-    color: NoteColor | None
+    color: NoteColor | None = None
+    raw: Annotated[str, Field(min_length=1, max_length=20_000)] | None = None
 
-    @model_validator(mode="before")
-    @classmethod
-    def _raw_is_immutable(cls, data: Any) -> Any:
-        if isinstance(data, dict) and "raw" in data:
-            raise ValueError(
-                "`raw` is immutable (D11): your words are never rewritten. "
-                "Delete the note and create a new one instead."
-            )
-        return data
+    @model_validator(mode="after")
+    def _something_to_change(self) -> Self:
+        if not self.model_fields_set:
+            raise ValueError("Send `color` and/or `raw`.")
+        if "raw" in self.model_fields_set and self.raw is None:
+            raise ValueError("`raw` cannot be removed (D11).")
+        return self
 
 
 class NotePublic(BaseModel):
@@ -75,7 +83,7 @@ class NotePublic(BaseModel):
     document_id: uuid.UUID
     anchor: str
     range: dict[str, int] | None
-    raw: str
+    raw: str | None
     color: NoteColor | None
     created_at: datetime
 
@@ -113,6 +121,6 @@ class NoteDetail(NotePublic):
 
 
 class NoteCreated(NotePublic):
-    """`201` body: the note as stored, plus the queued `structure_note` job."""
+    """`201` body: the note as stored, plus its `structure_note` job (null for a highlight)."""
 
-    job: JobPublic
+    job: JobPublic | None

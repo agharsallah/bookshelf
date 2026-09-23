@@ -83,6 +83,11 @@ def _check_note(session: Session, request: JobRequest) -> Note | None:
         raise InvalidInputError(
             f"Note {request.note_id} does not belong to this document.", field="body.note_id"
         )
+    if note.raw is None:
+        raise InvalidInputError(
+            f"Note {request.note_id} is a plain highlight: no words to structure.",
+            field="body.note_id",
+        )
     return note
 
 

@@ -143,13 +143,13 @@ def test_patch_changes_color_only(client: TestClient, session: Session):
     assert (response.json()["color"], response.json()["raw"]) == ("sage", "my words")
 
 
-def test_patch_with_raw_is_422_with_a_clear_message(client: TestClient, session: Session):
+def test_patch_rewriting_raw_is_409_with_a_clear_message(client: TestClient, session: Session):
     note = make_note(session, make_book(session), ANCHOR)
 
     response = client.patch(f"{URL}/{note.id}", json={"raw": "rewritten"}, headers=AUTH)
 
-    assert response.status_code == 422
-    assert "immutable" in response.json()["error"]["details"][0]["message"]
+    assert response.status_code == 409
+    assert "immutable" in response.json()["error"]["message"]
     session.refresh(note)
     assert note.raw == "my words"
 
