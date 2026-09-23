@@ -17,7 +17,7 @@ searching, writing), `hits` (the `SearchResponse`), then `answer` or `error`.
 
 import copy
 import logging
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from typing import Any
 
 from pydantic import BaseModel
@@ -29,13 +29,14 @@ from app.models.enums import Tier
 from app.pipeline.bodies import iter_objects
 from app.pipeline.gates import RENDER_BODY_SCHEMA, schema_errors
 from app.pipeline.runner import ModelRunner, OutputError, RunnerError, run_structured
-from app.retrieval import search
+from app.retrieval import relations, search
 from app.retrieval.embedding import Embedder
 from app.retrieval.evidence import Evidence, gather, split_cite
 from app.retrieval.router import QueryRouter
 from app.schemas.search import (
     AnswerEvent,
     CiteSource,
+    ConceptRelation,
     ErrorEvent,
     SearchRequest,
     StatusEvent,
@@ -64,13 +65,17 @@ Output only the JSON object. No prose, no code fences.
 """
 
 
-def render_prompt(question: str, evidence: Evidence) -> str:
+def render_prompt(
+    question: str, evidence: Evidence, concept_relations: Sequence[ConceptRelation] = ()
+) -> str:
     sections = []
     for item in evidence.items:
         title = f"{item.document.title} ({', '.join(item.document.authors) or 'unknown'})"
         sections.append(f"### [{item.label}] {item.detail} · {title}\n{item.text}")
     body = "\n\n".join(sections)
-    return f"{PROMPT}\n## Question\n\n{question}\n\n## Evidence\n\n{body}\n"
+    graph = relations.prompt_section(concept_relations)
+    graph = f"\n{graph}" if graph else ""
+    return f"{PROMPT}\n## Question\n\n{question}\n\n## Evidence\n\n{body}\n{graph}"
 
 
 def _bare(output: dict[str, Any]) -> dict[str, Any]:
@@ -109,11 +114,16 @@ def check_cites(output: dict[str, Any], evidence: Evidence) -> tuple[list[str], 
     return dropped, kept
 
 
-def synthesize(runner: ModelRunner, question: str, evidence: Evidence) -> AnswerEvent:
-    """One `distil`-tier run over the evidence. Raises `OutputError` / `RunnerError`."""
-    run = run_structured(
-        runner, render_prompt(question, evidence), tier=Tier.DISTIL, validate=shape_problems
-    )
+def synthesize(
+    runner: ModelRunner,
+    question: str,
+    evidence: Evidence,
+    concept_relations: Sequence[ConceptRelation] = (),
+) -> AnswerEvent:
+    """One `distil`-tier run over the evidence (and, for synthesis, the concept relations
+    between the documents). Raises `OutputError` / `RunnerError`."""
+    prompt = render_prompt(question, evidence, concept_relations)
+    run = run_structured(runner, prompt, tier=Tier.DISTIL, validate=shape_problems)
     output = run.output
     dropped, kept = check_cites(output, evidence)
     sources = {
@@ -157,7 +167,7 @@ def stream(
             yield "error", ErrorEvent(code="shutting_down", message="The server is restarting.")
             return
         yield "status", StatusEvent(stage="writing", message="Writing a cited answer")
-        yield "answer", synthesize(runner, request.query, evidence)
+        yield "answer", synthesize(runner, request.query, evidence, outcome.response.relations)
     except OutputError as exc:
         yield "error", ErrorEvent(code="invalid_output", message=str(exc)[:500])
     except RunnerError as exc:

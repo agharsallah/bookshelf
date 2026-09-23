@@ -4,7 +4,8 @@
 * **Lexical** — Postgres full-text (`lexical`).
 * **Discovery / Synthesis** — the two vector tiers (`hybrid`), then one cross-encoder pass
   over the merged candidate set ("reranking sits above both tiers", §10). Synthesis is
-  restricted to the documents the query names when it names two or more.
+  restricted to the documents the query names when it names two or more, and adds the
+  idea graph's concept relations between the result documents (`relations`).
 
 Groups are ordered by their best hit; hits inside a group by score.
 """
@@ -19,7 +20,7 @@ from sqlmodel import Session, col, select
 
 from app.models import Artifact, Node
 from app.models.enums import ArtifactType, Review
-from app.retrieval import hybrid, lexical, resolve
+from app.retrieval import hybrid, lexical, relations, resolve
 from app.retrieval.collections import ensure_ready, open_client
 from app.retrieval.embedding import Embedder
 from app.retrieval.points import flatten_body
@@ -201,8 +202,13 @@ def run(
         groups = lexical.search(session, phrase, request.filters, limit=request.limit, exact=exact)
     else:
         groups = _vector(session, request, route, embedder=embedder, client=client or open_client())
+    edges = (
+        relations.between(session, [g.document for g in groups])
+        if route.intent == "synthesis"
+        else []
+    )
     took_ms = int((time.perf_counter() - started) * 1000)
     response = SearchResponse(
-        intent=route.intent, resolved=resolved, groups=groups, took_ms=took_ms
+        intent=route.intent, resolved=resolved, groups=groups, relations=edges, took_ms=took_ms
     )
     return SearchOutcome(route=route, response=response)

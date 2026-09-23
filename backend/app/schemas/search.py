@@ -81,10 +81,33 @@ class SearchGroup(BaseModel):
     hits: list[SearchHit]
 
 
+class ConceptEnd(BaseModel):
+    id: uuid.UUID
+    canonical: str
+
+
+RelationName = Literal["contradicts", "supports", "extends"]
+
+
+class ConceptRelation(BaseModel):
+    """An accepted edge between two concepts, evidenced in the result documents."""
+
+    relation: RelationName
+    src: ConceptEnd
+    dst: ConceptEnd
+    weight: float
+    evidence: list[str] = Field(description="`<slug>:<anchor>` passages in the result documents.")
+
+
 class SearchResponse(BaseModel):
     intent: Intent
     resolved: ResolvedAddress | None = None
     groups: list[SearchGroup]
+    relations: list[ConceptRelation] = Field(
+        default_factory=list,
+        description="Synthesis only: contradicts / supports / extends edges between concepts "
+        "evidenced in the result documents, contradictions first.",
+    )
     took_ms: int
 
 
