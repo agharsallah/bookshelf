@@ -2,11 +2,12 @@
 
 import uuid
 from datetime import datetime
+from typing import Any
 
 from sqlmodel import Field, SQLModel
 
-from app.models._columns import enum_type, text_array, timestamptz, utcnow
-from app.models.enums import ConceptKind, EdgeStatus, EntityKind, Relation
+from app.models._columns import enum_type, jsonb, text_array, timestamptz, utcnow
+from app.models.enums import ConceptKind, EdgeStatus, EntityKind, Origin, Relation
 
 
 class Concept(SQLModel, table=True):
@@ -21,6 +22,7 @@ class Concept(SQLModel, table=True):
     merged_into: uuid.UUID | None = Field(
         default=None, foreign_key="concepts.id", ondelete="SET NULL"
     )
+    origin: Origin = Field(default=Origin.SKILL, sa_type=enum_type(Origin))
     created_at: datetime = Field(default_factory=utcnow, sa_column=timestamptz())
 
 
@@ -39,6 +41,7 @@ class Edge(SQLModel, table=True):
     evidence: list[str] = Field(default_factory=list, sa_column=text_array())
     origin: str  # 'human' | 'skill:link-concepts@2'
     status: EdgeStatus = Field(default=EdgeStatus.ACCEPTED, sa_type=enum_type(EdgeStatus))
+    meta: dict[str, Any] = Field(default_factory=dict, sa_column=jsonb())
     created_at: datetime = Field(default_factory=utcnow, sa_column=timestamptz())
 
 
