@@ -72,6 +72,12 @@ class Settings(BaseSettings):
     # Run ceiling (§14): per-document cap on CLI runs before the document is paused.
     max_runs_per_document: Annotated[int, Field(ge=1)] = 400
 
+    # --- Idea graph (§11) ---------------------------------------------------
+    # Concept dedup: cosine similarity that nominates a pair for the model to confirm, and
+    # the most pairs one dedup job may send to the model.
+    concept_dedup_threshold: Annotated[float, Field(gt=0, le=1)] = 0.88
+    concept_dedup_max_pairs: Annotated[int, Field(ge=1)] = 20
+
     # --- Guardrails: network --------------------------------------------
     # `NoDecode` keeps pydantic-settings from JSON-parsing these, so the validator
     # below can accept a plain comma-separated string from `.env`.
