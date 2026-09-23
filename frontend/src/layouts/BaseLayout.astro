@@ -25,6 +25,7 @@ const NAV = [
   { href: '/search', label: 'Search' },
   { href: '/graph', label: 'Graph' },
   { href: '/review', label: 'Review' },
+  { href: '/pipeline', label: 'Pipeline' },
 ];
 const path = Astro.url.pathname;
 const isCurrent = (href: string) => path === href || path.startsWith(`${href}/`);
