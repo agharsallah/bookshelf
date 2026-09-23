@@ -33,7 +33,8 @@ from app.schemas.common import Page
 router = APIRouter(prefix="/artifacts", tags=["artifacts"])
 
 # Any callout of the given tone, at any depth of the body (write-brief nests blocks).
-_TONE_PATH = '$.** ? (@.type == "callout" && @.tone == $tone)'
+# `strict`: lax mode auto-unwraps arrays under `.**` and returns each match twice.
+_TONE_PATH = 'strict $.** ? (@.type == "callout" && @.tone == $tone)'
 
 
 def _get(session: SessionDep, artifact_id: uuid.UUID) -> Artifact:
