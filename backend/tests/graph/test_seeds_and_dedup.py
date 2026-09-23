@@ -108,6 +108,12 @@ def test_a_confirmed_pair_becomes_a_proposed_same_as_and_nothing_is_merged(
     assert (edge.relation, edge.status) == (Relation.SAME_AS, EdgeStatus.PROPOSED)
     assert edge.weight == round(verdict.similarity, 3)
     assert (verdict.rationale, verdict.survivor) == ("Same cap.", str(old.id))
+    assert edge.meta == {
+        "similarity": round(verdict.similarity, 4),
+        "confidence": "high",
+        "rationale": "Same cap.",
+        "survivor": str(old.id),
+    }
     assert all(c.merged_into is None for c in session.exec(select(Concept)).all())
     assert len(runner.calls) == 1
     assert '"canonical": "wip cap"' in runner.calls[0]["prompt"]

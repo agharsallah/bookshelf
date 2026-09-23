@@ -204,6 +204,7 @@ def make_concept(session: Session) -> MakeConcept:
         aliases: Sequence[str] = (),
         blurb: str | None = None,
         cites: Sequence[str] = (),
+        origin: Origin = Origin.SKILL,
     ) -> Concept:
         row = Concept(
             canonical=canonical,
@@ -211,6 +212,7 @@ def make_concept(session: Session) -> MakeConcept:
             kind=ConceptKind.CONCEPT,
             blurb=blurb,
             blurb_cites=list(cites),
+            origin=origin,
         )
         session.add(row)
         session.commit()

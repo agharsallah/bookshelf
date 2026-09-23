@@ -4,7 +4,7 @@ from sqlmodel import select
 
 from app.graph import apply
 from app.models import Concept, Document, Edge, node_ref
-from app.models.enums import EdgeStatus, EntityKind, Relation, Review
+from app.models.enums import EdgeStatus, EntityKind, Origin, Relation, Review
 from tests.graph.conftest import (
     MakeConcept,
     c,
@@ -204,3 +204,19 @@ def test_a_new_version_replaces_the_documents_evidence_rather_than_adding_to_it(
     version(2, "ch01/p002")
 
     assert edges_of(session)[0].evidence == [f"{queueing.id}#ch01/p002"]
+
+
+def test_a_concept_a_human_curated_outlives_the_links_that_used_it(
+    session, queueing, make_concept: MakeConcept
+):
+    slack = make_concept("slack", blurb="My own words.", origin=Origin.HUMAN)
+    body = links(
+        [concept("slack", "ch01/p002")], [edge(n("ch01/p002"), "defines", c("slack"), "ch01/p002")]
+    )
+    apply.apply(session, store(session, queueing, body))
+
+    apply.clear(session, queueing.id)
+
+    session.refresh(slack)
+    assert (slack.blurb, slack.blurb_cites) == ("My own words.", [])
+    assert edges_of(session) == []

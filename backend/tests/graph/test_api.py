@@ -8,7 +8,7 @@ from sqlmodel import Session, select
 
 from app.graph import apply
 from app.models import Concept, Document, Edge
-from app.models.enums import EdgeStatus
+from app.models.enums import EdgeStatus, EntityKind, Relation
 from tests.conftest import AUTH
 from tests.graph.conftest import MakeConcept, c, concept, concept_named, edge, links, n, store
 
@@ -146,6 +146,7 @@ def test_human_concepts_cannot_take_an_existing_name_and_renames_keep_the_old_on
         f"{API}/concepts/{linked.id}", json={"canonical": "law of queues"}, headers=AUTH
     ).json()
     assert (renamed["canonical"], renamed["aliases"]) == ("law of queues", ["little's law"])
+    assert renamed["origin"] == "human"
 
 
 def test_a_hand_drawn_edge_needs_real_evidence_and_is_deleted_outright(
@@ -201,3 +202,37 @@ def test_a_merge_proposal_is_listed_then_applied_by_a_human(
         headers=AUTH,
     )
     assert again.status_code == 409
+
+
+def test_a_dedup_proposal_shows_the_verdict_kept_on_the_edge(
+    client: TestClient, session: Session, make_concept: MakeConcept
+):
+    a, b = make_concept("wip cap"), make_concept("wip limit")
+    session.add(
+        Edge(
+            src_kind=EntityKind.CONCEPT,
+            src_id=str(a.id),
+            dst_kind=EntityKind.CONCEPT,
+            dst_id=str(b.id),
+            relation=Relation.SAME_AS,
+            weight=0.93,
+            origin="skill:confirm-merge@1",
+            status=EdgeStatus.PROPOSED,
+            meta={
+                "similarity": 0.93,
+                "confidence": "high",
+                "rationale": "Same cap.",
+                "survivor": str(b.id),
+            },
+        )
+    )
+    session.commit()
+
+    [proposal] = client.get(f"{API}/concepts/merge-proposals").json()
+
+    assert (proposal["similarity"], proposal["confidence"], proposal["rationale"]) == (
+        0.93,
+        "high",
+        "Same cap.",
+    )
+    assert proposal["suggested_survivor"] == str(b.id)
