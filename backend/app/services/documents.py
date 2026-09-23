@@ -191,3 +191,13 @@ def set_outline(
     return enqueue_or_live(
         session, JobSpec(kind=JobKind.PARSE, document_id=document.id, payload={"force": True})
     )
+
+
+def resume(
+    session: Session, document: Document, *, max_runs: int | None, default: int
+) -> list[Job]:
+    """Lift a run-ceiling pause (§14) and requeue what it stopped."""
+    from app.pipeline import ceiling  # the pipeline imports services; keep this one-way
+    from app.pipeline.execution import SKILL_JOB_KINDS
+
+    return ceiling.resume(session, document, SKILL_JOB_KINDS, default=default, max_runs=max_runs)

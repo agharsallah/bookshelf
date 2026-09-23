@@ -10,6 +10,7 @@ from fastapi import Path as PathParam
 from app.api.deps import LimitDep, OffsetDep, SessionDep
 from app.api.routes.library import SettingsDep
 from app.core.security import require_api_key
+from app.models import Document
 from app.models.enums import DocumentStatus
 from app.schemas.common import Page
 from app.schemas.document import (
@@ -17,9 +18,11 @@ from app.schemas.document import (
     DocumentCreate,
     DocumentDetail,
     DocumentPublic,
+    DocumentResumed,
     DocumentSummary,
     DocumentUpdate,
     OutlineUpdate,
+    ResumeRequest,
 )
 from app.schemas.job import JobPublic
 from app.schemas.node import ANCHOR_PATTERN, DocumentTree, NodePublic, TreeNode
@@ -93,9 +96,7 @@ def list_documents(
     )
 
 
-@router.get("/{ref}", response_model=DocumentDetail, summary="Get a document and pipeline state")
-def get_document(ref: DocumentRef, session: SessionDep) -> DocumentDetail:
-    document = documents.get_document(session, ref)
+def _detail(session: SessionDep, document: Document) -> DocumentDetail:
     stats = documents.document_stats(session, [document.id])[document.id]
     return DocumentDetail.build(
         document,
@@ -103,6 +104,39 @@ def get_document(ref: DocumentRef, session: SessionDep) -> DocumentDetail:
         outline_override=document.outline_override,
         meta=document.meta,
         jobs=documents.job_summary(session, document.id),
+    )
+
+
+@router.get("/{ref}", response_model=DocumentDetail, summary="Get a document and pipeline state")
+def get_document(ref: DocumentRef, session: SessionDep) -> DocumentDetail:
+    return _detail(session, documents.get_document(session, ref))
+
+
+@router.post(
+    "/{ref}/resume",
+    response_model=DocumentResumed,
+    dependencies=[Depends(require_api_key)],
+    summary="Resume a document the run ceiling paused",
+    description=(
+        "Clears `paused`, sets the document's own run ceiling (`max_runs`, default: another "
+        "`max_runs_per_document` on top of the runs used so far) and requeues the jobs the "
+        "ceiling failed. Safe on a document that is not paused."
+    ),
+)
+def resume_document(
+    ref: DocumentRef, session: SessionDep, settings: SettingsDep, body: ResumeRequest | None = None
+) -> DocumentResumed:
+    document = documents.get_document(session, ref)
+    requeued = documents.resume(
+        session,
+        document,
+        max_runs=body.max_runs if body is not None else None,
+        default=settings.max_runs_per_document,
+    )
+    session.refresh(document)
+    return DocumentResumed(
+        document=_detail(session, document),
+        requeued=[JobPublic.model_validate(j) for j in requeued],
     )
 
 

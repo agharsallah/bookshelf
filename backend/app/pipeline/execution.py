@@ -14,13 +14,13 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from sqlmodel import Session, col, func, select
+from sqlmodel import Session, select
 
 from app.core.config import get_settings
 from app.jobs.registry import HandlerResult, PermanentJobError
 from app.models import Artifact, Document, Job
 from app.models.enums import ArtifactType, JobKind, JobState, Origin, RunMode
-from app.pipeline import artifacts, gates
+from app.pipeline import artifacts, ceiling, gates
 from app.pipeline.bodies import plain_text
 from app.pipeline.hashing import input_hash
 from app.pipeline.runner import ModelRunner, OutputError, run_structured
@@ -177,25 +177,6 @@ def resolve_skill(catalogue: dict[str, Skill], job: Job) -> Skill:
     return skill
 
 
-def check_run_ceiling(session: Session, job: Job, limit: int) -> None:
-    """§14 Run ceiling: stop paying for a document that keeps consuming CLI runs."""
-    runs = session.exec(
-        select(func.count())
-        .select_from(Job)
-        .where(
-            Job.document_id == job.document_id,
-            Job.id != job.id,
-            col(Job.kind).in_(list(SKILL_JOB_KINDS)),
-            col(Job.state).in_([JobState.DONE, JobState.FAILED]),
-        )
-    ).one()
-    if runs >= limit:
-        raise PermanentJobError(
-            f"run ceiling reached: {runs} skill runs for this document "
-            f"(max_runs_per_document={limit}); raise the limit or review the document"
-        )
-
-
 def _note_id(job: Job) -> uuid.UUID | None:
     raw = job.payload.get("note_id")
     if raw is None:
@@ -240,7 +221,9 @@ def execute_skill_job(
     if existing is not None and not force:
         return _skipped(existing, prepared)
 
-    check_run_ceiling(session, job, max_runs or settings.max_runs_per_document)
+    ceiling.check(
+        session, job, document, SKILL_JOB_KINDS, max_runs or settings.max_runs_per_document
+    )
     prompt = render_prompt(skill.prompt, prepared.selection.inputs)
     try:
         run = run_structured(

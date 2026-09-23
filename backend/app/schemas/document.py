@@ -166,12 +166,25 @@ class JobBrief(BaseModel):
     finished_at: datetime | None
 
 
+class PausedState(BaseModel):
+    """Why the pipeline stopped spending model runs on this document (§14 run ceiling)."""
+
+    reason: str
+    at: datetime
+    runs: int
+    limit: int
+
+
 class DocumentSummary(DocumentPublic):
     """A list item: metadata plus what the pipeline has produced so far."""
 
     counts: DocumentCounts
     artifacts: ArtifactCounts
     latest_job: JobBrief | None
+    paused: Annotated[
+        PausedState | None,
+        Field(description="Set when the run ceiling paused the document; clear it via resume."),
+    ] = None
 
     @classmethod
     def build(cls, document: Document, stats: DocumentStats, **extra: Any) -> Self:
@@ -188,6 +201,7 @@ class DocumentSummary(DocumentPublic):
                 "latest_job": JobBrief.model_validate(stats.latest_job)
                 if stats.latest_job
                 else None,
+                "paused": document.meta.get("paused"),
                 **extra,
             }
         )
@@ -201,6 +215,24 @@ class DocumentDetail(DocumentSummary):
     jobs: Annotated[
         dict[JobKind, dict[JobState, int]],
         Field(description="Job count by kind, then by state.", examples=[{"parse": {"done": 1}}]),
+    ]
+
+
+class ResumeRequest(BaseModel):
+    """Lift a run-ceiling pause. Without `max_runs`, the document gets another full
+    allowance (`max_runs_per_document`) on top of the runs it has used."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    max_runs: Annotated[
+        int | None, Field(default=None, ge=1, le=100_000, description="New per-document ceiling.")
+    ]
+
+
+class DocumentResumed(BaseModel):
+    document: DocumentDetail
+    requeued: Annotated[
+        list[JobPublic], Field(description="Jobs the ceiling had stopped, queued again.")
     ]
 
 
