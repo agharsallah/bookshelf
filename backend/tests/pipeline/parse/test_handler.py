@@ -159,9 +159,7 @@ def test_reparse_deletes_crops_no_node_references_and_nothing_else(session, libr
         file.parent.mkdir(parents=True, exist_ok=True)
         file.write_bytes(b"png")
     (library_dir / "notes.md").write_text("# Notes\n\nA paragraph.\n")
-    document = _document(
-        session, "library/notes.md", kind=DocumentKind.ARTICLE, slug="prune-check"
-    )
+    document = _document(session, "library/notes.md", kind=DocumentKind.ARTICLE, slug="prune-check")
 
     result = _run(session, document)
 
