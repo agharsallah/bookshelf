@@ -17,7 +17,7 @@ Every failure returns the same envelope:
 {
   "error": {
     "code": "not_found",
-    "message": "Book 42 does not exist.",
+    "message": "Document 3f1c… does not exist.",
     "details": [],
     "request_id": "8f14e45fceea167a5a36dedd4bea2543"
   }
@@ -34,10 +34,15 @@ reporting a problem: it ties the response to the server log line.
 """
 
 TAGS_METADATA: list[dict[str, object]] = [
-    {
-        "name": "books",
-        "description": "Create, browse, and curate the shelf.",
-    },
+    {"name": "library", "description": "Files in `library/` waiting to be ingested."},
+    {"name": "documents", "description": "Ingest by path, browse the tree, fix the outline."},
+    {"name": "nodes", "description": "One block or subtree by its stable anchor."},
+    {"name": "notes", "description": "Highlights and your notes. `raw` is never rewritten."},
+    {"name": "artifacts", "description": "Summaries, distillations, briefs; review queue."},
+    {"name": "jobs", "description": "The pipeline queue. Long work returns `202` + a job."},
+    {"name": "search", "description": "Address-first, two-tier hybrid search with citations."},
+    {"name": "graph", "description": "Concepts and evidence-backed edges, by neighborhood."},
+    {"name": "exports", "description": "Markdown, JSON and CSV bundles per document."},
     {
         "name": "health",
         "description": "Liveness and readiness probes for deployment tooling.",

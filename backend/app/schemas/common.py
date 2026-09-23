@@ -27,7 +27,7 @@ class ErrorResponse(BaseModel):
                 {
                     "error": {
                         "code": "not_found",
-                        "message": "Book 42 does not exist.",
+                        "message": "Document 3f1c… does not exist.",
                         "details": [],
                         "request_id": "8f14e45fceea167a5a36dedd4bea2543",
                     }

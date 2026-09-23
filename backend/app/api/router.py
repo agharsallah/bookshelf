@@ -5,7 +5,7 @@ Docs: https://fastapi.tiangolo.com/tutorial/bigger-applications/
 
 from fastapi import APIRouter
 
-from app.api.routes import books
+from app.api.routes import jobs
 
 api_router = APIRouter()
-api_router.include_router(books.router)
+api_router.include_router(jobs.router)
