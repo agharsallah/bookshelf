@@ -63,15 +63,44 @@ class Tree:
         """Chapters with any text under them: the units distillation is organised by."""
         return [n for n in self.walk() if n.kind is NodeKind.CHAPTER and self.leaves(n)]
 
-    def section_scopes(self, chapter: Node) -> list[Node]:
-        """What `distil_section` runs over: the chapter's non-empty sections, or the
-        chapter itself when it has none."""
-        sections = [
+    def sections(self, chapter: Node) -> list[Node]:
+        """The chapter's non-empty, visible sections."""
+        return [
             n
             for n in self.children.get(chapter.id, [])
             if n.kind is NodeKind.SECTION and not _skipped(n) and self.leaves(n)
         ]
-        return sections or [chapter]
+
+    def intro_leaves(self, chapter: Node) -> list[Node]:
+        """Leaves of the chapter that no section holds: its intro (and any interludes)."""
+        held = {leaf.id for section in self.sections(chapter) for leaf in self.leaves(section)}
+        return [leaf for leaf in self.leaves(chapter) if leaf.id not in held]
+
+    def section_scopes(self, chapter: Node) -> list[Node]:
+        """What `distil_section` runs over, in reading order: the chapter's non-empty
+        sections, preceded by the chapter itself when it has leaves outside them (its intro
+        is distilled on the chapter's anchor), or just the chapter when it has none."""
+        sections = self.sections(chapter)
+        if not sections:
+            return [chapter]
+        return ([chapter] if self.intro_leaves(chapter) else []) + sections
+
+    def scope_leaves(self, scope: Node) -> list[Node]:
+        """The leaves one section scope covers: a chapter with sections covers only its
+        intro leaves (rank isolation: section content belongs to the section's note)."""
+        if scope.kind is NodeKind.CHAPTER and self.sections(scope):
+            return self.intro_leaves(scope)
+        return self.leaves(scope)
+
+    def scope_of(self, node: Node) -> Node | None:
+        """The section scope whose note covers `node` (None outside any chapter)."""
+        chapter = self.chapter_of(node)
+        if chapter is None:
+            return None
+        for scope in self.section_scopes(chapter):
+            if any(leaf.id == node.id for leaf in self.scope_leaves(scope)):
+                return scope
+        return None
 
     def ancestors(self, node: Node) -> list[Node]:
         """Nearest first."""

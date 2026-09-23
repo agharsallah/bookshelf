@@ -4,7 +4,8 @@ description: Distil one section into a cited section note — what the reader mu
 tier: distil
 job_kind: distil_section
 artifact_type: section_note
-scope: section            # the runtime also runs it on a chapter that has no sections
+scope: section            # also on a chapter anchor: all its blocks if it has no sections,
+                          # else only its intro (leaves no section holds)
 selector: scope_blocks
 vision: false
 gates:

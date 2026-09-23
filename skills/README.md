@@ -100,7 +100,7 @@ plus the selector-specific keys:
 |---|---|---|
 | `outline_pages` | `pages: [{page, lines: [str]}]` (first ~25 lines of each of the first 30 pages), `toc_text` | parse-outline |
 | `element_context` | `element: {anchor, kind, text, meta, image_path?}`, `context: [block]` (±2 blocks) | describe-figure, explain-code, describe-math, explain-table |
-| `scope_blocks` | `blocks: [block]` (all leaves under scope, reading order), `figures: [{anchor, takeaway, blocks}]` (non-low-confidence element explanations inside scope) | summarize, distil-section, extract-quotes |
+| `scope_blocks` | `blocks: [block]` (all leaves under scope, reading order), `figures: [{anchor, takeaway, blocks}]` (non-low-confidence element explanations inside scope). For a section-scope skill on a chapter that has sections, only the chapter's intro leaves (those no section holds): the intro's `section_note` lives on the chapter anchor and is the first item of `chapter_section_notes` | summarize, distil-section, extract-quotes |
 | `chapter_section_notes` | `section_notes: [{anchor, heading, body}]`, `figures` as above | distil-chapter |
 | `document_chapters` | `chapter_distillations: [{anchor, heading, body}]`, `shelf: [{slug, title, authors, thesis}]` (other documents' brief theses), `existing_concepts: [{canonical, aliases, kind}]` | write-brief, link-concepts, make-glossary, make-faq (document scope) |
 | `chapter_distillation` | `chapter_distillations: [one item]` | make-quiz, make-faq (chapter), make-flashcards |

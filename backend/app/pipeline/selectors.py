@@ -47,6 +47,13 @@ class Context:
     node: Node | None  # None = whole document
     note: Note | None
     media_dir: Path
+    section_scope: bool = False  # a section-scope skill: a chapter with sections = its intro
+
+    def leaves(self) -> list[Node]:
+        """The leaves this scope covers (rank-isolated for section-scope skills)."""
+        if self.section_scope and self.node is not None:
+            return self.tree.scope_leaves(self.node)
+        return self.tree.leaves(self.node)
 
     def base(self) -> dict[str, Any]:
         return {
@@ -55,7 +62,7 @@ class Context:
         }
 
     def source_words(self, node: Node | None = None) -> int:
-        leaves = self.tree.leaves(node if node is not None else self.node)
+        leaves = self.tree.leaves(node) if node is not None else self.leaves()
         return sum(count_words(n.text or "") for n in leaves)
 
     def selection(self, extra: dict[str, Any], **kwargs: Any) -> Selection:
@@ -81,13 +88,19 @@ def _in_scope(anchor: str | None, scope: Node | None) -> bool:
     return anchor is not None and (anchor == scope.anchor or anchor.startswith(scope.anchor + "/"))
 
 
-def _figures(ctx: Context, scope: Node | None) -> list[dict[str, Any]]:
+def _figures(
+    ctx: Context, scope: Node | None, only: set[str] | None = None
+) -> list[dict[str, Any]]:
+    """Element explanations under `scope` (restricted to the anchors in `only`, if given)."""
     order = {n.anchor: i for i, n in enumerate(ctx.tree.walk())}
     chosen = artifacts.preferred(ctx.session, ctx.tree.document.id, artifacts.ELEMENT_TYPES)
     found = [
         a
         for a in chosen.values()
-        if _in_scope(a.anchor, scope) and a.anchor in order and artifacts.is_consumable(a)
+        if _in_scope(a.anchor, scope)
+        and a.anchor in order
+        and (only is None or a.anchor in only)
+        and artifacts.is_consumable(a)
     ]
     found.sort(key=lambda a: (order[a.anchor or ""], a.type.value))
     return [
@@ -179,10 +192,14 @@ def element_context(ctx: Context) -> Selection:
 
 
 def scope_blocks(ctx: Context) -> Selection:
-    leaves = ctx.tree.leaves(ctx.node)
+    """All leaves under the scope; for a section-scope skill on a chapter that has
+    sections, only the chapter's intro leaves (the sections have notes of their own)."""
+    leaves = ctx.leaves()
     if not leaves:
         raise SelectorError("no blocks under this scope")
-    return ctx.selection({"blocks": [block(n) for n in leaves], "figures": _figures(ctx, ctx.node)})
+    only = {n.anchor for n in leaves} if ctx.section_scope else None
+    figures = _figures(ctx, ctx.node, only)
+    return ctx.selection({"blocks": [block(n) for n in leaves], "figures": figures})
 
 
 def chapter_section_notes(ctx: Context) -> Selection:
@@ -280,8 +297,13 @@ def select_inputs(
     *,
     note_id: uuid.UUID | None = None,
     media_dir: Path | None = None,
+    section_scope: bool = False,
 ) -> Selection:
-    """Build a skill's inputs. Raises `SelectorError` when the scope cannot supply them."""
+    """Build a skill's inputs. Raises `SelectorError` when the scope cannot supply them.
+
+    `section_scope`: the skill distils one section scope (`meta.scope: section`), so a
+    chapter anchor with sections means the chapter's intro leaves only.
+    """
     fn = SELECTORS.get(selector)
     if fn is None:
         raise SelectorError(f"unknown selector {selector!r}")
@@ -301,5 +323,6 @@ def select_inputs(
         node=node,
         note=note,
         media_dir=media_dir or get_settings().media_dir,
+        section_scope=section_scope,
     )
     return fn(ctx)

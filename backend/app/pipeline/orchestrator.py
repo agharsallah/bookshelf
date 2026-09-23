@@ -242,17 +242,7 @@ def links_reviewed(state: State, artifact: Artifact) -> Plan:
 def element_approved(state: State, artifact: Artifact) -> Plan:
     """An approved (possibly low-confidence) explanation now feeds its section note."""
     node = state.node(artifact.anchor)
-    chapter = state.tree.chapter_of(node) if node is not None else None
-    if node is None or chapter is None:
-        return Plan()
-    scope = next(
-        (
-            s
-            for s in state.tree.section_scopes(chapter)
-            if node.anchor == s.anchor or node.anchor.startswith(s.anchor + "/")
-        ),
-        None,
-    )
+    scope = state.tree.scope_of(node) if node is not None else None
     if scope is None:
         return Plan()
     return Plan(jobs=[state.spec(JobKind.DISTIL_SECTION, scope.anchor)])
