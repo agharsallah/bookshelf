@@ -12,22 +12,24 @@ Docs: https://fastapi.tiangolo.com/tutorial/server-sent-events/ (SSE with POST)
 
 from collections.abc import Iterator
 from functools import lru_cache
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.sse import EventSourceResponse, ServerSentEvent
-from qdrant_client import QdrantClient
 from sqlmodel import Session
 
 from app.api.deps import SessionDep
 from app.core.security import require_api_key
 from app.db.session import engine
 from app.pipeline.runner import ClaudeCliRunner, ModelRunner
-from app.retrieval import answer, search, suggest
+from app.retrieval import suggest
 from app.retrieval.client import get_client
 from app.retrieval.embedding import Embedder, get_embedder
 from app.retrieval.router import QueryRouter
 from app.schemas.search import SearchRequest, SearchResponse, SuggestResponse
+
+if TYPE_CHECKING:  # `qdrant_client` (and fastembed/onnxruntime) load on the first search
+    from qdrant_client import QdrantClient
 
 router = APIRouter(prefix="/search", tags=["search"])
 
@@ -51,7 +53,7 @@ def get_answer_runner() -> ModelRunner:
     return ClaudeCliRunner()
 
 
-def get_qdrant() -> QdrantClient:
+def get_qdrant() -> "QdrantClient":
     return get_client()
 
 
@@ -60,7 +62,10 @@ def get_search_embedder() -> Embedder:
 
 
 EmbedderDep = Annotated[Embedder, Depends(get_search_embedder)]
-QdrantDep = Annotated[QdrantClient, Depends(get_qdrant)]
+if TYPE_CHECKING:
+    QdrantDep = Annotated[QdrantClient, Depends(get_qdrant)]
+else:  # FastAPI evaluates the annotation at import time; the dependency does not need it
+    QdrantDep = Annotated[object, Depends(get_qdrant)]
 
 
 @router.post("", response_model=SearchResponse, summary="Search the library")
@@ -73,6 +78,8 @@ def search_library(
 ) -> SearchResponse:
     """Route the query (addressed, lexical, discovery, synthesis) and return hits grouped
     by document. Addressed queries return the tree node and its approved artifacts."""
+    from app.retrieval import search
+
     outcome = search.run(session, body, router=query_router, embedder=embedder, client=client)
     return outcome.response
 
@@ -93,6 +100,8 @@ def answer_question(
     """Events: `status` {stage, message} · `hits` (a `SearchResponse`) · `answer`
     {blocks, sources, dropped_cites, model} with cites `<slug>:<anchor>` · `error`
     {code, message}. The stream ends after `answer` or `error`."""
+    from app.retrieval import answer
+
     with Session(engine) as session:
         events = answer.stream(
             session, body, router=query_router, embedder=embedder, runner=runner, client=client

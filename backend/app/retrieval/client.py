@@ -13,10 +13,12 @@ Docs: https://qdrant.tech/documentation/quickstart/ (local mode: "QdrantClient(p
 
 import threading
 from enum import StrEnum
-
-from qdrant_client import QdrantClient
+from typing import TYPE_CHECKING
 
 from app.core.config import get_settings
+
+if TYPE_CHECKING:  # `import qdrant_client` also loads fastembed + onnxruntime: only on use
+    from qdrant_client import QdrantClient
 
 
 class Collection(StrEnum):
@@ -32,11 +34,13 @@ def collection_name(collection: Collection) -> str:
 
 
 _lock = threading.Lock()
-_client: QdrantClient | None = None
+_client: "QdrantClient | None" = None
 
 
-def make_client() -> QdrantClient:
+def make_client() -> "QdrantClient":
     """A new client from settings: remote when a URL is configured, else embedded."""
+    from qdrant_client import QdrantClient
+
     settings = get_settings()
     if settings.qdrant_url:
         return QdrantClient(url=settings.qdrant_url, api_key=settings.qdrant_api_key)
@@ -44,7 +48,7 @@ def make_client() -> QdrantClient:
     return QdrantClient(path=str(settings.qdrant_path))
 
 
-def get_client() -> QdrantClient:
+def get_client() -> "QdrantClient":
     """The shared client, created on first use."""
     global _client
     with _lock:
@@ -53,7 +57,7 @@ def get_client() -> QdrantClient:
         return _client
 
 
-def set_client(client: QdrantClient | None) -> None:
+def set_client(client: "QdrantClient | None") -> None:
     """Replace the shared client (tests), or drop it with `None` so the next call rebuilds."""
     global _client
     with _lock:

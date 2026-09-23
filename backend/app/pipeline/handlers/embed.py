@@ -10,14 +10,16 @@ and, on a rebuild, recreates collections whose vector size no longer fits the mo
 from app.jobs.registry import HandlerResult, JobContext, PermanentJobError, handler
 from app.models import Document
 from app.models.enums import JobKind
-from app.retrieval import indexing
-from app.retrieval.collections import ensure_collections
 from app.retrieval.embedding import get_embedder
 
 
 @handler(JobKind.EMBED)
 def run_embed(ctx: JobContext) -> HandlerResult:
     """Index one document, or rebuild everything when the job names no document."""
+    # Lazy: Qdrant (and with it FastEmbed / onnxruntime) loads only when an embed job runs.
+    from app.retrieval import indexing
+    from app.retrieval.collections import ensure_collections
+
     embedder = get_embedder()
     force = bool((ctx.job.payload or {}).get("force"))
     if ctx.job.document_id is None:

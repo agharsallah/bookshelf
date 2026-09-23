@@ -24,13 +24,12 @@ from collections import Counter
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any, Protocol
 
-from qdrant_client import models
-
 from app.core.config import get_settings
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # importing qdrant_client loads fastembed + onnxruntime (~1 s): keep it lazy
     from fastembed import SparseTextEmbedding, TextEmbedding
     from fastembed.rerank.cross_encoder import TextCrossEncoder
+    from qdrant_client import models
 
 
 class Embedder(Protocol):
@@ -46,17 +45,23 @@ class Embedder(Protocol):
 
     def dense_query(self, text: str) -> list[float]: ...
 
-    def sparse(self, texts: Sequence[str], *, avg_len: float) -> list[models.SparseVector]: ...
+    def sparse(self, texts: Sequence[str], *, avg_len: float) -> "list[models.SparseVector]": ...
 
-    def sparse_query(self, text: str) -> models.SparseVector: ...
+    def sparse_query(self, text: str) -> "models.SparseVector": ...
 
     def rerank(self, query: str, docs: Sequence[str]) -> list[float]:
         """One relevance score per doc, higher is better."""
         ...
 
 
-def _sparse_vector(embedding: Any) -> models.SparseVector:
-    return models.SparseVector(
+def sparse_vector(indices: Sequence[int], values: Sequence[float]) -> "models.SparseVector":
+    from qdrant_client import models
+
+    return models.SparseVector(indices=list(indices), values=list(values))
+
+
+def _sparse_vector(embedding: Any) -> "models.SparseVector":
+    return sparse_vector(
         indices=[int(i) for i in embedding.indices], values=[float(v) for v in embedding.values]
     )
 
@@ -119,10 +124,10 @@ class FastEmbedEmbedder:
     def dense_query(self, text: str) -> list[float]:
         return [float(x) for x in next(iter(self._dense_model().query_embed(text)))]
 
-    def sparse(self, texts: Sequence[str], *, avg_len: float) -> list[models.SparseVector]:
+    def sparse(self, texts: Sequence[str], *, avg_len: float) -> "list[models.SparseVector]":
         return [_sparse_vector(e) for e in self._sparse_model(avg_len).embed(list(texts))]
 
-    def sparse_query(self, text: str) -> models.SparseVector:
+    def sparse_query(self, text: str) -> "models.SparseVector":
         # Query weights do not depend on avg_len; any loaded instance will do.
         model = next(iter(self._sparse.values()), None) or self._sparse_model(256.0)
         return _sparse_vector(next(iter(model.query_embed(text))))
@@ -183,19 +188,19 @@ class FakeEmbedder:
     def dense_query(self, text: str) -> list[float]:
         return self._vector(text)
 
-    def sparse(self, texts: Sequence[str], *, avg_len: float) -> list[models.SparseVector]:
+    def sparse(self, texts: Sequence[str], *, avg_len: float) -> "list[models.SparseVector]":
         return [self._terms(Counter(tokens(t))) for t in texts]
 
-    def sparse_query(self, text: str) -> models.SparseVector:
+    def sparse_query(self, text: str) -> "models.SparseVector":
         return self._terms(Counter(set(tokens(text))))
 
-    def _terms(self, counts: Counter[str]) -> models.SparseVector:
+    def _terms(self, counts: Counter[str]) -> "models.SparseVector":
         weights: dict[int, float] = {}
         for token, count in counts.items():
             index = _bucket(token, 2**31 - 1)[0]
             weights[index] = weights.get(index, 0.0) + float(count)
         ordered = sorted(weights.items())
-        return models.SparseVector(indices=[i for i, _ in ordered], values=[v for _, v in ordered])
+        return sparse_vector([i for i, _ in ordered], [v for _, v in ordered])
 
     def rerank(self, query: str, docs: Sequence[str]) -> list[float]:
         wanted = set(tokens(query))

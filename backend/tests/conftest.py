@@ -10,6 +10,7 @@ and `app.db.session` builds its engine at import time.
 """
 
 import os
+import sys
 import tempfile
 import uuid
 from collections.abc import Iterator
@@ -17,6 +18,12 @@ from pathlib import Path
 
 import psycopg
 import pytest
+
+# `qdrant_client` imports fastembed, and with it onnxruntime, whenever it is installed.
+# Tests never embed for real (`FakeEmbedder`), and onnxruntime's native teardown
+# intermittently aborted the interpreter at exit (code 134). A `None` entry makes
+# `import fastembed` fail, so qdrant_client falls back exactly as if it were not installed.
+sys.modules.setdefault("fastembed", None)
 
 _ADMIN_URL = os.environ.get(
     "BOOKSHELF_TEST_ADMIN_URL", "postgresql://bookshelf@127.0.0.1:54329/postgres"
