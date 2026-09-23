@@ -40,12 +40,15 @@ def list_concepts(
     session: SessionDep,
     q: str | None = Query(default=None, max_length=200, description="Name or alias fragment."),
     kind: ConceptKind | None = Query(default=None),
+    sort: views.ConceptSort = Query(
+        default="alpha", description="`alpha` by name, `connected` most edges, `recent` newest."
+    ),
     limit: LimitDep = 20,
     offset: OffsetDep = 0,
 ) -> Page[ConceptSummary]:
-    """Live (unmerged) concepts. With `q`: exact name, name prefix, exact alias, alias
-    prefix, then substring matches, in that order."""
-    items, total = views.search_concepts(session, q, kind, limit, offset)
+    """Live (unmerged) concepts with their `edge_count`. With `q`: exact name, name prefix,
+    exact alias, alias prefix, then substring matches, in that order (`sort` breaks ties)."""
+    items, total = views.search_concepts(session, q, kind, limit, offset, sort)
     return Page(items=items, total=total, limit=limit, offset=offset)
 
 

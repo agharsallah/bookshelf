@@ -62,6 +62,10 @@ class ConceptSummary(BaseModel):
     blurb: str | None
     merged_into: uuid.UUID | None
     origin: Annotated[Origin, Field(description="`human` once a person created or edited it.")]
+    edge_count: Annotated[
+        int,
+        Field(description="Accepted edges, with the concepts merged into it folded in (lists)."),
+    ] = 0
 
 
 class ConceptPublic(ConceptSummary):

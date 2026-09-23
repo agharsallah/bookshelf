@@ -6,9 +6,9 @@ batches (`app.graph.evidence`), never per edge.
 
 import uuid
 from collections import defaultdict
-from typing import Any
+from typing import Any, Literal
 
-from sqlalchemy import func, text
+from sqlalchemy import Label, func, literal_column, text
 from sqlmodel import Session, col, select
 
 from app.graph import evidence as ev
@@ -81,13 +81,44 @@ def node_out(ref: Ref, label: ev.Label | None, **extra: Any) -> GraphNode:
     )
 
 
+# Accepted edges of a concept with the concepts merged into it folded in; edges inside
+# that group (the merge's own `same_as` record) are not connections. One correlated
+# subquery per row of the page, served by the `edges_src_idx` / `edges_dst_idx` indexes.
+_IN_GROUP = (
+    "({x} = concepts.id::text or {x} in "
+    "(select m.id::text from concepts m where m.merged_into = concepts.id))"
+)
+_SRC, _DST = _IN_GROUP.format(x="e.src_id"), _IN_GROUP.format(x="e.dst_id")
+EDGE_COUNT: Label[int] = literal_column(
+    f"""(select count(*) from edges e where e.status = 'accepted'
+          and ((e.src_kind = 'concept' and {_SRC}) or (e.dst_kind = 'concept' and {_DST}))
+          and not (e.src_kind = 'concept' and e.dst_kind = 'concept' and {_SRC} and {_DST}))"""  # noqa: S608  (constants only)
+).label("edge_count")
+
+ConceptSort = Literal["alpha", "connected", "recent"]
+
+
 def search_concepts(
-    session: Session, q: str | None, kind: ConceptKind | None, limit: int, offset: int
+    session: Session,
+    q: str | None,
+    kind: ConceptKind | None,
+    limit: int,
+    offset: int,
+    sort: ConceptSort = "alpha",
 ) -> tuple[list[ConceptSummary], int]:
-    query = select(Concept).where(col(Concept.merged_into).is_(None))
+    """Live concepts with their `edge_count`. With `q`, match rank comes first and `sort`
+    breaks ties; `alpha` (default) is by name, `connected` most edges first, `recent`
+    newest first."""
+    query = select(Concept, EDGE_COUNT).where(col(Concept.merged_into).is_(None))
     if kind is not None:
         query = query.where(Concept.kind == kind)
-    order: list[Any] = [func.lower(Concept.canonical)]
+    alpha = func.lower(Concept.canonical)
+    orders: dict[str, list[Any]] = {
+        "alpha": [alpha],
+        "connected": [literal_column("edge_count").desc(), alpha],
+        "recent": [col(Concept.created_at).desc(), alpha],
+    }
+    order = list(orders[sort])
     if q and q.strip():
         needle = escape_like(" ".join(q.lower().split()))
         params = {
@@ -98,8 +129,12 @@ def search_concepts(
         query = query.where(text(_MATCH).bindparams(anywhere=params["anywhere"]))
         order.insert(0, text(_RANK).bindparams(q=params["q"], prefix=params["prefix"]))
     total = session.exec(select(func.count()).select_from(query.subquery())).one()
-    rows = session.exec(query.order_by(*order).offset(offset).limit(limit)).all()
-    return [ConceptSummary.model_validate(c) for c in rows], int(total)
+    rows = session.exec(query.order_by(*order, col(Concept.id)).offset(offset).limit(limit)).all()
+    items = [
+        ConceptSummary.model_validate(concept).model_copy(update={"edge_count": int(count)})
+        for concept, count in rows
+    ]
+    return items, int(total)
 
 
 def _ends(edge: Edge) -> tuple[Ref, Ref]:
