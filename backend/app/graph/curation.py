@@ -1,8 +1,10 @@
 """Human curation of the graph: concepts and edges written or judged by hand (§11).
 
-Everything here is `origin = human`. Names stay unique across canonicals *and* aliases, so a
-human cannot create the duplicate the dedup pass exists to catch; a rename keeps the old
-canonical as an alias, so skill output that still uses it resolves to the same concept.
+Everything here is `origin = human`, concepts included: a concept a person created or
+edited is never garbage-collected or re-blurbed by a skill re-sync. Names stay unique
+across canonicals *and* aliases, so a human cannot create the duplicate the dedup pass
+exists to catch; a rename keeps the old canonical as an alias, so skill output that still
+uses it resolves to the same concept.
 Deleting a machine edge rejects it instead: a re-applied artifact would otherwise put it
 straight back.
 """
@@ -18,7 +20,7 @@ from app.graph.edges import HUMAN, EdgeDraft, find_edge
 from app.graph.evidence import passages
 from app.graph.refs import RefError, resolve_ref
 from app.models import Concept, Edge
-from app.models.enums import ConceptKind, EdgeStatus, Relation
+from app.models.enums import ConceptKind, EdgeStatus, Origin, Relation
 from app.services.errors import InvalidInputError
 
 
@@ -64,6 +66,7 @@ def create_concept(
         aliases=names.merged_aliases([], aliases, canonical),
         blurb=blurb,
         blurb_cites=check_evidence(session, blurb_cites, "blurb_cites"),
+        origin=Origin.HUMAN,
     )
     session.add(concept)
     session.commit()
@@ -103,6 +106,7 @@ def update_concept(
         concept.blurb = blurb
     if blurb_cites is not None:
         concept.blurb_cites = check_evidence(session, blurb_cites, "blurb_cites")
+    concept.origin = Origin.HUMAN  # curated now: automation never deletes or re-blurbs it
     session.add(concept)
     session.commit()
     session.refresh(concept)

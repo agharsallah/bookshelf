@@ -12,7 +12,6 @@ from sqlalchemy import func, text
 from sqlmodel import Session, col, select
 
 from app.graph import evidence as ev
-from app.graph.edges import DEDUP_ORIGIN_PREFIX
 from app.graph.merge import concept_edges
 from app.graph.neighborhood import Neighborhood as Hood
 from app.graph.refs import Ref
@@ -49,15 +48,6 @@ _MATCH = """
     (lower(concepts.canonical) like :anywhere escape '\\'
      or exists (select 1 from unnest(concepts.aliases) a where lower(a) like :anywhere escape '\\'))
 """
-_VERDICTS = text(
-    """
-    select p ->> 'edge_id', p
-    from jobs j cross join lateral jsonb_array_elements(j.result -> 'proposals') p
-    where j.kind = 'link_concepts' and j.payload ->> 'mode' = 'dedup'
-      and jsonb_typeof(j.result -> 'proposals') = 'array'
-      and p ->> 'edge_id' = any(cast(:ids as text[]))
-    """
-)
 
 
 def _doc(info: ev.DocInfo | None) -> DocumentRef | None:
@@ -167,11 +157,6 @@ def edge_detail(session: Session, edge: Edge) -> EdgeDetail:
     )
 
 
-def _dedup_weight(edge: Edge) -> float | None:
-    """Dedup edges carry the similarity as their weight."""
-    return edge.weight if edge.origin.startswith(DEDUP_ORIGIN_PREFIX) else None
-
-
 def merge_proposals(session: Session, limit: int) -> list[MergeProposal]:
     edges = session.exec(
         select(Edge)
@@ -186,22 +171,20 @@ def merge_proposals(session: Session, limit: int) -> list[MergeProposal]:
     ).all()
     ids = {uuid.UUID(i) for e in edges for i in (e.src_id, e.dst_id)}
     concepts = {c.id: c for c in session.exec(select(Concept).where(col(Concept.id).in_(ids)))}
-    rows = session.execute(_VERDICTS, {"ids": [str(e.id) for e in edges]}).all() if edges else []
-    verdicts: dict[str, dict[str, Any]] = {str(row[0]): row[1] for row in rows}
     found = ev.passages(session, [r for e in edges for r in e.evidence])
     out: list[MergeProposal] = []
     for edge in edges:
         a, b = concepts.get(uuid.UUID(edge.src_id)), concepts.get(uuid.UUID(edge.dst_id))
         if a is None or b is None or a.merged_into is not None or b.merged_into is not None:
             continue
-        verdict = verdicts.get(str(edge.id)) or {}
+        verdict = edge.meta  # dedup verdicts; a skill's own same_as carries none
         survivor = verdict.get("survivor")
         out.append(
             MergeProposal(
                 edge_id=edge.id,
                 a=ConceptSummary.model_validate(a),
                 b=ConceptSummary.model_validate(b),
-                similarity=verdict.get("similarity", _dedup_weight(edge)),
+                similarity=verdict.get("similarity"),
                 confidence=verdict.get("confidence"),
                 rationale=verdict.get("rationale"),
                 suggested_survivor=uuid.UUID(survivor) if survivor else None,

@@ -11,7 +11,8 @@ Applying an artifact:
 * **Concepts** are upserted by name. A canonical that matches an existing canonical or
   alias (case-insensitively; merged concepts resolve to their survivor) reuses that row and
   its `kind`; the artifact's canonical and aliases are added as aliases. A blurb is written
-  only where none exists, or where the current one came from this same document.
+  only where none exists, or where the current one came from this same document (never
+  over a human's: `origin = human` concepts keep their blurb).
 * **Edges** get `origin = skill:link-concepts@<v>#<artifact_id>` (`human:concept_links#…`
   for a human version). Node endpoints resolve to `<document_id>#<anchor>`; evidence
   anchors are qualified the same way (`app.graph.refs`). An endpoint or evidence anchor
@@ -44,7 +45,15 @@ from app.graph.edges import (
 )
 from app.graph.refs import Ref, split_anchor
 from app.models import Artifact, Concept, Edge, node_ref
-from app.models.enums import ArtifactType, ConceptKind, EdgeStatus, EntityKind, Relation, Review
+from app.models.enums import (
+    ArtifactType,
+    ConceptKind,
+    EdgeStatus,
+    EntityKind,
+    Origin,
+    Relation,
+    Review,
+)
 from app.pipeline.artifacts import document_anchors
 from app.pipeline.bodies import plain_text
 
@@ -167,7 +176,10 @@ class _Builder:
             ),
             f"blurb of {canonical!r}",
         )
-        if blurb and (not concept.blurb or _from_document(concept.blurb_cites, self.document_id)):
+        mine = concept.origin is Origin.SKILL and _from_document(
+            concept.blurb_cites, self.document_id
+        )
+        if blurb and (not concept.blurb or mine):
             concept.blurb, concept.blurb_cites = blurb, cites
         self.session.add(concept)
         for name in [canonical, *aliases]:
@@ -253,11 +265,13 @@ def _blurbed_by(session: Session, document_id: uuid.UUID) -> set[uuid.UUID]:
 def _prune(
     session: Session, candidates: set[uuid.UUID], keep: set[uuid.UUID], document_id: uuid.UUID
 ) -> list[uuid.UUID]:
-    """Delete candidates left without a non-seed edge; clear blurbs this document wrote."""
+    """Delete candidates left without a non-seed edge; clear blurbs this document wrote.
+
+    Concepts a human created or edited (`origin = human`) are never touched."""
     removed: list[uuid.UUID] = []
     for concept_id in sorted(candidates - keep):
         concept = session.get(Concept, concept_id)
-        if concept is None:
+        if concept is None or concept.origin is Origin.HUMAN:
             continue
         edges = _concept_edges(session, concept_id)
         seeds_only = all(

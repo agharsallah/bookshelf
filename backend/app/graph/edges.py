@@ -20,6 +20,7 @@ human set, and never rewrites an edge of a class it does not own.
 import uuid
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field
+from typing import Any
 
 from sqlalchemy import ColumnElement, or_, text
 from sqlmodel import Session, col, select
@@ -95,6 +96,7 @@ class EdgeDraft:
     evidence: list[str]
     origin: str
     status: EdgeStatus = EdgeStatus.ACCEPTED
+    meta: dict[str, Any] = field(default_factory=dict)
 
     @property
     def key(self) -> EdgeKey:
@@ -111,6 +113,7 @@ class EdgeDraft:
             evidence=list(self.evidence),
             origin=self.origin,
             status=self.status,
+            meta=dict(self.meta),
         )
 
 

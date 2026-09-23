@@ -11,7 +11,7 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.models.enums import ConceptKind, EdgeStatus, EntityKind, Relation
+from app.models.enums import ConceptKind, EdgeStatus, EntityKind, Origin, Relation
 
 GraphRef = Annotated[
     str,
@@ -61,6 +61,7 @@ class ConceptSummary(BaseModel):
     kind: ConceptKind
     blurb: str | None
     merged_into: uuid.UUID | None
+    origin: Annotated[Origin, Field(description="`human` once a person created or edited it.")]
 
 
 class ConceptPublic(ConceptSummary):

@@ -7,8 +7,8 @@
         not:  `same_as` edge, status rejected       (remembered, never asked twice)
 
 Nothing here merges. The edge's `weight` is the similarity; its evidence is both blurbs'
-cites, so a reviewer can read what each book means. Verdicts (rationale, confidence,
-suggested survivor) are returned so the dedup job can keep them in `jobs.result`.
+cites, so a reviewer can read what each book means. The verdict (similarity, confidence,
+rationale, suggested survivor) is kept in the edge's `meta` for the review queue.
 """
 
 import math
@@ -161,6 +161,12 @@ def confirm(
         evidence=union(candidate.a.blurb_cites, candidate.b.blurb_cites),
         origin=f"{DEDUP_ORIGIN_PREFIX}{skill.version}",
         status=EdgeStatus.PROPOSED if same else EdgeStatus.REJECTED,
+        meta={
+            "similarity": round(candidate.similarity, 4),
+            "confidence": str(output["confidence"]),
+            "rationale": str(output["rationale"]),
+            "survivor": a_id if output["survivor"] == "a" else b_id,
+        },
     )
     edge = find_edge(session, draft.key)
     if edge is None:

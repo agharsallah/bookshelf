@@ -26,7 +26,7 @@ from app.graph.apply import sync_document
 from app.graph.edges import HUMAN, EdgeKey, find_edge, union
 from app.graph.refs import split_anchor
 from app.models import Concept, Edge
-from app.models.enums import EdgeStatus, EntityKind, Relation
+from app.models.enums import EdgeStatus, EntityKind, Origin, Relation
 
 _STRENGTH = {EdgeStatus.REJECTED: 0, EdgeStatus.PROPOSED: 1, EdgeStatus.ACCEPTED: 2}
 
@@ -127,6 +127,7 @@ def merge(session: Session, loser_id: uuid.UUID, survivor_id: uuid.UUID) -> Conc
     if not survivor.blurb and loser.blurb:
         survivor.blurb, survivor.blurb_cites = loser.blurb, list(loser.blurb_cites)
     loser.merged_into = survivor.id
+    survivor.origin = Origin.HUMAN  # a person decided what it stands for
     for child in session.exec(select(Concept).where(Concept.merged_into == loser.id)).all():
         child.merged_into = survivor.id
         session.add(child)
