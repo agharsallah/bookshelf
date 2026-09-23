@@ -1,13 +1,15 @@
 """The §7 state machine: what to enqueue next when a job finishes or a human reviews.
 
-Two lookup tables drive everything, so the pipeline reads top to bottom:
+Three lookup tables drive everything, so the pipeline reads top to bottom:
 
-    AFTER_JOB[kind](state, job)          -> Plan   (worker, after every terminal job)
-    AFTER_APPROVAL[type](state, artifact) -> Plan  (review API, approve / edit / human write)
+    AFTER_JOB[kind](state, job)            -> Plan  (worker, after every terminal job)
+    AFTER_APPROVAL[type](state, artifact)  -> Plan  (review API, approve / edit / human write)
+    AFTER_REJECTION[type](state, artifact) -> Plan  (review API, reject)
 
-A rule only *reads* (`State`) and returns a `Plan`; `_apply` enqueues and moves the document
-status forward. Enqueueing is always safe to repeat: the queue dedupes live work and the
-handler skips unchanged inputs, so rules may over-enqueue but never pay twice.
+A rule only *reads* (`State`) and returns a `Plan`; `_apply` runs the plan's effects (graph
+writes, which may hand back more jobs), enqueues, and moves the document status forward.
+Enqueueing is always safe to repeat: the queue dedupes live work and the handler skips
+unchanged inputs, so rules may over-enqueue but never pay twice.
 
 Pipeline order per document:
 
@@ -16,6 +18,7 @@ Pipeline order per document:
           → (all section notes of a chapter) distil_chapter
           → (every chapter distilled) brief → human approves the brief → embed
           → link_concepts → linked
+          → (concept_links applied to the idea graph) dedup: link_concepts, mode=dedup
 """
 
 import logging
@@ -24,6 +27,7 @@ from dataclasses import dataclass, field
 
 from sqlmodel import Session, col, func, select
 
+from app.graph import pipeline as graph
 from app.jobs import queue
 from app.jobs.queue import JobSpec
 from app.models import Artifact, Document, Job, Node
@@ -71,10 +75,15 @@ _RANK: dict[DocumentStatus, int] = {
 _TABLE_ROWS_WITHOUT_EXPLANATION = 6
 
 
+# A side effect a rule asks for: runs inside `_apply`, may return more jobs to enqueue.
+Effect = Callable[[Session], list[JobSpec]]
+
+
 @dataclass(slots=True)
 class Plan:
     jobs: list[JobSpec] = field(default_factory=list)
     status: DocumentStatus | None = None
+    effects: list[Effect] = field(default_factory=list)
 
 
 @dataclass(slots=True)
@@ -197,8 +206,17 @@ def embed_finished(state: State, job: Job) -> Plan:
     return Plan(jobs=[state.spec(JobKind.LINK_CONCEPTS)], status=DocumentStatus.INDEXED)
 
 
+def _refresh_graph(state: State) -> Effect:
+    """Sync the idea graph with the document's effective `concept_links` (§11)."""
+    document_id = state.document.id
+    return lambda session: graph.refresh_document(session, document_id)
+
+
 def link_finished(state: State, job: Job) -> Plan:
-    return Plan(status=DocumentStatus.LINKED)
+    """The link job's artifact (unless it waits in `needs_review`) enters the graph."""
+    if graph.is_dedup_job(job):  # merge proposals are for the review queue; nothing follows
+        return Plan()
+    return Plan(status=DocumentStatus.LINKED, effects=[_refresh_graph(state)])
 
 
 def section_approved(state: State, artifact: Artifact) -> Plan:
@@ -212,6 +230,12 @@ def chapter_approved(state: State, artifact: Artifact) -> Plan:
 
 def brief_approved(state: State, artifact: Artifact) -> Plan:
     return Plan(jobs=[state.spec(JobKind.EMBED)], status=DocumentStatus.DISTILLED)
+
+
+def links_reviewed(state: State, artifact: Artifact) -> Plan:
+    """Approve, edit or reject of a `concept_links`: the graph follows the effective version
+    (a rejection falls back to the previous one, or withdraws the document's links)."""
+    return Plan(effects=[_refresh_graph(state)])
 
 
 def element_approved(state: State, artifact: Artifact) -> Plan:
@@ -251,7 +275,11 @@ AFTER_APPROVAL: dict[ArtifactType, ReviewRule] = {
     ArtifactType.SECTION_NOTE: section_approved,
     ArtifactType.CHAPTER_DISTILLATION: chapter_approved,
     ArtifactType.BOOK_BRIEF: brief_approved,
+    ArtifactType.CONCEPT_LINKS: links_reviewed,
     **dict.fromkeys(artifacts.ELEMENT_TYPES, element_approved),
+}
+AFTER_REJECTION: dict[ArtifactType, ReviewRule] = {
+    ArtifactType.CONCEPT_LINKS: links_reviewed,
 }
 
 
@@ -276,8 +304,11 @@ def _apply(state: State, plan: Plan) -> list[Job]:
     if plan.status is not None and _advance(state.document, plan.status):
         state.session.add(state.document)
         state.session.commit()
-    queued = [job for spec in plan.jobs if (job := queue.enqueue(state.session, spec))]
-    if plan.jobs or plan.status:
+    specs = list(plan.jobs)
+    for effect in plan.effects:
+        specs.extend(effect(state.session))
+    queued = [job for spec in specs if (job := queue.enqueue(state.session, spec))]
+    if specs or plan.status:
         logger.info(
             "Pipeline advanced",
             extra={
@@ -302,9 +333,11 @@ def on_job_done(session: Session, job: Job) -> list[Job]:
 
 
 def on_review(session: Session, artifact: Artifact) -> list[Job]:
-    """Propagate an approval (approve, edit, or a human-authored artifact) upward (§7)."""
-    rule = AFTER_APPROVAL.get(artifact.type)
-    if rule is None or artifact.review is not Review.APPROVED:
+    """Propagate a review: an approval (approve, edit, or a human-authored artifact) moves
+    the pipeline upward (§7); a rejection lets the rules that consumed the artifact undo it."""
+    tables = {Review.APPROVED: AFTER_APPROVAL, Review.REJECTED: AFTER_REJECTION}
+    rule = tables[artifact.review].get(artifact.type) if artifact.review in tables else None
+    if rule is None:
         return []
     state = _state(session, artifact.document_id)
     return _apply(state, rule(state, artifact)) if state is not None else []

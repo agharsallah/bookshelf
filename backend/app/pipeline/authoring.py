@@ -3,7 +3,7 @@
 Humans and skills author the same artifact types. A human artifact passes the hard gates
 (schema, anchor validity) and skips the soft ones; it is approved on arrival. Editing a
 skill draft never rewrites it: the edit is a new version with `origin = human`, and the
-skill's version stays for diffing. Every approval propagates upward via the orchestrator.
+skill's version stays for diffing. Every review propagates via the orchestrator.
 """
 
 import uuid
@@ -87,7 +87,9 @@ def review(
 ) -> Artifact:
     """Apply a review action; returns the artifact that now represents the scope."""
     if action == "reject":
-        return artifacts.set_review(session, artifact, Review.REJECTED)
+        rejected = artifacts.set_review(session, artifact, Review.REJECTED)
+        orchestrator.on_review(session, rejected)  # e.g. withdraw rejected concept links
+        return rejected
     if action == "approve":
         if artifact.review is Review.REJECTED and artifact.origin is Origin.SKILL:
             live = artifacts.find_live(
