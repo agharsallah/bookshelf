@@ -23,7 +23,7 @@ function Side({ concept, chosen, name, onChoose }: { concept: ConceptSummary; ch
   return (
     <label className={styles.side} data-chosen={chosen || undefined}>
       <span className={styles.keep}>
-        <input type="radio" name={name} checked={chosen} onChange={onChoose} />
+        <input type="radio" name={name} checked={chosen} onChange={onChoose} aria-label={`Keep “${concept.canonical}”`} />
         {chosen ? 'Keeps its name' : 'Keep this name'}
       </span>
       <a className={styles.name} href={conceptHref(concept.id)}>

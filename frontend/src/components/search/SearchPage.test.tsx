@@ -1,0 +1,89 @@
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { describe, expect, it } from 'vitest';
+import { fakeApi } from '../review/testing/fakeApi';
+import { SearchPage } from './SearchPage';
+import { emptySearch } from './url-state';
+
+const doc = { id: 'm', slug: 'meadows', title: 'Thinking in Systems', authors: ['Donella Meadows'] };
+const hits = {
+  intent: 'lexical',
+  took_ms: 4,
+  groups: [{ document: doc, hits: [{ kind: 'block', anchor: 'ch01/p002', score: 1, snippet: 'a stock and a flow', highlights: [[2, 7]] }] }],
+};
+
+/** A fetch whose answer stream the test writes frame by frame. */
+function streamingFetch() {
+  let push: (text: string) => void = () => undefined;
+  let finish: () => void = () => undefined;
+  let signal: AbortSignal | undefined;
+  const fetch: typeof globalThis.fetch = async (_url, init) => {
+    signal = init?.signal ?? undefined;
+    const encoder = new TextEncoder();
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        push = (text) => controller.enqueue(encoder.encode(text));
+        finish = () => controller.close();
+        signal?.addEventListener('abort', () => controller.error(new DOMException('Aborted', 'AbortError')));
+      },
+    });
+    return new Response(body, { headers: { 'content-type': 'text/event-stream', 'x-request-id': 'req-9' } });
+  };
+  return { fetch, push: (t: string) => push(t), finish: () => finish(), aborted: () => signal?.aborted ?? false };
+}
+
+function renderPage(fetch: typeof globalThis.fetch) {
+  const { api } = fakeApi({ 'POST search': () => hits });
+  render(<SearchPage initial={{ ...emptySearch, q: 'why delays?' }} documents={[]} tags={[]} api={api} fetch={fetch} debounceMs={0} />);
+}
+
+describe('SearchPage', () => {
+  it('shows the lexical hit with its matched words marked and a link into the reader', async () => {
+    renderPage(streamingFetch().fetch);
+    const mark = await screen.findByText('stock');
+    expect(mark.tagName).toBe('MARK');
+    expect(mark.closest('a')?.getAttribute('href')).toBe('/documents/meadows/read/ch01/p002');
+  });
+
+  it('streams the answer: status first, then cited blocks linking into each book', async () => {
+    const stream = streamingFetch();
+    renderPage(stream.fetch);
+    await userEvent.click(screen.getByRole('button', { name: 'Ask for an answer' }));
+    stream.push('event: status\ndata: {"stage":"searching","message":"Searching (lexical)"}\n\n');
+    expect(await screen.findByText('Searching (lexical)')).toBeTruthy();
+
+    const answer = {
+      blocks: [{ type: 'paragraph', spans: [{ text: 'Delays cause oscillation.', cites: ['meadows:ch01/p002'] }] }],
+      sources: { 'meadows:ch01/p002': { document: doc, anchor: 'ch01/p002' } },
+      dropped_cites: [],
+      model: 'm',
+    };
+    stream.push(`event: answer\ndata: ${JSON.stringify(answer)}\n\n`);
+    stream.finish();
+    expect(await screen.findByText('Delays cause oscillation.')).toBeTruthy();
+    const chip = screen.getByRole('link', { name: 'Source Thinking in Systems, ch01/p002' });
+    expect(chip.getAttribute('href')).toBe('/documents/meadows/read/ch01/p002');
+    expect(screen.queryByText('Searching (lexical)')).toBeNull();
+  });
+
+  it('stops the stream when cancelled', async () => {
+    const stream = streamingFetch();
+    renderPage(stream.fetch);
+    await userEvent.click(screen.getByRole('button', { name: 'Ask for an answer' }));
+    stream.push('event: status\ndata: {"stage":"writing","message":"Writing a cited answer"}\n\n');
+    await screen.findByText('Writing a cited answer');
+    await userEvent.click(screen.getByRole('button', { name: 'Stop' }));
+    expect(stream.aborted()).toBe(true);
+    expect(await screen.findByText(/Stopped/)).toBeTruthy();
+  });
+
+  it('shows an error event with the request id', async () => {
+    const stream = streamingFetch();
+    renderPage(stream.fetch);
+    await userEvent.click(screen.getByRole('button', { name: 'Ask for an answer' }));
+    stream.push('event: error\ndata: {"code":"model_failed","message":"The model run failed."}\n\n');
+    stream.finish();
+    await waitFor(() => expect(screen.getByRole('alert').textContent).toContain('The model run failed.'));
+    expect(screen.getByRole('alert').textContent).toContain('req-9');
+  });
+});
