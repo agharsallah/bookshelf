@@ -1,0 +1,106 @@
+/*
+ * The proof sheet: a narrow gutter names each block, the text runs beside it.
+ * Uncited claims get the copy-editor's wavy underline in the "important" tone.
+ */
+.proof {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.summary {
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.block {
+  display: grid;
+  grid-template-columns: 7rem minmax(0, 1fr);
+  gap: var(--space-4);
+  padding-block: var(--space-2);
+  border-block-start: 1px solid var(--rule);
+}
+
+.block[data-invalid],
+.block[data-low-confidence] {
+  padding-inline: var(--space-3);
+  border-radius: var(--radius-m);
+  background: color-mix(in oklab, var(--tone-caution) 8%, transparent);
+  box-shadow: inset 2px 0 0 var(--tone-caution);
+}
+
+.block[data-invalid] {
+  background: color-mix(in oklab, var(--tone-important) 7%, transparent);
+  box-shadow: inset 2px 0 0 var(--tone-important);
+}
+
+.gutter {
+  padding-block-start: 0.3em;
+  overflow-wrap: anywhere;
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  line-height: var(--leading-ui);
+}
+
+.content {
+  min-width: 0;
+}
+
+.text,
+.items {
+  font-size: var(--text-base);
+  line-height: var(--leading-read);
+}
+
+.items {
+  display: grid;
+  gap: var(--space-1);
+  padding-inline-start: 1.2em;
+}
+
+.span[data-uncited] {
+  text-decoration: underline wavy var(--tone-important);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.25em;
+  text-decoration-skip-ink: none;
+}
+
+.uncitedLabel {
+  color: var(--tone-important);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-decoration: none;
+  vertical-align: super;
+}
+
+.note {
+  margin-block-start: var(--space-1);
+  color: var(--tone-caution);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.note[data-kind='invalid'] {
+  color: var(--tone-important);
+}
+
+@media (max-width: 40rem) {
+  .block {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-1);
+  }
+}
+
+.row {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+}
+
+.cell + .cell {
+  padding-inline-start: var(--space-4);
+  border-inline-start: 1px solid var(--rule);
+}

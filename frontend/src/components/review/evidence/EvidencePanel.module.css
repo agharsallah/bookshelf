@@ -1,0 +1,95 @@
+/* The source, set like the book it came from: serif, a quiet address line above. */
+.panel {
+  display: grid;
+  gap: var(--space-3);
+  align-content: start;
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-l);
+  background: var(--paper-sunken);
+}
+
+.head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.title {
+  font-size: var(--text-md);
+  font-style: italic;
+  font-weight: 500;
+}
+
+.title:focus {
+  outline: none;
+}
+
+.close {
+  padding: var(--space-1) var(--space-2);
+  border: 0;
+  border-radius: var(--radius-m);
+  background: none;
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.close:hover {
+  color: var(--ink);
+}
+
+.hint {
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  line-height: var(--leading-ui);
+}
+
+.passages {
+  display: grid;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.passage {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.where {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+}
+
+.anchor {
+  color: var(--accent);
+  font-family: var(--font-mono);
+}
+
+.caption {
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+  font-style: italic;
+}
+
+.text {
+  font-size: var(--text-ui);
+  line-height: var(--leading-read);
+  white-space: pre-line;
+}
+
+.code {
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  white-space: pre;
+}

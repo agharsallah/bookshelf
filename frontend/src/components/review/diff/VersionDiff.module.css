@@ -1,0 +1,91 @@
+/* Diffs read like a marked-up proof: struck-through deletions, underlined insertions. */
+.diff {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+}
+
+.controls select {
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-m);
+  background: var(--paper-raised);
+}
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.stats {
+  margin-inline-start: auto;
+  color: var(--ink-3);
+}
+
+.text {
+  font-size: var(--text-ui);
+  line-height: var(--leading-read);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.text ins {
+  background: color-mix(in oklab, var(--tone-insight) 16%, transparent);
+  color: var(--ink);
+  text-decoration: underline 1.5px var(--tone-insight);
+  text-underline-offset: 0.2em;
+}
+
+.text del {
+  background: color-mix(in oklab, var(--tone-important) 12%, transparent);
+  color: var(--ink-2);
+  text-decoration: line-through 1.5px var(--tone-important);
+}
+
+.columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-5);
+}
+
+.columns section + section {
+  padding-inline-start: var(--space-5);
+  border-inline-start: 1px solid var(--rule);
+}
+
+.columnTitle {
+  margin-block-end: var(--space-2);
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+.empty {
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-ui);
+}
+
+@media (max-width: 48rem) {
+  .columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .columns section + section {
+    padding-inline-start: 0;
+    padding-block-start: var(--space-4);
+    border-inline-start: 0;
+    border-block-start: 1px solid var(--rule);
+  }
+}

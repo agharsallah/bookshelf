@@ -1,0 +1,66 @@
+.dialog {
+  inline-size: min(26rem, calc(100vw - 2rem));
+  padding: var(--space-5);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-l);
+  background: var(--paper-raised);
+  box-shadow: var(--shadow-lift);
+  color: var(--ink);
+  font-family: var(--font-ui);
+}
+
+.dialog::backdrop {
+  background: color-mix(in oklab, var(--ink) 30%, transparent);
+}
+
+.title {
+  margin-block-end: var(--space-4);
+  font-size: var(--text-md);
+  font-style: italic;
+  font-weight: 500;
+}
+
+.list {
+  display: grid;
+  gap: var(--space-2);
+  margin-block-end: var(--space-4);
+}
+
+.item {
+  display: grid;
+  grid-template-columns: 6rem 1fr;
+  align-items: baseline;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+}
+
+.item dt {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.item dd {
+  margin: 0;
+  color: var(--ink-2);
+}
+
+.dialog kbd {
+  min-inline-size: 1.6em;
+  padding: 0.05em 0.4em;
+  border: 1px solid var(--rule-strong);
+  border-block-end-width: 2px;
+  border-radius: var(--radius-m);
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  text-align: center;
+}
+
+.close {
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-m);
+  background: var(--paper);
+  cursor: pointer;
+}

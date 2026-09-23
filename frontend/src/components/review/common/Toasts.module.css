@@ -1,0 +1,80 @@
+.region {
+  position: fixed;
+  inset-inline-start: var(--space-5);
+  inset-block-end: var(--space-5);
+  z-index: 60;
+  display: grid;
+  gap: var(--space-2);
+  max-inline-size: min(28rem, calc(100vw - 2 * var(--space-4)));
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
+  border-radius: var(--radius-l);
+  background: var(--ink);
+  box-shadow: var(--shadow-lift);
+  color: var(--paper);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  line-height: var(--leading-ui);
+  pointer-events: auto;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .toast {
+    animation: rise var(--dur-2) var(--ease-out);
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    translate: 0 0.5rem;
+  }
+}
+
+.toast[data-tone='error'] {
+  background: var(--tone-important);
+  color: var(--paper-raised);
+}
+
+.message {
+  flex: 1;
+}
+
+.undo,
+.close {
+  padding: var(--space-1) var(--space-2);
+  border: 0;
+  border-radius: var(--radius-m);
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.undo {
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.undo:hover,
+.close:hover {
+  background: color-mix(in oklab, currentcolor 16%, transparent);
+}
+
+.undo:focus-visible,
+.close:focus-visible {
+  outline-color: currentcolor;
+}
+
+@media (max-width: 40rem) {
+  .region {
+    inset-inline: var(--space-4);
+    inset-block-end: var(--space-4);
+  }
+}

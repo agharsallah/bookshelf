@@ -104,3 +104,31 @@ export function sourceLookup(api: ApiClient, documentId: string) {
     return hit;
   };
 }
+
+interface TreeNodeLike {
+  anchor: string;
+  heading: string | null;
+  children?: TreeNodeLike[];
+}
+
+/** Container headings (`anchor → heading`) from `GET /documents/{id}/tree`, per document. */
+export async function loadHeadings(api: ApiClient, documentIds: readonly string[]): Promise<Record<string, Record<string, string>>> {
+  const entries = await Promise.all(
+    [...new Set(documentIds)].map(async (id) => {
+      const headings: Record<string, string> = {};
+      try {
+        const tree = await api.get<{ nodes: TreeNodeLike[] }>(`documents/${id}/tree`, { query: { depth: 4 } });
+        const walk = (nodes: readonly TreeNodeLike[]) =>
+          nodes.forEach((n) => {
+            if (n.heading) headings[n.anchor] = n.heading;
+            walk(n.children ?? []);
+          });
+        walk(tree.nodes);
+      } catch {
+        // Headings are a nicety: the queue still works on anchors alone.
+      }
+      return [id, headings] as const;
+    }),
+  );
+  return Object.fromEntries(entries);
+}
