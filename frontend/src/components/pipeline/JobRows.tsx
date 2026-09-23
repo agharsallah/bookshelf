@@ -6,7 +6,7 @@ import type { JobAccepted, JobPublic } from '../../lib/api/types/jobs';
 import { Problem, problemOf, type ProblemInfo } from '../document/Problem';
 import { relativeTime } from '../review/labels';
 import { elapsedMs, formatDuration, isRunCeiling, KIND_LABELS, retrySpec } from './model';
-import styles from './Pipeline.module.css';
+import styles from './JobRows.module.css';
 
 export interface JobRowProps {
   job: JobPublic;

@@ -1,0 +1,103 @@
+/*
+ * One document's stages as stations on a line. The only motion on the page is the
+ * active station's slow breath, and none when reduced motion is preferred.
+ */
+/* Stations on a line: the rule runs through the dots, stopping at the last one. */
+.track {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.station {
+  --state: var(--rule-strong);
+  position: relative;
+  display: grid;
+  justify-items: start;
+  gap: var(--space-1);
+}
+
+.station::before {
+  content: '';
+  position: absolute;
+  inset-block-start: 0.3rem;
+  inset-inline: 0.7rem 0;
+  block-size: 1px;
+  background: var(--rule-strong);
+}
+
+.station:last-child::before {
+  display: none;
+}
+
+.station[data-state='done']::before {
+  background: var(--done);
+}
+
+.dot {
+  position: relative;
+  inline-size: 0.65rem;
+  block-size: 0.65rem;
+  border: 1.5px solid var(--state);
+  border-radius: 50%;
+  background: var(--paper);
+}
+
+.station[data-state='done'] {
+  --state: var(--done);
+}
+
+.station[data-state='done'] .dot {
+  background: var(--done);
+}
+
+.station[data-state='active'] {
+  --state: var(--active);
+}
+
+.station[data-state='active'] .dot {
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--active) 25%, transparent);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .station[data-state='active'] .dot {
+    animation: breathe 2.4s var(--ease-out) infinite;
+  }
+}
+
+@keyframes breathe {
+  50% {
+    box-shadow: 0 0 0 5px color-mix(in oklab, var(--active) 12%, transparent);
+  }
+}
+
+.station[data-state='failed'] {
+  --state: var(--failed);
+}
+
+.station[data-state='failed'] .dot {
+  background: var(--failed);
+  clip-path: polygon(20% 0, 50% 30%, 80% 0, 100% 20%, 70% 50%, 100% 80%, 80% 100%, 50% 70%, 20% 100%, 0 80%, 30% 50%, 0 20%);
+  border: 0;
+  border-radius: 0;
+}
+
+.stationLabel {
+  color: var(--ink-3);
+  font-size: var(--text-xs);
+}
+
+.station[data-state='active'] .stationLabel,
+.station[data-state='failed'] .stationLabel {
+  color: var(--state);
+  font-weight: 600;
+}
+
+
+@media (max-width: 52rem) {
+  .stationLabel {
+    font-size: 0.65rem;
+  }
+}

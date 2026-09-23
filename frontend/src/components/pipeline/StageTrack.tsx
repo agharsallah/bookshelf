@@ -3,7 +3,7 @@
  * done, ringed while active, crossed when a job failed, hollow while waiting.
  */
 import type { StageProgress } from './model';
-import styles from './Pipeline.module.css';
+import styles from './StageTrack.module.css';
 
 const STATE_WORDS: Record<StageProgress['state'], string> = {
   waiting: 'waiting',

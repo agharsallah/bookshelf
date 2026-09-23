@@ -46,6 +46,18 @@
   background: var(--done);
 }
 
+@media (prefers-reduced-motion: no-preference) {
+  .stream[data-status='live'] .pulse {
+    animation: glow 3s var(--ease-out) infinite;
+  }
+}
+
+@keyframes glow {
+  50% {
+    box-shadow: 0 0 0 4px color-mix(in oklab, var(--done) 20%, transparent);
+  }
+}
+
 .stream[data-status='reconnecting'] .pulse {
   background: var(--active);
 }
@@ -206,103 +218,6 @@
   font-size: var(--text-xs);
 }
 
-/* Stations on a line: the rule runs through the dots, stopping at the last one. */
-.track {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.station {
-  --state: var(--rule-strong);
-  position: relative;
-  display: grid;
-  justify-items: start;
-  gap: var(--space-1);
-}
-
-.station::before {
-  content: '';
-  position: absolute;
-  inset-block-start: 0.3rem;
-  inset-inline: 0.7rem 0;
-  block-size: 1px;
-  background: var(--rule-strong);
-}
-
-.station:last-child::before {
-  display: none;
-}
-
-.station[data-state='done']::before {
-  background: var(--done);
-}
-
-.dot {
-  position: relative;
-  inline-size: 0.65rem;
-  block-size: 0.65rem;
-  border: 1.5px solid var(--state);
-  border-radius: 50%;
-  background: var(--paper);
-}
-
-.station[data-state='done'] {
-  --state: var(--done);
-}
-
-.station[data-state='done'] .dot {
-  background: var(--done);
-}
-
-.station[data-state='active'] {
-  --state: var(--active);
-}
-
-.station[data-state='active'] .dot {
-  box-shadow: 0 0 0 3px color-mix(in oklab, var(--active) 25%, transparent);
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .station[data-state='active'] .dot {
-    animation: breathe 2.4s var(--ease-out) infinite;
-  }
-
-  .stream[data-status='live'] .pulse {
-    animation: breathe 3s var(--ease-out) infinite;
-  }
-}
-
-@keyframes breathe {
-  50% {
-    box-shadow: 0 0 0 5px color-mix(in oklab, var(--active) 10%, transparent);
-  }
-}
-
-.station[data-state='failed'] {
-  --state: var(--failed);
-}
-
-.station[data-state='failed'] .dot {
-  background: var(--failed);
-  clip-path: polygon(20% 0, 50% 30%, 80% 0, 100% 20%, 70% 50%, 100% 80%, 80% 100%, 50% 70%, 20% 100%, 0 80%, 30% 50%, 0 20%);
-  border: 0;
-  border-radius: 0;
-}
-
-.stationLabel {
-  color: var(--ink-3);
-  font-size: var(--text-xs);
-}
-
-.station[data-state='active'] .stationLabel,
-.station[data-state='failed'] .stationLabel {
-  color: var(--state);
-  font-weight: 600;
-}
-
 .kindList {
   display: grid;
   gap: var(--space-1);
@@ -346,108 +261,6 @@
   list-style: none;
 }
 
-.job {
-  display: grid;
-  grid-template-columns: 9rem minmax(0, 1fr) auto;
-  align-items: baseline;
-  gap: var(--space-1) var(--space-4);
-  padding-block: var(--space-2);
-  border-block-start: 1px solid var(--rule);
-  font-size: var(--text-sm);
-}
-
-.jobKind {
-  font-weight: 600;
-}
-
-.job[data-state='running'] .jobKind {
-  color: var(--active);
-}
-
-.job[data-state='failed'] .jobKind {
-  color: var(--failed);
-}
-
-.scope {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0 var(--space-2);
-  min-inline-size: 0;
-}
-
-.jobDoc {
-  font-family: var(--font-read);
-  font-style: italic;
-}
-
-.jobAnchor {
-  color: var(--accent);
-  font-size: var(--text-xs);
-  font-weight: 600;
-}
-
-.jobSkill,
-.attempts {
-  color: var(--ink-3);
-  font-size: var(--text-xs);
-}
-
-.jobTime {
-  color: var(--ink-2);
-  font-variant-numeric: tabular-nums;
-  text-align: end;
-}
-
-.error {
-  grid-column: 2 / -1;
-  color: var(--ink-2);
-}
-
-.error summary {
-  cursor: pointer;
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  overflow-wrap: anywhere;
-}
-
-.error pre {
-  max-block-size: 16rem;
-  margin-block-start: var(--space-2);
-  padding: var(--space-3);
-  overflow: auto;
-  border-radius: var(--radius-m);
-  background: var(--paper-sunken);
-  font-size: var(--text-xs);
-  white-space: pre-wrap;
-}
-
-.job[data-ceiling] .error summary {
-  color: var(--tone-caution);
-}
-
-.retry {
-  grid-column: 2 / -1;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-3);
-}
-
-.retry button {
-  padding: var(--space-1) var(--space-3);
-  border: 1px solid var(--rule-strong);
-  border-radius: var(--radius-m);
-  background: var(--paper-raised);
-  font-size: var(--text-sm);
-  cursor: pointer;
-}
-
-.retry button:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-
 .tableWrap {
   overflow-x: auto;
 }
@@ -478,31 +291,10 @@
   text-align: end;
 }
 
-.stateCell {
-  color: var(--ink-3);
-}
 
 @media (max-width: 52rem) {
   .grid {
     grid-template-columns: minmax(0, 1fr);
     gap: var(--space-6);
-  }
-
-  .job {
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-
-  .job .scope {
-    grid-column: 1 / -1;
-    grid-row: 2;
-  }
-
-  .error,
-  .retry {
-    grid-column: 1 / -1;
-  }
-
-  .stationLabel {
-    font-size: 0.65rem;
   }
 }
