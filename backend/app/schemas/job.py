@@ -13,7 +13,11 @@ class JobCreate(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
         json_schema_extra={
-            "examples": [{"kind": "summarize", "document_id": "…", "anchor": "ch03"}]
+            "examples": [
+                {"kind": "summarize", "document_id": "…", "anchor": "ch03"},
+                {"kind": "derive", "document_id": "…", "anchor": "ch03", "skill": "make-quiz"},
+                {"kind": "structure_note", "document_id": "…", "note_id": "…", "force": True},
+            ]
         },
     )
 
@@ -22,6 +26,18 @@ class JobCreate(BaseModel):
     anchor: Annotated[str | None, Field(default=None, max_length=200)]
     force: Annotated[
         bool, Field(default=False, description="Re-run even if an artifact for this input exists.")
+    ]
+    skill: Annotated[
+        str | None,
+        Field(
+            default=None,
+            max_length=100,
+            description="Skill package to run. Required for `derive`; else must match `kind`.",
+        ),
+    ]
+    note_id: Annotated[
+        uuid.UUID | None,
+        Field(default=None, description="Required for `structure_note`: a note of the document."),
     ]
 
 

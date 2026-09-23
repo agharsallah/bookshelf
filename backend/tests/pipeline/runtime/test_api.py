@@ -1,28 +1,13 @@
 """Artifacts and skills endpoints (§13), against the real app and database."""
 
-from collections.abc import Iterator
-from pathlib import Path
-
-import pytest
-from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 
-from app.api.pipeline import get_skills_dir
-from app.main import create_app
 from app.models import Artifact, Document, Job, Note
 from app.models.enums import ArtifactType, JobKind, Origin, Review
 from tests.conftest import AUTH
 from tests.pipeline.runtime.conftest import body, paragraph
 
 API = "/api/v1"
-
-
-@pytest.fixture
-def api(skills_dir: Path) -> Iterator[TestClient]:
-    app = create_app()
-    app.dependency_overrides[get_skills_dir] = lambda: skills_dir
-    with TestClient(app) as client:
-        yield client
 
 
 def skill_artifact(session: Session, doc: Document, kind: ArtifactType, anchor: str | None,

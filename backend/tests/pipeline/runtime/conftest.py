@@ -6,16 +6,19 @@ Skill packages are written to `tmp_path`, so these tests never depend on the rea
 
 import json
 import uuid
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from pathlib import Path
 from typing import Any
 
 import pytest
 import yaml
+from fastapi.testclient import TestClient
 from sqlmodel import Session
 
+from app.api.pipeline import get_skills_dir
 from app.jobs import queue
 from app.jobs.queue import JobSpec
+from app.main import create_app
 from app.models import Document, Job, Node
 from app.models.enums import DocumentKind, DocumentStatus, JobKind, NodeKind
 from app.pipeline.gates import RENDER_BLOCKS_ID
@@ -130,6 +133,15 @@ def skills_dir(tmp_path: Path) -> Path:
     return root
 
 
+@pytest.fixture
+def api(skills_dir: Path) -> Iterator[TestClient]:
+    """The real app, reading skill packages from the tmp `skills_dir`."""
+    app = create_app()
+    app.dependency_overrides[get_skills_dir] = lambda: skills_dir
+    with TestClient(app) as client:
+        yield client
+
+
 # --- Body builders ---------------------------------------------------------------------
 
 
@@ -233,3 +245,10 @@ def make_job(session: Session) -> Callable[..., Job]:
         return job
 
     return make
+
+
+@pytest.fixture
+def other_book(session: Session) -> Document:
+    doc = add_document(session, slug="senge-fifth-discipline")
+    add_nodes(session, doc, BOOK)
+    return doc

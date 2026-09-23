@@ -3,16 +3,18 @@
 import uuid
 
 from fastapi import APIRouter, Depends, Query, status
-from sqlmodel import select
 
 from app.api.deps import LimitDep, OffsetDep, SessionDep
+from app.api.pipeline import SkillsDirDep
 from app.core.errors import NotFoundError
 from app.core.security import require_api_key
 from app.jobs import queue
-from app.models import Document, Job
+from app.models import Job
 from app.models.enums import JobKind, JobState
+from app.pipeline.skills import load_catalogue
 from app.schemas.common import Page
 from app.schemas.job import JobAccepted, JobCreate, JobPublic
+from app.services import jobs as job_service
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 
@@ -50,28 +52,17 @@ def get_job(job_id: uuid.UUID, session: SessionDep) -> JobPublic:
     dependencies=[Depends(require_api_key)],
     summary="Enqueue a job",
 )
-def create_job(body: JobCreate, session: SessionDep) -> JobAccepted:
-    if body.document_id is not None and session.get(Document, body.document_id) is None:
-        raise NotFoundError(f"Document {body.document_id} does not exist.")
-    spec = queue.JobSpec(
+def create_job(body: JobCreate, session: SessionDep, skills_dir: SkillsDirDep) -> JobAccepted:
+    """Queue a (re-)run. `deduplicated` is true when identical live work already exists:
+    same kind and scope, and the same `skill` (derive) or `note_id` (structure_note)."""
+    request = job_service.JobRequest(
         kind=body.kind,
         document_id=body.document_id,
         anchor=body.anchor,
-        payload={"force": True} if body.force else None,
+        skill=body.skill,
+        note_id=body.note_id,
+        force=body.force,
     )
-    job = queue.enqueue(session, spec)
-    if job is not None:
-        return JobAccepted(job=JobPublic.model_validate(job), deduplicated=False)
-    live = session.exec(
-        select(Job).where(
-            Job.kind == body.kind,
-            Job.document_id == body.document_id,
-            Job.anchor == body.anchor,
-            Job.state.in_([JobState.QUEUED, JobState.RUNNING]),  # type: ignore[attr-defined]
-        )
-    ).first()
-    if live is None:  # finished between the insert and this read: enqueue again
-        job = queue.enqueue(session, spec)
-        assert job is not None  # noqa: S101
-        return JobAccepted(job=JobPublic.model_validate(job), deduplicated=False)
-    return JobAccepted(job=JobPublic.model_validate(live), deduplicated=True)
+    spec = job_service.job_spec(session, request, load_catalogue(skills_dir))
+    job, deduplicated = job_service.enqueue_or_live(session, spec)
+    return JobAccepted(job=JobPublic.model_validate(job), deduplicated=deduplicated)
