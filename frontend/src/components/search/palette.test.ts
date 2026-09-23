@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import type { ConceptSummary } from '../../lib/api/types/graph';
 import type { SuggestItem } from '../../lib/api/types/search';
 import { buildItems, closedPalette, isPaletteShortcut, paletteReducer, recentItems, type PaletteState } from './palette';
 
@@ -7,21 +6,13 @@ const doc = { id: 'm', slug: 'meadows', title: 'Thinking in Systems', authors: [
 const suggest: SuggestItem[] = [
   { kind: 'document', label: 'Thinking in Systems', document: doc, anchor: null },
   { kind: 'chapter', label: 'Stocks and flows', document: doc, anchor: 'ch01' },
-  { kind: 'concept', label: 'feedback loop', document: null, anchor: null },
+  { kind: 'concept', label: 'feedback loop', id: 'c1', document: null, anchor: null },
+  { kind: 'concept', label: 'no id yet', document: null, anchor: null },
 ];
-const concept: ConceptSummary = {
-  id: 'c1',
-  canonical: 'feedback loop',
-  aliases: [],
-  kind: 'concept',
-  blurb: null,
-  merged_into: null,
-  origin: 'skill',
-};
 
 describe('buildItems', () => {
-  it('lists documents and chapters, concepts with their ids, then search and ask', () => {
-    expect(buildItems('flow', suggest, [concept]).map((i) => [i.kind, i.href])).toEqual([
+  it('lists documents, chapters and concepts by their ids (skipping one without), then search and ask', () => {
+    expect(buildItems('flow', suggest).map((i) => [i.kind, i.href])).toEqual([
       ['document', '/documents/meadows'],
       ['chapter', '/documents/meadows/read/ch01'],
       ['concept', '/concepts/c1'],
@@ -31,14 +22,14 @@ describe('buildItems', () => {
   });
 
   it('has nothing for a blank query', () => {
-    expect(buildItems('  ', suggest, [concept])).toEqual([]);
+    expect(buildItems('  ', suggest)).toEqual([]);
   });
 });
 
 describe('paletteReducer', () => {
   const recent = recentItems([{ label: 'loops', href: '/search?q=loops' }]);
   const open = paletteReducer(closedPalette, { type: 'open', recent });
-  const items = buildItems('flow', suggest, [concept]);
+  const items = buildItems('flow', suggest);
 
   it('opens on recent entries', () => {
     expect([open.open, open.items.map((i) => i.label)]).toEqual([true, ['loops']]);

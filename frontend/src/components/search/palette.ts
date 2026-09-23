@@ -1,8 +1,7 @@
 /**
- * The command palette's model: items built from `/search/suggest` + `/concepts`, and a
- * pure reducer for open/close, typing, stale-result rejection and arrow-key movement.
+ * The command palette's model: items built from `/search/suggest` (documents, chapters
+ * and concepts, each carrying what to open), and a pure reducer for open/close, typing, stale-result rejection and arrow-key movement.
  */
-import type { ConceptSummary } from '../../lib/api/types/graph';
 import type { SuggestItem } from '../../lib/api/types/search';
 import { conceptHref, readerHref } from './links';
 import type { RecentEntry } from './recent';
@@ -38,34 +37,28 @@ export type PaletteAction =
 
 export const closedPalette: PaletteState = { open: false, query: '', items: [], resultsFor: '', active: 0, loading: false };
 
-const CONCEPT_LIMIT = 5;
-const SUGGEST_LIMIT = 7;
+const SUGGEST_LIMIT = 10;
 
 export function recentItems(recent: readonly RecentEntry[]): PaletteItem[] {
   return recent.map((r, i) => ({ id: `recent-${i}`, kind: 'recent', label: r.label, href: r.href }));
 }
 
-/** Jump targets first (documents, chapters, concepts), then "Search" and "Ask". */
-export function buildItems(query: string, suggest: readonly SuggestItem[], concepts: readonly ConceptSummary[]): PaletteItem[] {
+/** Where a suggestion opens: the document, the chapter in the reader, the concept page. */
+function jumpHref(s: SuggestItem): string | null {
+  if (s.kind === 'concept') return s.id ? conceptHref(s.id) : null;
+  if (!s.document) return null;
+  return readerHref(s.document.slug, s.kind === 'chapter' ? s.anchor : null);
+}
+
+/** Jump targets first (in the suggest endpoint's interleaved order), then "Search" and "Ask". */
+export function buildItems(query: string, suggest: readonly SuggestItem[]): PaletteItem[] {
   const q = query.trim();
   if (!q) return [];
-  const jumps: PaletteItem[] = [];
-  suggest
-    .filter((s) => s.kind !== 'concept' && s.document)
-    .slice(0, SUGGEST_LIMIT)
-    .forEach((s, i) => {
-      const doc = s.document;
-      if (!doc) return;
-      jumps.push({
-        id: `${s.kind}-${i}`,
-        kind: s.kind,
-        label: s.label,
-        detail: s.kind === 'chapter' ? doc.title : doc.authors.join(', ') || undefined,
-        href: readerHref(doc.slug, s.kind === 'chapter' ? s.anchor : null),
-      });
-    });
-  concepts.slice(0, CONCEPT_LIMIT).forEach((c) => {
-    jumps.push({ id: `concept-${c.id}`, kind: 'concept', label: c.canonical, detail: c.kind, href: conceptHref(c.id) });
+  const jumps = suggest.slice(0, SUGGEST_LIMIT).flatMap((s, i): PaletteItem[] => {
+    const href = jumpHref(s);
+    if (!href) return [];
+    const detail = s.kind === 'chapter' ? s.document?.title : s.kind === 'document' ? s.document?.authors.join(', ') || undefined : undefined;
+    return [{ id: `${s.kind}-${s.id ?? i}`, kind: s.kind, label: s.label, detail, href }];
   });
   return [
     ...jumps,

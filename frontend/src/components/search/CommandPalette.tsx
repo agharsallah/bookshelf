@@ -7,8 +7,6 @@
 import { useCallback, useEffect, useReducer, useRef, type KeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { browserApi, type ApiClient } from '../../lib/api/client';
-import type { Page } from '../../lib/api/types';
-import type { ConceptSummary } from '../../lib/api/types/graph';
 import type { SuggestResponse } from '../../lib/api/types/search';
 import { activeItem, buildItems, closedPalette, isPaletteShortcut, paletteReducer, recentItems, type PaletteItem, type PaletteKind } from './palette';
 import { loadRecent, RECENT_SEARCHES_KEY } from './recent';
@@ -70,17 +68,12 @@ export function CommandPalette({ api = browserApi, navigate = go, debounceMs = 1
     if (!state.open || !q) return;
     const controller = new AbortController();
     const timer = setTimeout(async () => {
-      const [suggest, concepts] = await Promise.allSettled([
-        api.get<SuggestResponse>('search/suggest', { query: { q: q.slice(0, 100), limit: 8 }, signal: controller.signal }),
-        api.get<Page<ConceptSummary>>('concepts', { query: { q: q.slice(0, 200), limit: 5 }, signal: controller.signal }),
-      ]);
+      const suggest = await api
+        .get<SuggestResponse>('search/suggest', { query: { q: q.slice(0, 100), limit: 10 }, signal: controller.signal })
+        .then((response) => response.items)
+        .catch(() => []);
       if (controller.signal.aborted) return;
-      const items = buildItems(
-        q,
-        suggest.status === 'fulfilled' ? suggest.value.items : [],
-        concepts.status === 'fulfilled' ? concepts.value.items : [],
-      );
-      dispatch({ type: 'results', query, items });
+      dispatch({ type: 'results', query, items: buildItems(q, suggest) });
     }, debounceMs);
     return () => {
       clearTimeout(timer);

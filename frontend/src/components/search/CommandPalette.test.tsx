@@ -9,8 +9,12 @@ const doc = { id: 'm', slug: 'meadows', title: 'Thinking in Systems', authors: [
 function setup() {
   const visited: string[] = [];
   const { api } = fakeApi({
-    'GET search/suggest': () => ({ items: [{ kind: 'chapter', label: 'Stocks and flows', document: doc, anchor: 'ch01' }] }),
-    'GET concepts': () => ({ items: [{ id: 'c1', canonical: 'stock', aliases: [], kind: 'term', blurb: null, merged_into: null, origin: 'skill' }], total: 1, limit: 5, offset: 0 }),
+    'GET search/suggest': () => ({
+      items: [
+        { kind: 'chapter', label: 'Stocks and flows', document: doc, anchor: 'ch01' },
+        { kind: 'concept', label: 'stock', id: 'c1' },
+      ],
+    }),
   });
   render(<CommandPalette api={api} navigate={(href) => visited.push(href)} debounceMs={0} />);
   return visited;
