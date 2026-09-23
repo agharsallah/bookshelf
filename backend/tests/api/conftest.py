@@ -40,6 +40,11 @@ def exports_dir() -> Path:
 Responder = Callable[[httpx.Request], httpx.Response]
 
 
+def public_dns(host: str) -> list[str]:
+    """Every test host resolves to one public address (a former example.com IP)."""
+    return ["93.184.216.34"]
+
+
 @pytest.fixture
 def web(client: TestClient) -> Iterator[Callable[[Responder], None]]:
     """Route URL-ingest fetches to a fake web: `web(lambda request: httpx.Response(...))`."""
@@ -48,7 +53,9 @@ def web(client: TestClient) -> Iterator[Callable[[Responder], None]]:
 
     def install(responder: Responder) -> None:
         transport = httpx.MockTransport(responder)
-        app.dependency_overrides[get_http_client] = lambda: fetch.make_client(transport)
+        app.dependency_overrides[get_http_client] = lambda: fetch.make_client(
+            transport, resolver=public_dns
+        )
 
     yield install
     app.dependency_overrides.pop(get_http_client, None)

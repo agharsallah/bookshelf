@@ -1,9 +1,18 @@
 """Fetch a web article for URL ingest, with hard limits on time, size and redirects.
 
-The `httpx.Client` is passed in, so tests inject an `httpx.MockTransport` and never
-touch the network (`make_client(transport=...)`).
+SSRF guard: before every request, the first and each redirect hop (an httpx `request`
+event hook), the host is resolved and refused if any of its addresses is loopback,
+private, link-local, multicast, reserved or unspecified, IPv4 or IPv6, including
+IPv4-mapped IPv6 (`::ffff:127.0.0.1`). An IP literal is checked as is.
+
+The `httpx.Client` and the resolver are passed in, so tests inject an
+`httpx.MockTransport` and a fake resolver and never touch the network
+(`make_client(transport=..., resolver=...)`).
 """
 
+import ipaddress
+import socket
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date
 from urllib.parse import urlsplit
@@ -32,13 +41,63 @@ class PageMetadata:
     year: int | None
 
 
-def make_client(transport: httpx.BaseTransport | None = None) -> httpx.Client:
+Resolver = Callable[[str], list[str]]  # host → every address it resolves to
+
+
+def system_resolver(host: str) -> list[str]:
+    """All addresses the OS resolver returns for `host`."""
+    try:
+        infos = socket.getaddrinfo(host, None, type=socket.SOCK_STREAM)
+    except (socket.gaierror, UnicodeError):
+        raise InvalidInputError(f"Cannot resolve {host}.", field="body.url") from None
+    return sorted({str(info[4][0]) for info in infos})
+
+
+def is_public_address(address: str) -> bool:
+    """False for loopback, private, link-local, multicast, reserved, unspecified (and
+    anything else not globally routable), looking through IPv4-mapped IPv6."""
+    ip = ipaddress.ip_address(address.split("%", 1)[0])  # drop an IPv6 zone id
+    if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped is not None:
+        ip = ip.ipv4_mapped
+    blocked = (
+        ip.is_loopback
+        or ip.is_private
+        or ip.is_link_local
+        or ip.is_multicast
+        or ip.is_reserved
+        or ip.is_unspecified
+    )
+    return ip.is_global and not blocked
+
+
+def check_public_host(host: str, resolver: Resolver) -> None:
+    """Refuse a host that is, or resolves to, a non-public address (`422`)."""
+    try:
+        addresses = [str(ipaddress.ip_address(host.strip("[]")))]
+    except ValueError:
+        addresses = resolver(host)
+    if not addresses:
+        raise InvalidInputError(f"Cannot resolve {host}.", field="body.url")
+    if not all(is_public_address(a) for a in addresses):
+        raise InvalidInputError(
+            "URLs pointing at private, loopback or otherwise internal addresses are refused.",
+            field="body.url",
+        )
+
+
+def make_client(
+    transport: httpx.BaseTransport | None = None, *, resolver: Resolver = system_resolver
+) -> httpx.Client:
+    def guard(request: httpx.Request) -> None:  # runs for the first request and every hop
+        check_public_host(request.url.host, resolver)
+
     return httpx.Client(
         timeout=TIMEOUT_SECONDS,
         follow_redirects=True,
         max_redirects=MAX_REDIRECTS,
         headers={"User-Agent": USER_AGENT, "Accept": "text/html,application/xhtml+xml"},
         transport=transport,
+        event_hooks={"request": [guard]},
     )
 
 
