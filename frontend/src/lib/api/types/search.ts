@@ -64,10 +64,27 @@ export interface SearchGroup {
   hits: SearchHit[];
 }
 
+export interface ConceptEnd {
+  id: string;
+  canonical: string;
+}
+
+/** An accepted edge between two concepts, evidenced in the result documents. */
+export interface ConceptRelation {
+  relation: 'contradicts' | 'supports' | 'extends';
+  src: ConceptEnd;
+  dst: ConceptEnd;
+  weight: number;
+  /** `<slug>:<anchor>` passages in the result documents. */
+  evidence: string[];
+}
+
 export interface SearchResponse {
   intent: Intent;
   resolved?: ResolvedAddress | null;
   groups: SearchGroup[];
+  /** Synthesis only: relations between concepts in the result books, contradictions first. */
+  relations?: ConceptRelation[];
   took_ms: number;
 }
 

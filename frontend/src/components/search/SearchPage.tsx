@@ -18,6 +18,7 @@ import { Filters, type FilterDocument } from './Filters';
 import { QueryBar } from './QueryBar';
 import { loadRecent, RECENT_SEARCHES_KEY, saveRecent, type RecentEntry } from './recent';
 import { Results } from './ResultList';
+import { RelationsNote } from './RelationsNote';
 import { buildResults, stepHit, type HitView } from './results';
 import { useSearchKeys } from './useSearchKeys';
 import { searchHref, toSearchParams, toSearchRequest, type SearchState } from './url-state';
@@ -152,6 +153,7 @@ export function SearchPage({ initial, askOnLoad = false, documents, tags, api = 
             <p className={styles.summary} aria-live="polite">
               {summaryLine(view.total, view.groups.length, results.response?.took_ms ?? 0)}
             </p>
+            <RelationsNote relations={results.response?.relations ?? []} groups={results.response?.groups ?? []} />
             <Results view={view} intent={results.response?.intent ?? 'discovery'} onOpen={onOpen} />
           </>
         ) : (

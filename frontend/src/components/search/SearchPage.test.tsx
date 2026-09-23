@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { fakeApi } from '../review/testing/fakeApi';
@@ -43,6 +43,15 @@ describe('SearchPage', () => {
     const mark = await screen.findByText('stock');
     expect(mark.tagName).toBe('MARK');
     expect(mark.closest('a')?.getAttribute('href')).toBe('/documents/meadows/read/ch01/p002');
+  });
+
+  it('opens a synthesis with where the books meet, each passage linking into the reader', async () => {
+    const relation = { relation: 'contradicts', src: { id: 'r', canonical: 'reinforcing loop' }, dst: { id: 'b', canonical: 'balancing loop' }, weight: 0.6, evidence: ['meadows:ch01/p003'] };
+    const { api } = fakeApi({ 'POST search': () => ({ ...hits, intent: 'synthesis', relations: [relation] }) });
+    render(<SearchPage initial={{ ...emptySearch, q: 'how do they disagree?' }} documents={[]} tags={[]} api={api} debounceMs={0} />);
+    const note = await screen.findByRole('region', { name: 'Where the books meet' });
+    expect(note.textContent).toContain('reinforcing loop contradicts balancing loop');
+    expect(within(note).getByRole('link', { name: '1 ¶3' }).getAttribute('href')).toBe('/documents/meadows/read/ch01/p003');
   });
 
   it('streams the answer: status first, then cited blocks linking into each book', async () => {
