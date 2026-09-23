@@ -1,0 +1,118 @@
+/*
+ * Design tokens. Every color is a `light-dark()` pair, so one declaration serves
+ * both themes: the OS preference applies by default (`color-scheme: light dark`)
+ * and `data-theme` on <html> (set by the theme bootstrap) pins one explicitly.
+ *
+ * Light is "vellum": rag paper, iron-gall ink, verdigris for anything that
+ * points back at the source. Dark is "ink": the same page turned over — blue-black
+ * ground, paper-colored text. All text pairs below clear WCAG AA (4.5:1).
+ */
+
+:root {
+  color-scheme: light dark;
+
+  /* ── Surfaces ─────────────────────────────────────────────── */
+  --paper: light-dark(#f3eee1, #161a24);
+  --paper-raised: light-dark(#faf7ef, #1e2331);
+  --paper-sunken: light-dark(#eae3d1, #11141c);
+  --rule: light-dark(#d8cfba, #2e3446);
+  --rule-strong: light-dark(#bdb29a, #434a5f);
+
+  /* ── Ink ──────────────────────────────────────────────────── */
+  --ink: light-dark(#1d2332, #e8e1d0);
+  --ink-2: light-dark(#454b5c, #bdb6a6);
+  --ink-3: light-dark(#5f6474, #9a9486);
+
+  /* Verdigris: links, cites, focus — "this points somewhere". */
+  --accent: light-dark(#1e6b5c, #72c2ad);
+  --accent-wash: light-dark(#dcebe4, #1f3a36);
+  --focus: var(--accent);
+  --selection: light-dark(#cfe3da, #2a4a44);
+
+  /* ── Callout tones (§9): each has a hue, a glyph and a rule style ── */
+  --tone-important: light-dark(#9b2f22, #f08a77);
+  --tone-remember: light-dark(#34448f, #9daef0);
+  --tone-antipattern: light-dark(#7a2f6e, #dc8fcf);
+  --tone-insight: light-dark(#3f6b22, #a9cf7c);
+  --tone-caution: light-dark(#85570a, #e2b560);
+  --tone-contrast: light-dark(#3b5670, #a3bcd6);
+  --tone-question: light-dark(#1c6470, #7ccbd6);
+
+  /* ── Highlighter washes (text stays --ink; all ≥ 6.5:1) ─────── */
+  --hl-amber: light-dark(#f6dc8c, #5c4a1c);
+  --hl-rose: light-dark(#f2c1c8, #5e3039);
+  --hl-sage: light-dark(#cfe0be, #374b2b);
+  --hl-sky: light-dark(#c4ddf0, #2a445b);
+  --hl-violet: light-dark(#dccdf0, #43375d);
+
+  /* ── Chart series: validated for CVD + normal-vision separation in
+        this order on --paper-raised (dataviz validator). Never cycled. ── */
+  --series-1: light-dark(#00866e, #139e82);
+  --series-2: light-dark(#c28a12, #b5861f);
+  --series-3: light-dark(#a3478f, #bb62a6);
+  --series-4: light-dark(#4f8a2a, #6fa044);
+  --series-5: light-dark(#4a5bb5, #7384dc);
+  --series-6: light-dark(#c4553a, #d06a4f);
+  --series-other: light-dark(#8a8578, #6f6a60);
+  --chart-grid: light-dark(#e6dfcd, #2a3040);
+  --chart-axis: light-dark(#bdb29a, #434a5f);
+
+  /* ── Type ─────────────────────────────────────────────────── */
+  --font-read: var(--font-literata, Georgia, 'Times New Roman', serif);
+  --font-ui: var(--font-schibsted, system-ui, sans-serif);
+  --font-mono: var(--font-plex-mono, ui-monospace, 'SF Mono', monospace);
+
+  /* A classical scale (Bringhurst): 12 · 14 · 15 · 18 · 21 · 26 · 36 · 52 */
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-ui: 0.9375rem;
+  --text-base: 1.125rem;
+  --text-md: 1.3125rem;
+  --text-lg: 1.625rem;
+  --text-xl: 2.25rem;
+  --text-2xl: 3.25rem;
+
+  --leading-read: 1.62;
+  --leading-ui: 1.4;
+  --leading-tight: 1.15;
+  --measure: 66ch;
+
+  /* ── Space (4px base) ─────────────────────────────────────── */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --space-8: 4.5rem;
+
+  /* Radii encode hierarchy: marks < controls < panels. */
+  --radius-s: 2px;
+  --radius-m: 4px;
+  --radius-l: 8px;
+
+  --shadow-lift: 0 1px 0 var(--rule), 0 10px 28px -14px light-dark(rgb(29 35 50 / 0.45), rgb(0 0 0 / 0.7));
+
+  /* ── Motion ───────────────────────────────────────────────── */
+  --dur-1: 120ms;
+  --dur-2: 200ms;
+  --dur-3: 320ms;
+  --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-1: 0ms;
+    --dur-2: 0ms;
+    --dur-3: 0ms;
+  }
+}
