@@ -26,14 +26,29 @@ async def health() -> HealthResponse:
     )
 
 
+def qdrant_status() -> tuple[str, str | None]:
+    """`("ok", None)` when Qdrant answers, else `("unavailable", reason)`. Opens the shared
+    client on first use (lazily: the API never waits on Qdrant at startup)."""
+    from app.retrieval.collections import QdrantUnavailableError, open_client, probe
+
+    try:
+        reason = probe(open_client())
+    except QdrantUnavailableError as exc:
+        reason = str(exc)[:300]
+    return ("ok", None) if reason is None else ("unavailable", reason)
+
+
 @router.get(
     "/health/ready",
     response_model=ReadinessResponse,
     summary="Readiness probe",
-    description="Verifies the database answers before declaring the instance ready for traffic.",
-    responses={503: {"description": "A dependency is unavailable."}},
+    description=(
+        "`503` when the database does not answer. Qdrant is reported separately: when it is "
+        "unreachable the instance is `degraded` (`200`), since only vector search needs it."
+    ),
+    responses={503: {"description": "The database is unavailable."}},
 )
-async def readiness(session: SessionDep):  # type: ignore[no-untyped-def]
+def readiness(session: SessionDep):  # type: ignore[no-untyped-def]
     try:
         session.exec(text("SELECT 1"))  # type: ignore[call-overload]
     except Exception:
@@ -42,4 +57,10 @@ async def readiness(session: SessionDep):  # type: ignore[no-untyped-def]
             "not_ready",
             "Database is unavailable.",
         )
-    return ReadinessResponse(status="ready", database="ok")
+    qdrant, reason = qdrant_status()
+    return ReadinessResponse(
+        status="ready" if qdrant == "ok" else "degraded",
+        database="ok",
+        qdrant=qdrant,
+        qdrant_error=reason,
+    )

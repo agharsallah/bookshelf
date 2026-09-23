@@ -23,10 +23,10 @@ from app.core.security import require_api_key
 from app.db.session import engine
 from app.pipeline.runner import ClaudeCliRunner, ModelRunner
 from app.retrieval import suggest
-from app.retrieval.client import get_client
 from app.retrieval.embedding import Embedder, get_embedder
 from app.retrieval.router import QueryRouter
 from app.schemas.search import SearchRequest, SearchResponse, SuggestResponse
+from app.services.errors import ServiceUnavailableError
 
 if TYPE_CHECKING:  # `qdrant_client` (and fastembed/onnxruntime) load on the first search
     from qdrant_client import QdrantClient
@@ -54,7 +54,13 @@ def get_answer_runner() -> ModelRunner:
 
 
 def get_qdrant() -> "QdrantClient":
-    return get_client()
+    """The shared client, opened on first use; `503` when Qdrant cannot be opened."""
+    from app.retrieval.collections import QdrantUnavailableError, open_client
+
+    try:
+        return open_client()
+    except QdrantUnavailableError as exc:
+        raise ServiceUnavailableError(str(exc)) from exc
 
 
 def get_search_embedder() -> Embedder:
@@ -79,8 +85,12 @@ def search_library(
     """Route the query (addressed, lexical, discovery, synthesis) and return hits grouped
     by document. Addressed queries return the tree node and its approved artifacts."""
     from app.retrieval import search
+    from app.retrieval.collections import QdrantUnavailableError
 
-    outcome = search.run(session, body, router=query_router, embedder=embedder, client=client)
+    try:
+        outcome = search.run(session, body, router=query_router, embedder=embedder, client=client)
+    except QdrantUnavailableError as exc:
+        raise ServiceUnavailableError(str(exc)) from exc
     return outcome.response
 
 

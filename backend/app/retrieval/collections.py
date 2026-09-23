@@ -18,7 +18,9 @@ A collection whose dense size no longer matches the embedder is a model change: 
 `recreate=True` (the rebuild job does) and re-index, since Qdrant is derived data (D1).
 """
 
+import threading
 import warnings
+import weakref
 from dataclasses import dataclass
 
 from qdrant_client import QdrantClient, models
@@ -58,6 +60,10 @@ VECTOR_COLLECTIONS = (Collection.BLOCKS, Collection.DISTILLATIONS)
 
 class CollectionMismatchError(RuntimeError):
     """An existing collection's vectors differ from the embedder's: rebuild needed."""
+
+
+class QdrantUnavailableError(RuntimeError):
+    """Qdrant cannot be opened or reached (server down, embedded store locked elsewhere)."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -136,3 +142,43 @@ def ensure_collections(
         created.append(name)
         indexes[name] = _create_indexes(client, collection, name)
     return EnsureReport(created=created, existing=existing, indexes=indexes)
+
+
+_ready_lock = threading.Lock()
+_ready: "weakref.WeakKeyDictionary[QdrantClient, int]" = weakref.WeakKeyDictionary()
+
+
+def ensure_ready(client: QdrantClient, *, dense_dim: int) -> None:
+    """`ensure_collections` once per client and dense size, on first use (never at startup).
+
+    Raises `QdrantUnavailableError` when Qdrant cannot be reached, and lets
+    `CollectionMismatchError` (a model change: rebuild) through unchanged.
+    """
+    with _ready_lock:
+        if _ready.get(client) == dense_dim:
+            return
+        try:
+            ensure_collections(dense_dim=dense_dim, client=client)
+        except CollectionMismatchError:
+            raise
+        except Exception as exc:
+            raise QdrantUnavailableError(f"Qdrant is unavailable: {exc}") from exc
+        _ready[client] = dense_dim
+
+
+def open_client() -> QdrantClient:
+    """The shared client, or `QdrantUnavailableError` (e.g. another process holds the
+    embedded store's lock)."""
+    try:
+        return get_client()
+    except Exception as exc:
+        raise QdrantUnavailableError(f"Qdrant cannot be opened: {exc}") from exc
+
+
+def probe(client: QdrantClient) -> str | None:
+    """None when Qdrant answers, else a short reason (for `/health/ready`)."""
+    try:
+        client.get_collections()
+    except Exception as exc:
+        return f"{type(exc).__name__}: {str(exc)[:200]}"
+    return None

@@ -55,5 +55,9 @@ class HealthResponse(BaseModel):
 
 
 class ReadinessResponse(BaseModel):
-    status: Annotated[str, Field(examples=["ready"])]
+    status: Annotated[
+        str, Field(examples=["ready"], description="`ready`, or `degraded` without Qdrant.")
+    ]
     database: Annotated[str, Field(examples=["ok"])]
+    qdrant: Annotated[str, Field(examples=["ok"], description="`ok` or `unavailable`.")]
+    qdrant_error: str | None = None

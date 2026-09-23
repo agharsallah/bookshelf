@@ -2,6 +2,7 @@
 
     uv run python -m app.jobs.worker            # poll forever (SIGINT/SIGTERM to stop)
     uv run python -m app.jobs.worker --once     # drain what is runnable now, then exit
+    uv run python -m app.jobs.worker --kinds parse,summarize --exclude-kinds brief
 
 Handlers register themselves on import; the worker imports every module under
 `app.pipeline.handlers`, then claims only the kinds that have a handler, so work for a
@@ -9,6 +10,10 @@ stage nobody implements yet simply waits in the queue. Each job runs in its own 
 and Session (the real work is a `claude -p` subprocess, so threads are enough). The
 worker owns state transitions: success → `complete`, `PermanentJobError` → `failed`,
 anything else → retry with backoff. Then the orchestrator decides what comes next.
+
+Embedded Qdrant (no `BOOKSHELF_QDRANT_URL`) locks its directory to one process, and the
+API needs it for search, so the API owns it: its lifespan runs `embed` jobs in-process
+(`app.jobs.embedded`) and this worker leaves them alone unless `--kinds embed` asks.
 """
 
 import argparse
@@ -17,7 +22,7 @@ import logging
 import pkgutil
 import signal
 import threading
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Collection, Mapping, Sequence
 from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
 from types import FrameType
 
@@ -46,13 +51,13 @@ def autodiscover(package: str = HANDLER_PACKAGE) -> list[str]:
     return names
 
 
-def _default_session() -> Session:
+def default_session() -> Session:
     from app.db.session import engine
 
     return Session(engine)
 
 
-def _default_on_done(session: Session, job: Job) -> object:
+def default_on_done(session: Session, job: Job) -> object:
     from app.pipeline import orchestrator
 
     return orchestrator.on_job_done(session, job)
@@ -65,8 +70,10 @@ class Worker:
         concurrency: int | None = None,
         poll_seconds: float | None = None,
         handlers: Mapping[JobKind, Handler] | None = None,
-        session_factory: SessionFactory = _default_session,
-        on_done: OnDone = _default_on_done,
+        session_factory: SessionFactory = default_session,
+        on_done: OnDone = default_on_done,
+        only: Collection[JobKind] | None = None,
+        exclude: Collection[JobKind] = (),
     ) -> None:
         settings = get_settings()
         self.concurrency = concurrency or settings.worker_concurrency
@@ -74,12 +81,20 @@ class Worker:
         self._handlers = handlers
         self._session_factory = session_factory
         self._on_done = on_done
+        self._only = frozenset(only) if only is not None else None
+        self._exclude = frozenset(exclude)
         self.stop = threading.Event()
 
     # -- handler lookup -------------------------------------------------------------
 
     def kinds(self) -> list[JobKind]:
-        return sorted(self._handlers) if self._handlers is not None else registered_kinds()
+        """The kinds this worker claims: those with a handler, narrowed by `only`/`exclude`."""
+        handled = sorted(self._handlers) if self._handlers is not None else registered_kinds()
+        return [
+            kind
+            for kind in handled
+            if (self._only is None or kind in self._only) and kind not in self._exclude
+        ]
 
     def handler_for(self, kind: JobKind) -> Handler | None:
         return self._handlers.get(kind) if self._handlers is not None else get_handler(kind)
@@ -172,16 +187,50 @@ def _install_signal_handlers(worker: Worker) -> None:
     signal.signal(signal.SIGTERM, stop)
 
 
+def parse_kinds(value: str) -> list[JobKind]:
+    try:
+        return [JobKind(item.strip()) for item in value.split(",") if item.strip()]
+    except ValueError as exc:
+        choices = ", ".join(k.value for k in JobKind)
+        raise argparse.ArgumentTypeError(f"{exc}; choose from {choices}") from None
+
+
+def kind_filters(
+    only: list[JobKind] | None, exclude: list[JobKind], *, qdrant_embedded: bool
+) -> tuple[list[JobKind] | None, list[JobKind]]:
+    """The CLI's `(only, exclude)`, plus `embed` excluded when the API owns embedded Qdrant.
+
+    An explicit `--kinds embed` wins: e.g. a one-off rebuild while the API is down.
+    """
+    if qdrant_embedded and JobKind.EMBED not in (only or []) and JobKind.EMBED not in exclude:
+        exclude = [*exclude, JobKind.EMBED]
+        logger.warning(
+            "Skipping embed jobs: Qdrant is embedded (BOOKSHELF_QDRANT_URL unset) and its "
+            "directory lock belongs to the API, which runs embed jobs itself. Set "
+            "BOOKSHELF_QDRANT_URL to a server to embed here, or pass --kinds embed."
+        )
+    return only, exclude
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m app.jobs.worker", description=__doc__)
     parser.add_argument("--once", action="store_true", help="drain runnable jobs, then exit")
     parser.add_argument("--concurrency", type=int, default=None, help="parallel jobs")
+    parser.add_argument(
+        "--kinds", type=parse_kinds, default=None, help="only these job kinds (comma-separated)"
+    )
+    parser.add_argument(
+        "--exclude-kinds", type=parse_kinds, default=[], help="never these job kinds"
+    )
     args = parser.parse_args(argv)
 
     settings = get_settings()
     configure_logging(settings.log_level, json_output=settings.log_json)
     modules = autodiscover()
-    worker = Worker(concurrency=args.concurrency)
+    only, exclude = kind_filters(
+        args.kinds, args.exclude_kinds, qdrant_embedded=settings.qdrant_url is None
+    )
+    worker = Worker(concurrency=args.concurrency, only=only, exclude=exclude)
     _install_signal_handlers(worker)
     logger.info(
         "Worker started",

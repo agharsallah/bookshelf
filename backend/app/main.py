@@ -21,14 +21,20 @@ from app.core.logging import configure_logging
 from app.core.middleware import MaxBodySizeMiddleware, RequestContextMiddleware
 from app.core.ratelimit import RateLimitMiddleware
 from app.core.security import API_KEY_HEADER
+from app.jobs.embedded import EmbedRunner
 
 logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    """Startup/shutdown hooks. https://fastapi.tiangolo.com/advanced/events/"""
-    settings = get_settings()
+    """Startup/shutdown hooks. https://fastapi.tiangolo.com/advanced/events/
+
+    With embedded Qdrant the API owns the store, so it also runs `embed` jobs (on one
+    background thread) until shutdown. Nothing here connects to Qdrant: startup never
+    waits on it, and a missing store only degrades search.
+    """
+    settings: Settings = app.state.settings
     # Re-applied here: uvicorn installs its own handlers after import time, so the
     # configuration done in `create_app()` would otherwise be overwritten.
     configure_logging(settings.log_level, json_output=settings.log_json)
@@ -40,8 +46,16 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             "auth_required": settings.auth_required,
         },
     )
-    yield
-    logger.info("Application stopped")
+    runner = EmbedRunner() if settings.qdrant_url is None and settings.api_embed_runner else None
+    app.state.embed_runner = runner
+    if runner is not None:
+        runner.start()
+    try:
+        yield
+    finally:
+        if runner is not None:
+            runner.stop()
+        logger.info("Application stopped")
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -64,6 +78,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         contact={"name": "Bookshelf", "url": "https://github.com/"},
         license_info={"name": "MIT", "identifier": "MIT"},
     )
+    app.state.settings = settings
 
     # Middleware runs outermost-first, so this list reads top-down as the request path:
     # context/logging -> host check -> CORS -> rate limit -> body cap -> gzip -> routes.

@@ -4,7 +4,8 @@
 the embedded on-disk store at `qdrant_path` (§18). Same code path either way.
 
 The embedded store takes a file lock on its directory, so only one process can open it:
-run the API and the worker against a server (Docker or Cloud) when both need vectors.
+the API. It searches, and its lifespan runs `embed` jobs in-process (`app.jobs.embedded`)
+while the standalone worker skips them. With a server (Docker or Cloud) both may connect.
 
 Tests swap the client with `set_client(QdrantClient(":memory:"))`.
 

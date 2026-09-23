@@ -46,6 +46,7 @@ os.environ.update(
         "BOOKSHELF_EXPORTS_DIR": str(_TMP / "exports"),
         "BOOKSHELF_QDRANT_URL": "",
         "BOOKSHELF_QDRANT_PATH": str(_TMP / "qdrant"),
+        "BOOKSHELF_API_EMBED_RUNNER": "false",  # tests drive jobs themselves
         "BOOKSHELF_CLAUDE_BIN": "/nonexistent/claude-must-be-faked-in-tests",
     }
 )

@@ -18,7 +18,8 @@ def run_embed(ctx: JobContext) -> HandlerResult:
     """Index one document, or rebuild everything when the job names no document."""
     # Lazy: Qdrant (and with it FastEmbed / onnxruntime) loads only when an embed job runs.
     from app.retrieval import indexing
-    from app.retrieval.collections import ensure_collections
+    from app.retrieval.client import get_client
+    from app.retrieval.collections import ensure_ready
 
     embedder = get_embedder()
     force = bool((ctx.job.payload or {}).get("force"))
@@ -29,7 +30,7 @@ def run_embed(ctx: JobContext) -> HandlerResult:
     document = ctx.session.get(Document, ctx.job.document_id)
     if document is None:
         raise PermanentJobError(f"Embed needs an existing document, got {ctx.job.document_id}.")
-    ensure_collections(dense_dim=embedder.dense_dim)
+    ensure_ready(get_client(), dense_dim=embedder.dense_dim)
     return HandlerResult(
         result=indexing.index_document(ctx.session, document, embedder=embedder, force=force)
     )

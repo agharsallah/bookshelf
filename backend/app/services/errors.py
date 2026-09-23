@@ -28,3 +28,10 @@ class UpstreamError(AppError):
 
     status_code = 502
     code = "upstream_error"
+
+
+class ServiceUnavailableError(AppError):
+    """A dependency the request needs is down, e.g. Qdrant for vector search (`503`)."""
+
+    status_code = 503
+    code = "service_unavailable"

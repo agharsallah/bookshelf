@@ -20,7 +20,7 @@ from sqlmodel import Session, col, select
 from app.models import Artifact, Node
 from app.models.enums import ArtifactType, Review
 from app.retrieval import hybrid, lexical, resolve
-from app.retrieval.client import get_client
+from app.retrieval.collections import ensure_ready, open_client
 from app.retrieval.embedding import Embedder
 from app.retrieval.points import flatten_body
 from app.retrieval.refs import document_ref, load_refs, ref_from_payload, snippet
@@ -150,6 +150,7 @@ def _vector(
     client: QdrantClient,
 ) -> list[SearchGroup]:
     filters = _scoped(request.filters, route)
+    ensure_ready(client, dense_dim=embedder.dense_dim)  # first search creates the layout
     vectors = hybrid.QueryVectors.embed(embedder, request.query)
     groups = max(request.limit, 2) if route.intent == "synthesis" else request.limit
     distillations, lookups = hybrid.distillation_groups(client, vectors, filters, groups=groups)
@@ -199,7 +200,7 @@ def run(
         exact = is_lexical(request.query)
         groups = lexical.search(session, phrase, request.filters, limit=request.limit, exact=exact)
     else:
-        groups = _vector(session, request, route, embedder=embedder, client=client or get_client())
+        groups = _vector(session, request, route, embedder=embedder, client=client or open_client())
     took_ms = int((time.perf_counter() - started) * 1000)
     response = SearchResponse(
         intent=route.intent, resolved=resolved, groups=groups, took_ms=took_ms

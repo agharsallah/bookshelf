@@ -1,16 +1,18 @@
 """The worker loop (`--once` drain, failure mapping, autodiscovery), the SSE job stream,
 and the outbox import CLI."""
 
+import argparse
 import json
 import threading
 from pathlib import Path
 
+import pytest
 from sqlmodel import Session, select
 
 from app.jobs import queue
 from app.jobs.queue import JobSpec
 from app.jobs.registry import HandlerResult, JobContext, PermanentJobError
-from app.jobs.worker import Worker, autodiscover
+from app.jobs.worker import Worker, autodiscover, kind_filters, parse_kinds
 from app.models import Artifact, Job
 from app.models.enums import JobKind, JobState, RunMode
 from app.pipeline import interactive
@@ -137,3 +139,34 @@ def test_import_cli_reports_failures_with_a_non_zero_exit(tmp_path: Path, capsys
 
     assert interactive.main(["import", str(broken)]) == 1
     assert "FAIL" in capsys.readouterr().err
+
+
+def test_excluded_kinds_stay_queued_while_the_rest_run(session: Session):
+    queue.enqueue(session, JobSpec(kind=JobKind.EMBED, anchor="vectors"))
+    queue.enqueue(session, JobSpec(kind=JobKind.EXPORT, anchor="bundle"))
+    handlers = {kind: lambda ctx: HandlerResult() for kind in (JobKind.EMBED, JobKind.EXPORT)}
+    worker = Worker(concurrency=1, poll_seconds=0.01, handlers=handlers, exclude=[JobKind.EMBED])
+
+    assert worker.run(once=True) == 1
+    jobs = jobs_by_anchor(session)
+    assert (jobs["vectors"].state, jobs["bundle"].state) == (JobState.QUEUED, JobState.DONE)
+
+
+@pytest.mark.parametrize(
+    ("only", "embedded", "expected_exclude"),
+    [
+        (None, True, [JobKind.EMBED]),  # the API owns embedded Qdrant
+        (None, False, []),  # a Qdrant server: the worker embeds
+        ([JobKind.EMBED], True, []),  # explicit `--kinds embed` wins
+    ],
+)
+def test_worker_cli_leaves_embed_to_the_api_only_for_embedded_qdrant(
+    only, embedded, expected_exclude
+):
+    assert kind_filters(only, [], qdrant_embedded=embedded) == (only, expected_exclude)
+
+
+def test_worker_cli_parsesparse_kindss_and_rejects_unknown_kinds():
+    assert parse_kinds("parse, summarize") == [JobKind.PARSE, JobKind.SUMMARIZE]
+    with pytest.raises(argparse.ArgumentTypeError):
+        parse_kinds("parse,teleport")

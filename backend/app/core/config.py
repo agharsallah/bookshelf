@@ -69,6 +69,9 @@ class Settings(BaseSettings):
     claude_timeout_seconds: Annotated[int, Field(gt=0)] = 900
     worker_concurrency: Annotated[int, Field(ge=1, le=8)] = 2
     worker_poll_seconds: Annotated[float, Field(gt=0)] = 2.0
+    # Embedded Qdrant (no `qdrant_url`) can be opened by one process only, so the API runs
+    # `embed` jobs itself (`app.jobs.embedded`). Off: nothing embeds until a URL is set.
+    api_embed_runner: bool = True
     # Run ceiling (§14): per-document cap on CLI runs before the document is paused.
     max_runs_per_document: Annotated[int, Field(ge=1)] = 400
 
