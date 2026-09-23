@@ -60,6 +60,16 @@ SKILL_NAMES = sorted(
 )
 
 
+def _is_utility(name: str) -> bool:
+    """No job and no artifact: Python runs it inline through the `ModelRunner` (README)."""
+    meta = yaml.safe_load((SKILLS_DIR / name / "meta.yaml").read_text())
+    return meta.get("job_kind") is None and meta.get("artifact_type") is None
+
+
+UTILITY_SKILLS = [name for name in SKILL_NAMES if _is_utility(name)]
+CONTENT_SKILLS = [name for name in SKILL_NAMES if name not in UTILITY_SKILLS]
+
+
 @pytest.fixture(autouse=True)
 def _clean_tables() -> Iterator[None]:
     """Override conftest's per-test truncate: these checks never touch the database."""
@@ -105,7 +115,7 @@ def test_every_skill_backed_job_kind_has_a_skill() -> None:
 
 
 def test_each_artifact_type_is_produced_by_one_skill() -> None:
-    types = [_meta(name)["artifact_type"] for name in SKILL_NAMES]
+    types = [_meta(name)["artifact_type"] for name in CONTENT_SKILLS]
     assert len(types) == len(set(types))
 
 
@@ -119,11 +129,13 @@ def test_meta_follows_the_contract(name: str) -> None:
     assert isinstance(meta["description"], str)
     assert meta["description"].strip()
     Tier(meta["tier"])
-    ArtifactType(meta["artifact_type"])
+    if name not in UTILITY_SKILLS:  # utility skills build their own input, store no artifact
+        ArtifactType(meta["artifact_type"])
+        assert meta["selector"] in SELECTORS
     if meta["job_kind"] is not None:  # null = interactive-only skill
         assert JobKind(meta["job_kind"]) not in PYTHON_JOBS
     assert meta["scope"] in SCOPES
-    assert meta["selector"] in SELECTORS
+    assert isinstance(meta["selector"], str)
     assert isinstance(meta["vision"], bool)
 
     gates = meta["gates"]
@@ -151,7 +163,8 @@ def test_skill_md_serves_both_entry_points(name: str) -> None:
     assert text.count("<!-- interactive:end -->") == 1
     interactive = INTERACTIVE.search(text)
     assert interactive
-    for needle in ("$ARGUMENTS", f"/skills/{name}/inputs", "skills/.outbox/", "/artifacts/import"):
+    needles = ("$ARGUMENTS", f"/skills/{name}/inputs", "skills/.outbox/", "/artifacts/import")
+    for needle in needles[:1] if name in UTILITY_SKILLS else needles:
         assert needle in interactive.group(0)
 
     prompt = _batch_prompt(text)
@@ -185,7 +198,7 @@ def test_schema_rejects_unknown_top_level_keys(name: str) -> None:
     assert not _validator(name).is_valid(example)
 
 
-@pytest.mark.parametrize("name", [n for n in SKILL_NAMES if n != "parse-outline"])
+@pytest.mark.parametrize("name", [n for n in CONTENT_SKILLS if n != "parse-outline"])
 def test_schema_rejects_invented_anchor_shapes(name: str) -> None:
     """Every content skill routes cites through the contract's anchor pattern."""
     example = _json(name, "example.json")

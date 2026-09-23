@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bookshelf.local/skills/confirm-merge/schema.json",
+  "title": "confirm-merge output",
+  "description": "A verdict on one candidate duplicate pair. `same` true becomes a proposed same_as edge; it never merges anything by itself.",
+  "type": "object",
+  "required": ["same", "confidence", "rationale", "survivor"],
+  "additionalProperties": false,
+  "properties": {
+    "same": { "type": "boolean" },
+    "confidence": { "enum": ["high", "medium", "low"] },
+    "rationale": { "type": "string", "minLength": 1, "maxLength": 400 },
+    "survivor": {
+      "description": "Which side should keep its canonical name if a human merges them.",
+      "enum": ["a", "b"]
+    }
+  }
+}

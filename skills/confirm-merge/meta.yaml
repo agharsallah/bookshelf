@@ -1,0 +1,11 @@
+name: confirm-merge
+version: 1
+description: Judge whether two near-duplicate concepts on the shelf name the same idea; a yes becomes a proposed same_as edge that a human confirms.
+tier: reason
+job_kind: null          # utility skill: run inline by app/graph/dedup.py, never queued
+artifact_type: null     # the verdict lands as an edge, not an artifact
+scope: document
+selector: concept_pair  # built by app/graph/dedup.py, not a registered selector
+vision: false
+gates:
+  grounding_min: 0      # no spans: the output is a verdict, not content

@@ -29,6 +29,17 @@ gates:
   max_words: null               # hard cap on output words (summaries: 150)
 ```
 
+### Utility skills
+
+A package with `job_kind: null` **and** `artifact_type: null` is a *utility skill*: never
+queued, never stored as an artifact. Python builds its input (its `selector` names that
+input, not a registered selector), runs it inline through the `ModelRunner`, and keeps the
+verdict where it belongs. Its interactive section needs no inputs endpoint or import.
+
+| Skill | Run by | Input | Output |
+|---|---|---|---|
+| confirm-merge | `app/graph/dedup.py` (dedup job) | `pair: {similarity, a, b}`, each side `{canonical, aliases, kind, blurb, documents}` | `{same, confidence, rationale, survivor: a\|b}` → a `same_as` edge, proposed (same) or rejected |
+
 ## SKILL.md
 
 One file, two entry points (§7 "No API key"):
