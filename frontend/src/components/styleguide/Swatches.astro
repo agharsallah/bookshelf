@@ -1,0 +1,87 @@
+---
+/** A labelled row of color tokens. Colors are read live, so both themes are accurate. */
+interface Props {
+  title: string;
+  tokens: { name: string; note?: string }[];
+  /** `text` shows ink on the paper; `fill` shows the color as a chip. */
+  variant?: 'fill' | 'wash';
+}
+const { title, tokens, variant = 'fill' } = Astro.props;
+---
+
+<div class="group">
+  <h3>{title}</h3>
+  <ul>
+    {
+      tokens.map((t) => (
+        <li>
+          <span class:list={['chip', variant]} style={`--c: var(${t.name})`}>
+            {variant === 'wash' ? 'Aa' : null}
+          </span>
+          <code>{t.name}</code>
+          {t.note ? <span class="note">{t.note}</span> : null}
+        </li>
+      ))
+    }
+  </ul>
+</div>
+
+<style>
+  .group + .group {
+    margin-block-start: var(--space-5);
+  }
+
+  h3 {
+    margin-block-end: var(--space-3);
+    font-size: var(--text-base);
+    font-style: italic;
+    font-weight: 500;
+    color: var(--ink-2);
+  }
+
+  ul {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+    gap: var(--space-3) var(--space-4);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  li {
+    display: grid;
+    grid-template-columns: 2.5rem 1fr;
+    grid-template-rows: auto auto;
+    column-gap: var(--space-3);
+    align-items: center;
+    font-family: var(--font-ui);
+    font-size: var(--text-xs);
+    color: var(--ink-2);
+  }
+
+  .chip {
+    grid-row: span 2;
+    display: grid;
+    place-items: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-m);
+    background: var(--c);
+  }
+
+  .wash {
+    font-family: var(--font-read);
+    font-size: var(--text-base);
+    color: var(--ink);
+  }
+
+  code {
+    color: var(--ink);
+    font-size: var(--text-xs);
+  }
+
+  .note {
+    color: var(--ink-3);
+  }
+</style>

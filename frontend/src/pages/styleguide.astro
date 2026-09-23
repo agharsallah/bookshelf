@@ -1,0 +1,315 @@
+---
+/**
+ * Styleguide (dev aid): tokens, type, both themes, and every render block with
+ * realistic content. Blocks here are server-rendered without hydration, except the
+ * two sections marked as islands.
+ */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { Blocks } from '../components/blocks/Blocks';
+import { Spans } from '../components/blocks/Spans';
+import CiteDemo from '../components/styleguide/CiteDemo';
+import Swatches from '../components/styleguide/Swatches.astro';
+import TypeScale from '../components/styleguide/TypeScale.astro';
+import { TONES } from '../components/blocks/callout-tones';
+import { CALLOUT_TONES, HIGHLIGHT_COLORS, type RenderBlock } from '../lib/contract';
+import { prepareBlocks } from '../lib/prepare';
+import {
+  leverageChart,
+  sampleBlocks,
+  SAMPLE_TITLE,
+  scatterChart,
+  stockChart,
+  toneCallouts,
+} from '../lib/samples/systems-thinking';
+
+const blocks = await prepareBlocks(sampleBlocks);
+const charts = [leverageChart, stockChart, scatterChart];
+
+const specimen: RenderBlock[] = [
+  {
+    type: 'paragraph',
+    spans: [
+      { text: 'Rules outrank parameters:', cites: [] },
+      { text: 'change who may do what, and behaviour follows', mark: 'highlight', cites: ['ch06/s05/p004'] },
+      { text: '.', cites: [] },
+    ],
+  },
+  ...toneCallouts.slice(0, 1),
+];
+
+const highlightSpans = HIGHLIGHT_COLORS.map((color) => ({ color, text: `A ${color} highlight over a cited passage` }));
+
+const SECTIONS = [
+  ['palette', 'Palette'],
+  ['type', 'Type'],
+  ['themes', 'Both themes'],
+  ['blocks', 'All blocks'],
+  ['tones', 'Callout tones'],
+  ['highlights', 'Highlights'],
+  ['charts', 'Charts'],
+  ['cites', 'Cites in an island'],
+] as const;
+---
+
+<BaseLayout title="Styleguide" description="Tokens, type and render blocks.">
+  <div class="guide">
+    <nav class="toc" aria-label="Styleguide sections">
+      <ol>
+        {SECTIONS.map(([id, label]) => <li><a href={`#${id}`}>{label}</a></li>)}
+      </ol>
+    </nav>
+
+    <div class="content">
+      <header class="intro">
+        <h1>Styleguide</h1>
+        <p>
+          Vellum and ink. A reading serif for what the books say, a crisp grotesk for the tool around
+          them, and verdigris for everything that points back to a source.
+        </p>
+      </header>
+
+      <section id="palette" aria-labelledby="palette-h">
+        <h2 id="palette-h">Palette</h2>
+        <Swatches
+          title="Paper and ink"
+          tokens={[
+            { name: '--paper', note: 'page' },
+            { name: '--paper-raised', note: 'figures, popovers' },
+            { name: '--paper-sunken', note: 'code' },
+            { name: '--rule', note: 'hairlines' },
+            { name: '--ink', note: 'text' },
+            { name: '--ink-2', note: 'secondary' },
+            { name: '--ink-3', note: 'muted, still AA' },
+            { name: '--accent', note: 'links, cites, focus' },
+          ]}
+        />
+        <Swatches
+          title="Callout tones"
+          tokens={CALLOUT_TONES.map((tone) => ({ name: `--tone-${tone}`, note: TONES[tone].label }))}
+        />
+        <Swatches
+          title="Highlighter washes"
+          variant="wash"
+          tokens={HIGHLIGHT_COLORS.map((c) => ({ name: `--hl-${c}`, note: c }))}
+        />
+        <Swatches
+          title="Chart series, in fixed order"
+          tokens={[1, 2, 3, 4, 5, 6].map((n) => ({ name: `--series-${n}` }))}
+        />
+      </section>
+
+      <section id="type" aria-labelledby="type-h">
+        <h2 id="type-h">Type</h2>
+        <p class="lede">
+          Literata for reading, Schibsted Grotesk for the interface, IBM Plex Mono for anchors and code.
+        </p>
+        <TypeScale />
+      </section>
+
+      <section id="themes" aria-labelledby="themes-h">
+        <h2 id="themes-h">Both themes</h2>
+        <div class="themes">
+          <div class="specimen" style="color-scheme: light" data-label="Vellum">
+            <Blocks blocks={specimen} />
+          </div>
+          <div class="specimen" style="color-scheme: dark" data-label="Ink">
+            <Blocks blocks={specimen} />
+          </div>
+        </div>
+      </section>
+
+      <section id="blocks" aria-labelledby="blocks-h">
+        <h2 id="blocks-h">All blocks</h2>
+        <p class="lede">{SAMPLE_TITLE}. Server-rendered, no hydration.</p>
+        <article class="reading">
+          <Blocks blocks={blocks} />
+        </article>
+      </section>
+
+      <section id="tones" aria-labelledby="tones-h">
+        <h2 id="tones-h">Callout tones</h2>
+        <dl class="tones">
+          {
+            toneCallouts.map((callout) => (
+              <div class="tone">
+                <dt>{TONES[callout.tone].meaning}</dt>
+                <dd>
+                  <Blocks blocks={[callout]} />
+                </dd>
+              </div>
+            ))
+          }
+        </dl>
+      </section>
+
+      <section id="highlights" aria-labelledby="highlights-h">
+        <h2 id="highlights-h">Highlights</h2>
+        <ul class="highlights">
+          {
+            highlightSpans.map(({ color, text }) => (
+              <li>
+                <Spans spans={[{ text, cites: ['ch01/s02/p008'], mark: 'highlight' }]} highlight={color} />
+              </li>
+            ))
+          }
+        </ul>
+      </section>
+
+      <section id="charts" aria-labelledby="charts-h">
+        <h2 id="charts-h">Charts</h2>
+        <p class="lede">Hydrated when visible: hover or focus a chart and use the arrow keys.</p>
+        <div class="charts">
+          <Blocks client:visible blocks={charts} />
+        </div>
+      </section>
+
+      <section id="cites" aria-labelledby="cites-h">
+        <h2 id="cites-h">Cites in an island</h2>
+        <p class="lede">With <code>onCite</code>, a cite marker reports its anchor instead of navigating.</p>
+        <div class="reading">
+          <CiteDemo client:visible blocks={sampleBlocks.slice(1, 5)} />
+        </div>
+      </section>
+    </div>
+  </div>
+</BaseLayout>
+
+<style>
+  .guide {
+    display: grid;
+    grid-template-columns: 11rem minmax(0, 1fr);
+    gap: var(--space-7);
+  }
+
+  .toc {
+    position: sticky;
+    inset-block-start: 5rem;
+    align-self: start;
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+  }
+
+  .toc ol {
+    display: grid;
+    gap: var(--space-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .toc a {
+    color: var(--ink-2);
+    text-decoration: none;
+  }
+
+  .toc a:hover {
+    color: var(--accent);
+  }
+
+  .intro h1 {
+    font-size: var(--text-2xl);
+    font-weight: 500;
+    letter-spacing: -0.02em;
+  }
+
+  .intro p {
+    max-width: 34em;
+    margin-block-start: var(--space-3);
+    font-size: var(--text-md);
+    color: var(--ink-2);
+  }
+
+  section {
+    margin-block-start: var(--space-8);
+    scroll-margin-top: 5rem;
+  }
+
+  section > h2 {
+    margin-block-end: var(--space-5);
+    padding-block-end: var(--space-2);
+    border-block-end: 1px solid var(--rule);
+    font-size: var(--text-xl);
+    font-weight: 500;
+  }
+
+  .lede {
+    max-width: var(--measure);
+    margin-block-end: var(--space-5);
+    color: var(--ink-2);
+  }
+
+  .reading {
+    max-width: var(--measure);
+  }
+
+  .themes {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+    gap: var(--space-4);
+  }
+
+  .specimen {
+    position: relative;
+    padding: var(--space-6) var(--space-5) var(--space-5);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-l);
+    background: var(--paper);
+    color: var(--ink);
+  }
+
+  .specimen::before {
+    content: attr(data-label);
+    position: absolute;
+    inset-block-start: var(--space-2);
+    inset-inline-start: var(--space-5);
+    font-family: var(--font-ui);
+    font-size: var(--text-xs);
+    color: var(--ink-3);
+  }
+
+  .tones {
+    display: grid;
+    gap: var(--space-5);
+    max-width: var(--measure);
+  }
+
+  .tone dt {
+    margin-block-end: var(--space-2);
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+    color: var(--ink-3);
+  }
+
+  .tone dd {
+    margin: 0;
+  }
+
+  .highlights {
+    display: grid;
+    gap: var(--space-3);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .charts {
+    max-width: 48rem;
+  }
+
+  @media (max-width: 56rem) {
+    .guide {
+      grid-template-columns: 1fr;
+      gap: var(--space-5);
+    }
+
+    .toc {
+      position: static;
+    }
+
+    .toc ol {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-2) var(--space-4);
+    }
+  }
+</style>

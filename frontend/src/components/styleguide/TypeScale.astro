@@ -1,0 +1,81 @@
+---
+/** The type scale, set in the faces that use it. */
+const STEPS = [
+  { token: '--text-2xl', px: 52, face: 'read', sample: 'Leverage points' },
+  { token: '--text-xl', px: 36, face: 'read', sample: 'Stocks and flows' },
+  { token: '--text-lg', px: 26, face: 'read', sample: 'The shape of delay' },
+  { token: '--text-md', px: 21, face: 'read', sample: 'A balancing loop pulls toward a goal' },
+  { token: '--text-base', px: 18, face: 'read', sample: 'Stocks change only through flows, and they change slowly even when flows change fast.' },
+  { token: '--text-ui', px: 15, face: 'ui', sample: 'Library, Search, Graph, Review' },
+  { token: '--text-sm', px: 14, face: 'ui', sample: 'Transcribed with medium confidence' },
+  { token: '--text-xs', px: 12, face: 'mono', sample: 'meadows-systems/ch01/s02/p008' },
+] as const;
+---
+
+<dl class="scale">
+  {
+    STEPS.map((s) => (
+      <div class="row">
+        <dt>
+          <code>{s.token}</code>
+          <span>{s.px}px</span>
+        </dt>
+        <dd class={`face-${s.face}`} style={`font-size: var(${s.token})`}>
+          {s.sample}
+        </dd>
+      </div>
+    ))
+  }
+</dl>
+
+<style>
+  .scale {
+    display: grid;
+    gap: var(--space-3);
+  }
+
+  .row {
+    display: grid;
+    grid-template-columns: 9rem minmax(0, 1fr);
+    gap: var(--space-4);
+    align-items: baseline;
+    padding-block-end: var(--space-3);
+    border-block-end: 1px solid var(--rule);
+  }
+
+  dt {
+    display: grid;
+    font-family: var(--font-ui);
+    font-size: var(--text-xs);
+    color: var(--ink-3);
+  }
+
+  dt code {
+    color: var(--ink-2);
+  }
+
+  dd {
+    margin: 0;
+    line-height: var(--leading-tight);
+    overflow-wrap: anywhere;
+  }
+
+  .face-read {
+    font-family: var(--font-read);
+  }
+
+  .face-ui {
+    font-family: var(--font-ui);
+  }
+
+  .face-mono {
+    font-family: var(--font-mono);
+  }
+
+  @media (max-width: 40rem) {
+    .row {
+      grid-template-columns: 1fr;
+      gap: var(--space-1);
+    }
+  }
+</style>
