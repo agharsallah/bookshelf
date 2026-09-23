@@ -3,6 +3,7 @@
 from collections.abc import Sequence
 from typing import Any
 
+import pytest
 from qdrant_client import QdrantClient
 from sqlmodel import Session
 
@@ -49,14 +50,19 @@ def test_discovery_groups_distillations_with_their_scoped_evidence(
     assert all(a is not None and a.startswith("ch02/") for a in evidence)
 
 
-def test_hits_are_ordered_by_reranker_score(
+def test_the_cross_encoder_decides_the_order_across_both_tiers(
     session: Session, indexed: Shelf, embedder: FakeEmbedder
 ) -> None:
-    response = _search(session, embedder, "feedback loops delays oscillation organizations")
+    # The Senge passage names both terms; its chapter distillation only one of them.
+    response = _search(session, embedder, "delays organizations")
 
-    assert response.groups[0].document.slug == "senge-fifth-discipline"
-    scores = [h.score for h in response.groups[0].hits]
-    assert scores == sorted(scores, reverse=True)
+    top = response.groups[0]
+    assert top.document.slug == "senge-fifth-discipline"
+    assert [(h.kind, h.anchor) for h in top.hits] == [
+        ("block", "ch02/p001"),
+        ("distillation", "ch02"),
+    ]
+    assert top.hits[0].score > top.hits[1].score
 
 
 def test_document_and_tag_filters_restrict_the_groups(
@@ -125,14 +131,23 @@ def test_lexical_finds_the_exact_phrase_with_highlight_ranges(
     assert [hit.snippet[a:b] for a, b in hit.highlights or []] == ["inflow", "exceeds", "outflow"]
 
 
-def test_lexical_quotes_require_the_words_in_order(
+@pytest.mark.parametrize(
+    "quoted",
+    ['"outflow exceeds inflow"', '"inflow outflow"', '"inflows exceed outflows"'],
+    ids=["order", "adjacency", "exact-words-not-stems"],
+)
+def test_quoted_phrases_match_only_the_exact_words_in_order(
+    session: Session, shelf: Shelf, embedder: FakeEmbedder, quoted: str
+) -> None:
+    assert _search(session, embedder, quoted).groups == []
+
+
+def test_unquoted_lexical_mode_matches_all_terms_in_any_order(
     session: Session, shelf: Shelf, embedder: FakeEmbedder
 ) -> None:
-    quoted = _search(session, embedder, '"outflow exceeds inflow"')
-    any_order = _search(session, embedder, "outflow exceeds inflow", mode="lexical")
+    response = _search(session, embedder, "outflows exceed inflow", mode="lexical")
 
-    assert quoted.groups == []
-    assert _hits(any_order) == [("meadows-systems", "block", "ch01/s01/p002")]
+    assert _hits(response) == [("meadows-systems", "block", "ch01/s01/p002")]
 
 
 def test_lexical_respects_tag_filters(
