@@ -183,6 +183,18 @@ describe('cite chips', () => {
     );
   });
 
+  it('use citeLabel and citeTitle for the chip text and its accessible name', () => {
+    render(
+      <Blocks
+        blocks={[cited]}
+        citeLabel={(a) => `A ${a.slice(-3)}`}
+        citeTitle={(a) => `Thinking in Systems, ${a}`}
+      />,
+    );
+    const chip = screen.getByRole('link', { name: 'Source Thinking in Systems, ch06/s02/p011' });
+    expect(chip.textContent).toContain('A 011');
+  });
+
   it('call onCite with the anchor instead of navigating', async () => {
     const onCite = vi.fn();
     render(<Blocks blocks={[cited]} onCite={onCite} />);

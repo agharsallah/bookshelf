@@ -23,8 +23,8 @@ export interface BlocksProps extends CiteOptions {
   className?: string;
 }
 
-export function Blocks({ blocks, onCite, citeHref = defaultCiteHref, className }: BlocksProps) {
-  const cite = useMemo(() => ({ onCite, citeHref }), [onCite, citeHref]);
+export function Blocks({ blocks, onCite, citeHref = defaultCiteHref, citeLabel, citeTitle, className }: BlocksProps) {
+  const cite = useMemo(() => ({ onCite, citeHref, citeLabel, citeTitle }), [onCite, citeHref, citeLabel, citeTitle]);
   return (
     <CiteProvider value={cite}>
       <div className={className ? `${styles.blocks} ${className}` : styles.blocks} data-blocks="">

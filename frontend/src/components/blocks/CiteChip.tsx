@@ -9,7 +9,8 @@ import { useCite } from './CiteContext';
 import styles from './CiteChip.module.css';
 
 export function CiteChip({ anchor }: { anchor: Anchor }) {
-  const { citeHref, onCite } = useCite();
+  const { citeHref, onCite, citeLabel, citeTitle } = useCite();
+  const title = citeTitle ? citeTitle(anchor) : anchor;
   const handleClick = onCite
     ? (event: MouseEvent<HTMLAnchorElement>) => {
         event.preventDefault();
@@ -21,12 +22,12 @@ export function CiteChip({ anchor }: { anchor: Anchor }) {
       className={styles.chip}
       href={citeHref(anchor)}
       data-anchor={anchor}
-      aria-label={`Source ${anchor}`}
+      aria-label={`Source ${title}`}
       onClick={handleClick}
     >
-      <span aria-hidden="true">{anchorLabel(anchor)}</span>
+      <span aria-hidden="true">{citeLabel ? citeLabel(anchor) : anchorLabel(anchor)}</span>
       <span className={styles.tip} aria-hidden="true">
-        {anchor}
+        {title}
       </span>
     </a>
   );
