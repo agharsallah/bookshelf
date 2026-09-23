@@ -1,20 +1,29 @@
 """PDF region classifier and prose path: every block kind lands as its own anchored block."""
 
 from pathlib import Path
+from typing import Any
+
+import pytest
 
 from app.models.enums import NodeKind
 from app.pipeline.parse import ParsedDocument
 from app.pipeline.parse.pdf import parse_pdf
 from tests.pipeline.parse.builders import (
+    CAPTION,
     CODE,
     HEADER,
     LEFT,
+    LONG_LABEL,
     RIGHT,
     TABLE_HEADER,
     TABLE_ROWS,
+    boxed_diagram_pdf,
     diagram_pdf,
+    list_pdf,
 )
 from tests.pipeline.parse.conftest import of_kind
+
+ITEMS = ["inflows fill it", "outflows drain it", "delays smooth it"]
 
 
 def test_running_headers_and_page_numbers_are_stripped(book: ParsedDocument):
@@ -120,4 +129,56 @@ def test_vector_drawing_cluster_becomes_a_figure_that_swallows_its_labels(tmp_pa
     assert (tmp_path / figure.meta["image_path"]).is_file()
     assert [p.text for p in of_kind(parsed, NodeKind.PARAGRAPH)] == [
         "The diagram below shows a reinforcing loop."
+    ]
+
+
+@pytest.mark.parametrize(
+    ("rows", "ordered"),
+    [
+        ([[(72, f"\u2022 {item}")] for item in ITEMS], False),
+        ([[(72, f"\u2013 {item}")] for item in ITEMS], False),
+        ([[(72, f"\u25e6 {item}")] for item in ITEMS], False),
+        ([[(72, f"\u25aa {item}")] for item in ITEMS], False),
+        ([[(72, f"* {item}")] for item in ITEMS], False),
+        ([[(72, f"{n}. {item}")] for n, item in enumerate(ITEMS, 1)], True),
+        ([[(72, f"{n}) {item}")] for n, item in zip("abc", ITEMS, strict=True)], True),
+        ([[(72, "\u2022"), (86, item)] for item in ITEMS], False),
+        ([[(72, f"\u2022{item}")] for item in ITEMS], False),
+        ([[(72, "\u2022\u00a0" + item.replace(" ", "\u00a0"))] for item in ITEMS], False),
+    ],
+    ids=["bullet", "en-dash", "white-bullet", "square", "asterisk", "numbered", "lettered",
+         "glyph-drawn-apart", "no-space", "non-breaking-spaces"],
+)  # fmt: skip
+def test_marked_lines_become_one_list_block(tmp_path: Path, rows, ordered: bool):
+    parsed = parse_pdf(list_pdf(tmp_path / "l.pdf", rows), slug="l", media_dir=tmp_path)
+
+    [items] = of_kind(parsed, NodeKind.LIST)
+    assert items.meta == {"items": ITEMS, "ordered": ordered}
+    assert [p.text for p in of_kind(parsed, NodeKind.PARAGRAPH)] == [
+        "Stocks respond to flows in three ways."
+    ]
+
+
+@pytest.mark.parametrize(
+    ("options", "caption"),
+    [
+        ({"connected": True, "caption": True}, CAPTION),
+        ({"connected": True, "caption": False, "label": LONG_LABEL}, None),
+        ({"connected": False, "caption": True, "label": LONG_LABEL}, CAPTION),
+        ({"connected": False, "caption": False}, None),
+    ],
+    ids=["labelled-diagram", "connector-only", "caption-only", "short-label-only"],
+)
+def test_boxes_of_a_diagram_are_a_figure_not_an_aside(
+    tmp_path: Path, options: dict[str, Any], caption: str | None
+):
+    path = boxed_diagram_pdf(tmp_path / "b.pdf", **options)
+    parsed = parse_pdf(path, slug="b", media_dir=tmp_path)
+
+    assert of_kind(parsed, NodeKind.ASIDE) == []
+    [figure] = of_kind(parsed, NodeKind.FIGURE)
+    assert figure.meta["caption"] == caption
+    assert (tmp_path / figure.meta["image_path"]).read_bytes().startswith(b"\x89PNG")
+    assert [p.text for p in of_kind(parsed, NodeKind.PARAGRAPH)] == [
+        "The stock and its inflow are drawn below."
     ]

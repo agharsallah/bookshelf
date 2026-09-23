@@ -113,3 +113,46 @@ def scanned_pdf(path: Path) -> Path:
     doc.new_page(width=300, height=200).insert_image(pymupdf.Rect(0, 0, 300, 200), pixmap=image)
     doc.save(path)
     return path
+
+
+Segment = tuple[float, str]  # (x, text) drawn on the row's baseline
+
+
+def list_pdf(path: Path, rows: list[list[Segment]]) -> Path:
+    """An intro paragraph, then one row per list line, set in MuPDF's built-in Unicode font
+    (base-14 fonts cannot encode bullet glyphs). A row may hold several segments, e.g. a
+    bullet glyph drawn apart from its text."""
+    doc = pymupdf.open()
+    page = doc.new_page()
+    font = pymupdf.Font("cjk")
+    writer = pymupdf.TextWriter(page.rect)
+    writer.append((72, 100), "Stocks respond to flows in three ways.", font=font, fontsize=11)
+    for i, row in enumerate(rows):
+        for x, text in row:
+            writer.append((x, 130 + 16 * i), text, font=font, fontsize=11)
+    writer.write_text(page)
+    doc.save(path)
+    return path
+
+
+LONG_LABEL = "A stock accumulates its net flows"
+CAPTION = "Figure 3.1 A stock and its inflow"
+
+
+def boxed_diagram_pdf(
+    path: Path, *, connected: bool = True, caption: bool = True, label: str = "Stock"
+) -> Path:
+    """A stroked box holding a label, optionally joined to a second box and captioned."""
+    doc = pymupdf.open()
+    page = doc.new_page()
+    _text(page, 72, 80, "The stock and its inflow are drawn below.")
+    page.draw_rect(pymupdf.Rect(100, 120, 250, 180), color=(0, 0, 0))
+    _text(page, 104, 155, label, 7)
+    if connected:
+        page.draw_line((250, 150), (320, 150), color=(0, 0, 0))
+        page.draw_rect(pymupdf.Rect(320, 120, 470, 180), color=(0, 0, 0))
+        _text(page, 375, 155, "Flow", 10)
+    if caption:
+        _text(page, 72, 205, CAPTION, 10)
+    doc.save(path)
+    return path
