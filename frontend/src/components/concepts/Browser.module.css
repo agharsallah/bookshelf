@@ -1,0 +1,152 @@
+/* The concept index reads like a book's index: names in italic, a short gloss after. */
+.browser {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.search {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.input {
+  inline-size: 100%;
+  padding: var(--space-2) 0;
+  border: none;
+  border-block-end: 1px solid var(--rule-strong);
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--font-read);
+  font-size: var(--text-md);
+}
+
+.input::placeholder {
+  color: var(--ink-3);
+  font-style: italic;
+}
+
+.input:focus-visible {
+  outline: none;
+  border-block-end-color: var(--accent);
+  box-shadow: 0 1px 0 var(--accent);
+}
+
+.kinds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.kinds button {
+  padding: 0.15rem var(--space-3);
+  border: 1px solid var(--rule-strong);
+  border-radius: 999px;
+  background: var(--paper-raised);
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.kinds button[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent-wash);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.recent h3 {
+  margin-block-end: var(--space-2);
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.recent ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.recent a {
+  color: var(--ink);
+  font-style: italic;
+}
+
+.count,
+.empty {
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.empty {
+  color: var(--ink-2);
+  font-family: var(--font-read);
+  font-size: var(--text-base);
+  font-style: italic;
+}
+
+.list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 0 var(--space-3);
+  padding-block: var(--space-2);
+  border-block-end: 1px solid var(--rule);
+}
+
+.name {
+  color: var(--ink);
+  font-size: var(--text-base);
+  font-style: italic;
+  text-decoration: none;
+}
+
+.name:hover,
+.name:focus-visible {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.kind,
+.aliases {
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+}
+
+.aliases {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.graph {
+  grid-column: 4;
+  grid-row: 1;
+  color: var(--accent);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+}
+
+.blurb {
+  grid-column: 1 / -1;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  color: var(--ink-2);
+  font-size: var(--text-ui);
+}

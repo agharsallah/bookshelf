@@ -1,0 +1,210 @@
+/*
+ * A merge proposal is set like a collation: two readings side by side with an equals
+ * sign between them, the model's reasoning beneath as a note, and the chosen name
+ * marked the way an editor marks the reading they keep.
+ */
+.queue {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.empty {
+  color: var(--ink-2);
+  font-style: italic;
+}
+
+.list {
+  display: grid;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.proposal {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-l);
+  background: var(--paper-raised);
+}
+
+.proposal:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.proposal[aria-busy='true'] {
+  opacity: 0.6;
+}
+
+.pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: var(--space-4);
+  align-items: stretch;
+}
+
+.side {
+  display: grid;
+  align-content: start;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  border: 1px solid transparent;
+  border-radius: var(--radius-m);
+  cursor: pointer;
+}
+
+.side[data-chosen] {
+  border-color: var(--accent);
+  background: var(--accent-wash);
+}
+
+.keep {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+}
+
+.side[data-chosen] .keep {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.keep input {
+  accent-color: var(--accent);
+}
+
+.name {
+  color: var(--ink);
+  font-size: var(--text-md);
+  font-style: italic;
+  line-height: var(--leading-tight);
+  text-decoration: none;
+}
+
+.name:hover {
+  text-decoration: underline;
+  text-decoration-color: var(--accent);
+}
+
+.meta,
+.aliases {
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+}
+
+.blurb {
+  color: var(--ink-2);
+  font-size: var(--text-ui);
+}
+
+.between {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: var(--space-1);
+  min-inline-size: 5.5rem;
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  text-align: center;
+}
+
+.equals {
+  color: var(--ink-2);
+  font-family: var(--font-read);
+  font-size: var(--text-xl);
+  line-height: 1;
+}
+
+.rationale {
+  margin: 0;
+  padding-inline-start: var(--space-3);
+  border-inline-start: 2px solid var(--rule-strong);
+  color: var(--ink-2);
+  font-style: italic;
+}
+
+.evidence summary {
+  inline-size: fit-content;
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.evidence[open] summary {
+  margin-block-end: var(--space-3);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.merge,
+.reject,
+.skip {
+  padding: var(--space-1) var(--space-4);
+  border-radius: var(--radius-m);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.merge {
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.reject {
+  border: 1px solid var(--rule-strong);
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.skip {
+  border: 1px solid transparent;
+  background: none;
+  color: var(--ink-2);
+}
+
+.merge:disabled,
+.reject:disabled,
+.skip:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.keys {
+  margin-inline-start: auto;
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+}
+
+@media (max-width: 40rem) {
+  .pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .between {
+    grid-auto-flow: column;
+    justify-content: start;
+    gap: var(--space-3);
+  }
+
+  .proposal {
+    padding: var(--space-3);
+  }
+}

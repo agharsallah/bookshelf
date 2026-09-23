@@ -1,0 +1,68 @@
+/*
+ * Concept surfaces: passages set as quotations with their book and place in the
+ * margin above, like a commonplace-book entry.
+ */
+.passages {
+  display: grid;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.passage {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.where {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--space-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  color: var(--ink-3);
+}
+
+.book {
+  color: var(--ink-2);
+  font-family: var(--font-read);
+  font-size: var(--text-sm);
+  font-style: italic;
+}
+
+.place {
+  color: var(--accent);
+  font-family: var(--font-read);
+  font-size: var(--text-sm);
+  font-variant-numeric: oldstyle-nums tabular-nums;
+}
+
+span.place {
+  color: var(--ink-3);
+}
+
+.heading {
+  color: var(--ink-3);
+}
+
+.snippet {
+  margin: 0;
+  padding-inline-start: var(--space-3);
+  border-inline-start: 2px solid var(--rule);
+  color: var(--ink);
+  font-size: var(--text-ui);
+  line-height: var(--leading-read);
+}
+
+.missing {
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-style: italic;
+}
+
+.passage[data-missing] .where {
+  text-decoration: line-through;
+}

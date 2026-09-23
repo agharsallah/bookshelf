@@ -1,0 +1,89 @@
+/*
+ * A concept page is an entry in a commonplace book: the term as its italic head, the
+ * gloss in the reading face, then what it touches, relation by relation, each claim
+ * with its passages folded beneath.
+ */
+.relations {
+  display: grid;
+  gap: var(--space-6);
+}
+
+.group {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.groupHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding-block-end: var(--space-2);
+  border-block-end: 1px solid var(--rule);
+  font-family: var(--font-ui);
+  font-size: var(--text-ui);
+  font-weight: 600;
+}
+
+.groupCount {
+  color: var(--ink-3);
+  font-weight: 400;
+}
+
+.entries {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.entry {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.claim {
+  font-size: var(--text-base);
+}
+
+.verb {
+  color: var(--ink-2);
+  font-style: italic;
+}
+
+.other {
+  color: var(--ink);
+  text-decoration-color: var(--accent);
+  text-underline-offset: 0.2em;
+}
+
+a.other:hover {
+  color: var(--accent);
+}
+
+.proposed {
+  margin-inline-start: var(--space-2);
+  padding: 0 var(--space-2);
+  border: 1px dashed var(--ink-3);
+  border-radius: var(--radius-m);
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  vertical-align: 0.15em;
+}
+
+.evidence summary {
+  inline-size: fit-content;
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.evidence[open] summary {
+  margin-block-end: var(--space-3);
+}
+
+.evidence {
+  padding-inline-start: var(--space-4);
+}

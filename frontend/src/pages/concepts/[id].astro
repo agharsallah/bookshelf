@@ -1,0 +1,145 @@
+---
+/**
+ * A concept (§11): its gloss and the passages that ground it, then every relation,
+ * grouped and strongest first, with evidence across books linking into the reader.
+ * Server-rendered; the graph island is one link away.
+ */
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { ConceptRelations } from '../../components/concepts/ConceptRelations';
+import { PassageList } from '../../components/concepts/PassageList';
+import RememberVisit from '../../components/concepts/RememberVisit';
+import { Problem } from '../../components/document/Problem';
+import { graphHref } from '../../components/graph/refs';
+import { conceptHref } from '../../components/search/links';
+import type { ConceptDetail } from '../../lib/api/types/graph';
+import { load } from '../../lib/documents/server';
+import { serverApi } from '../../lib/api/server';
+
+export const prerender = false;
+
+const id = Astro.params.id ?? '';
+const loaded = await load(() => serverApi().get<ConceptDetail>(`concepts/${encodeURIComponent(id)}`));
+if (!loaded.ok && loaded.notFound) Astro.response.status = 404;
+const detail = loaded.ok ? loaded.value : null;
+const concept = detail?.concept;
+const KIND: Record<string, string> = { concept: 'Concept', framework: 'Framework', person: 'Person', work: 'Work', term: 'Term' };
+const edgeCount = detail?.relations.reduce((n, g) => n + g.edges.length, 0) ?? 0;
+const books = new Set(
+  detail?.relations.flatMap((g) => g.edges.flatMap((e) => e.evidence.map((p) => p.document?.id))).filter(Boolean) ?? [],
+);
+---
+
+<BaseLayout title={concept?.canonical ?? 'Concept'} width="reading" description={concept?.blurb ?? 'A concept and its evidence.'}>
+  {
+    concept && detail ? (
+      <article class="concept">
+        <RememberVisit client:idle label={concept.canonical} href={conceptHref(concept.id)} />
+        <header class="head">
+          <p class="kind">
+            {KIND[concept.kind] ?? concept.kind}
+            {concept.origin === 'human' ? ', curated by you' : ''}
+          </p>
+          <h1>{concept.canonical}</h1>
+          {concept.aliases.length > 0 && <p class="aliases">Also called {concept.aliases.join(', ')}</p>}
+        </header>
+
+        {concept.merged_into ? (
+          <p class="merged">
+            This concept was merged. Its connections now live on <a href={conceptHref(concept.merged_into)}>the concept it joined</a>.
+          </p>
+        ) : null}
+
+        {concept.blurb ? <p class="blurb">{concept.blurb}</p> : <p class="none">No gloss written yet.</p>}
+        {detail.blurb_passages.length > 0 && (
+          <section class="grounds" aria-label="Where the gloss comes from">
+            <PassageList passages={detail.blurb_passages} />
+          </section>
+        )}
+
+        <p class="summary">
+          {edgeCount === 0
+            ? 'Nothing is linked to it yet.'
+            : `${edgeCount} ${edgeCount === 1 ? 'connection' : 'connections'}${books.size ? `, drawn from ${books.size} ${books.size === 1 ? 'book' : 'books'}` : ''}.`}
+          {!concept.merged_into && <a href={graphHref(`concept:${concept.id}`, { proposed: true })}>See it in the graph</a>}
+        </p>
+
+        {detail.relations.length > 0 && <ConceptRelations groups={detail.relations} />}
+      </article>
+    ) : (
+      <div class="concept">
+        <h1>{loaded.ok || loaded.notFound ? 'No such concept' : 'Concept'}</h1>
+        {!loaded.ok && loaded.notFound && (
+          <p>
+            It may have been merged away or never existed. Look it up in the <a href="/graph">concept index</a>.
+          </p>
+        )}
+        {!loaded.ok && !loaded.notFound && <Problem title="The concept could not be loaded." problem={loaded.problem} />}
+      </div>
+    )
+  }
+</BaseLayout>
+
+<style>
+  .concept {
+    display: grid;
+    gap: var(--space-5);
+  }
+
+  .head {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .kind,
+  .aliases,
+  .summary,
+  .none {
+    color: var(--ink-3);
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+  }
+
+  h1 {
+    font-size: var(--text-2xl);
+    font-style: italic;
+    font-weight: 500;
+    line-height: var(--leading-tight);
+  }
+
+  .aliases {
+    font-family: var(--font-read);
+    font-size: var(--text-ui);
+    font-style: italic;
+  }
+
+  .blurb {
+    font-size: var(--text-md);
+    line-height: var(--leading-read);
+  }
+
+  .grounds {
+    padding-inline-start: var(--space-4);
+    border-inline-start: 1px solid var(--rule);
+  }
+
+  .summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-4);
+    padding-block: var(--space-3);
+    border-block: 1px solid var(--rule);
+  }
+
+  .summary a {
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  .merged {
+    padding: var(--space-3) var(--space-4);
+    border-inline-start: 3px solid var(--tone-caution);
+    background: var(--paper-raised);
+    font-family: var(--font-ui);
+    font-size: var(--text-ui);
+  }
+</style>
