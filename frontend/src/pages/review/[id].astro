@@ -1,0 +1,82 @@
+---
+/**
+ * One artifact under review, deep-linkable. `?mode=edit|proof|changes|write` opens a view,
+ * `?cite=<anchor>` opens that source passage beside it.
+ */
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { Problem, problemOf, type ProblemInfo } from '../../components/document/Problem';
+import { ArtifactDetail, type DetailMode } from '../../components/review/detail/ArtifactDetail';
+import { listVersions, loadHeadings } from '../../components/review/api';
+import { TYPE_LABELS } from '../../components/review/labels';
+import type { ArtifactPublic } from '../../lib/api/types/artifacts';
+import type { SkillPublic } from '../../lib/api/types/skills';
+import { serverApi } from '../../lib/api/server';
+
+export const prerender = false;
+
+const MODES: readonly DetailMode[] = ['read', 'proof', 'changes', 'edit', 'write'];
+const { id = '' } = Astro.params;
+const requested = Astro.url.searchParams.get('mode') as DetailMode | null;
+const cite = Astro.url.searchParams.get('cite');
+
+const api = serverApi();
+let artifact: ArtifactPublic | null = null;
+let versions: ArtifactPublic[] = [];
+let skills: SkillPublic[] = [];
+let documentTitle = 'Untitled document';
+let heading: string | undefined;
+let problem: ProblemInfo | null = null;
+
+try {
+  artifact = await api.get<ArtifactPublic>(`artifacts/${encodeURIComponent(id)}`);
+  const current = artifact;
+  const [history, catalogue, document, headings] = await Promise.allSettled([
+    listVersions(api, current.id),
+    api.get<SkillPublic[]>('skills'),
+    api.get<{ title: string }>(`documents/${current.document_id}`),
+    loadHeadings(api, [current.document_id]),
+  ]);
+  if (history.status === 'fulfilled') versions = history.value;
+  if (catalogue.status === 'fulfilled') skills = catalogue.value;
+  if (document.status === 'fulfilled') documentTitle = document.value.title;
+  if (headings.status === 'fulfilled' && current.anchor) heading = headings.value[current.document_id]?.[current.anchor];
+} catch (error) {
+  problem = problemOf(error);
+  if (problem.status === 404) Astro.response.status = 404;
+}
+
+const initialMode: DetailMode = requested && MODES.includes(requested) ? requested : artifact?.review === 'needs_review' ? 'proof' : 'read';
+const title = artifact ? `${TYPE_LABELS[artifact.type]}${artifact.anchor ? ` ${artifact.anchor}` : ''}` : 'Artifact';
+---
+
+<BaseLayout title={`Review: ${title}`} description="Read, proof, compare and correct one artifact.">
+  {
+    problem || !artifact ? (
+      <div class="missing">
+        <Problem title="This artifact could not be loaded." problem={problem ?? problemOf(new Error('Not found.'))} />
+        <p>
+          <a href="/review">Back to the review queue</a>
+        </p>
+      </div>
+    ) : (
+      <ArtifactDetail
+        client:load
+        artifact={artifact}
+        versions={versions}
+        documentTitle={documentTitle}
+        heading={heading}
+        skills={skills}
+        initialMode={initialMode}
+        initialCite={cite}
+      />
+    )
+  }
+</BaseLayout>
+
+<style>
+  .missing {
+    display: grid;
+    gap: var(--space-4);
+    font-family: var(--font-ui);
+  }
+</style>

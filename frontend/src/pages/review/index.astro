@@ -1,0 +1,72 @@
+---
+/**
+ * The review queue (§12): every draft and flagged artifact, grouped by document, triaged
+ * from the keyboard. Data is loaded here; the island owns triage state (D10).
+ */
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { Problem, problemOf, type ProblemInfo } from '../../components/document/Problem';
+import { ReviewQueue } from '../../components/review/queue/ReviewQueue';
+import { loadDocuments, loadHeadings, loadQueue, type DocumentLabel } from '../../components/review/api';
+import type { ArtifactListItem } from '../../lib/api/types/artifacts';
+import type { SkillPublic } from '../../lib/api/types/skills';
+import { serverApi } from '../../lib/api/server';
+
+export const prerender = false;
+
+const api = serverApi();
+let items: ArtifactListItem[] = [];
+let documents: DocumentLabel[] = [];
+let skills: SkillPublic[] = [];
+let headings: Record<string, Record<string, string>> = {};
+let problem: ProblemInfo | null = null;
+
+const [queue, docs, catalogue] = await Promise.allSettled([loadQueue(api), loadDocuments(api), api.get<SkillPublic[]>('skills')]);
+if (queue.status === 'fulfilled') {
+  items = queue.value;
+  headings = await loadHeadings(api, items.map((i) => i.document_id));
+} else {
+  problem = problemOf(queue.reason);
+}
+if (docs.status === 'fulfilled') documents = docs.value;
+if (catalogue.status === 'fulfilled') skills = catalogue.value;
+---
+
+<BaseLayout title="Review" description="Drafts and flagged artifacts waiting for a human.">
+  <div class="review">
+    <header class="head">
+      <h1>Review</h1>
+      <p class="lede">
+        Nothing generated is trusted until someone reads it. Approve what holds, correct what doesn’t, and send the rest
+        back to be written again.
+      </p>
+    </header>
+    {
+      problem ? (
+        <Problem title="The review queue could not be loaded." problem={problem} />
+      ) : (
+        <ReviewQueue client:load items={items} documents={documents} headings={headings} skills={skills} />
+      )
+    }
+  </div>
+</BaseLayout>
+
+<style>
+  .review {
+    display: grid;
+    gap: var(--space-5);
+  }
+
+  .head {
+    display: grid;
+    gap: var(--space-2);
+    max-inline-size: var(--measure);
+  }
+
+  h1 {
+    font-size: var(--text-xl);
+  }
+
+  .lede {
+    color: var(--ink-2);
+  }
+</style>
