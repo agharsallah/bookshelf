@@ -27,7 +27,10 @@ class FakeEventSource {
   emit(type: string, data: unknown) {
     for (const l of this.listeners.get(type) ?? []) l(new MessageEvent(type, { data: JSON.stringify(data) }));
   }
-  close() {}
+  closed = false;
+  close() {
+    this.closed = true;
+  }
 }
 
 const file: LibraryFile = {

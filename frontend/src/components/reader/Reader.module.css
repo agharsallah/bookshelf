@@ -1,0 +1,251 @@
+/*
+ * Reader layout. Wider than the page frame: contents rail | the text at a book
+ * measure | the distillation leaf, which stays in view with its own scroll.
+ */
+.reader {
+  --bleed: min(100vw - 2.5rem, 104rem);
+  /* The site masthead's height (BaseLayout), which the sticky toolbar sits under. */
+  --masthead: 3.5rem;
+  --toolbar: 4.5rem;
+  width: var(--bleed);
+  margin-inline: calc(50% - var(--bleed) / 2);
+  margin-block-start: calc(-1 * var(--space-6));
+}
+
+.toolbar {
+  position: sticky;
+  inset-block-start: var(--masthead);
+  z-index: 15;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-5);
+  min-height: var(--toolbar);
+  padding-block: var(--space-2);
+  border-block-end: 1px solid var(--rule);
+  background: color-mix(in oklab, var(--paper) 94%, transparent);
+  backdrop-filter: blur(8px);
+}
+
+.titles {
+  display: grid;
+  min-width: 0;
+}
+
+.book {
+  overflow: hidden;
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.book:hover {
+  color: var(--accent);
+}
+
+.chapter {
+  overflow: hidden;
+  font-size: var(--text-md);
+  font-weight: 520;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.controls button,
+.chapterNav a {
+  height: 2rem;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-m);
+  background: var(--paper-raised);
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+.controls button:hover,
+.chapterNav a:hover {
+  border-color: var(--rule-strong);
+  color: var(--ink);
+}
+
+.controls button[aria-pressed='true'],
+.controls button[aria-expanded='true'] {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+
+.lock[aria-pressed='true'] {
+  background: var(--ink) !important;
+  color: var(--paper) !important;
+}
+
+.chapterNav {
+  display: inline-flex;
+  gap: var(--space-1);
+}
+
+.chapterNav a {
+  display: inline-grid;
+  place-items: center;
+  width: 2rem;
+  padding: 0;
+  font-size: var(--text-md);
+  text-decoration: none;
+}
+
+.viewSwitch,
+.contentsButton {
+  display: none !important;
+}
+
+.viewSwitch {
+  gap: 0;
+}
+
+.viewSwitch button:first-child {
+  border-radius: var(--radius-m) 0 0 var(--radius-m);
+}
+
+.viewSwitch button:last-child {
+  border-inline-start: 0;
+  border-radius: 0 var(--radius-m) var(--radius-m) 0;
+}
+
+.contentsPopover {
+  position: absolute;
+  inset-block-start: calc(100% + var(--space-2));
+  inset-inline-end: 0;
+  width: min(22rem, 100%);
+  max-height: 70dvh;
+  overflow-y: auto;
+  padding: var(--space-4);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-l);
+  background: var(--paper-raised);
+  box-shadow: var(--shadow-lift);
+}
+
+.columns {
+  display: grid;
+  grid-template-columns: 13rem minmax(0, 40rem) minmax(24rem, 1fr);
+  gap: var(--space-7);
+  align-items: start;
+  padding-block-start: var(--space-6);
+}
+
+.navColumn {
+  position: sticky;
+  inset-block-start: calc(var(--masthead) + var(--toolbar) + var(--space-5));
+  max-height: calc(100dvh - var(--masthead) - var(--toolbar) - var(--space-6));
+  overflow-y: auto;
+}
+
+.source {
+  min-width: 0;
+  padding-block-end: 30dvh;
+}
+
+.distil {
+  position: sticky;
+  inset-block-start: calc(var(--masthead) + var(--toolbar) + var(--space-4));
+  height: calc(100dvh - var(--masthead) - var(--toolbar) - var(--space-6));
+  min-height: 20rem;
+}
+
+.notice,
+.end {
+  margin-inline: 3.25rem 2.25rem;
+}
+
+.notice {
+  margin-block-end: var(--space-4);
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.end {
+  margin-block-start: var(--space-8);
+  padding-block-start: var(--space-4);
+  border-block-start: 1px solid var(--rule);
+  font-family: var(--font-ui);
+  font-size: var(--text-ui);
+}
+
+/* Without the rail, contents move into the toolbar. */
+@media (max-width: 90rem) {
+  .columns {
+    grid-template-columns: minmax(0, 40rem) minmax(20rem, 1fr);
+    gap: var(--space-6);
+  }
+
+  .navColumn {
+    display: none;
+  }
+
+  .contentsButton {
+    display: inline-block !important;
+  }
+}
+
+/* One pane at a time on narrow screens, with a switch. */
+@media (max-width: 56rem) {
+  .reader {
+    --bleed: calc(100vw - 2rem);
+    --toolbar: 6.5rem;
+  }
+
+  .viewSwitch {
+    display: inline-flex !important;
+  }
+
+  .notice,
+  .end {
+    margin-inline: 0;
+  }
+
+  .lock {
+    display: none;
+  }
+
+  .columns {
+    grid-template-columns: minmax(0, 1fr);
+    padding-block-start: var(--space-4);
+  }
+
+  .distil {
+    position: static;
+    height: auto;
+    min-height: 0;
+  }
+
+  .reader[data-view='source'] .distil,
+  .reader[data-view='distil'] .source {
+    display: none;
+  }
+
+  .chapter {
+    font-size: var(--text-base);
+    white-space: normal;
+  }
+}
+
+/* BaseLayout wraps its nav onto a second row here. */
+@media (max-width: 40rem) {
+  .reader {
+    --masthead: 4.85rem;
+  }
+}

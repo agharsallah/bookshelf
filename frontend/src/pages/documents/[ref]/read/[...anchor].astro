@@ -1,0 +1,111 @@
+---
+/**
+ * Reader: `/documents/{ref}/read/{anchor?}`. Loads the chapter that contains the
+ * anchor (the first real chapter when there is none), its artifacts and notes,
+ * pre-renders code and math, and hands everything to the reader island.
+ */
+import BaseLayout from '../../../../layouts/BaseLayout.astro';
+import Reader from '../../../../components/reader/Reader';
+import { Problem } from '../../../../components/document/Problem';
+import { buildPanes, paneEntries } from '../../../../components/reader/panes';
+import { serverApi } from '../../../../lib/api/server';
+import type { NodeSubtree } from '../../../../lib/api/types/documents';
+import type { NoteDetail } from '../../../../lib/api/types/notes';
+import { fetchAll } from '../../../../lib/documents/fetch-all';
+import { getArtifacts, getDocument, getOutline, load } from '../../../../lib/documents/server';
+import { defaultUnit, flatten, readingUnits, unitFor } from '../../../../lib/documents/tree';
+import { highlightCode } from '../../../../lib/highlight';
+import { prepareBlocks } from '../../../../lib/prepare';
+
+export const prerender = false;
+
+const ref = Astro.params.ref ?? '';
+const requested = Astro.params.anchor?.replace(/\/+$/, '') || null;
+
+const loaded = await load(async () => {
+  const doc = await getDocument(ref);
+  const outline = await getOutline(doc.slug);
+  const units = readingUnits(outline.nodes);
+  const unit = requested ? unitFor(units, requested) : defaultUnit(units);
+  if (!unit) return { doc, units, missing: true as const };
+  const api = serverApi();
+  const [subtree, artifacts, notes] = await Promise.all([
+    api.get<NodeSubtree>(`nodes/${doc.slug}/${unit.anchor}`),
+    getArtifacts(doc.id, { anchor_prefix: unit.anchor }),
+    fetchAll<NoteDetail>(api, 'notes', { document_id: doc.id, anchor: unit.anchor }),
+  ]);
+  const flat = flatten(subtree.node);
+  const headings = Object.fromEntries(
+    flat.map(({ node }) => [node.anchor, node.heading ?? node.meta.caption ?? '']).filter(([, h]) => h),
+  );
+  const panes = buildPanes(artifacts, unit.anchor, headings);
+  await Promise.all(
+    paneEntries(panes).map(async (entry) => {
+      entry.blocks = await prepareBlocks(entry.blocks);
+    }),
+  );
+  const codeHtml: Record<string, string> = {};
+  await Promise.all(
+    flat
+      .filter(({ node }) => node.kind === 'code' && node.text)
+      .map(async ({ node }) => {
+        const html = await highlightCode(node.text ?? '', node.meta.language ?? undefined);
+        if (html) codeHtml[node.anchor] = html;
+      }),
+  );
+  return { doc, units, missing: false as const, unit: subtree.node, truncated: subtree.truncated, panes, notes: notes.items, codeHtml };
+});
+
+if (!loaded.ok && loaded.notFound) Astro.response.status = 404;
+const data = loaded.ok ? loaded.value : null;
+if (data?.missing) Astro.response.status = 404;
+const navUnits = data
+  ? data.units.map((u, i) => ({ anchor: u.anchor, heading: u.heading ?? `Chapter ${i + 1}` }))
+  : [];
+const title = data && !data.missing ? `${data.unit.heading ?? data.unit.anchor}, ${data.doc.title}` : 'Reader';
+---
+
+<BaseLayout title={title} width="wide">
+  {
+    !data ? (
+      !loaded.ok && loaded.notFound ? (
+        <div class="missing">
+          <h1>Not on the shelf</h1>
+          <p>No document is called “{ref}”. <a href="/library">Back to the library</a></p>
+        </div>
+      ) : (
+        !loaded.ok && <Problem title="This chapter could not be loaded." problem={loaded.problem} />
+      )
+    ) : data.missing ? (
+      <div class="missing">
+        <h1>{requested ? 'No such passage' : 'Nothing to read yet'}</h1>
+        <p>
+          {requested
+            ? `“${requested}” is not in ${data.doc.title}. It may have moved when the document was parsed again.`
+            : `${data.doc.title} has no chapters yet. They appear once parsing finishes.`}{' '}
+          <a href={`/documents/${data.doc.slug}`}>Open the document</a>
+        </p>
+      </div>
+    ) : (
+      <Reader
+        client:load
+        document={{ id: data.doc.id, slug: data.doc.slug, title: data.doc.title }}
+        unit={data.unit}
+        units={navUnits}
+        panes={data.panes}
+        notes={data.notes}
+        codeHtml={data.codeHtml}
+        initialAnchor={requested}
+        truncated={data.truncated}
+      />
+    )
+  }
+</BaseLayout>
+
+<style>
+  .missing {
+    display: grid;
+    gap: var(--space-3);
+    max-width: 40rem;
+  }
+</style>

@@ -1,0 +1,282 @@
+/*
+ * The source column reads like the book: reading serif, generous leading, page
+ * numbers in the outer margin, anchor handles appearing at the inner edge on hover.
+ */
+.block {
+  position: relative;
+  /* The margins live inside the block: content-visibility clips anything outside it. */
+  padding: 0.1rem 2.25rem 0.1rem 3.25rem;
+  border-radius: var(--radius-s);
+  background-clip: content-box;
+  scroll-margin-block: 7rem 3rem;
+  /* Long chapters: skip layout and paint for blocks far off-screen. */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 5rem;
+}
+
+.block + .block {
+  margin-block-start: var(--space-4);
+}
+
+.block[data-kind='section'] {
+  margin-block-start: var(--space-7);
+  contain-intrinsic-size: auto 3rem;
+}
+
+.block:focus {
+  outline: none;
+}
+
+.block:focus-visible::before {
+  content: '';
+  position: absolute;
+  inset-block: 0.2rem;
+  inset-inline-start: 2.6rem;
+  width: 2px;
+  background: var(--accent);
+}
+
+/* Flash when a cite lands here. */
+.block:global(.is-flashing) {
+  animation: flash 1.6s var(--ease-out);
+}
+
+@keyframes flash {
+  0%,
+  30% {
+    background-color: var(--accent-wash);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .block:global(.is-flashing) {
+    animation: none;
+    outline: 2px solid var(--accent);
+    outline-offset: 0.3rem;
+  }
+}
+
+/* Hovering a cite on the right marks the passage it points to. */
+.block:global(.is-citing) {
+  background-color: color-mix(in oklab, var(--accent-wash) 70%, transparent);
+}
+
+.heading {
+  font-size: var(--text-lg);
+  font-weight: 520;
+}
+
+h3.heading {
+  font-size: var(--text-md);
+}
+
+h4.heading {
+  font-size: var(--text-base);
+}
+
+.text,
+.quote p,
+.aside p {
+  hyphens: auto;
+}
+
+.list {
+  display: grid;
+  gap: var(--space-2);
+  padding-inline-start: 1.4em;
+}
+
+.list li::marker {
+  color: var(--ink-3);
+}
+
+.quote {
+  margin-inline: var(--space-5) 0;
+  padding-inline-start: var(--space-4);
+  border-inline-start: 2px solid var(--rule-strong);
+  color: var(--ink-2);
+  font-style: italic;
+}
+
+.aside {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-m);
+  background: var(--paper-raised);
+  font-size: 0.95em;
+}
+
+.aside p + p,
+.quote p + p {
+  margin-block-start: var(--space-2);
+}
+
+.asideLabel {
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.figure {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.figure figcaption {
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  line-height: var(--leading-ui);
+}
+
+.image {
+  max-height: 32rem;
+  width: auto;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-m);
+  background: #fff;
+}
+
+.math {
+  max-height: 8rem;
+  width: auto;
+  margin-inline: auto;
+  background: #fff;
+}
+
+.missing {
+  padding: var(--space-4);
+  border: 1px dashed var(--rule-strong);
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.tableWrap {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.table th,
+.table td {
+  padding: var(--space-1) var(--space-3);
+  border-block-end: 1px solid var(--rule);
+  text-align: start;
+  vertical-align: top;
+}
+
+.table th {
+  border-block-end-color: var(--rule-strong);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.pre,
+.code :global(pre) {
+  overflow-x: auto;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-m);
+  background: var(--paper-sunken);
+  font-size: 0.8rem;
+  line-height: 1.55;
+}
+
+/* Page number in the outer (left) margin, where a printed book would have it. */
+.page {
+  position: absolute;
+  inset-block-start: 0.35rem;
+  inset-inline-start: 0;
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.handle {
+  position: absolute;
+  inset-block-start: 0.1rem;
+  inset-inline-end: 0.25rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-s);
+  background: none;
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--dur-1) var(--ease-out);
+}
+
+.block:hover > .handle,
+.handle:focus-visible,
+.block:focus-visible > .handle {
+  opacity: 1;
+}
+
+.handle:hover {
+  background: var(--accent-wash);
+  color: var(--accent);
+}
+
+.noteMark {
+  position: absolute;
+  inset-block-start: 0.55rem;
+  inset-inline-end: 0.75rem;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--tone-caution);
+}
+
+.block:hover > .noteMark {
+  opacity: 0;
+}
+
+.block mark[data-overlap] {
+  text-decoration: underline 2px color-mix(in oklab, var(--ink) 35%, transparent);
+  text-underline-offset: 0.2em;
+}
+
+.block mark {
+  cursor: pointer;
+}
+
+@media (max-width: 56rem) {
+  .block {
+    padding-inline: 0 1.75rem;
+  }
+
+  .block:focus-visible::before {
+    inset-inline-start: -0.5rem;
+  }
+
+  .page {
+    position: static;
+    display: block;
+    margin-block-end: var(--space-1);
+    text-align: end;
+  }
+
+  .handle {
+    inset-inline-end: 0;
+  }
+
+  .noteMark {
+    inset-inline-end: 0.5rem;
+  }
+}

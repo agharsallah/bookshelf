@@ -1,0 +1,128 @@
+/* The distillation sits on a raised leaf beside the book, with its own scroll. */
+.pane {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100%;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-l);
+  background: var(--paper-raised);
+  box-shadow: var(--shadow-lift);
+}
+
+.tabs {
+  display: flex;
+  gap: var(--space-1);
+  overflow-x: auto;
+  padding: var(--space-2) var(--space-3) 0;
+  border-block-end: 1px solid var(--rule);
+  scrollbar-width: none;
+}
+
+.tab {
+  position: relative;
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-2) var(--space-2);
+  border: 0;
+  background: none;
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.tab[data-empty] {
+  color: var(--ink-3);
+}
+
+.tab[aria-selected='true'] {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.tab[aria-selected='true']::after {
+  content: '';
+  position: absolute;
+  inset-inline: var(--space-2);
+  inset-block-end: -1px;
+  height: 2px;
+  background: var(--accent);
+}
+
+.count {
+  color: var(--ink-3);
+  font-size: var(--text-xs);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
+.scroll {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--space-4) var(--space-5) var(--space-7);
+  font-size: 1.03rem;
+}
+
+.scroll:focus-visible {
+  outline-offset: -2px;
+}
+
+.entry + .entry {
+  margin-block-start: var(--space-6);
+  padding-block-start: var(--space-4);
+  border-block-start: 1px solid var(--rule);
+}
+
+.entryTitle {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin-block-end: var(--space-3);
+  font-size: var(--text-base);
+}
+
+.scope {
+  flex: none;
+  padding: 0.05rem var(--space-2);
+  border: 0;
+  border-radius: var(--radius-s);
+  background: var(--accent-wash);
+  color: var(--accent);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.badge {
+  display: inline-block;
+  margin-block-end: var(--space-3);
+  padding: 0.1rem var(--space-2);
+  border: 1px dashed var(--tone-caution);
+  border-radius: var(--radius-m);
+  color: var(--tone-caution);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  text-decoration: none;
+}
+
+.empty {
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+/* The passage hovered on the left: what cites it lights up here. */
+.scroll :global(.is-cited) {
+  border-radius: var(--radius-s);
+  background: color-mix(in oklab, var(--accent-wash) 70%, transparent);
+  box-shadow: 0 0 0 0.2rem color-mix(in oklab, var(--accent-wash) 70%, transparent);
+  transition: background-color var(--dur-1) var(--ease-out);
+}
+
+.scroll :global(a.is-cited) {
+  background: var(--accent);
+  color: var(--paper-raised);
+}

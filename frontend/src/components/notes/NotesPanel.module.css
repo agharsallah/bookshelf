@@ -1,0 +1,216 @@
+.panel {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.empty {
+  display: grid;
+  gap: var(--space-2);
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.empty kbd {
+  padding: 0 0.3em;
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-s);
+}
+
+/* A slip of paper tucked into the book: the colour runs down its edge. */
+.card {
+  --hl: var(--hl-amber);
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--rule);
+  border-inline-start: 4px solid var(--hl);
+  border-radius: var(--radius-m);
+  background: var(--paper);
+  scroll-margin-block: var(--space-4);
+}
+
+.card[data-color='rose'] { --hl: var(--hl-rose); }
+.card[data-color='sage'] { --hl: var(--hl-sage); }
+.card[data-color='sky'] { --hl: var(--hl-sky); }
+.card[data-color='violet'] { --hl: var(--hl-violet); }
+
+.card[data-focused] {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.card:focus {
+  outline: none;
+}
+
+.cardHead,
+.cardFoot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+}
+
+.where {
+  padding: 0.1rem var(--space-2);
+  border: 0;
+  border-radius: var(--radius-s);
+  background: var(--accent-wash);
+  color: var(--accent);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.where:disabled {
+  background: var(--paper-sunken);
+  color: var(--ink-3);
+  cursor: default;
+}
+
+.when {
+  color: var(--ink-3);
+}
+
+.passage {
+  padding-inline-start: var(--space-3);
+  border-inline-start: 2px solid var(--rule-strong);
+  color: var(--ink-2);
+  font-size: var(--text-ui);
+  font-style: italic;
+}
+
+.sideBySide {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: var(--space-3);
+}
+
+.caption {
+  margin-block-end: var(--space-1);
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+}
+
+.rawText {
+  font-size: var(--text-ui);
+  white-space: pre-wrap;
+}
+
+.structured {
+  padding: var(--space-2) var(--space-3);
+  border: 1px dashed var(--rule-strong);
+  border-radius: var(--radius-m);
+  font-size: var(--text-ui);
+}
+
+.structured[data-review='approved'] {
+  border-style: solid;
+  border-color: color-mix(in oklab, var(--accent) 45%, var(--rule));
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-block-start: var(--space-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+}
+
+.tags span {
+  padding: 0 var(--space-2);
+  border-radius: 999px;
+  background: var(--paper-sunken);
+  color: var(--ink-2);
+}
+
+.reviewRow {
+  display: flex;
+  gap: var(--space-2);
+  margin-block-start: var(--space-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.reviewRow button,
+.confirm button,
+.deleteButton {
+  padding: 0.1rem var(--space-2);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-m);
+  background: var(--paper-raised);
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+.reviewRow button:first-child {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.deleteButton {
+  border-color: transparent;
+  background: none;
+  color: var(--ink-3);
+}
+
+.deleteButton:hover {
+  color: var(--tone-important);
+}
+
+.confirm {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--ink-2);
+}
+
+.danger {
+  border-color: var(--tone-important) !important;
+  color: var(--tone-important) !important;
+}
+
+.colors {
+  display: flex;
+  gap: 3px;
+}
+
+.swatch {
+  width: 1rem;
+  height: 1rem;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  background: var(--hl-amber);
+  cursor: pointer;
+}
+
+.swatch[data-color='rose'] { background: var(--hl-rose); }
+.swatch[data-color='sage'] { background: var(--hl-sage); }
+.swatch[data-color='sky'] { background: var(--hl-sky); }
+.swatch[data-color='violet'] { background: var(--hl-violet); }
+
+.swatch[aria-checked='true'] {
+  border-color: var(--ink);
+}
+
+.detached {
+  display: grid;
+  gap: var(--space-3);
+  padding-block-start: var(--space-4);
+  border-block-start: 1px solid var(--rule);
+}
+
+.detached h3 {
+  font-size: var(--text-base);
+}
+
+.detachedHint {
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
