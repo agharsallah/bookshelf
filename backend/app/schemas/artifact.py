@@ -84,7 +84,10 @@ class ArtifactCreate(BaseModel):
 class ReviewRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    action: Literal["approve", "reject", "edit"]
+    action: Annotated[
+        Literal["approve", "reject", "edit", "reopen"],
+        Field(description="`reopen` returns an approved or rejected artifact to `draft`."),
+    ]
     body: Annotated[
         dict[str, Any] | None, Field(description="Required for `edit`: the corrected body.")
     ] = None

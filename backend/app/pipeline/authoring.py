@@ -20,7 +20,11 @@ from app.pipeline.runner import OutputError
 from app.pipeline.selectors import SelectorError
 from app.pipeline.skills import GateConfig, load_catalogue, skill_for_artifact_type
 
-ReviewAction = Literal["approve", "reject", "edit"]
+ReviewAction = Literal["approve", "reject", "edit", "reopen"]
+
+
+class ReviewStateError(ValueError):
+    """The action does not apply to the artifact's current review state."""
 
 
 def schema_for_type(kind: ArtifactType, skills_dir: Path | None = None) -> dict[str, Any]:
@@ -86,6 +90,8 @@ def review(
     skills_dir: Path | None = None,
 ) -> Artifact:
     """Apply a review action; returns the artifact that now represents the scope."""
+    if action == "reopen":
+        return reopen(session, artifact)
     if action == "reject":
         rejected = artifacts.set_review(session, artifact, Review.REJECTED)
         orchestrator.on_review(session, rejected)  # e.g. withdraw rejected concept links
@@ -116,3 +122,30 @@ def review(
     edited = artifacts.insert(session, edited)
     orchestrator.on_review(session, edited)
     return edited
+
+
+def reopen(session: Session, artifact: Artifact) -> Artifact:
+    """Undo a verdict: approved / rejected back to `draft`, `reviewed_at` cleared.
+
+    A rejected row re-enters the idempotency index, so it is refused (`ArtifactExistsError`)
+    when another live row already covers the same `(type, input_hash, skill_version)`.
+    Effects downstream are deliberately small (`orchestrator.on_reopen`): nothing built on
+    the verdict is withdrawn except where search or the graph would otherwise show it.
+    """
+    if artifact.review not in (Review.APPROVED, Review.REJECTED):
+        raise ReviewStateError(
+            f"Artifact {artifact.id} is {artifact.review.value}: nothing to reopen"
+        )
+    was_approved = artifact.review is Review.APPROVED
+    if not was_approved:
+        live = artifacts.find_live(
+            session, artifact.type, artifact.input_hash, artifact.skill_version
+        )
+        if live is not None:
+            raise artifacts.ArtifactExistsError(live)
+    artifact.review, artifact.reviewed_at = Review.DRAFT, None
+    session.add(artifact)
+    session.commit()
+    session.refresh(artifact)
+    orchestrator.on_reopen(session, artifact, was_approved=was_approved)
+    return artifact

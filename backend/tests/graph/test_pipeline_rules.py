@@ -70,6 +70,14 @@ def test_approving_applies_and_rejecting_withdraws(session, queueing):
     assert session.exec(select(Concept)).all() == []
 
 
+def test_reopening_rejected_links_puts_the_draft_back_in_the_graph(session, queueing):
+    artifact = store(session, queueing, BODY, review=Review.REJECTED)
+
+    authoring.review(session, artifact, "reopen")
+
+    assert relations(session) == {("ch01/p002", "defines", "slack", "accepted")}
+
+
 def test_a_finished_dedup_job_advances_nothing(session, queueing):
     job = queue.enqueue(
         session,

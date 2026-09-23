@@ -11,6 +11,7 @@ from app.core.config import get_settings
 from app.core.errors import AppError, ConflictError, NotFoundError
 from app.pipeline import interactive
 from app.pipeline.artifacts import ArtifactExistsError
+from app.pipeline.authoring import ReviewStateError
 from app.pipeline.runner import OutputError
 from app.pipeline.selectors import SelectorError
 
@@ -44,6 +45,8 @@ def pipeline_errors() -> Iterator[None]:
         raise ConflictError(
             str(exc), [{"field": "input_hash", "artifact_id": str(exc.existing.id)}]
         ) from exc
+    except ReviewStateError as exc:
+        raise ConflictError(str(exc), [{"field": "action"}]) from exc
     except interactive.InputsChangedError as exc:
         raise ConflictError(str(exc), [{"field": "input_hash"}]) from exc
     except (interactive.UnknownSkillError, interactive.UnknownDocumentError) as exc:

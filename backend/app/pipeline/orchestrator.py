@@ -34,6 +34,7 @@ from app.models import Artifact, Document, Job, Node
 from app.models.enums import ArtifactType, DocumentStatus, JobKind, JobState, NodeKind, Review
 from app.pipeline import artifacts
 from app.pipeline.tree import Tree
+from app.retrieval.points import INDEXED_TYPES
 
 logger = logging.getLogger(__name__)
 
@@ -341,6 +342,27 @@ def on_review(session: Session, artifact: Artifact) -> list[Job]:
         return []
     state = _state(session, artifact.document_id)
     return _apply(state, rule(state, artifact)) if state is not None else []
+
+
+def on_reopen(session: Session, artifact: Artifact, *, was_approved: bool) -> list[Job]:
+    """A verdict was undone (approved/rejected → draft). Deliberately conservative:
+
+    * nothing built on the approval is withdrawn: a reopened section note keeps its chapter
+      distillation, a reopened brief leaves the document `distilled` and its links alone;
+    * `concept_links`: the graph follows the effective version, which just changed;
+    * an approved, indexed type on an already indexed document queues `embed`, so search
+      (approved content only) drops it; its previous approved version, if any, comes back.
+    """
+    state = _state(session, artifact.document_id)
+    if state is None:
+        return []
+    plan = (
+        links_reviewed(state, artifact) if artifact.type is ArtifactType.CONCEPT_LINKS else Plan()
+    )
+    indexed = _RANK.get(state.document.status, -1) >= _RANK[DocumentStatus.INDEXED]
+    if was_approved and indexed and artifact.type in INDEXED_TYPES:
+        plan.jobs.append(state.spec(JobKind.EMBED))
+    return _apply(state, plan)
 
 
 def on_document_parsed(session: Session, document: Document) -> list[Job]:

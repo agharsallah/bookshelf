@@ -175,7 +175,14 @@ def import_artifact(
     "/{artifact_id}/review",
     response_model=ArtifactPublic,
     dependencies=[Depends(require_api_key)],
-    summary="Approve, reject, or edit (edit stores a new human version)",
+    summary="Approve, reject, edit (a new human version) or reopen (back to draft)",
+    description=(
+        "`reopen` undoes a verdict: approved or rejected → `draft`, `reviewed_at` cleared. "
+        "`409` when the artifact is not approved/rejected, or when reopening a rejected row "
+        "would give its input a second live artifact. Nothing built on the verdict is "
+        "undone, except that the idea graph follows reopened concept links and search "
+        "drops a reopened approved distillation at the next (queued) embed."
+    ),
 )
 def review_artifact(
     artifact_id: uuid.UUID, body: ReviewRequest, session: SessionDep, skills_dir: SkillsDirDep
