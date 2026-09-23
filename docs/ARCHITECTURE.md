@@ -109,7 +109,7 @@ flowchart LR
   end
 
   API["FastAPI<br/>routes · services · jobs"]:::infra
-  WORKER["Job worker (arq)<br/>parse · describe-figure · summarize<br/>distil · brief · derive · embed · link"]:::infra
+  WORKER["Job worker (Postgres queue)<br/>parse · describe-figure · summarize<br/>distil · brief · derive · embed · link"]:::infra
   CLI["Claude Code CLI (local)<br/>claude -p --model haiku|sonnet|opus<br/>or interactive /skill in a session"]:::infra
 
   PG[("Supabase Postgres<br/>documents · nodes · notes<br/>artifacts · concepts · edges · jobs")]:::truth
@@ -173,8 +173,9 @@ Each decision states the call, the reason, and what it costs.
 
 ## 6. Data model
 
-Postgres. SQLite is fine for phase 0, but move before distillation lands: JSONB, array
-containment, and full-text search all earn their keep in phase 1.
+Postgres from day one (Supabase in production, a project-local cluster for dev and tests).
+The canonical DDL lives in `supabase/migrations/*.sql`; the sketch below is the shape, the
+migrations are the truth (they add check constraints, queue columns and RLS — see §18).
 
 ```sql
 -- SOURCE ---------------------------------------------------------------
@@ -1032,9 +1033,9 @@ review. Same skill runner, same review queue, same citations. No new architectur
 
 | # | Question | Recommendation |
 |---|---|---|
-| 1 | Postgres now or at phase 1? | At phase 1. SQLite is fine while there is no JSONB, array, or FTS work |
+| 1 | Postgres now or at phase 1? | **Settled: now.** Arrays, JSONB, FTS and `SKIP LOCKED` are used from phase 0 (§18) |
 | 2 | Which embedding model? | `bge-small-en-v1.5` via FastEmbed locally — free, fast, good enough at this scale. `model_id` on every point makes a later swap a filtered re-embed |
-| 3 | Job queue? | `arq` on Redis. Celery is heavier than this workload deserves |
+| 3 | Job queue? | **Settled: the `jobs` table itself**, claimed with `FOR UPDATE SKIP LOCKED` — no Redis to run (§18) |
 | 4 | Distillation model? | Settled as the three-tier ladder (D16) over CLI aliases `haiku` / `sonnet` / `opus` (D18). Resolved model recorded per artifact, so promotions are measurable |
 | 9 | Does `claude -p` hold up for 100+ jobs per book? | Unknown until tried. Mitigations: cap at 2–3 concurrent processes, cache aggressively by `input_hash`, run heavy stages overnight. If it doesn't, the `ModelRunner` seam is where the API goes |
 | 5 | Where do exports live? | `exports/` next to `library/`, gitignored, regenerated on approval. Never read back as input (D2) |
@@ -1053,3 +1054,23 @@ review. Same skill runner, same review queue, same citations. No new architectur
 | Concept graph degenerates into noise | Human-confirmed merges only; evidence required on every edge; neighborhoods, not a global net |
 | Scope creep into video/quiz/extras before the core works | Phases 0–3 are the product; phase 4 is explicitly optional (§1) |
 | Prompt drift making old artifacts incomparable | Skill versions on every artifact; re-runs are diffs, not overwrites |
+
+---
+
+## 18. Implementation notes & deviations
+
+The design above is a guideline. Where the build diverged, the reason is recorded here.
+
+| Area | Planned | Built | Why |
+|---|---|---|---|
+| Job queue | `arq` on Redis | `jobs` table as the queue: `claim()` = `UPDATE … WHERE id = (SELECT … FOR UPDATE SKIP LOCKED)`, exponential backoff, stale-lock reclaim, partial unique index dedupes live work | One less service; the queue state *is* the domain state the review UI shows (`app/jobs/queue.py`) |
+| Database timing | SQLite in phase 0 | Postgres from the start; schema in `supabase/migrations/`, applied to Supabase via MCP and locally by `python -m app.db.migrate` | JSONB, `text[]`, FTS and `SKIP LOCKED` are needed immediately; one SQL source for both targets |
+| Dev database | — | `scripts/pg-local.sh`: isolated cluster in `.pgdata/` on port 54329, trust auth on localhost; tests create a throwaway DB per process | No passwords, no collision with a system Postgres, parallel test runs never share state |
+| Notes ↔ nodes | notes FK to nodes | notes reference only `documents`; re-parse upserts nodes by anchor; a note whose anchor vanished is shown as *detached* | A cascading FK let a re-parse delete notes, violating D11 |
+| D11 enforcement | API rule | plus a `before update` trigger rejecting any change to `notes.raw` | Defence in depth for the one irreplaceable artifact |
+| Schema additions | — | `jobs`: `payload`, `priority`, `run_after`, `locked_at`, `max_attempts`, `result`; `artifacts`: `note_id`, `gates`, `reviewed_at`, review state `needs_review`; `edges.status` (proposed/accepted/rejected); `concepts.merged_into`, `blurb_cites`; `documents`: `parse_tier`, `outline_override`, `meta`, `updated_at` | Queue mechanics, gate trend lines, human-confirmed merges, outline fix-ups that survive re-parsing |
+| Lexical search | Qdrant BM25 only | plus a generated `tsvector` on `nodes` for exact-phrase queries (`phraseto_tsquery`) | BM25 ranks terms; it cannot answer "find the exact phrase" |
+| Supabase exposure | — | RLS enabled with no policies and all grants revoked from `anon`/`authenticated`; the backend connects as owner | The Data API is not used; deny it everything |
+| Qdrant runtime | cluster | `BOOKSHELF_QDRANT_URL` set → cluster; unset → embedded on-disk store in `.qdrant/` | Same code path for dev, tests and production |
+| Frontend writes | browser → API with key | browser → Astro same-origin proxy (`/api/*`) that injects `X-API-Key` server-side | The key never reaches the browser |
+
