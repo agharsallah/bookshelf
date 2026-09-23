@@ -87,6 +87,7 @@ class ConceptEnd(BaseModel):
 
 
 RelationName = Literal["contradicts", "supports", "extends"]
+IndexState = Literal["ready", "empty", "unavailable"]
 
 
 class ConceptRelation(BaseModel):
@@ -107,6 +108,11 @@ class SearchResponse(BaseModel):
         default_factory=list,
         description="Synthesis only: contradicts / supports / extends edges between concepts "
         "evidenced in the result documents, contradictions first.",
+    )
+    index_state: IndexState | None = Field(
+        default=None,
+        description="Vector intents only: `empty` (nothing indexed yet) or `unavailable` "
+        "(Qdrant unreachable) explain empty `groups`; addressed and lexical never need it.",
     )
     took_ms: int
 

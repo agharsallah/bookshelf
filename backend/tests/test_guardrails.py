@@ -101,3 +101,23 @@ def test_rate_limit_returns_429_with_retry_after():
 
     assert statuses[:3] == [200, 200, 200]
     assert statuses[-1] == 429
+
+
+def test_an_unhandled_error_keeps_the_request_id_in_envelope_and_header():
+    """Starlette answers unhandled exceptions outside the request-context middleware; the
+    envelope used to say `request_id: "-"`."""
+    from app.main import create_app
+
+    app = create_app()
+
+    @app.get("/boom")
+    def boom() -> None:
+        raise RuntimeError("kaput")
+
+    with TestClient(app, raise_server_exceptions=False) as test_client:
+        response = test_client.get("/boom", headers={"X-Request-ID": "trace12345"})
+
+    assert response.status_code == 500
+    assert response.json()["error"]["request_id"] == "trace12345"
+    assert response.headers["x-request-id"] == "trace12345"
+    assert "kaput" not in response.text

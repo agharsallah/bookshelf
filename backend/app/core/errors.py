@@ -126,13 +126,29 @@ def register_exception_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(Exception)
     async def _unhandled(request: Request, exc: Exception) -> JSONResponse:
-        # Log the full traceback, return nothing about it: no stack traces on the wire.
-        logger.exception(
-            "Unhandled exception",
-            extra={"path": request.url.path, "method": request.method, "error": str(exc)},
-        )
-        return error_response(
-            status.HTTP_500_INTERNAL_SERVER_ERROR,
-            "internal_error",
-            "An internal error occurred.",
-        )
+        # Starlette runs this handler in its outermost middleware, outside the request
+        # context middleware, whose context var is reset by then: restore the id from the
+        # scope so the log line, the envelope and the header all carry the same one.
+        from app.core.middleware import REQUEST_ID_HEADER, REQUEST_ID_STATE, SECURITY_HEADERS
+
+        request_id = request.scope.get("state", {}).get(REQUEST_ID_STATE)
+        token = request_id_ctx.set(request_id) if request_id else None
+        try:
+            # Log the full traceback, return nothing about it: no stack traces on the wire.
+            logger.exception(
+                "Unhandled exception",
+                extra={"path": request.url.path, "method": request.method, "error": str(exc)},
+            )
+            headers = {
+                **SECURITY_HEADERS,
+                **({REQUEST_ID_HEADER: request_id} if request_id else {}),
+            }
+            return error_response(
+                status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "internal_error",
+                "An internal error occurred.",
+                headers=headers,
+            )
+        finally:
+            if token is not None:
+                request_id_ctx.reset(token)

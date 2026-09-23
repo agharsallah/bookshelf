@@ -166,6 +166,17 @@ def ensure_ready(client: QdrantClient, *, dense_dim: int) -> None:
         _ready[client] = dense_dim
 
 
+def forget(client: QdrantClient) -> None:
+    """Drop the `ensure_ready` memo for `client` (its collections vanished)."""
+    with _ready_lock:
+        _ready.pop(client, None)
+
+
+def is_empty(client: QdrantClient) -> bool:
+    """True when neither vector collection holds a point (nothing indexed yet)."""
+    return all(client.count(collection_name(c), exact=False).count == 0 for c in VECTOR_COLLECTIONS)
+
+
 def open_client() -> QdrantClient:
     """The shared client, or `QdrantUnavailableError` (e.g. another process holds the
     embedded store's lock)."""

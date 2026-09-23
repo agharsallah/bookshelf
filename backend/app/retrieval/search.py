@@ -10,6 +10,7 @@
 Groups are ordered by their best hit; hits inside a group by score.
 """
 
+import logging
 import time
 import uuid
 from collections import OrderedDict
@@ -21,13 +22,20 @@ from sqlmodel import Session, col, select
 from app.models import Artifact, Node
 from app.models.enums import ArtifactType, Review
 from app.retrieval import hybrid, lexical, relations, resolve
-from app.retrieval.collections import ensure_ready, open_client
+from app.retrieval.collections import (
+    QdrantUnavailableError,
+    ensure_ready,
+    forget,
+    is_empty,
+    open_client,
+)
 from app.retrieval.embedding import Embedder
 from app.retrieval.points import flatten_body
 from app.retrieval.refs import document_ref, load_refs, ref_from_payload, snippet
 from app.retrieval.router import QueryRouter, Route, is_lexical
 from app.schemas.search import (
     DocumentRef,
+    IndexState,
     ResolvedAddress,
     SearchFilters,
     SearchGroup,
@@ -36,6 +44,8 @@ from app.schemas.search import (
     SearchResponse,
 )
 from app.services.render_markdown import body_blocks
+
+logger = logging.getLogger(__name__)
 
 RERANK_CHARS = 1500
 # Addressed hits: the artifact a reader most likely wants first.
@@ -177,6 +187,34 @@ def _vector(
     ]
 
 
+def _vector_search(
+    session: Session,
+    request: SearchRequest,
+    route: Route,
+    *,
+    embedder: Embedder,
+    client: QdrantClient | None,
+) -> tuple[list[SearchGroup], IndexState]:
+    """The vector tiers, degrading instead of failing: collections that vanished are
+    recreated once (then the index is `empty`), and an unreachable Qdrant yields no groups
+    with `unavailable`. Addressed and lexical queries never come here."""
+    try:
+        client = client or open_client()
+        try:
+            groups = _vector(session, request, route, embedder=embedder, client=client)
+        except QdrantUnavailableError:
+            raise
+        except Exception:  # e.g. "Collection distillations not found": rebuild the layout
+            forget(client)
+            groups = _vector(session, request, route, embedder=embedder, client=client)
+        return groups, "ready" if groups or not is_empty(client) else "empty"
+    except QdrantUnavailableError:
+        return [], "unavailable"
+    except Exception as exc:  # the retry failed too: treat Qdrant as unavailable
+        logger.warning("Vector search failed", extra={"error": f"{type(exc).__name__}: {exc}"})
+        return [], "unavailable"
+
+
 # --- Entry point ----------------------------------------------------------------------
 
 
@@ -193,6 +231,7 @@ def run(
     started = time.perf_counter()
     route = route or router.route(session, request.query, request.mode)
     resolved: ResolvedAddress | None = None
+    index_state: IndexState | None = None
     if route.intent == "addressed":
         resolved, groups = _addressed(session, route)
     elif route.intent == "lexical":
@@ -201,7 +240,9 @@ def run(
         exact = is_lexical(request.query)
         groups = lexical.search(session, phrase, request.filters, limit=request.limit, exact=exact)
     else:
-        groups = _vector(session, request, route, embedder=embedder, client=client or open_client())
+        groups, index_state = _vector_search(
+            session, request, route, embedder=embedder, client=client
+        )
     edges = (
         relations.between(session, [g.document for g in groups])
         if route.intent == "synthesis"
@@ -209,6 +250,11 @@ def run(
     )
     took_ms = int((time.perf_counter() - started) * 1000)
     response = SearchResponse(
-        intent=route.intent, resolved=resolved, groups=groups, relations=edges, took_ms=took_ms
+        intent=route.intent,
+        resolved=resolved,
+        groups=groups,
+        relations=edges,
+        index_state=index_state,
+        took_ms=took_ms,
     )
     return SearchOutcome(route=route, response=response)

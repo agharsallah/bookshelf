@@ -84,6 +84,9 @@ _TABLES = ("edges", "concepts", "jobs", "artifacts", "notes", "nodes", "document
 
 
 def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
+    from app.retrieval.client import close_client
+
+    close_client()
     engine.dispose()
     with _admin() as conn:
         conn.execute(f'drop database if exists "{_DB_NAME}" with (force)')

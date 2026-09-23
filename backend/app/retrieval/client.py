@@ -63,3 +63,13 @@ def set_client(client: "QdrantClient | None") -> None:
     global _client
     with _lock:
         _client = client
+
+
+def close_client() -> None:
+    """Close and drop the shared client, if one was opened (releases the embedded store's
+    directory lock). Called at API shutdown; the next `get_client()` reopens it."""
+    global _client
+    with _lock:
+        client, _client = _client, None
+    if client is not None:
+        client.close()

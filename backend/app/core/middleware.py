@@ -36,6 +36,9 @@ _DRAIN_FACTOR = 8
 _DOCS_PATHS = frozenset({"/docs", "/redoc", "/docs/oauth2-redirect"})
 
 
+REQUEST_ID_STATE = "request_id"
+
+
 class RequestContextMiddleware:
     """Assigns a request id, logs the access line, and stamps security headers."""
 
@@ -52,6 +55,9 @@ class RequestContextMiddleware:
         incoming = headers.get(REQUEST_ID_HEADER, "")
         request_id = incoming if _is_safe_id(incoming) else uuid.uuid4().hex
         token = request_id_ctx.set(request_id)
+        # Also on the scope: an unhandled exception is answered by Starlette's outermost
+        # error middleware, after this context var has been reset (see `core.errors`).
+        scope.setdefault("state", {})[REQUEST_ID_STATE] = request_id
 
         path: str = scope.get("path", "")
         status_code = 500

@@ -12,7 +12,7 @@ Docs: https://fastapi.tiangolo.com/tutorial/server-sent-events/ (SSE with POST)
 
 from collections.abc import Iterator
 from functools import lru_cache
-from typing import TYPE_CHECKING, Annotated
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.sse import EventSourceResponse, ServerSentEvent
@@ -26,10 +26,6 @@ from app.retrieval import suggest
 from app.retrieval.embedding import Embedder, get_embedder
 from app.retrieval.router import QueryRouter
 from app.schemas.search import SearchRequest, SearchResponse, SuggestResponse
-from app.services.errors import ServiceUnavailableError
-
-if TYPE_CHECKING:  # `qdrant_client` (and fastembed/onnxruntime) load on the first search
-    from qdrant_client import QdrantClient
 
 router = APIRouter(prefix="/search", tags=["search"])
 
@@ -55,25 +51,11 @@ def get_answer_runner() -> ModelRunner:
     return ClaudeCliRunner(timeout_seconds=ANSWER_TIMEOUT_SECONDS)
 
 
-def get_qdrant() -> "QdrantClient":
-    """The shared client, opened on first use; `503` when Qdrant cannot be opened."""
-    from app.retrieval.collections import QdrantUnavailableError, open_client
-
-    try:
-        return open_client()
-    except QdrantUnavailableError as exc:
-        raise ServiceUnavailableError(str(exc)) from exc
-
-
 def get_search_embedder() -> Embedder:
     return get_embedder()
 
 
 EmbedderDep = Annotated[Embedder, Depends(get_search_embedder)]
-if TYPE_CHECKING:
-    QdrantDep = Annotated[QdrantClient, Depends(get_qdrant)]
-else:  # FastAPI evaluates the annotation at import time; the dependency does not need it
-    QdrantDep = Annotated[object, Depends(get_qdrant)]
 
 
 @router.post("", response_model=SearchResponse, summary="Search the library")
@@ -81,19 +63,16 @@ def search_library(
     body: SearchRequest,
     session: SessionDep,
     embedder: EmbedderDep,
-    client: QdrantDep,
     query_router: Annotated[QueryRouter, Depends(get_search_router)],
 ) -> SearchResponse:
     """Route the query (addressed, lexical, discovery, synthesis) and return hits grouped
-    by document. Addressed queries return the tree node and its approved artifacts."""
-    from app.retrieval import search
-    from app.retrieval.collections import QdrantUnavailableError
+    by document. Addressed queries return the tree node and its approved artifacts.
 
-    try:
-        outcome = search.run(session, body, router=query_router, embedder=embedder, client=client)
-    except QdrantUnavailableError as exc:
-        raise ServiceUnavailableError(str(exc)) from exc
-    return outcome.response
+    Qdrant is opened only for vector intents: addressed and lexical queries work without
+    it, and vector queries degrade to no groups with `index_state` `empty` / `unavailable`."""
+    from app.retrieval import search
+
+    return search.run(session, body, router=query_router, embedder=embedder).response
 
 
 @router.post(
@@ -105,7 +84,6 @@ def search_library(
 def answer_question(
     body: SearchRequest,
     embedder: EmbedderDep,
-    client: QdrantDep,
     query_router: Annotated[QueryRouter, Depends(get_answer_router)],
     runner: Annotated[ModelRunner, Depends(get_answer_runner)],
 ) -> Iterator[ServerSentEvent]:
@@ -116,9 +94,7 @@ def answer_question(
     from app.retrieval import answer
 
     with Session(engine) as session:
-        events = answer.stream(
-            session, body, router=query_router, embedder=embedder, runner=runner, client=client
-        )
+        events = answer.stream(session, body, router=query_router, embedder=embedder, runner=runner)
         for event, payload in events:
             yield ServerSentEvent(event=event, data=payload)
 

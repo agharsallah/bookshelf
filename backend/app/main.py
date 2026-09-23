@@ -23,6 +23,7 @@ from app.core.middleware import MaxBodySizeMiddleware, RequestContextMiddleware
 from app.core.ratelimit import RateLimitMiddleware
 from app.core.security import API_KEY_HEADER
 from app.jobs.embedded import EmbedRunner
+from app.retrieval.client import close_client
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +59,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         restore_signals()
         if runner is not None:
             runner.stop()
+        close_client()  # release the embedded store's lock before a reload reopens it
         logger.info("Application stopped")
 
 

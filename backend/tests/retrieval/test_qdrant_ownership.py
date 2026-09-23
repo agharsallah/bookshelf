@@ -23,6 +23,7 @@ from app.models import Job
 from app.models.enums import JobKind, JobState
 from app.retrieval.client import set_client
 from app.retrieval.embedding import FakeEmbedder
+from tests.retrieval.conftest import Shelf
 
 
 def wait_until(predicate: Callable[[], bool], timeout: float = 5.0) -> bool:
@@ -100,20 +101,47 @@ def test_readiness_is_ready_when_qdrant_answers(client: TestClient, qdrant: Qdra
     assert (body["status"], body["qdrant"], body["qdrant_error"]) == ("ready", "ok", None)
 
 
-def test_vector_search_is_503_while_qdrant_is_unreachable(
+def search(client: TestClient, query: str) -> dict:
+    response = client.post("/api/v1/search", json={"query": query})
+    assert response.status_code == 200
+    return response.json()
+
+
+def test_vector_search_degrades_to_unavailable_while_qdrant_is_unreachable(
     client: TestClient, unreachable: QdrantClient, embedder: FakeEmbedder
 ):
-    response = client.post("/api/v1/search", json={"query": "what about feedback loops?"})
+    body = search(client, "what about feedback loops?")
 
-    assert response.status_code == 503
-    assert response.json()["error"]["code"] == "service_unavailable"
+    assert (body["intent"], body["groups"], body["index_state"]) == (
+        "discovery", [], "unavailable",
+    )  # fmt: skip
 
 
-def test_first_search_creates_the_collections(
+def test_lexical_and_addressed_queries_need_no_qdrant(
+    client: TestClient, unreachable: QdrantClient, embedder: FakeEmbedder, shelf: Shelf
+):
+    lexical = search(client, '"memory of flows"')
+    addressed = search(client, "summarize chapter 2 of Meadows")
+
+    assert lexical["intent"] == "lexical" and lexical["groups"]
+    assert addressed["intent"] == "addressed" and addressed["groups"]
+    assert (lexical["index_state"], addressed["index_state"]) == (None, None)
+
+
+def test_the_first_search_creates_the_collections_and_reports_an_empty_index(
     client: TestClient, qdrant: QdrantClient, embedder: FakeEmbedder
 ):
-    response = client.post("/api/v1/search", json={"query": "what about feedback loops?"})
+    body = search(client, "what about feedback loops?")
 
-    assert response.status_code == 200
-    assert response.json()["groups"] == []
+    assert (body["groups"], body["index_state"]) == ([], "empty")
     assert qdrant.collection_exists("distillations")
+
+
+def test_collections_that_vanish_are_recreated_instead_of_failing(
+    client: TestClient, indexed: Shelf, collections: QdrantClient
+):
+    assert search(client, "balancing feedback loops")["index_state"] == "ready"
+    for name in ("blocks", "distillations"):
+        collections.delete_collection(name)
+
+    assert search(client, "balancing feedback loops")["index_state"] == "empty"
