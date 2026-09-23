@@ -33,11 +33,6 @@ export async function ingest(api: Pick<ApiClient, 'post'>, body: DocumentCreate)
   }
 }
 
-/** A job that will not change any more. */
-export function isFinished(state: Job['state'] | undefined): boolean {
-  return state === 'done' || state === 'failed' || state === 'skipped';
-}
-
 /** What to tell the reader about a parse job, in their words. */
 export function jobPhrase(state: Job['state'] | undefined): string {
   switch (state) {

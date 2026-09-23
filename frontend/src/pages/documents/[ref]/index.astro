@@ -1,0 +1,338 @@
+---
+/**
+ * Document overview: the title page (editable details), the outline with what each
+ * chapter has produced, the pipeline with live job progress, exports and actions.
+ * When the outline was guessed (`needs_review`) the fix-up editor opens first.
+ */
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import DocumentActions from '../../../components/document/DocumentActions';
+import DocumentHeader from '../../../components/document/DocumentHeader';
+import Outline from '../../../components/document/Outline';
+import OutlineEditor from '../../../components/document/OutlineEditor';
+import PipelineTimeline from '../../../components/document/PipelineTimeline';
+import { Problem } from '../../../components/document/Problem';
+import { outlineFromTree } from '../../../components/document/outline-model';
+import { plural } from '../../../components/library/spine';
+import type { Page } from '../../../lib/api/types';
+import type { Job } from '../../../lib/api/types/jobs';
+import { chapterStatus, pickBest, type ChapterStatus } from '../../../lib/documents/artifacts';
+import { getArtifacts, getDocument, getOutline, load } from '../../../lib/documents/server';
+import { defaultUnit, readingUnits } from '../../../lib/documents/tree';
+import { serverApi } from '../../../lib/api/server';
+
+export const prerender = false;
+
+const ref = Astro.params.ref ?? '';
+const loaded = await load(async () => {
+  const doc = await getDocument(ref);
+  const [tree, artifacts, jobs] = await Promise.all([
+    getOutline(doc.slug),
+    getArtifacts(doc.id),
+    serverApi().get<Page<Job>>('jobs', { query: { document_id: doc.id, limit: 20 } }),
+  ]);
+  return { doc, tree, artifacts, jobs: jobs.items };
+});
+if (!loaded.ok && loaded.notFound) Astro.response.status = 404;
+
+const data = loaded.ok ? loaded.value : null;
+const units = data ? readingUnits(data.tree.nodes) : [];
+const statuses: Record<string, ChapterStatus> = Object.fromEntries(
+  units.map((u) => [u.anchor, chapterStatus(data?.artifacts ?? [], u.anchor)]),
+);
+const brief = data ? pickBest(data.artifacts, 'book_brief', null) : null;
+const first = defaultUnit(units);
+const parsed = data !== null && !['registered', 'parsing', 'parse_failed'].includes(data.doc.status);
+const needsReview = data?.doc.status === 'needs_review';
+const editable = data !== null && data.doc.kind === 'pdf' && parsed;
+const outline = data
+  ? data.doc.outline_override && data.doc.outline_override.length > 0
+    ? data.doc.outline_override
+    : outlineFromTree(data.tree.nodes, data.doc.page_count)
+  : [];
+const facts = data
+  ? [
+      data.doc.kind === 'pdf' ? 'PDF' : 'Article',
+      data.doc.page_count ? `${data.doc.page_count} pages` : null,
+      data.doc.counts.figures ? plural(data.doc.counts.figures, 'figure') : null,
+      data.doc.counts.notes ? plural(data.doc.counts.notes, 'note') : null,
+    ]
+      .filter(Boolean)
+      .join(', ')
+  : '';
+const exportsBase = data ? `/api/exports/${data.doc.slug}` : '';
+---
+
+<BaseLayout title={data?.doc.title ?? 'Document'}>
+  {
+    !data ? (
+      <div class="missing">
+        {!loaded.ok && loaded.notFound ? (
+          <>
+            <h1>Not on the shelf</h1>
+            <p>
+              No document is called “{ref}”. <a href="/library">Back to the library</a>
+            </p>
+          </>
+        ) : (
+          !loaded.ok && <Problem title="The document could not be loaded." problem={loaded.problem} />
+        )}
+      </div>
+    ) : (
+      <article class="document">
+        <header class="title-page">
+          <nav class="crumbs" aria-label="Breadcrumb">
+            <a href="/library">Library</a>
+          </nav>
+          <DocumentHeader
+            client:visible
+            slug={data.doc.slug}
+            initial={{ title: data.doc.title, authors: data.doc.authors, year: data.doc.year, tags: data.doc.tags }}
+            facts={facts}
+          />
+          <div class="primary-actions">
+            {first && parsed && (
+              <a class="read" href={`/documents/${data.doc.slug}/read/${first.anchor}`}>
+                Start reading
+              </a>
+            )}
+            {brief ? (
+              <a class="brief" href={`/documents/${data.doc.slug}/brief`}>
+                {brief.standing === 'approved' ? 'Read the brief' : 'Brief (draft, waiting for review)'}
+              </a>
+            ) : null}
+          </div>
+        </header>
+
+        <div class="columns">
+          <div class="main-col">
+            {needsReview && (
+              <section class="review-banner" aria-labelledby="fix-title">
+                <h2 id="fix-title">Check the chapters before distillation</h2>
+                <p>
+                  This document had no usable table of contents, so its chapters were guessed from headings. Fix the
+                  outline below; it is kept across re-parses.
+                </p>
+              </section>
+            )}
+
+            <section aria-labelledby="contents-title">
+              <h2 id="contents-title" class="section-title">Contents</h2>
+              <Outline
+                client:visible
+                documentId={data.doc.id}
+                slug={data.doc.slug}
+                units={units}
+                statuses={statuses}
+                actionable={parsed}
+              />
+            </section>
+
+            {editable && (
+              <details class="fixup" open={needsReview}>
+                <summary>
+                  <span class="fixup-title">Fix the outline</span>
+                  <span class="fixup-hint">Rename, merge or split chapters and adjust their pages.</span>
+                </summary>
+                <OutlineEditor
+                  client:visible
+                  slug={data.doc.slug}
+                  initial={outline}
+                  pageCount={data.doc.page_count}
+                  hasOverride={Boolean(data.doc.outline_override?.length)}
+                />
+              </details>
+            )}
+          </div>
+
+          <aside class="side-col" aria-label="Pipeline and exports">
+            <PipelineTimeline
+              client:load
+              documentId={data.doc.id}
+              slug={data.doc.slug}
+              initialStatus={data.doc.status}
+              initialJobs={data.jobs}
+            />
+
+            <section aria-labelledby="run-title" class="side-block">
+              <h2 id="run-title" class="side-title">Run again</h2>
+              <DocumentActions client:visible documentId={data.doc.id} kinds={parsed ? ['parse', 'brief'] : ['parse']} />
+            </section>
+
+            <section aria-labelledby="export-title" class="side-block">
+              <h2 id="export-title" class="side-title">Export</h2>
+              <ul class="exports">
+                <li><a href={`${exportsBase}.md`}>Markdown</a> with anchors and approved artifacts</li>
+                <li><a href={`${exportsBase}.json`}>JSON</a> in the render contract</li>
+                <li><a href={`${exportsBase}/tables.csv`}>Tables</a> as CSV</li>
+              </ul>
+            </section>
+
+            <p class="source">
+              {data.doc.source_uri ? <a href={data.doc.source_uri}>Original article</a> : data.doc.source_path}
+            </p>
+          </aside>
+        </div>
+      </article>
+    )
+  }
+</BaseLayout>
+
+<style>
+  .document {
+    display: grid;
+    gap: var(--space-7);
+  }
+
+  .title-page {
+    display: grid;
+    gap: var(--space-5);
+    padding-block-end: var(--space-6);
+    border-block-end: 1px solid var(--rule);
+  }
+
+  .crumbs {
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+  }
+
+  .crumbs a {
+    color: var(--ink-3);
+  }
+
+  .primary-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-4);
+    align-items: center;
+    font-family: var(--font-ui);
+    font-size: var(--text-ui);
+  }
+
+  .read {
+    padding: var(--space-2) var(--space-5);
+    border-radius: var(--radius-m);
+    background: var(--ink);
+    color: var(--paper);
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .read:hover {
+    background: var(--accent);
+  }
+
+  .columns {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 18rem;
+    gap: var(--space-7);
+    align-items: start;
+  }
+
+  .main-col {
+    display: grid;
+    gap: var(--space-6);
+  }
+
+  .section-title {
+    margin-block-end: var(--space-3);
+    font-size: var(--text-lg);
+    font-weight: 500;
+  }
+
+  .review-banner {
+    padding: var(--space-4) var(--space-5);
+    border-inline-start: 3px solid var(--tone-caution);
+    background: color-mix(in oklab, var(--tone-caution) 8%, var(--paper-raised));
+  }
+
+  .review-banner h2 {
+    font-size: var(--text-md);
+  }
+
+  .review-banner p {
+    margin-block-start: var(--space-2);
+    color: var(--ink-2);
+    font-size: var(--text-ui);
+  }
+
+  .fixup {
+    padding: var(--space-4) var(--space-5);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-l);
+    background: var(--paper-raised);
+  }
+
+  .fixup > summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--space-2) var(--space-4);
+    cursor: pointer;
+  }
+
+  .fixup[open] > summary {
+    margin-block-end: var(--space-4);
+  }
+
+  .fixup-title {
+    font-size: var(--text-md);
+    font-weight: 560;
+  }
+
+  .fixup-hint {
+    color: var(--ink-3);
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+  }
+
+  .side-col {
+    position: sticky;
+    inset-block-start: calc(3.5rem + var(--space-5));
+    display: grid;
+    gap: var(--space-6);
+  }
+
+  .side-block {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .side-title {
+    font-size: var(--text-md);
+    font-weight: 560;
+  }
+
+  .exports {
+    display: grid;
+    gap: var(--space-1);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    color: var(--ink-3);
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+  }
+
+  .source {
+    overflow-wrap: anywhere;
+    color: var(--ink-3);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+  }
+
+  .missing {
+    display: grid;
+    gap: var(--space-3);
+  }
+
+  @media (max-width: 56rem) {
+    .columns {
+      grid-template-columns: 1fr;
+    }
+
+    .side-col {
+      position: static;
+      order: -1;
+    }
+  }
+</style>

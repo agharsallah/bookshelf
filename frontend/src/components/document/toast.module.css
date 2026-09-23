@@ -1,0 +1,42 @@
+.region {
+  position: fixed;
+  inset-block-end: var(--space-5);
+  inset-inline-end: var(--space-5);
+  z-index: 60;
+  display: grid;
+  justify-items: end;
+  gap: var(--space-2);
+  max-width: min(24rem, calc(100vw - 2 * var(--space-4)));
+  pointer-events: none;
+}
+
+.toast {
+  padding: var(--space-2) var(--space-4);
+  border-inline-start: 3px solid var(--accent);
+  border-radius: var(--radius-m);
+  background: var(--ink);
+  box-shadow: var(--shadow-lift);
+  color: var(--paper);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  line-height: var(--leading-ui);
+  animation: arrive var(--dur-3) var(--ease-out);
+}
+
+.toast[data-tone='bad'] {
+  border-inline-start-color: var(--tone-important);
+}
+
+@keyframes arrive {
+  from {
+    opacity: 0;
+    translate: 0 0.5rem;
+  }
+}
+
+@media (max-width: 40rem) {
+  .region {
+    inset-inline: var(--space-4);
+    justify-items: stretch;
+  }
+}

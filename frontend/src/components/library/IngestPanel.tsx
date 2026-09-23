@@ -10,7 +10,8 @@ import type { LibraryFile } from '../../lib/api/types/documents';
 import type { JobState } from '../../lib/api/types/jobs';
 import { useJobStream } from '../../lib/hooks/useJobStream';
 import { Problem, problemOf, type ProblemInfo } from '../document/Problem';
-import { formatSize, ingest, isFinished, jobPhrase, type IngestOutcome } from './ingest';
+import { isFinished } from '../../lib/jobs/stream';
+import { formatSize, ingest, jobPhrase, type IngestOutcome } from './ingest';
 import styles from './IngestPanel.module.css';
 
 export interface IngestPanelProps {

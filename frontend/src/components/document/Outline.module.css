@@ -1,0 +1,198 @@
+/* A book's contents page: numbers in the margin, titles in the reading face, pages right. */
+.outline {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chapter {
+  border-block-start: 1px solid var(--rule);
+}
+
+.chapter:last-child {
+  border-block-end: 1px solid var(--rule);
+}
+
+.summary {
+  display: grid;
+  grid-template-columns: 3rem minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  cursor: pointer;
+  list-style: none;
+}
+
+.summary::-webkit-details-marker {
+  display: none;
+}
+
+.summary:hover .title {
+  color: var(--accent);
+}
+
+.number {
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.title {
+  font-size: var(--text-md);
+  line-height: var(--leading-tight);
+  transition: color var(--dur-1) var(--ease-out);
+}
+
+.chapter[data-front] .title {
+  color: var(--ink-3);
+  font-style: italic;
+}
+
+.pages {
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.body {
+  display: grid;
+  gap: var(--space-3);
+  padding: 0 0 var(--space-4) calc(3rem + var(--space-3));
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.chips,
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding: 0.1rem var(--space-3);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-m);
+  color: var(--ink-2);
+}
+
+.chipState {
+  color: var(--ink-3);
+  font-size: var(--text-xs);
+}
+
+.chip[data-standing='approved'] {
+  border-color: color-mix(in oklab, var(--accent) 50%, var(--rule));
+  background: var(--accent-wash);
+}
+
+.chip[data-standing='approved'] .chipState {
+  color: var(--accent);
+}
+
+.chip:is([data-standing='draft'], [data-standing='needs_review']) {
+  border-style: dashed;
+  border-color: var(--tone-caution);
+}
+
+.chip:is([data-standing='draft'], [data-standing='needs_review']) .chipState {
+  color: var(--tone-caution);
+}
+
+.waiting {
+  color: var(--tone-caution);
+}
+
+.actions button,
+.sectionAction {
+  padding: 0.1rem var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-m);
+  background: none;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+.actions button:hover,
+.sectionAction:hover {
+  border-color: var(--rule-strong);
+  color: var(--ink);
+}
+
+.read {
+  margin-inline-end: var(--space-2);
+  padding: 0.1rem var(--space-3);
+  border-radius: var(--radius-m);
+  background: var(--ink);
+  color: var(--paper);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.read:hover {
+  background: var(--accent);
+}
+
+.sections {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.section {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: baseline;
+  gap: var(--space-3);
+  padding: var(--space-1) 0;
+  border-block-start: 1px dotted var(--rule);
+}
+
+.section a {
+  color: var(--ink);
+  font-family: var(--font-read);
+  font-size: var(--text-ui);
+  text-decoration: none;
+}
+
+.section a:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.sectionAction {
+  opacity: 0.55;
+}
+
+.section:hover .sectionAction,
+.sectionAction:focus-visible {
+  opacity: 1;
+}
+
+.empty {
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+}
+
+@media (max-width: 40rem) {
+  .summary {
+    grid-template-columns: 2.25rem minmax(0, 1fr);
+  }
+
+  .summary .pages {
+    grid-column: 2;
+  }
+
+  .body {
+    padding-inline-start: 0;
+  }
+}

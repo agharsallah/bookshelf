@@ -1,0 +1,127 @@
+.header {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.facts {
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.title {
+  max-width: 22em;
+  font-size: clamp(2rem, 5vw, var(--text-2xl));
+  font-weight: 450;
+  letter-spacing: -0.02em;
+}
+
+.authors {
+  color: var(--ink-2);
+  font-size: var(--text-md);
+  font-style: italic;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.year {
+  margin-inline-end: var(--space-2);
+  color: var(--ink-2);
+  font-variant-numeric: oldstyle-nums;
+}
+
+.tag {
+  padding: 0 var(--space-3);
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  color: var(--ink-2);
+  text-decoration: none;
+}
+
+.tag:hover {
+  border-color: var(--accent);
+  color: var(--ink);
+}
+
+.edit,
+.quiet {
+  padding: var(--space-1) var(--space-2);
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font-size: var(--text-sm);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+}
+
+.form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3) var(--space-4);
+  max-width: 44rem;
+  padding: var(--space-5);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-l);
+  background: var(--paper-raised);
+  font-family: var(--font-ui);
+  font-size: var(--text-ui);
+}
+
+.form label {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.form label span {
+  color: var(--ink-3);
+  font-size: var(--text-xs);
+}
+
+.form input {
+  height: 2.25rem;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-m);
+  background: var(--paper);
+}
+
+.wide,
+.buttons,
+.form > [role='alert'] {
+  grid-column: 1 / -1;
+}
+
+.buttons {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.primary {
+  height: 2.25rem;
+  padding: 0 var(--space-4);
+  border: 0;
+  border-radius: var(--radius-m);
+  background: var(--ink);
+  color: var(--paper);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.primary:disabled {
+  opacity: 0.6;
+}
+
+@media (max-width: 40rem) {
+  .form {
+    grid-template-columns: 1fr;
+    padding: var(--space-4);
+  }
+}

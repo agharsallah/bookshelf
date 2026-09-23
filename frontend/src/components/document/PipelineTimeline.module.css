@@ -1,0 +1,187 @@
+.timeline {
+  display: grid;
+  gap: var(--space-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  line-height: var(--leading-ui);
+}
+
+.heading {
+  font-family: var(--font-read);
+  font-size: var(--text-md);
+  font-weight: 560;
+}
+
+.now {
+  color: var(--accent);
+  font-size: var(--text-ui);
+}
+
+.now[data-attention='review'] {
+  color: var(--tone-caution);
+}
+
+.now[data-attention='failed'] {
+  color: var(--tone-important);
+}
+
+/* A ribbon running down the steps; the reached part is inked. */
+.steps {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.step {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 2rem;
+  color: var(--ink-3);
+}
+
+.step::before {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: calc(0.45rem - 1px);
+  width: 2px;
+  background: var(--rule);
+}
+
+.step:first-child::before {
+  inset-block-start: 50%;
+}
+
+.step:last-child::before {
+  inset-block-end: 50%;
+}
+
+.step:is([data-state='done'], [data-state='current'])::before {
+  background: var(--accent);
+}
+
+.step[data-state='current']::before {
+  inset-block-end: 50%;
+}
+
+.dot {
+  position: relative;
+  width: 0.9rem;
+  height: 0.9rem;
+  border: 2px solid var(--rule-strong);
+  border-radius: 50%;
+  background: var(--paper);
+}
+
+.step[data-state='done'] .dot,
+.step[data-state='current'] .dot {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.step[data-state='current'] .label {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.step[data-state='done'] .label {
+  color: var(--ink-2);
+}
+
+.step[data-state='working'] .dot {
+  border-color: var(--accent);
+  animation: pulse 1.4s var(--ease-out) infinite alternate;
+}
+
+.step[data-state='review'] .dot {
+  border-color: var(--tone-caution);
+  background: var(--tone-caution);
+}
+
+.step[data-state='review'] .label {
+  color: var(--tone-caution);
+  font-weight: 600;
+}
+
+.step[data-state='failed'] .dot {
+  border-color: var(--tone-important);
+}
+
+.step[data-state='failed'] .label {
+  color: var(--tone-important);
+}
+
+@keyframes pulse {
+  to {
+    background: var(--accent-wash);
+    box-shadow: 0 0 0 4px var(--accent-wash);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .step[data-state='working'] .dot {
+    animation: none;
+    background: var(--accent-wash);
+  }
+}
+
+.jobs {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding: var(--space-3) 0 0;
+  border-block-start: 1px solid var(--rule);
+  list-style: none;
+}
+
+.job {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0 var(--space-3);
+}
+
+.jobKind {
+  color: var(--ink-2);
+}
+
+.jobAnchor {
+  color: var(--ink-3);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+
+.jobState {
+  color: var(--ink-3);
+}
+
+.job[data-state='running'] .jobState {
+  color: var(--accent);
+}
+
+.job[data-state='failed'] .jobState,
+.jobError {
+  color: var(--tone-important);
+}
+
+.jobError {
+  flex-basis: 100%;
+  overflow-wrap: anywhere;
+  font-size: var(--text-xs);
+}
+
+.quiet {
+  color: var(--ink-3);
+}
+
+.reload button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  text-decoration: underline;
+  cursor: pointer;
+}

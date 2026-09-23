@@ -81,3 +81,8 @@ export function sortedJobs(
     .filter(keep)
     .sort((a, b) => b.created_at.localeCompare(a.created_at));
 }
+
+/** A job that will not change any more. */
+export function isFinished(state: Job['state'] | undefined): boolean {
+  return state === 'done' || state === 'failed' || state === 'skipped';
+}
