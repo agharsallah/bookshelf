@@ -937,21 +937,28 @@ GET    /documents                      list, filter by tag/status/author
 GET    /documents/{id}                 metadata + pipeline state
 GET    /documents/{id}/tree            outline; ?depth=, ?include=blocks
 PATCH  /documents/{id}/outline         manual chapter/section fix-up
+POST   /documents/{id}/outline/confirm accept a guessed outline as is (needs_review → parsed)
+POST   /documents/{id}/resume          lift a run-ceiling pause {max_runs?}
 GET    /documents/{id}/blocks          paginated, ?anchor_prefix=
 
 GET    /nodes/{document_id}/{anchor}   one block or subtree
 
-POST   /notes                          create highlight/note
+POST   /notes                          create highlight (no raw) or note (raw → structure_note)
+PATCH  /notes/{id}                     color; raw once, for a highlight
 GET    /notes?document_id=&anchor=
 
-GET    /artifacts?document_id=&type=&review=&tone=
+GET    /artifacts?document_id=&type=&review=&tone=&latest=
 POST   /artifacts                      human-authored artifact (origin = human)
-POST   /artifacts/{id}/review          approve | reject | edit
-POST   /jobs                           enqueue {kind, document_id, anchor?, force?}
+POST   /artifacts/{id}/review          approve | reject | edit | reopen
+POST   /jobs                           enqueue {kind, document_id, anchor?, skill?, note_id?, force?}
 GET    /jobs?state=&kind=              queue view for the review UI
+GET    /jobs/stream                    SSE: job state changes
+DELETE /jobs/{id}                      cancel a queued job
+POST   /jobs/{id}/retry                re-queue a failed job
 
-POST   /search                         {query, mode?, filters?}  → grouped, cited results
-GET    /concepts?q=                    typeahead
+POST   /search                         {query, mode?, filters?}  → grouped results (+ relations)
+POST   /search/answer                  SSE: cited answer
+GET    /concepts?q=&sort=              typeahead, edge_count
 GET    /graph/neighborhood?node=&depth=
 GET    /exports/{document_id}.md       Markdown bundle
 GET    /exports/{document_id}.json     tree + approved artifacts, render-contract JSON
@@ -1074,3 +1081,29 @@ The design above is a guideline. Where the build diverged, the reason is recorde
 | Qdrant runtime | cluster | `BOOKSHELF_QDRANT_URL` set → cluster; unset → embedded on-disk store in `.qdrant/` | Same code path for dev, tests and production |
 | Frontend writes | browser → API with key | browser → Astro same-origin proxy (`/api/*`) that injects `X-API-Key` server-side | The key never reaches the browser |
 
+| Tier-3 detection | `text_chars_per_page < 200` → OCR | plus page-sized image coverage: a sparse page is OCR'd only when an image covers most of it | Slides and diagram pages are sparse but digital; OCR'ing them destroyed good text (`parse/pdf`) |
+| Outline override | stored override, re-parse | the override *replaces* detected boundaries and clears `needs_review` (a human has decided); one shape for API and parser (`app/schemas/outline.py`: `page_to` optional, `skip`, no overlapping chapters); the re-parse job's `input_hash` comes from the override, and a parse whose override changed meanwhile discards its tree; `POST /documents/{ref}/outline/confirm` accepts a guessed outline unedited | The fix-up loop had to be lossless under concurrency and not force an edit just to say "looks right" |
+| Back matter | — | text after the last override chapter's `page_to` becomes a trailing `Back matter` container marked `skip`; bibliography/index containers are `skip` too and invisible to every selector | Not distilled, not summarized, still readable in the reader |
+| Chapter intros | distil sections, then chapters | leaves directly under a chapter that also has sections get a `section_note` on the chapter's own anchor (rank-isolated: only those leaves); it feeds `chapter_section_notes` first | Otherwise intro paragraphs were in no note at all |
+| Stage barriers | §7 order | element explanations (figure/code/math/table) gate section notes: `distil_section` is queued only once no element job of the document is live (failed or cancelled ones release the barrier too) | Section notes cite element takeaways; running them earlier means paying twice |
+| Forced re-runs | new `input_hash` → new version | `force` re-runs the same input and rejects the previous live artifact for it (the idempotency index allows one) | "never pay twice" stays a database invariant even for deliberate re-runs |
+| Compression gate | length vs. source | output words ÷ words of the scope's *source leaves* (element skills: the element's text or caption), not of the inputs incl. prior artifacts | A chapter distillation built from section notes would otherwise be judged against the notes |
+| Review reopen | approve / reject / edit | plus `reopen` (approved/rejected → draft; 409 if another live row covers the input). Nothing built on the verdict is withdrawn; reopened `concept_links` re-sync the graph; reopened approved content on an indexed document queues `embed` so search (approved only) drops it | Undo without cascading deletes; search and graph never show what a human took back |
+| Superseded versions | append-only versions | list items carry `superseded` (a newer non-rejected version of the scope exists), `GET /artifacts?latest=true` hides them; no schema change | A human edit must retire the draft it replaced from the review queue |
+| Run ceiling | pause the document | `documents.meta.paused = {reason, at, runs, limit}` shown as `paused` on documents; skill jobs of a paused document fail before any model call (`run ceiling reached…`); `POST /documents/{ref}/resume` clears it, sets `meta.run_ceiling`, requeues what it stopped; ceiling failures are not runs | Visible and recoverable instead of a wall of failed jobs |
+| Image paths in inputs | absolute crop path | inputs (and `input_hash`, and `/skills/{name}/inputs`) carry the path relative to `.media/`; only the batch prompt resolves it, and the CLI gets `--add-dir` | `input_hash` must not depend on where the repo is checked out |
+| Plain highlights | every note is structured | `notes.raw` nullable: a highlight without words queues nothing; words may be added once (null → text, trigger-enforced), then D11 applies (migration `20260924000002`) | Highlighting should not cost a model call |
+| Job control | enqueue only | `DELETE /jobs/{id}` cancels a queued job (`skipped`, "cancelled by user"; the pipeline moves on), `POST /jobs/{id}/retry` re-queues a failed one without `force`; `POST /jobs` takes `skill` (derive) and `note_id` (structure_note), whose dedupe keys are `skill:<name>` / `note:<id>` | Re-runs of different skills or notes on one scope must not collapse into one job |
+| Qdrant ownership | API and worker both connect | embedded mode: the **API owns the store** — its lifespan runs `embed` jobs on one background thread (`app/jobs/embedded.py`) and the standalone worker skips `embed` (`--kinds embed` overrides); with `BOOKSHELF_QDRANT_URL` the worker embeds as usual | The embedded store locks its directory to one process |
+| Qdrant availability | collections at startup | collections are ensured on first use; startup never touches Qdrant; `/health/ready` reports `qdrant` separately (`degraded`, not down); vector searches return no groups with `index_state` `empty` / `unavailable`, addressed and lexical never open Qdrant | Search before indexing, or with Qdrant down, is a normal state |
+| Heavy imports | — | `qdrant_client` (which imports fastembed + onnxruntime) loads only on first search / embed; tests hide fastembed entirely | API import 1.3–1.5 s → 0.6 s; onnxruntime's native teardown intermittently aborted the test interpreter (exit 134) |
+| Answer cites | cite anchors | the answer cites `<slug>:<anchor>`; cites outside the evidence set are dropped and reported in `dropped_cites` | One answer spans several books; a bare anchor is ambiguous |
+| Synthesis | `contradicts` edges | `POST /search` (synthesis) returns `relations`: accepted `contradicts` / `supports` / `extends` edges between concepts evidenced in the result documents (≤ 12, contradictions first, evidence as `<slug>:<anchor>`), also given to the answer prompt | The graph's disagreements are exactly what a synthesis question asks for |
+| Concept dedup | inline LLM confirmation | a job riding on `link_concepts` with `payload.mode = "dedup"` (no new JobKind), via the `confirm-merge` utility skill; the verdict (similarity, confidence, rationale, survivor) lives in `edges.meta` on a proposed `same_as` edge | Never run the model inside a request; the proposal carries its own evidence |
+| Concept origin | edge origin only | `concepts.origin` (`human` / `skill`): created, edited, merged or unmerged by a person → `human`, never garbage-collected or re-blurbed by a re-sync | Withdrawing a document's links must not delete human curation (an unmerge used to lose the restored concept) |
+| Graph refs | polymorphic ids | wire refs `concept:<id>`, `node:<document_id>#<anchor>`, `document:<id>`, `artifact:<id>`; node endpoints and evidence stored as `<document_id>#<anchor>` | Anchors survive re-parses, row ids do not |
+| Concept lists | typeahead | `edge_count` (accepted edges, merged concepts folded in) and `sort=alpha|connected|recent`, one query | Find the well-connected concepts to start a walk from |
+| SSE lifetimes | poll `/jobs` | `/jobs/stream` and `/search/answer` end at once when shutdown begins (SIGINT/SIGTERM chained in the lifespan, `app/core/lifecycle.py`); streams are bounded (`max_seconds`, 180 s answer run) | A `fastapi dev` reload otherwise waits for every open stream |
+| URL ingest | fetch with limits | plus an SSRF guard: every request and redirect hop resolves the host and refuses loopback/private/link-local/multicast/reserved/unspecified addresses (IPv4, IPv6, IPv4-mapped) | Ingest by URL must not become a probe into the local network |
+| Re-parse media | — | a re-parse deletes files under `media_dir/<slug>/` no node references any more | Stale crops would otherwise accumulate forever |
+| Library cards | — | `DocumentSummary.blurb`: approved book summary's first paragraph, else the brief's thesis, else the first chapter summary (≤ 280 chars), one query per page | A shelf needs a line per book without N+1 queries |
