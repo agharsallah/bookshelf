@@ -5,10 +5,27 @@ Docs: https://fastapi.tiangolo.com/tutorial/bigger-applications/
 
 from fastapi import APIRouter
 
-from app.api.routes import artifacts, job_events, jobs, skills
+from app.api.routes import (
+    artifacts,
+    documents,
+    exports,
+    job_events,
+    jobs,
+    library,
+    media,
+    nodes,
+    notes,
+    skills,
+)
 
 api_router = APIRouter()
+api_router.include_router(library.router)
+api_router.include_router(documents.router)
+api_router.include_router(nodes.router)
+api_router.include_router(notes.router)
 api_router.include_router(job_events.router)  # before jobs: /jobs/stream vs /jobs/{id}
 api_router.include_router(jobs.router)
+api_router.include_router(exports.router)
+api_router.include_router(media.router)
 api_router.include_router(artifacts.router)
 api_router.include_router(skills.router)
