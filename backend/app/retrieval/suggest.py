@@ -50,7 +50,8 @@ def suggest(session: Session, q: str, *, limit: int = 10) -> list[SuggestItem]:
         .limit(limit)
     ).all()
     docs = [
-        SuggestItem(kind="document", label=d.title, document=document_ref(d)) for d in documents
+        SuggestItem(kind="document", label=d.title, id=d.id, document=document_ref(d))
+        for d in documents
     ]
     heads = [
         SuggestItem(
@@ -58,7 +59,7 @@ def suggest(session: Session, q: str, *, limit: int = 10) -> list[SuggestItem]:
         )
         for n, d in chapters
     ]
-    names = [SuggestItem(kind="concept", label=c.canonical) for c in concepts]
+    names = [SuggestItem(kind="concept", label=c.canonical, id=c.id) for c in concepts]
     # Round-robin, so one kind with many matches cannot crowd out the others.
     merged = [i for i in chain.from_iterable(zip_longest(docs, heads, names)) if i is not None]
     return merged[:limit]

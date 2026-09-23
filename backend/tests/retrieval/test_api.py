@@ -105,6 +105,24 @@ def test_answer_streams_status_hits_and_a_cited_answer(
     assert answer["dropped_cites"] == []
 
 
+def test_suggest_items_carry_the_ids_and_addresses_to_navigate_to(
+    client: TestClient, session: Session, shelf: Shelf
+) -> None:
+    loop = Concept(canonical="feedback loop", kind=ConceptKind.CONCEPT)
+    session.add(loop)
+    session.commit()
+
+    items = client.get(f"{URL}/suggest", params={"q": "feedback"}).json()["items"]
+    [title] = client.get(f"{URL}/suggest", params={"q": "fifth"}).json()["items"]
+
+    chapter, concept = items
+    assert (chapter["document"]["slug"], chapter["anchor"]) == ("meadows-systems", "ch02")
+    assert concept["id"] == str(loop.id)
+    assert (title["id"], title["document"]["slug"]) == (
+        str(shelf.senge.id), "senge-fifth-discipline",
+    )  # fmt: skip
+
+
 def test_suggest_offers_titles_chapters_and_concepts(
     client: TestClient, session: Session, shelf: Shelf
 ) -> None:

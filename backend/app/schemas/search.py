@@ -156,8 +156,12 @@ class ErrorEvent(BaseModel):
 
 
 class SuggestItem(BaseModel):
+    """Documents and chapters carry `document` (id, slug) and chapters their `anchor`;
+    concepts carry `id` (for `/concepts/{id}`), documents their id too."""
+
     kind: Literal["document", "chapter", "concept"]
     label: str
+    id: uuid.UUID | None = None
     document: DocumentRef | None = None
     anchor: str | None = None
 
