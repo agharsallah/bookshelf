@@ -26,3 +26,7 @@ export type * from './types/skills';
 export type * from './types/documents';
 export { CONTAINER_KINDS, DOCUMENT_STATUSES, LEAF_KINDS, isContainer } from './types/documents';
 export type * from './types/notes';
+export type * from './types/search';
+export { INTENTS, SEARCH_MODES } from './types/search';
+export type * from './types/graph';
+export { CONCEPT_KINDS, EDGE_STATUSES, ENTITY_KINDS, RELATIONS } from './types/graph';
