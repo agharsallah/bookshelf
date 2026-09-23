@@ -18,6 +18,7 @@ from app.models.enums import ArtifactType, NodeKind, Review
 from app.retrieval.client import set_client
 from app.retrieval.collections import ensure_collections
 from app.retrieval.embedding import FakeEmbedder, set_embedder
+from app.retrieval.indexing import index_document
 from tests.api.factories import make_artifact, make_document, make_node
 
 
@@ -135,3 +136,13 @@ def build_shelf(session: Session) -> Shelf:
 @pytest.fixture
 def shelf(session: Session) -> Shelf:
     return build_shelf(session)
+
+
+@pytest.fixture
+def indexed(
+    session: Session, shelf: Shelf, embedder: FakeEmbedder, collections: QdrantClient
+) -> Shelf:
+    """The shelf, with both books indexed into the in-memory Qdrant."""
+    for document in (shelf.meadows, shelf.senge):
+        index_document(session, document, embedder=embedder, client=collections)
+    return shelf
