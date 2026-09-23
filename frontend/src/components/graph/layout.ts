@@ -100,11 +100,11 @@ export function createLayout(model: GraphModel, previous: Positions = new Map())
       forceLink<SimNode, SimLink>(links)
         .id((d) => d.id)
         .distance((l) => 70 + 40 * (1 - l.strength))
-        .strength(0.25),
+        .strength(0.12),
     )
-    .force('charge', forceManyBody<SimNode>().strength(-160).distanceMax(RING * 3))
+    .force('charge', forceManyBody<SimNode>().strength(-320).distanceMax(RING * 3))
     .force('collide', forceCollide<SimNode>((d) => d.r + 16).strength(0.9))
-    .force('ring', forceRadial<SimNode>((d) => d.depth * RING, 0, 0).strength((d) => (d.depth === 0 ? 0 : 0.55)))
+    .force('ring', forceRadial<SimNode>((d) => d.depth * RING, 0, 0).strength((d) => (d.depth === 0 ? 0 : 0.8)))
     .stop();
   // Carried-over nodes are already placed: start cooler so they drift, not jump.
   if (previous.size > 0) simulation.alpha(0.5);
@@ -125,6 +125,24 @@ export function settle(layout: Layout, maxTicks = 600): number {
 
 export function positionsOf(layout: Layout): Map<string, { x: number; y: number }> {
   return new Map(layout.nodes.map((n) => [n.id, { x: n.x, y: n.y }]));
+}
+
+/**
+ * Starting spots for a new model: known positions as they are, and each unseen node
+ * next to the first known neighbour it has, fanned out a little by its index, so new
+ * nodes grow out of the node that brought them in rather than dropping in from nowhere.
+ */
+export function seedPositions(model: GraphModel, known: Positions): Map<string, { x: number; y: number }> {
+  const out = new Map(known);
+  model.nodes.forEach((node, i) => {
+    if (out.has(node.id)) return;
+    const edge = model.edges.find((e) => (e.source === node.id && known.has(e.target)) || (e.target === node.id && known.has(e.source)));
+    const anchor = edge ? known.get(edge.source === node.id ? edge.target : edge.source) : undefined;
+    if (!anchor) return;
+    const angle = i * GOLDEN;
+    out.set(node.id, { x: anchor.x + Math.cos(angle) * 18, y: anchor.y + Math.sin(angle) * 18 });
+  });
+  return out;
 }
 
 /**

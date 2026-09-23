@@ -1,0 +1,67 @@
+---
+/**
+ * One neighbourhood of the idea graph (§11): `/graph/<kind>/<id>` (a passage is
+ * `/graph/node/<document_id>/<anchor…>`), with `?depth=2&proposed=1`. The first
+ * neighbourhood is loaded here so the canvas draws on arrival; the island takes over
+ * re-focusing, depth and the evidence panel.
+ */
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import GraphExplorer from '../../components/graph/GraphExplorer';
+import { Problem, problemOf, type ProblemInfo } from '../../components/document/Problem';
+import { refFromPath, viewFromParams } from '../../components/graph/refs';
+import { ApiError } from '../../lib/api/errors';
+import type { Neighborhood } from '../../lib/api/types/graph';
+import { serverApi } from '../../lib/api/server';
+
+export const prerender = false;
+
+const ref = refFromPath(Astro.params.node ?? '');
+if (!ref) return Astro.redirect('/graph');
+const view = viewFromParams(Astro.url.searchParams);
+
+let hood: Neighborhood | null = null;
+let problem: ProblemInfo | null = null;
+let missing = false;
+try {
+  hood = await serverApi().get<Neighborhood>('graph/neighborhood', {
+    query: { node: ref, depth: view.depth, include_proposed: view.proposed },
+  });
+} catch (error) {
+  missing = error instanceof ApiError && error.status === 404;
+  problem = problemOf(error);
+}
+if (missing) Astro.response.status = 404;
+const label = hood?.nodes.find((n) => n.id === hood?.focus)?.label ?? 'Graph';
+---
+
+<BaseLayout title={label} description="One idea and what it connects to across your books.">
+  {
+    hood ? (
+      <GraphExplorer client:load focus={hood.focus} view={view} initial={hood} />
+    ) : (
+      <div class="missing">
+        <h1>{missing ? 'Nothing here to connect' : 'Graph'}</h1>
+        {missing ? (
+          <p>
+            This node is not in the graph: it may have been merged, or its book parsed again. Find it from the{' '}
+            <a href="/graph">concept index</a>.
+          </p>
+        ) : (
+          problem && <Problem title="The neighbourhood could not be loaded." problem={problem} />
+        )}
+      </div>
+    )
+  }
+</BaseLayout>
+
+<style>
+  .missing {
+    display: grid;
+    gap: var(--space-4);
+    max-inline-size: var(--measure);
+  }
+
+  h1 {
+    font-size: var(--text-xl);
+  }
+</style>
