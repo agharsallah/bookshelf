@@ -1,0 +1,72 @@
+---
+/**
+ * The pipeline (§7): what the worker is doing, per document and per job. The latest jobs
+ * are loaded here; the island keeps them live over `/jobs/stream`.
+ * `?document=<id>` opens it filtered to one document.
+ */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { Problem, problemOf, type ProblemInfo } from '../components/document/Problem';
+import { PipelineView } from '../components/pipeline/PipelineView';
+import { loadDocuments, type DocumentLabel } from '../components/review/api';
+import type { Page } from '../lib/api/types';
+import type { JobPublic } from '../lib/api/types/jobs';
+import { serverApi } from '../lib/api/server';
+
+export const prerender = false;
+
+const PAGES = 3;
+const api = serverApi();
+const documentFilter = Astro.url.searchParams.get('document') ?? '';
+
+let documents: DocumentLabel[] = [];
+let problem: ProblemInfo | null = null;
+
+const pages = await Promise.allSettled(
+  Array.from({ length: PAGES }, (_, i) => api.get<Page<JobPublic>>('jobs', { query: { limit: 100, offset: i * 100 } })),
+);
+const firstPage = pages[0];
+if (firstPage?.status === 'rejected') problem = problemOf(firstPage.reason);
+const jobs: JobPublic[] = pages.flatMap((p) => (p.status === 'fulfilled' ? p.value.items : []));
+const docs = await Promise.allSettled([loadDocuments(api)]);
+if (docs[0]?.status === 'fulfilled') documents = docs[0].value;
+---
+
+<BaseLayout title="Pipeline" description="What the pipeline is doing, live.">
+  <div class="page">
+    <header class="head">
+      <h1>Pipeline</h1>
+      <p class="lede">
+        Parse, enrich, distil, brief, index, link, derive. Each document moves through the stages on its own; failures
+        wait here with their error until you retry them.
+      </p>
+    </header>
+    {
+      problem ? (
+        <Problem title="The job queue could not be loaded." problem={problem} />
+      ) : (
+        <PipelineView client:load jobs={jobs} documents={documents} initialFilters={{ document: documentFilter }} />
+      )
+    }
+  </div>
+</BaseLayout>
+
+<style>
+  .page {
+    display: grid;
+    gap: var(--space-5);
+  }
+
+  .head {
+    display: grid;
+    gap: var(--space-2);
+    max-inline-size: var(--measure);
+  }
+
+  h1 {
+    font-size: var(--text-xl);
+  }
+
+  .lede {
+    color: var(--ink-2);
+  }
+</style>
