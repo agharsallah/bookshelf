@@ -15,6 +15,7 @@ from app.api.routes import (
     media,
     nodes,
     notes,
+    search,
     skills,
 )
 
@@ -29,3 +30,4 @@ api_router.include_router(exports.router)
 api_router.include_router(media.router)
 api_router.include_router(artifacts.router)
 api_router.include_router(skills.router)
+api_router.include_router(search.router)
