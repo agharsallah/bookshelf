@@ -39,13 +39,13 @@ export function pointOffset(root: Element, node: Node, offset: number): number |
   }
 
   // An element boundary or text outside any run: snap to the first run at or after it.
-  const point = node.ownerDocument!.createRange();
+  const point = (node.ownerDocument ?? document).createRange();
   point.setStart(node, offset);
   for (const run of all) {
     if (point.comparePoint(run, 0) >= 0) return runStart(run);
   }
-  const last = all.at(-1)!;
-  return runStart(last) + runLength(last);
+  const last = all[all.length - 1];
+  return last ? runStart(last) + runLength(last) : null;
 }
 
 /** The selection as a range over the block's text; null when it is empty or leaves the block. */

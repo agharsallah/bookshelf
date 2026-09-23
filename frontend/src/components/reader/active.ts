@@ -20,7 +20,7 @@ export function pickActive(boxes: readonly BlockBox[], line: number): string | n
   const crossing = sorted.find((b) => b.top <= line && b.bottom > line);
   if (crossing) return crossing.anchor;
   const above = sorted.filter((b) => b.top <= line).at(-1);
-  return (above ?? sorted[0]!).anchor;
+  return (above ?? sorted[0])?.anchor ?? null;
 }
 
 /** Reading line: a third of the way down, never below 12rem-ish on tall screens. */

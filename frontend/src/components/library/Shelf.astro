@@ -1,0 +1,62 @@
+---
+/**
+ * The shelf: documents stand as spines in rows, each row resting on a plank. Rows
+ * have a fixed height so the planks can be drawn as one repeating background.
+ */
+import type { DocumentSummary } from '../../lib/api/types/documents';
+import Spine from './Spine.astro';
+
+interface Props {
+  documents: DocumentSummary[];
+  label: string;
+}
+
+const { documents, label } = Astro.props;
+---
+
+<ul class="shelf" aria-label={label}>
+  {documents.map((doc, index) => <Spine doc={doc} index={index} />)}
+</ul>
+
+<style>
+  .shelf {
+    --row: 17rem;
+    --plank: 0.8rem;
+    --gap: 2.25rem;
+    --plank-top: light-dark(#c9b58f, #3a3226);
+    --plank-face: light-dark(#a88f64, #2a241b);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: var(--gap) 3px;
+    margin: 0;
+    padding: 0 var(--space-3) var(--plank);
+    background: repeating-linear-gradient(
+      to bottom,
+      transparent 0 var(--row),
+      var(--plank-top) var(--row) calc(var(--row) + 0.2rem),
+      var(--plank-face) calc(var(--row) + 0.2rem) calc(var(--row) + var(--plank)),
+      rgb(0 0 0 / 0.08) calc(var(--row) + var(--plank)) calc(var(--row) + var(--plank) + 0.35rem),
+      transparent calc(var(--row) + var(--plank) + 0.35rem) calc(var(--row) + var(--gap))
+    );
+  }
+
+  .shelf > :global(li) {
+    height: var(--row);
+  }
+
+  @media (max-width: 40rem) {
+    .shelf {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 2px;
+      padding: 0 0 var(--plank);
+      background: none;
+      border-block-end: var(--plank) solid var(--plank-face);
+    }
+
+    .shelf > :global(li) {
+      height: auto;
+    }
+  }
+</style>

@@ -1,0 +1,115 @@
+---
+/**
+ * The library: every document standing on a shelf, filtered by query params
+ * (tag, status, author, q), with the ingest desk in front of it.
+ */
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import EmptyShelf from '../../components/library/EmptyShelf.astro';
+import FilterBar from '../../components/library/FilterBar.astro';
+import IngestPanel from '../../components/library/IngestPanel';
+import Shelf from '../../components/library/Shelf.astro';
+import { documentsQuery, hasFilters, parseFilters, tagCloud } from '../../components/library/filters';
+import { plural } from '../../components/library/spine';
+import { Problem, problemOf, type ProblemInfo } from '../../components/document/Problem';
+import type { Page } from '../../lib/api/types';
+import type { DocumentSummary, LibraryFile } from '../../lib/api/types/documents';
+import { serverApi } from '../../lib/api/server';
+
+export const prerender = false;
+
+const api = serverApi();
+const filters = parseFilters(Astro.url.searchParams);
+const filtered = hasFilters(filters);
+
+let documents: DocumentSummary[] = [];
+let total = 0;
+let everything: DocumentSummary[] = [];
+let problem: ProblemInfo | null = null;
+let files: LibraryFile[] | null = null;
+let filesProblem: ProblemInfo | null = null;
+
+const [shown, all, pending] = await Promise.allSettled([
+  api.get<Page<DocumentSummary>>('documents', { query: documentsQuery(filters) }),
+  // Tags come from the whole shelf, so a filtered view can still switch tags.
+  filtered ? api.get<Page<DocumentSummary>>('documents', { query: { limit: 100 } }) : Promise.resolve(null),
+  api.get<Page<LibraryFile>>('library', { query: { limit: 100 } }),
+]);
+
+if (shown.status === 'fulfilled') {
+  documents = shown.value.items;
+  total = shown.value.total;
+  everything = all.status === 'fulfilled' && all.value ? all.value.items : documents;
+} else {
+  problem = problemOf(shown.reason);
+}
+if (pending.status === 'fulfilled') files = pending.value.items;
+else filesProblem = problemOf(pending.reason);
+
+const tags = tagCloud(everything);
+const summary = filtered
+  ? `${plural(total, 'document')} match`
+  : total === 0
+    ? 'Nothing here yet'
+    : `${plural(total, 'document')} on the shelf`;
+---
+
+<BaseLayout title="Library" description="Every book and article on your shelf.">
+  <div class="library">
+    <header class="head">
+      <h1>Library</h1>
+      <p class="summary" aria-live="polite">{summary}</p>
+    </header>
+
+    <IngestPanel client:idle initialFiles={files} initialProblem={filesProblem} />
+
+    {problem ? (
+      <Problem title="The shelf could not be loaded." problem={problem} />
+    ) : (
+      <>
+        {(total > 0 || filtered) && <FilterBar filters={filters} tags={tags} />}
+        {documents.length > 0 ? (
+          <Shelf documents={documents} label={filtered ? 'Matching documents' : 'All documents'} />
+        ) : (
+          <EmptyShelf filtered={filtered} />
+        )}
+        {total > documents.length && (
+          <p class="more">Showing the first {documents.length} of {total}. Narrow the filters to find the rest.</p>
+        )}
+      </>
+    )}
+  </div>
+</BaseLayout>
+
+<style>
+  .library {
+    display: grid;
+    gap: var(--space-6);
+  }
+
+  .head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-2) var(--space-5);
+  }
+
+  h1 {
+    font-size: var(--text-2xl);
+    font-weight: 450;
+    letter-spacing: -0.02em;
+  }
+
+  .summary,
+  .more {
+    color: var(--ink-3);
+    font-family: var(--font-ui);
+    font-size: var(--text-ui);
+  }
+
+  @media (max-width: 40rem) {
+    h1 {
+      font-size: var(--text-xl);
+    }
+  }
+</style>

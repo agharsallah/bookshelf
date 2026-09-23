@@ -1,0 +1,36 @@
+.problem {
+  max-width: 40rem;
+  padding: var(--space-4) var(--space-5);
+  border-inline-start: 3px solid var(--tone-important);
+  border-radius: 0 var(--radius-m) var(--radius-m) 0;
+  background: color-mix(in oklab, var(--tone-important) 7%, var(--paper-raised));
+  font-family: var(--font-ui);
+  font-size: var(--text-ui);
+  line-height: var(--leading-ui);
+}
+
+.inline {
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+}
+
+.title {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.message {
+  margin-block-start: var(--space-1);
+  color: var(--ink-2);
+}
+
+.hint,
+.request {
+  margin-block-start: var(--space-2);
+  color: var(--ink-3);
+  font-size: var(--text-sm);
+}
+
+.request code {
+  user-select: all;
+}

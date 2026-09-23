@@ -34,10 +34,9 @@ export function segment(length: number, marks: readonly Mark[]): Segment[] {
   }
   const points = [...cuts].sort((a, b) => a - b);
   const out: Segment[] = [];
-  for (let i = 0; i < points.length - 1; i += 1) {
-    const start = points[i]!;
-    const end = points[i + 1]!;
-    if (end <= start) continue;
+  points.slice(1).forEach((end, i) => {
+    const start = points[i] ?? end;
+    if (end <= start) return;
     const covering = valid.filter((m) => m.start <= start && m.end >= end);
     const previous = out.at(-1);
     if (previous && previous.marks.length === 0 && covering.length === 0) {
@@ -45,7 +44,7 @@ export function segment(length: number, marks: readonly Mark[]): Segment[] {
     } else {
       out.push({ start, end, marks: covering });
     }
-  }
+  });
   return out;
 }
 
