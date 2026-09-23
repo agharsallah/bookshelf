@@ -23,3 +23,6 @@ export { ARTIFACT_TYPES, REVIEW_STATES, TIERS } from './types/artifacts';
 export type * from './types/jobs';
 export { JOB_KINDS, JOB_STATES } from './types/jobs';
 export type * from './types/skills';
+export type * from './types/documents';
+export { CONTAINER_KINDS, DOCUMENT_STATUSES, LEAF_KINDS, isContainer } from './types/documents';
+export type * from './types/notes';
