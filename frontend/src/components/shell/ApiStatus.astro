@@ -1,0 +1,56 @@
+---
+/**
+ * Footer indicator for the backend. Checked from the browser through the /api proxy,
+ * so static pages stay static and the result reflects the reader's connection.
+ */
+---
+
+<p class="api-status" data-api-status="checking" role="status">
+  <span class="dot" aria-hidden="true"></span>
+  <span data-api-status-text>Checking the API…</span>
+</p>
+
+<script>
+  import { browserApi, type Health } from '../../lib/api';
+  import { describeHealth } from '../../lib/api/health';
+
+  const el = document.querySelector<HTMLElement>('[data-api-status]');
+  const text = el?.querySelector<HTMLElement>('[data-api-status-text]');
+  if (el && text) {
+    browserApi
+      .get<Health>('health')
+      .then((health) => describeHealth(health))
+      .catch((error: unknown) => describeHealth(error))
+      .then(({ state, message }) => {
+        el.dataset.apiStatus = state;
+        text.textContent = message;
+      });
+  }
+</script>
+
+<style>
+  .api-status {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-family: var(--font-ui);
+    font-size: var(--text-xs);
+    color: var(--ink-3);
+  }
+
+  .dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: var(--rule-strong);
+  }
+
+  [data-api-status='up'] .dot {
+    background: var(--tone-insight);
+  }
+
+  [data-api-status='down'] .dot {
+    background: transparent;
+    border: 1.5px solid var(--tone-important);
+  }
+</style>

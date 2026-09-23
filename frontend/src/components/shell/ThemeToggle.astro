@@ -1,0 +1,70 @@
+---
+/**
+ * Light/dark switch. The bootstrap in BaseLayout has already applied the theme
+ * before paint; this only flips and persists it.
+ */
+---
+
+<button class="theme-toggle" type="button" data-theme-toggle aria-label="Switch to dark theme">
+  <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true">
+    <circle class="disc" cx="10" cy="10" r="6.25"></circle>
+    <path class="half" d="M10 3.75a6.25 6.25 0 0 1 0 12.5z"></path>
+  </svg>
+</button>
+
+<script>
+  import { currentTheme, setTheme, THEME_CHANGE_EVENT } from '../../lib/theme';
+
+  function sync(button: HTMLButtonElement) {
+    const next = currentTheme() === 'dark' ? 'light' : 'dark';
+    button.setAttribute('aria-label', `Switch to ${next} theme`);
+    button.title = `Switch to ${next} theme`;
+  }
+
+  for (const button of document.querySelectorAll<HTMLButtonElement>('[data-theme-toggle]')) {
+    sync(button);
+    button.addEventListener('click', () => {
+      setTheme(currentTheme() === 'dark' ? 'light' : 'dark');
+    });
+    window.addEventListener(THEME_CHANGE_EVENT, () => sync(button));
+  }
+</script>
+
+<style>
+  .theme-toggle {
+    display: inline-grid;
+    place-items: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border: 1px solid transparent;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--ink-2);
+    cursor: pointer;
+    transition:
+      color var(--dur-1) var(--ease-out),
+      border-color var(--dur-1) var(--ease-out);
+  }
+
+  .theme-toggle:hover {
+    color: var(--ink);
+    border-color: var(--rule);
+  }
+
+  .disc {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.5;
+  }
+
+  /* A half-inked disc; it turns over when the theme flips. */
+  .half {
+    fill: currentColor;
+    transform-origin: 10px 10px;
+    transition: rotate var(--dur-3) var(--ease-out);
+  }
+
+  :global(:root[data-theme='dark']) .half {
+    rotate: 180deg;
+  }
+</style>
