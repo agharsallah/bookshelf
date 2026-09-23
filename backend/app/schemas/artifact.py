@@ -46,6 +46,10 @@ class ArtifactListItem(ArtifactPublic):
         list[dict[str, Any]] | None,
         Field(description="With `?tone=`: the callout blocks of that tone inside `body`."),
     ] = None
+    superseded: Annotated[
+        bool,
+        Field(description="A newer non-rejected version of this scope exists (e.g. an edit)."),
+    ] = False
 
 
 class ArtifactCreate(BaseModel):

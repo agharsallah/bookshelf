@@ -9,8 +9,9 @@ import uuid
 from typing import Any
 
 from fastapi import APIRouter, Depends, Query, status
-from sqlalchemy import cast, func, literal, or_
+from sqlalchemy import cast, exists, func, literal, or_
 from sqlalchemy.dialects.postgresql import JSONPATH
+from sqlalchemy.orm import aliased
 from sqlmodel import col, select
 
 from app.api.deps import LimitDep, OffsetDep, SessionDep
@@ -37,6 +38,19 @@ router = APIRouter(prefix="/artifacts", tags=["artifacts"])
 _TONE_PATH = 'strict $.** ? (@.type == "callout" && @.tone == $tone)'
 
 
+_Newer = aliased(Artifact)
+# A newer live (non-rejected) version of the same scope exists: e.g. a human edit, or a
+# re-run. Scope = (document, anchor, type, note), so two notes on one anchor stay apart.
+SUPERSEDED = exists().where(
+    col(_Newer.document_id) == col(Artifact.document_id),
+    col(_Newer.type) == col(Artifact.type),
+    col(_Newer.anchor).is_not_distinct_from(Artifact.anchor),
+    col(_Newer.note_id).is_not_distinct_from(Artifact.note_id),
+    col(_Newer.version) > col(Artifact.version),
+    col(_Newer.review) != Review.REJECTED,
+)
+
+
 def _get(session: SessionDep, artifact_id: uuid.UUID) -> Artifact:
     artifact = session.get(Artifact, artifact_id)
     if artifact is None:
@@ -58,7 +72,13 @@ def list_artifacts(
     anchor_prefix: str | None = Query(
         default=None, max_length=200, pattern=r"^[a-z]+[0-9]+(/[a-z]+[0-9]+)*$"
     ),
+    latest: bool = Query(
+        default=False,
+        description="Hide superseded rows: only versions no newer live version replaces.",
+    ),
 ) -> Page[ArtifactListItem]:
+    """Newest first. Each item says whether it is `superseded` by a newer live version of
+    its scope; `?latest=true&review=draft` is the work still to do."""
     filters: list[Any] = []
     if document_id is not None:
         filters.append(Artifact.document_id == document_id)
@@ -73,19 +93,23 @@ def list_artifacts(
     tone_vars = func.jsonb_build_object("tone", tone)
     if tone is not None:
         filters.append(func.jsonb_path_exists(Artifact.body, path, tone_vars))
+    if latest:
+        filters.append(~SUPERSEDED)
 
     total = session.exec(select(func.count()).select_from(Artifact).where(*filters)).one()
     matched = func.jsonb_path_query_array(Artifact.body, path, tone_vars) if tone else literal(None)
     rows = session.exec(
-        select(Artifact, matched)
+        select(Artifact, matched, SUPERSEDED.label("superseded"))
         .where(*filters)
         .order_by(col(Artifact.created_at).desc(), col(Artifact.version).desc())
         .offset(offset)
         .limit(limit)
     ).all()
     items = [
-        ArtifactListItem.model_validate(artifact).model_copy(update={"matched_blocks": blocks})
-        for artifact, blocks in rows
+        ArtifactListItem.model_validate(artifact).model_copy(
+            update={"matched_blocks": blocks, "superseded": superseded}
+        )
+        for artifact, blocks, superseded in rows
     ]
     return Page(items=items, total=int(total), limit=limit, offset=offset)
 
