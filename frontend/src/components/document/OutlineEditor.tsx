@@ -1,27 +1,32 @@
 /**
- * Outline fix-up editor (§8): rename, merge and split chapters, adjust page ranges
- * and add sections, then `PATCH /documents/{ref}/outline`. The override survives
- * re-parsing; saving queues a forced parse. Problems are checked as you type with
- * the backend's own rules, so a save is only offered for an outline it will accept.
+ * Outline fix-up editor (§8): rename, merge and split chapters, adjust page ranges,
+ * skip chapters and add sections, then `PATCH /documents/{ref}/outline`. The override
+ * survives re-parsing; saving queues a forced parse. Problems are checked as you type
+ * with the backend's own rules, so a save is only offered for an outline it will
+ * accept. While the outline waits for review, "Outline looks right" accepts the guess
+ * unedited (`POST /documents/{ref}/outline/confirm`) and starts the pipeline.
  */
 import { useMemo, useState } from 'react';
-import { browserApi } from '../../lib/api/client';
-import type { DocumentAccepted, OutlineChapter } from '../../lib/api/types/documents';
+import { browserApi, type ApiClient } from '../../lib/api/client';
+import type { DocumentAccepted, OutlineChapter, OutlineConfirmed } from '../../lib/api/types/documents';
 import { ChapterRow } from './OutlineChapterRow';
 import {
   addSection,
   mergeWithNext,
   removeChapter,
   removeSection,
+  effectiveEnd,
   rename,
+  sameOutline,
   setPages,
+  setSkip,
   split,
   toPayload,
   updateSection,
   validate,
   type Outline,
 } from './outline-model';
-import { Problem, problemOf, type ProblemInfo } from './Problem';
+import { Problem, problemOf, type ProblemInfo } from '../common/Problem';
 import { toast } from './toast';
 import styles from './OutlineEditor.module.css';
 
@@ -31,29 +36,32 @@ export interface OutlineEditorProps {
   pageCount: number | null;
   /** True when an override is already stored (it can be removed). */
   hasOverride: boolean;
+  /** The outline was guessed and waits for a human (document status `needs_review`). */
+  needsReview?: boolean;
+  api?: Pick<ApiClient, 'patch' | 'post'>;
 }
 
-export function OutlineEditor({ slug, initial, pageCount, hasOverride }: OutlineEditorProps) {
+export function OutlineEditor({ slug, initial, pageCount, hasOverride, needsReview = false, api = browserApi }: OutlineEditorProps) {
   const [outline, setOutline] = useState<Outline>(initial);
   const [saving, setSaving] = useState(false);
   const [problem, setProblem] = useState<ProblemInfo | null>(null);
-  const [saved, setSaved] = useState(false);
+  const [saved, setSaved] = useState<'saved' | 'confirmed' | null>(null);
   const problems = useMemo(() => validate(outline, pageCount), [outline, pageCount]);
-  const dirty = JSON.stringify(outline) !== JSON.stringify(initial);
+  const dirty = !sameOutline(outline, initial);
   const invalid = new Set(problems.map((p) => p.chapter));
 
   const edit = (next: Outline) => {
     setOutline(next);
-    setSaved(false);
+    setSaved(null);
   };
 
-  const send = async (chapters: Outline, message: string) => {
+  const attempt = async (work: () => Promise<unknown>, message: string, done: 'saved' | 'confirmed') => {
     setSaving(true);
     setProblem(null);
     try {
-      await browserApi.patch<DocumentAccepted>(`documents/${slug}/outline`, { chapters });
+      await work();
       toast(message, 'good');
-      setSaved(true);
+      setSaved(done);
     } catch (error) {
       setProblem(problemOf(error));
     } finally {
@@ -61,14 +69,31 @@ export function OutlineEditor({ slug, initial, pageCount, hasOverride }: Outline
     }
   };
 
+  const send = (chapters: Outline, message: string) =>
+    attempt(() => api.patch<DocumentAccepted>(`documents/${slug}/outline`, { chapters }), message, 'saved');
+
+  const confirm = () =>
+    attempt(() => api.post<OutlineConfirmed>(`documents/${slug}/outline/confirm`), 'Outline accepted. Distillation is starting.', 'confirmed');
+
   const addChapter = () => {
     const last = outline.at(-1);
-    const start = last ? Math.min(last.page_to, pageCount ?? last.page_to) : 1;
-    edit([...outline, { title: 'New chapter', page_from: start, page_to: pageCount ?? start, sections: [] }]);
+    const after = last ? (last.page_to ?? last.page_from) : 1;
+    const start = pageCount !== null ? Math.min(after, pageCount) : after;
+    edit([...outline, { title: 'New chapter', page_from: start, page_to: null, sections: [] }]);
   };
+
+  const confirmable = needsReview && !dirty && saved === null;
 
   return (
     <div className={styles.editor}>
+      {confirmable ? (
+        <div className={styles.confirm}>
+          <p>If the chapters below match the book, accept them as they are; nothing is re-parsed.</p>
+          <button type="button" className={styles.primary} disabled={saving} onClick={() => void confirm()}>
+            {saving ? 'Confirming…' : 'Outline looks right'}
+          </button>
+        </div>
+      ) : null}
       <ol className={styles.chapters}>
         {outline.map((chapter, index) => (
           <ChapterRow
@@ -77,8 +102,10 @@ export function OutlineEditor({ slug, initial, pageCount, hasOverride }: Outline
             chapter={chapter}
             isLast={index === outline.length - 1}
             invalid={invalid.has(index)}
+            end={effectiveEnd(outline, index, pageCount)}
             onTitle={(title) => edit(rename(outline, index, title))}
             onPages={(pages) => edit(setPages(outline, index, pages))}
+            onSkip={(skip) => edit(setSkip(outline, index, skip))}
             onMerge={() => edit(mergeWithNext(outline, index))}
             onSplit={(page, title) => edit(split(outline, index, page, title))}
             onRemove={() => edit(removeChapter(outline, index))}
@@ -132,7 +159,8 @@ export function OutlineEditor({ slug, initial, pageCount, hasOverride }: Outline
             Go back to the parsed outline
           </button>
         ) : null}
-        {saved ? <span className={styles.saved}>Saved. The pipeline above shows the re-parse.</span> : null}
+        {saved === 'saved' ? <span className={styles.saved}>Saved. The pipeline shows the re-parse.</span> : null}
+        {saved === 'confirmed' ? <span className={styles.saved}>Accepted. The pipeline shows what it queued.</span> : null}
       </div>
     </div>
   );

@@ -10,11 +10,11 @@ import DocumentHeader from '../../../components/document/DocumentHeader';
 import Outline from '../../../components/document/Outline';
 import OutlineEditor from '../../../components/document/OutlineEditor';
 import PipelineTimeline from '../../../components/document/PipelineTimeline';
-import { Problem } from '../../../components/document/Problem';
+import { Problem } from '../../../components/common/Problem';
 import { outlineFromTree } from '../../../components/document/outline-model';
 import { plural } from '../../../components/library/spine';
 import type { Page } from '../../../lib/api/types';
-import type { Job } from '../../../lib/api/types/jobs';
+import type { JobPublic } from '../../../lib/api/types/jobs';
 import { chapterStatus, pickBest, type ChapterStatus } from '../../../lib/documents/artifacts';
 import { getArtifacts, getDocument, getOutline, load } from '../../../lib/documents/server';
 import { defaultUnit, readingUnits } from '../../../lib/documents/tree';
@@ -28,7 +28,7 @@ const loaded = await load(async () => {
   const [tree, artifacts, jobs] = await Promise.all([
     getOutline(doc.slug),
     getArtifacts(doc.id),
-    serverApi().get<Page<Job>>('jobs', { query: { document_id: doc.id, limit: 20 } }),
+    serverApi().get<Page<JobPublic>>('jobs', { query: { document_id: doc.id, limit: 20 } }),
   ]);
   return { doc, tree, artifacts, jobs: jobs.items };
 });
@@ -110,7 +110,7 @@ const exportsBase = data ? `/api/exports/${data.doc.slug}` : '';
                 <h2 id="fix-title">Check the chapters before distillation</h2>
                 <p>
                   This document had no usable table of contents, so its chapters were guessed from headings. Fix the
-                  outline below; it is kept across re-parses.
+                  outline below (it is kept across re-parses), or confirm it there if the guess is right.
                 </p>
               </section>
             )}
@@ -139,6 +139,7 @@ const exportsBase = data ? `/api/exports/${data.doc.slug}` : '';
                   initial={outline}
                   pageCount={data.doc.page_count}
                   hasOverride={Boolean(data.doc.outline_override?.length)}
+                  needsReview={needsReview}
                 />
               </details>
             )}

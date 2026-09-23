@@ -67,7 +67,20 @@
   font-variant-numeric: tabular-nums;
 }
 
-.editor input {
+.skipField {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--ink-3);
+  cursor: pointer;
+}
+
+.chapter[data-skip] .titleField input {
+  color: var(--ink-3);
+  font-style: italic;
+}
+
+.editor input:not([type='checkbox']) {
   height: 2rem;
   padding: 0 var(--space-2);
   border: 1px solid var(--rule-strong);
@@ -173,6 +186,21 @@
 
 .saved {
   color: var(--accent);
+}
+
+.confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-m);
+  background: var(--paper-sunken);
+}
+
+.confirm p {
+  flex: 1 1 16rem;
+  color: var(--ink-2);
 }
 
 @media (max-width: 40rem) {
