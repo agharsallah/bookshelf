@@ -81,6 +81,26 @@ def test_document_without_elements_goes_straight_to_section_notes(session, make_
     assert status(session, doc) is DocumentStatus.DISTILLING
 
 
+@pytest.mark.parametrize(("words", "distilled"), [(6, False), (200, True)])
+def test_thin_front_matter_is_not_distilled_but_a_real_preface_is(
+    session, make_job, words, distilled
+):
+    doc = add_document(session)
+    front = [
+        ("fm01", NodeKind.CHAPTER, "Front matter", {"front_matter": True}),
+        ("fm01/p001", NodeKind.PARAGRAPH, " ".join(["word"] * words), {}),
+    ]
+    plain = [n for n in BOOK if n[1] not in (NodeKind.FIGURE, NodeKind.CODE)]
+    add_nodes(session, doc, front + plain)
+
+    orchestrator.on_job_done(session, finish(session, make_job(JobKind.PARSE, doc)))
+
+    jobs = queued(session)
+    assert ((JobKind.SUMMARIZE, "fm01") in jobs) is distilled
+    assert ((JobKind.DISTIL_SECTION, "fm01") in jobs) is distilled
+    assert (JobKind.SUMMARIZE, "ch01") in jobs
+
+
 def test_a_guessed_outline_blocks_the_pipeline(session, make_job):
     doc = add_document(session, status=DocumentStatus.NEEDS_REVIEW)
     add_nodes(session, doc, BOOK)

@@ -18,6 +18,10 @@ from app.models.enums import NodeKind
 
 _BLOCK_META = ("table", "header", "rows", "caption", "language", "latex")
 
+# Front matter shorter than this is a title/copyright page, not a preface: distilling it
+# spends model calls on "Title / Author, Year" and drags a chapter-less brief input along.
+FRONT_MATTER_MIN_WORDS = 150
+
 
 def _skipped(node: Node) -> bool:
     return node.kind.is_container and bool(node.meta.get("skip"))
@@ -60,8 +64,22 @@ class Tree:
         return [n for n in self.walk(root) if not n.kind.is_container]
 
     def chapters(self) -> list[Node]:
-        """Chapters with any text under them: the units distillation is organised by."""
-        return [n for n in self.walk() if n.kind is NodeKind.CHAPTER and self.leaves(n)]
+        """Chapters with any text under them: the units distillation is organised by.
+
+        Thin front matter (`meta.front_matter`, under FRONT_MATTER_MIN_WORDS) is left out;
+        a real preface or foreword above that length is distilled like any chapter.
+        """
+        return [
+            n
+            for n in self.walk()
+            if n.kind is NodeKind.CHAPTER and self.leaves(n) and not self._thin_front_matter(n)
+        ]
+
+    def _thin_front_matter(self, chapter: Node) -> bool:
+        if not chapter.meta.get("front_matter"):
+            return False
+        words = sum(len((leaf.text or "").split()) for leaf in self.leaves(chapter))
+        return words < FRONT_MATTER_MIN_WORDS
 
     def sections(self, chapter: Node) -> list[Node]:
         """The chapter's non-empty, visible sections."""
