@@ -17,6 +17,9 @@ export interface SearchState {
 export const emptySearch: SearchState = { q: '', mode: 'auto', documents: [], tags: [], types: [] };
 
 const MAX_QUERY = 500;
+/** Backend limits on `filters` (schemas/search.py); a value past them fails the whole request. */
+const MAX_TAG = 64;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function isMode(value: string | null): value is SearchMode {
   return value !== null && (SEARCH_MODES as readonly string[]).includes(value);
@@ -35,8 +38,8 @@ export function parseSearchParams(params: URLSearchParams): SearchState {
   return {
     q: (params.get('q') ?? '').slice(0, MAX_QUERY),
     mode: isMode(mode) ? mode : 'auto',
-    documents: unique(params.getAll('doc')),
-    tags: unique(params.getAll('tag')),
+    documents: unique(params.getAll('doc')).filter((d) => UUID.test(d)),
+    tags: unique(params.getAll('tag')).filter((t) => t.length <= MAX_TAG),
     types: unique(params.getAll('type')).filter(isType),
   };
 }
