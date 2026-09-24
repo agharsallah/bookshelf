@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { TreeNode } from '../../lib/api/types/documents';
@@ -161,6 +161,21 @@ describe('<Reader>', () => {
     expect(screen.getByRole('form', { name: 'New note' })).toBeTruthy();
     await userEvent.keyboard('{Escape}');
     expect(screen.queryByRole('form', { name: 'New note' })).toBeNull();
+  });
+
+  it('returns focus to the block when the composer is closed or its note saved', async () => {
+    api.post.mockResolvedValue(created({ anchor: 'ch01/s01/p002', raw: 'Why?' }));
+    renderReader();
+    act(() => block('ch01/s01/p002').focus());
+    await userEvent.keyboard('n');
+    await userEvent.keyboard('{Escape}');
+    expect(document.activeElement).toBe(block('ch01/s01/p002'));
+
+    await userEvent.keyboard('n');
+    await userEvent.type(screen.getByLabelText('Your note, kept exactly as you write it'), 'Why?');
+    await userEvent.click(screen.getByRole('button', { name: 'Save note' }));
+    await waitFor(() => expect(screen.queryByRole('form', { name: 'New note' })).toBeNull());
+    expect(document.activeElement).toBe(block('ch01/s01/p002'));
   });
 
   it('j and k move focus between blocks in reading order', async () => {

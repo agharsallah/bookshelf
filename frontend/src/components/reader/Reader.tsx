@@ -16,7 +16,7 @@ import { NoteComposer, type ComposerTarget } from '../notes/NoteComposer';
 import { NotesPanel } from '../notes/NotesPanel';
 import { useNotes } from '../notes/useNotes';
 import { DistillPane, type Tab } from './DistillPane';
-import { revealBlock, SOURCE_ATTR } from './dom';
+import { revealBlock, sourceBlock, SOURCE_ATTR } from './dom';
 import { groupMarks, marksFor, notedBlocks, type MarksByAnchor } from './marks';
 import { Navigator, type NavSection, type NavUnit } from './Navigator';
 import type { Panes } from './panes';
@@ -51,6 +51,7 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
   const [contentsOpen, setContentsOpen] = useState(false);
   const [composer, setComposer] = useState<{ target: ComposerTarget; compose: boolean } | null>(null);
   const [focusedNote, setFocusedNote] = useState<string | null>(null);
+  const composerHost = useRef<HTMLDivElement>(null);
   const { notes: wireNotes, saving, add, annotate, recolor, remove, review } = useNotes(initialNotes);
 
   const flat = useMemo(() => flatten(unit), [unit]);
@@ -134,6 +135,15 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
     requestAnimationFrame(() => paneRef.current?.querySelector<HTMLElement>(`[data-note-id="${CSS.escape(id)}"]`)?.focus());
   }, []);
 
+  /** Close the composer; if focus was in it (or already lost), hand it back to its block. */
+  const closeComposer = () => {
+    const active = window.document.activeElement;
+    const lost = !active || active === window.document.body || Boolean(composerHost.current?.contains(active));
+    const block = composer && sourceRef.current ? sourceBlock(sourceRef.current, composer.target.anchor) : null;
+    if (lost) block?.focus({ preventScroll: true });
+    setComposer(null);
+  };
+
   useReaderEvents({
     sourceRef,
     paneRef,
@@ -145,7 +155,7 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
     onSelect: (target) => setComposer((current) => (current?.compose ? current : target ? { target, compose: false } : null)),
     onCompose: (target) => setComposer({ target, compose: true }),
     onEscape: () => {
-      setComposer(null);
+      closeComposer();
       setContentsOpen(false);
     },
     onNoteClick: openNote,
@@ -158,7 +168,7 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
     const range = target.range ? toCodePointRange(texts.get(target.anchor) ?? '', target.range) : null;
     const created = await add({ documentId: doc.id, anchor: target.anchor, range, raw, color });
     if (created) {
-      setComposer(null);
+      closeComposer();
       window.getSelection()?.removeAllRanges();
     }
   };
@@ -266,6 +276,7 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
         </div>
       </div>
 
+      <div ref={composerHost}>
       {composer ? (
         <NoteComposer
           key={`${composer.target.anchor}:${composer.target.range?.start ?? 'b'}:${composer.compose}`}
@@ -274,9 +285,10 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
           saving={saving}
           onHighlight={(color) => void save(null, color)}
           onSave={(raw, color) => void save(raw, color)}
-          onClose={() => setComposer(null)}
+          onClose={closeComposer}
         />
       ) : null}
+      </div>
     </div>
   );
 }
