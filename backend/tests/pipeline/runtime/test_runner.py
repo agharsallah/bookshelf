@@ -75,7 +75,19 @@ def test_reply_json_is_extracted_from_fences_and_prose(text):
     assert extract_json(text) == {"ok": True}
 
 
-@pytest.mark.parametrize("text", ["no json here", "[1, 2]", '{"broken": '])
+@pytest.mark.parametrize(
+    "text",
+    [
+        "no json here",
+        "[1, 2]",
+        '{"broken": ',
+        # Python's json accepts these; Postgres JSONB does not, so the insert would fail
+        # after the model was paid, and the queue would pay again on every retry.
+        '{"points": [{"x": 1, "y": NaN}]}',
+        '{"value": Infinity}',
+        '{"value": -Infinity}',
+    ],
+)
 def test_unusable_replies_raise_output_errors(text):
     with pytest.raises(OutputError):
         extract_json(text)

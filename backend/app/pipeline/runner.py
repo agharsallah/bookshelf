@@ -108,6 +108,12 @@ def _resolved_model(model_usage: Any) -> str | None:
     return str(max(model_usage, key=output_tokens))
 
 
+def _no_constant(name: str) -> Any:
+    """`NaN` / `Infinity` parse in Python but are not JSON, and Postgres JSONB refuses them:
+    reject them here, where the retry can still fix the reply for free."""
+    raise OutputError([f"reply is not valid JSON: {name} is not a number JSON allows"])
+
+
 def extract_json(text: str) -> dict[str, Any]:
     """Parse a reply into one JSON object: strip ``` fences, else take the outermost `{…}`."""
     fenced = _FENCE.match(text)
@@ -116,7 +122,7 @@ def extract_json(text: str) -> dict[str, Any]:
     if start == -1 or end < start:
         raise OutputError(["reply contains no JSON object"])
     try:
-        value = json.loads(candidate[start : end + 1])
+        value = json.loads(candidate[start : end + 1], parse_constant=_no_constant)
     except json.JSONDecodeError as exc:
         raise OutputError([f"reply is not valid JSON: {exc.msg} at char {exc.pos}"]) from exc
     if not isinstance(value, dict):
