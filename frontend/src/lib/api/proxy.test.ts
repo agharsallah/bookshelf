@@ -51,6 +51,22 @@ describe('proxyTarget', () => {
   it.each(['../docs', 'a/../../x', '', 'a//b'])('refuses the path %j', (path) => {
     expect(() => proxyTarget(config.backendUrl, path)).toThrow(ProxyPathError);
   });
+
+  // Astro hands the route a fully decoded path; fetch's URL parser then turns `\\`
+  // into `/`, drops tabs/newlines and resolves `%2e%2e`, so these would climb out of
+  // /api/v1 (with the API key attached on mutating methods).
+  it.each(['..\\..\\docs', 'a\\..\\..\\..\\openapi.json', '.\t./.\t./docs', '.\n./.\n./docs', '%2e%2e/%2e%2e/docs', '.%2E/.%2e/docs'])(
+    'refuses the smuggled traversal %j',
+    (path) => {
+      expect(() => proxyTarget(config.backendUrl, path)).toThrow(ProxyPathError);
+    },
+  );
+
+  it('keeps ordinary nested paths and their query under the API prefix', () => {
+    expect(proxyTarget(config.backendUrl, 'documents/42/tree', '?depth=2')).toBe(
+      'http://backend:8000/api/v1/documents/42/tree?depth=2',
+    );
+  });
 });
 
 describe('proxyResponseHeaders', () => {

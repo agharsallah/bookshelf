@@ -54,17 +54,44 @@ export interface ProxyRequest {
 
 export class ProxyPathError extends Error {}
 
-/** Resolve the upstream URL. Rejects `..`/empty segments so a path cannot climb out of the prefix. */
+/**
+ * Characters the WHATWG URL parser rewrites while resolving: `\\` becomes `/`, and
+ * tabs/newlines are dropped. Either lets a segment turn into `..` after our check.
+ */
+function hasUrlRewrittenChar(path: string): boolean {
+  return [...path].some((c) => {
+    const code = c.charCodeAt(0);
+    return c === '\\' || code < 0x20 || code === 0x7f;
+  });
+}
+
+/** A `.`/`..` segment, including the percent-encoded spellings fetch also resolves. */
+function isDotSegment(segment: string): boolean {
+  const dots = segment.replace(/%2e/gi, '.');
+  return dots === '.' || dots === '..';
+}
+
+/**
+ * Resolve the upstream URL. Rejects dot/empty segments and characters the URL parser
+ * rewrites, then checks the resolved URL is still under the prefix, so a path cannot
+ * climb out of it.
+ */
 export function proxyTarget(backendUrl: string, path: string, search = ''): string {
   const clean = path.replace(/^\/+|\/+$/g, '');
   const segments = clean.split('/');
-  if (!clean || segments.some((s) => s === '' || s === '.' || s === '..')) {
+  if (!clean || hasUrlRewrittenChar(clean) || segments.some((s) => s === '' || isDotSegment(s))) {
     throw new ProxyPathError(`Refusing to proxy path "${path}".`);
   }
   const base = ROOT_PATHS.has(clean)
     ? new URL(backendUrl).origin
     : backendUrl.replace(/\/+$/, '');
-  return `${base}/${clean}${search}`;
+  const target = `${base}/${clean}${search}`;
+  const resolved = new URL(target);
+  const prefix = `${new URL(base).pathname.replace(/\/+$/, '')}/`;
+  if (resolved.origin !== new URL(base).origin || !resolved.pathname.startsWith(prefix)) {
+    throw new ProxyPathError(`Refusing to proxy path "${path}".`);
+  }
+  return target;
 }
 
 /** Build the upstream request: allow-listed headers, plus the key on mutating methods. */
