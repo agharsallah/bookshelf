@@ -225,6 +225,49 @@
   font-size: var(--text-xs);
 }
 
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin: 0 0 var(--space-1);
+  padding: 0 var(--space-2);
+  list-style: none;
+}
+
+.legend li {
+  --role: var(--tone-contrast);
+  padding: 0.1rem var(--space-2);
+  border-inline-start: 3px solid var(--role);
+  border-radius: 0 var(--radius-s) var(--radius-s) 0;
+  background: color-mix(in oklab, var(--role) 10%, transparent);
+  color: var(--ink);
+  font-size: var(--text-xs);
+}
+
+.legend li[data-role='quote'] {
+  --role: var(--tone-remember);
+}
+
+.legend li[data-role='example'] {
+  --role: var(--tone-insight);
+}
+
+.legend li[data-role='exercise'] {
+  --role: var(--tone-question);
+}
+
+.legend li[data-role='key'] {
+  --role: var(--tone-caution);
+}
+
+.legend li[data-role='warning'] {
+  --role: var(--tone-important);
+}
+
+.legend li[data-role='tip'] {
+  --role: var(--tone-antipattern);
+}
+
 .footer {
   display: flex;
   justify-content: flex-end;

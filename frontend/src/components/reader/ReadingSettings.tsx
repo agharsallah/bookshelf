@@ -16,6 +16,7 @@ import {
   WIDTHS,
   type ReaderPrefs,
 } from './prefs';
+import { PASSAGE_ROLES, ROLE_LABELS } from './semantics';
 import type { PrefsUpdate } from './usePrefs';
 import styles from './ReadingSettings.module.css';
 
@@ -130,6 +131,19 @@ export function ReadingSettings({ prefs, onChange, onClose, opener, children }: 
         </button>
       </div>
     </div>
+  );
+}
+
+/** What each colour means in the colour-coded mode; swatches use the same `data-role` hues as the text. */
+export function RoleLegend() {
+  return (
+    <ul className={styles.legend} aria-label="Colour key">
+      {PASSAGE_ROLES.map((role) => (
+        <li key={role} data-role={role}>
+          {ROLE_LABELS[role]}
+        </li>
+      ))}
+    </ul>
   );
 }
 

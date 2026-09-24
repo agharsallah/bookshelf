@@ -22,7 +22,7 @@ import { Navigator, type NavSection, type NavUnit } from './Navigator';
 import type { Panes } from './panes';
 import { clampSize, prefsVars } from './prefs';
 import { ReaderToolbar, type ReaderView } from './ReaderToolbar';
-import { ReadingSettings } from './ReadingSettings';
+import { AidSwitch, ReadingSettings, RoleLegend } from './ReadingSettings';
 import { SourceBlock } from './SourceBlock';
 import { useReaderPrefs } from './usePrefs';
 import { actionFor, type ReaderAction } from './shortcuts';
@@ -207,6 +207,9 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
         if (window.matchMedia(NARROW_QUERY).matches) setView((v) => (v === 'source' ? 'distil' : 'source'));
         else setPrefs((p) => (p.focus ? { focus: false, pane: true } : { pane: !p.pane }));
         break;
+      case 'semantic':
+        setPrefs((p) => ({ semantic: !p.semantic }));
+        break;
       case 'bigger':
       case 'smaller':
         setPrefs((p) => ({ size: clampSize(p.size + (action === 'bigger' ? 1 : -1)) }));
@@ -250,6 +253,7 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
       data-rail={showRail ? undefined : 'off'}
       data-pane={showPane ? undefined : 'off'}
       data-focus={prefs.focus ? '' : undefined}
+      data-semantic={prefs.semantic ? '' : undefined}
       style={prefsVars(prefs) as CSSProperties}
     >
       <ReaderToolbar
@@ -272,7 +276,18 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
           open: settingsOpen,
           onToggle: () => setSettingsOpen((o) => !o),
           button: settingsButton,
-          panel: <ReadingSettings prefs={prefs} onChange={setPrefs} onClose={closeSettings} opener={settingsButton} />,
+          panel: (
+            <ReadingSettings prefs={prefs} onChange={setPrefs} onClose={closeSettings} opener={settingsButton}>
+              <AidSwitch
+                label="Colour-code passages"
+                hint="Quotes, examples, exercises, warnings…"
+                shortcut="c"
+                on={prefs.semantic}
+                onToggle={() => runAction('semantic')}
+              />
+              {prefs.semantic ? <RoleLegend /> : null}
+            </ReadingSettings>
+          ),
         }}
         layout={{
           rail: showRail,

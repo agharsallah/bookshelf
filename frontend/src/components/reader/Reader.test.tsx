@@ -28,6 +28,7 @@ const unit = node('ch01', 'chapter', {
         node('ch01/s01/p001', 'paragraph', { text: 'When a queue grows, people start more work.' }),
         node('ch01/s01/p002', 'paragraph', { text: 'Slack is not waste.', page_from: 2 }),
         node('ch01/s01/p003', 'paragraph', { text: '𝑥 grows when 𝑦 falls.', page_from: 2 }),
+        node('ch01/s01/p004', 'paragraph', { text: 'For example, a team at capacity waits longer.', page_from: 2 }),
       ],
     }),
   ],
@@ -266,5 +267,22 @@ describe('<Reader>', () => {
     const reader = document.querySelector<HTMLElement>('[data-view]')!;
     await userEvent.keyboard('++-');
     expect(reader.style.getPropertyValue('--reader-size')).toBe('1.25rem');
+  });
+
+  it('c colour-codes passages by what they are, with a label and a key in the settings', async () => {
+    renderReader();
+    const reader = document.querySelector<HTMLElement>('[data-view]')!;
+    expect(block('ch01/s01/p004').dataset.role).toBe('example');
+    expect(block('ch01/s01/p001').dataset.role).toBeUndefined();
+
+    await userEvent.keyboard('c');
+    expect(reader.dataset.semantic).toBe('');
+    expect(within(block('ch01/s01/p004')).getByText('Example')).toBeTruthy();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Reading settings' }));
+    expect(screen.getByRole('switch', { name: /Colour-code passages/ }).getAttribute('aria-checked')).toBe('true');
+    expect(within(screen.getByRole('list', { name: 'Colour key' })).getAllByRole('listitem')).toHaveLength(7);
+    await userEvent.click(screen.getByRole('switch', { name: /Colour-code passages/ }));
+    expect(reader.dataset.semantic).toBeUndefined();
   });
 });

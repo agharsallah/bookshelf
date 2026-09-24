@@ -3,10 +3,13 @@
  * (`data-o` = offset into the node's text) so selections map back to character
  * ranges and highlights can split them. Every block carries its anchor as `id`,
  * a margin page marker when the page changes, and a hover handle to copy its link.
+ * Its semantic role (semantics.ts) rides along as `data-role` with a label; both
+ * only show when the reader's colour-coded mode is on.
  */
 import { memo, type ReactNode } from 'react';
 import type { TreeNode } from '../../lib/api/types/documents';
 import { clip, pieces, segment, topColor, type Mark, type Piece, type Segment } from './segments';
+import { isPassage, roleOf } from './semantics';
 import spanStyles from '../blocks/Spans.module.css';
 import styles from './SourceBlock.module.css';
 
@@ -166,14 +169,18 @@ function body(node: TreeNode, marks: readonly Mark[], codeHtml: string | undefin
 }
 
 function SourceBlockImpl({ node, marks, page, codeHtml, hasBlockNote, level }: SourceBlockProps) {
+  const role = roleOf(node);
   return (
     <div
       id={node.anchor}
       className={styles.block}
       data-source-anchor={node.anchor}
       data-kind={node.kind}
+      data-role={role?.role}
+      data-passage={role && isPassage(role.role) ? '' : undefined}
       tabIndex={-1}
     >
+      {role ? <span className={styles.roleLabel}>{role.label}</span> : null}
       {page !== null ? (
         <span className={styles.page} aria-label={`Page ${page}`}>
           p. {page}

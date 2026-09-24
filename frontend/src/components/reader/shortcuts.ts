@@ -5,13 +5,14 @@
  */
 import type { Shortcut } from '../common/ShortcutHelp';
 
-export type ReaderAction = 'focus' | 'fullscreen' | 'contents' | 'pane' | 'bigger' | 'smaller';
+export type ReaderAction = 'focus' | 'fullscreen' | 'contents' | 'pane' | 'semantic' | 'bigger' | 'smaller';
 
 const ACTION_KEYS: Readonly<Record<string, ReaderAction>> = {
   f: 'focus',
   F: 'fullscreen',
   t: 'contents',
   d: 'pane',
+  c: 'semantic',
   '+': 'bigger',
   '=': 'bigger',
   '-': 'smaller',
@@ -31,6 +32,7 @@ export const READER_SHORTCUTS: readonly Shortcut[] = [
   { keys: ['⇧F'], label: 'Full screen' },
   { keys: ['t'], label: 'Show or hide the contents' },
   { keys: ['d'], label: 'Show or hide the distillation' },
+  { keys: ['c'], label: 'Colour-code quotes, examples, asides' },
   { keys: ['+', '−'], label: 'Larger / smaller text' },
   { keys: ['Esc'], label: 'Close, or leave focus mode' },
 ];
