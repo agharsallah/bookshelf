@@ -114,8 +114,17 @@ def _children(
 def chapter_node(
     session: Session, document: Document, chapter: int, section: int | None = None
 ) -> Node | None:
-    """Chapter `chapter` (1-based) of `document`, or its section `section` when given."""
-    found = _numbered(_children(session, document.id, None, NodeKind.CHAPTER), chapter)
+    """Chapter `chapter` (1-based) of `document`, or its section `section` when given.
+
+    Front matter (`fm01`) and skipped back matter are not numbered chapters: "chapter 1"
+    must never resolve to a title page just because its anchor also ends in 01.
+    """
+    chapters = [
+        node
+        for node in _children(session, document.id, None, NodeKind.CHAPTER)
+        if not node.meta.get("front_matter") and not node.meta.get("skip")
+    ]
+    found = _numbered(chapters, chapter)
     if found is None or section is None:
         return found
     return _numbered(_children(session, document.id, found, NodeKind.SECTION), section)

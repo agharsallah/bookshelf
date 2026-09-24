@@ -5,9 +5,11 @@ import json
 import pytest
 from sqlmodel import Session
 
+from app.models.enums import NodeKind
 from app.pipeline.runner import FakeRunner, Reply, RunnerError
 from app.retrieval.router import QueryRouter, Route, parse_number
 from app.schemas.search import SearchMode
+from tests.api.factories import make_node
 from tests.retrieval.conftest import Shelf
 
 
@@ -115,3 +117,17 @@ def test_any_model_failure_means_discovery(session: Session, shelf: Shelf, reply
 )
 def test_chapter_numbers_parse_from_digits_roman_and_words(token: str, value: int | None) -> None:
     assert parse_number(token) == value
+
+
+def test_chapter_one_skips_front_matter_whose_anchor_also_ends_in_01(
+    session: Session, shelf: Shelf
+) -> None:
+    # Found in the end-to-end run: a title page parsed as `fm01` won "chapter 1".
+    make_node(
+        session, shelf.meadows, "fm01", NodeKind.CHAPTER, ordinal=0,
+        heading="Front matter", meta={"front_matter": True},
+    )  # fmt: skip
+
+    route = _route(session, "summarize chapter 1 of Meadows")
+
+    assert route.anchor == "ch01"
