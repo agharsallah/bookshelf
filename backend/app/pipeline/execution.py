@@ -228,14 +228,13 @@ def execute_skill_job(
     if existing is not None and not force:
         return _skipped(existing, prepared)
 
-    ceiling.check(
-        session, job, document, SKILL_JOB_KINDS, max_runs or settings.max_runs_per_document
-    )
     prompt = render_prompt(skill.prompt, prepared.selection.prompt_inputs())
     release(session)  # no transaction open through the CLI run(s)
+    limit = max_runs or settings.max_runs_per_document
+    counted = ceiling.metered(runner, session, job, document, SKILL_JOB_KINDS, limit)
     try:
         run = run_structured(
-            runner,
+            counted,
             prompt,
             tier=skill.meta.tier,
             validate=lambda output: output_problems(prepared, output),

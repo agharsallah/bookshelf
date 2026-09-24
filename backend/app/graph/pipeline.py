@@ -23,8 +23,9 @@ from app.graph import apply, diagram_seeds
 from app.graph.dedup import DenseEmbedder, run_dedup
 from app.jobs.queue import JobSpec
 from app.jobs.registry import HandlerResult, PermanentJobError
-from app.models import Job
+from app.models import Document, Job
 from app.models.enums import JobKind, JobState
+from app.pipeline import ceiling
 from app.pipeline.hashing import input_hash
 from app.pipeline.runner import ModelRunner
 
@@ -75,8 +76,20 @@ def run_dedup_job(
     embedder: DenseEmbedder | None = None,
     skills_dir: Path | None = None,
 ) -> HandlerResult:
-    """Handler body: propose merges for the job's concepts; verdicts go to `jobs.result`."""
+    """Handler body: propose merges for the job's concepts; verdicts go to `jobs.result`.
+
+    Each model verdict is a CLI run like any other: counted against the document's run
+    ceiling (`app.pipeline.ceiling`), and nothing at all runs for a paused document."""
+    from app.pipeline.execution import SKILL_JOB_KINDS  # execution imports the graph
+
     settings = get_settings()
+    document = session.get(Document, job.document_id) if job.document_id else None
+    if document is None:
+        raise PermanentJobError("dedup jobs need an existing document_id")
+    ceiling.refuse_if_paused(session, document)
+    runner = ceiling.metered(
+        runner, session, job, document, SKILL_JOB_KINDS, settings.max_runs_per_document
+    )
     if embedder is None:
         from app.retrieval.embedding import get_embedder  # lazy: loads FastEmbed
 

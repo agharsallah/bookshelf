@@ -1,31 +1,50 @@
 """§14 Run ceiling: stop paying for a document that keeps consuming CLI runs.
 
-Every skill job counts its document's finished skill runs before it calls the model. At
-the ceiling the document is **paused**: `documents.meta.paused = {reason, at, runs,
-limit}` makes it visible (document summary/detail, the pipeline view), and every skill job
-of a paused document fails at once with an error starting `run ceiling reached`, before
-any model call. Idempotency hits still skip for free.
+Every CLI run is reserved before it starts (`reserve_run`, wired in through `metered`):
+the document row is locked, the document's runs so far are counted, and the job's own
+counter (`jobs.result.runs`) is incremented, in one short transaction. So the count is of
+actual runs - schema retries, failed and retried attempts, each dedup verdict - and two
+workers reserving at once serialize on the document row instead of both passing at the
+last free run. At the ceiling the document is **paused**: `documents.meta.paused =
+{reason, at, runs, limit}` makes it visible (document summary/detail, the pipeline view),
+and every skill job of a paused document fails at once with an error starting `run
+ceiling reached`, before any model call. Idempotency hits still skip for free.
 
 `resume` clears the pause, sets the document's own ceiling (`meta.run_ceiling`, default:
 another full allowance on top of the runs so far) and requeues the jobs the ceiling
-stopped. Jobs failed by the ceiling never count as runs: they never reached the model.
+stopped. Jobs finished before runs were counted per job count as one run each.
 """
 
 import uuid
+from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
-from sqlmodel import Session, col, func, not_, select
+from sqlalchemy import text
+from sqlmodel import Session, col, func, select
 
 from app.jobs import queue
-from app.jobs.queue import JobSpec
+from app.jobs.queue import RUNS, JobSpec
 from app.jobs.registry import PermanentJobError
 from app.models import Document, Job
-from app.models.enums import JobKind, JobState
+from app.models.enums import JobKind, JobState, Tier
+from app.pipeline.runner import ModelRunner, RunResult
 
 CEILING_ERROR = "run ceiling reached"
 PAUSED_KEY = "paused"
 CEILING_KEY = "run_ceiling"
+
+# Per job: its reserved runs, or (rows from before per-job counting) one per finished,
+# non-ceiling job.
+_RUNS_SQL = text(
+    """
+    select coalesce(sum(coalesce((result->>'runs')::int,
+             case when state in ('done', 'failed')
+                   and coalesce(error, '') not like :ceiling_prefix then 1 else 0 end)), 0)
+    from jobs where document_id = :document_id and kind = any(:kinds)
+    """
+)
 
 
 def document_ceiling(document: Document, default: int) -> int:
@@ -38,27 +57,14 @@ def paused(document: Document) -> dict[str, Any] | None:
     return value if isinstance(value, dict) else None
 
 
-def count_runs(
-    session: Session,
-    document_id: uuid.UUID,
-    kinds: frozenset[JobKind],
-    *,
-    exclude: uuid.UUID | None = None,
-) -> int:
-    """Finished skill runs of a document (jobs the ceiling itself failed do not count)."""
-    query = (
-        select(func.count())
-        .select_from(Job)
-        .where(
-            Job.document_id == document_id,
-            col(Job.kind).in_(list(kinds)),
-            col(Job.state).in_([JobState.DONE, JobState.FAILED]),
-            not_(func.coalesce(col(Job.error), "").startswith(CEILING_ERROR)),
-        )
-    )
-    if exclude is not None:
-        query = query.where(Job.id != exclude)
-    return int(session.exec(query).one())
+def count_runs(session: Session, document_id: uuid.UUID, kinds: frozenset[JobKind]) -> int:
+    """CLI runs the document's skill jobs have made (reserved), in any state."""
+    params = {
+        "document_id": document_id,
+        "kinds": sorted(k.value for k in kinds),
+        "ceiling_prefix": f"{CEILING_ERROR}%",
+    }
+    return int(session.execute(_RUNS_SQL, params).scalar_one())
 
 
 def _pause(session: Session, document: Document, runs: int, limit: int) -> None:
@@ -70,24 +76,67 @@ def _pause(session: Session, document: Document, runs: int, limit: int) -> None:
     session.commit()
 
 
-def check(
-    session: Session, job: Job, document: Document, kinds: frozenset[JobKind], default: int
-) -> None:
-    """Raise `PermanentJobError` (and pause the document) instead of another model call."""
-    limit = document_ceiling(document, default)
+def refuse_if_paused(session: Session, document: Document) -> None:
+    """Fail fast (before any embedding or model call) for a paused document."""
     state = paused(document)
     if state is not None:
+        session.commit()  # end the transaction (and any row lock) before failing
         raise PermanentJobError(
             f"{CEILING_ERROR}: document paused ({state.get('reason')}); "
             f"resume it with POST /documents/{document.slug}/resume"
         )
-    runs = count_runs(session, document.id, kinds, exclude=job.id)
+
+
+def reserve_run(
+    session: Session,
+    job: Job,
+    document: Document,
+    kinds: frozenset[JobKind],
+    default: int,
+    *,
+    commit: bool = True,
+) -> None:
+    """Take one CLI run from the document's allowance, atomically, or raise
+    `PermanentJobError` (pausing the document at the ceiling)."""
+    session.execute(select(Document.id).where(Document.id == document.id).with_for_update())
+    session.refresh(document, ["meta", "slug"])
+    refuse_if_paused(session, document)
+    limit = document_ceiling(document, default)
+    runs = count_runs(session, document.id, kinds)
     if runs >= limit:
         _pause(session, document, runs, limit)
         raise PermanentJobError(
             f"{CEILING_ERROR}: {runs} skill runs for this document (max {limit}); "
             f"document paused, resume it with POST /documents/{document.slug}/resume"
         )
+    current = job.result or {}
+    job.result = {**current, RUNS: int(current.get(RUNS) or 0) + 1}
+    session.add(job)
+    if commit:
+        session.commit()
+
+
+class _Metered:
+    """A `ModelRunner` that reserves a run before every call it passes on."""
+
+    def __init__(self, runner: ModelRunner, reserve: Callable[[], None]) -> None:
+        self._runner, self._reserve = runner, reserve
+
+    def run(self, prompt: str, *, tier: Tier, images: Sequence[Path] = ()) -> RunResult:
+        self._reserve()
+        return self._runner.run(prompt, tier=tier, images=images)
+
+
+def metered(
+    runner: ModelRunner,
+    session: Session,
+    job: Job,
+    document: Document,
+    kinds: frozenset[JobKind],
+    default: int,
+) -> ModelRunner:
+    """`runner`, with every call counted against `document`'s run ceiling first."""
+    return _Metered(runner, lambda: reserve_run(session, job, document, kinds, default))
 
 
 def resume(
@@ -105,12 +154,13 @@ def resume(
     document.meta = meta
     session.add(document)
     session.commit()
+    requeued_before = func.coalesce(col(Job.result).op("?")("requeued_as"), False)
     stopped = session.exec(
         select(Job).where(
             Job.document_id == document.id,
             Job.state == JobState.FAILED,
             col(Job.error).startswith(CEILING_ERROR),
-            col(Job.result).is_(None),
+            ~requeued_before,
         )
     ).all()
     requeued: list[Job] = []
@@ -125,7 +175,7 @@ def resume(
             priority=job.priority,
         )
         again = queue.enqueue(session, spec)  # None: identical live work already queued
-        job.result = {"requeued_as": str(again.id) if again is not None else None}
+        job.result = {**(job.result or {}), "requeued_as": str(again.id) if again else None}
         session.add(job)
         session.commit()
         if again is not None:

@@ -27,6 +27,8 @@ _BACKOFF_BASE_SECONDS = 30
 # lock every `HEARTBEAT_SECONDS` (`heartbeat`), so a long job is never taken for a dead one.
 STALE_AFTER = timedelta(minutes=30)
 HEARTBEAT_SECONDS = 60.0
+# `jobs.result` key: CLI runs the job has made over all its attempts (`app.pipeline.ceiling`).
+RUNS = "runs"
 
 
 @dataclass(frozen=True, slots=True)
@@ -145,7 +147,8 @@ def complete(
     """Mark a claimed job finished (`done`, or `skipped` for an idempotency hit)."""
     finished = _now()
     job.state = state
-    job.result = result
+    runs = (job.result or {}).get(RUNS)  # counted across attempts: never dropped
+    job.result = {RUNS: runs, **(result or {})} if runs is not None else result
     job.cost_tokens = cost_tokens
     job.error = None
     job.locked_at = None
