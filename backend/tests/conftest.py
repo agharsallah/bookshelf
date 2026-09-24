@@ -53,6 +53,10 @@ os.environ.update(
         "BOOKSHELF_QDRANT_PATH": str(_TMP / "qdrant"),
         "BOOKSHELF_API_EMBED_RUNNER": "false",  # tests drive jobs themselves
         "BOOKSHELF_CLAUDE_BIN": "/nonexistent/claude-must-be-faked-in-tests",
+        # A developer `.env` may put tiers on other models; tests assert the ladder.
+        "BOOKSHELF_MODEL_EXPLORE": "",
+        "BOOKSHELF_MODEL_DISTIL": "",
+        "BOOKSHELF_MODEL_REASON": "",
     }
 )
 (_TMP / "library").mkdir(exist_ok=True)

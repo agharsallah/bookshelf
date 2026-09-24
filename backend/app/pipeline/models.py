@@ -4,8 +4,13 @@ Skills declare a *tier* in `meta.yaml`; this table turns it into a `claude --mod
 The CLI resolves the alias to a concrete model, and the runner records that resolved name
 in `artifacts.model`, so promoting a skill up a tier is a one-line change here or in its
 meta.yaml whose effect on the gate scores is visible in the artifacts table.
+
+`BOOKSHELF_MODEL_EXPLORE` / `_DISTIL` / `_REASON` override a rung without a code change
+(e.g. a whole book on `haiku`). Changing a model does not change a skill's `input_hash`,
+so existing artifacts are kept; force a re-run to redo them on the new model.
 """
 
+from app.core.config import Settings, get_settings
 from app.models.enums import Tier
 
 CLI_ALIASES: dict[Tier, str] = {
@@ -15,6 +20,12 @@ CLI_ALIASES: dict[Tier, str] = {
 }
 
 
-def cli_alias(tier: Tier) -> str:
-    """The `claude --model` alias for a tier."""
-    return CLI_ALIASES[tier]
+def cli_alias(tier: Tier, settings: Settings | None = None) -> str:
+    """The `claude --model` value for a tier: its settings override, else the ladder."""
+    settings = settings or get_settings()
+    overrides = {
+        Tier.EXPLORE: settings.model_explore,
+        Tier.DISTIL: settings.model_distil,
+        Tier.REASON: settings.model_reason,
+    }
+    return overrides[tier] or CLI_ALIASES[tier]

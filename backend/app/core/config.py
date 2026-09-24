@@ -74,6 +74,11 @@ class Settings(BaseSettings):
     api_embed_runner: bool = True
     # Run ceiling (§14): per-document cap on CLI runs before the document is paused.
     max_runs_per_document: Annotated[int, Field(ge=1)] = 400
+    # Model ladder overrides (D16): a `claude --model` alias or full name per tier. Unset
+    # keeps the ladder in `app/pipeline/models.py`; e.g. all three `haiku` for a cheap run.
+    model_explore: str | None = None
+    model_distil: str | None = None
+    model_reason: str | None = None
 
     # --- Idea graph (§11) ---------------------------------------------------
     # Concept dedup: cosine similarity that nominates a pair for the model to confirm, and
@@ -115,7 +120,10 @@ class Settings(BaseSettings):
             return [item.strip() for item in value.split(",") if item.strip()]
         return value
 
-    @field_validator("qdrant_url", "qdrant_api_key", "api_key", mode="before")
+    @field_validator(
+        "qdrant_url", "qdrant_api_key", "api_key", "model_explore", "model_distil",
+        "model_reason", mode="before",
+    )  # fmt: skip
     @classmethod
     def _blank_is_unset(cls, value: object) -> object:
         """`KEY=` in a .env file means "not configured", not "the empty string"."""
