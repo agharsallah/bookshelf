@@ -13,6 +13,12 @@ describe('parsePrefs', () => {
     expect(prefs).toEqual({ ...DEFAULT_PREFS, font: 'sans', pane: false, width: 'wide' });
   });
 
+  it('keeps a dragged width only when it is a sane number of px', () => {
+    expect(parsePrefs('{"measure": 812.6}').measure).toBe(813);
+    expect(parsePrefs('{"measure": 12}').measure).toBeNull();
+    expect(parsePrefs('{"measure": "wide"}').measure).toBeNull();
+  });
+
   it('clamps the size into the scale and rounds it to a step', () => {
     expect(parsePrefs('{"size": 99}').size).toBe(SIZES.length - 1);
     expect(parsePrefs('{"size": -3}').size).toBe(0);
@@ -32,6 +38,15 @@ describe('prefsVars', () => {
       '--reader-measure': '34rem',
       '--reader-align': 'justify',
     });
+  });
+});
+
+describe('prefsVars with a dragged width', () => {
+  it('uses it only where the layout allows dragging', () => {
+    const prefs = { ...DEFAULT_PREFS, width: 'wide' as const, measure: 700 };
+    expect(prefsVars(prefs, true)['--reader-measure']).toBe('700px');
+    expect(prefsVars(prefs)['--reader-measure']).toBe('48rem');
+    expect(prefsVars({ ...prefs, measure: null }, true)['--reader-measure']).toBe('48rem');
   });
 });
 

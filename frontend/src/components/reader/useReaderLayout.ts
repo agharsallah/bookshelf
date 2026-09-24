@@ -1,7 +1,8 @@
 /**
  * Layout effects the reader applies outside its own tree: focus mode hides the
- * site chrome (a flag on <html> that BaseLayout styles), the Fullscreen API, and
- * the toolbar that slides away while you read in focus mode.
+ * site chrome (a flag on <html> that BaseLayout styles), the Fullscreen API, the
+ * breakpoints the layout depends on, and the toolbar that slides away while you
+ * read in focus mode.
  */
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 
@@ -15,6 +16,19 @@ export function useFocusChrome(focus: boolean): void {
     root.toggleAttribute(FOCUS_ATTR, focus);
     return () => root.removeAttribute(FOCUS_ATTR);
   }, [focus]);
+}
+
+/** A media query's current match; `serverValue` until hydrated. */
+export function useMediaQuery(query: string, serverValue: boolean): boolean {
+  const subscribe = useCallback(
+    (listener: () => void) => {
+      const list = window.matchMedia(query);
+      list.addEventListener('change', listener);
+      return () => list.removeEventListener('change', listener);
+    },
+    [query],
+  );
+  return useSyncExternalStore(subscribe, () => window.matchMedia(query).matches, () => serverValue);
 }
 
 function subscribeFullscreen(listener: () => void): () => void {

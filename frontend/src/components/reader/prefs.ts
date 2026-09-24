@@ -27,6 +27,8 @@ export interface ReaderPrefs {
   spacing: Spacing;
   width: Width;
   align: Align;
+  /** A dragged text width in px, used while exactly one side pane is shown; null: the `width` preset. */
+  measure: number | null;
   /** The contents rail on the left (wide screens). */
   contents: boolean;
   /** The distillation pane on the right. */
@@ -46,6 +48,7 @@ export const DEFAULT_PREFS: Readonly<ReaderPrefs> = Object.freeze({
   spacing: 'normal',
   width: 'normal',
   align: 'start',
+  measure: null,
   contents: true,
   pane: true,
   focus: false,
@@ -62,8 +65,8 @@ const FONT_STACKS: Record<ReaderFont, string> = {
 };
 const LEADING_VALUES: Record<Leading, string> = { tight: '1.45', normal: '1.62', loose: '1.8', airy: '2' };
 const SPACING_VALUES: Record<Spacing, string> = { compact: '0.5em', normal: '0.9em', roomy: '1.5em' };
-/** The text column, block gutters included. */
-const WIDTH_VALUES: Record<Width, string> = { narrow: '34rem', normal: '40rem', wide: '48rem' };
+/** The text column in rem, block gutters included. */
+export const WIDTH_REM: Record<Width, number> = { narrow: 34, normal: 40, wide: 48 };
 
 function oneOf<T extends string>(options: readonly T[], value: unknown, fallback: T): T {
   return typeof value === 'string' && (options as readonly string[]).includes(value) ? (value as T) : fallback;
@@ -71,6 +74,11 @@ function oneOf<T extends string>(options: readonly T[], value: unknown, fallback
 
 function flag(value: unknown, fallback: boolean): boolean {
   return typeof value === 'boolean' ? value : fallback;
+}
+
+/** A stored dragged width, if it is a sane number of px. */
+function measure(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 240 && value <= 4000 ? Math.round(value) : null;
 }
 
 export function clampSize(size: number): number {
@@ -94,6 +102,7 @@ export function parsePrefs(raw: string | null): ReaderPrefs {
     spacing: oneOf(SPACINGS, data.spacing, d.spacing),
     width: oneOf(WIDTHS, data.width, d.width),
     align: oneOf(ALIGNS, data.align, d.align),
+    measure: measure(data.measure),
     contents: flag(data.contents, d.contents),
     pane: flag(data.pane, d.pane),
     focus: flag(data.focus, d.focus),
@@ -111,18 +120,22 @@ export function isDefaultType(prefs: ReaderPrefs): boolean {
     prefs.leading === d.leading &&
     prefs.spacing === d.spacing &&
     prefs.width === d.width &&
-    prefs.align === d.align
+    prefs.align === d.align &&
+    prefs.measure === d.measure
   );
 }
 
-/** The typography as custom properties for the reader root. */
-export function prefsVars(prefs: ReaderPrefs): Record<string, string> {
+/**
+ * The typography as custom properties for the reader root. `dragged`: the layout
+ * lets a dragged width replace the preset (one side pane shown).
+ */
+export function prefsVars(prefs: ReaderPrefs, dragged = false): Record<string, string> {
   return {
     '--reader-font': FONT_STACKS[prefs.font],
     '--reader-size': `${SIZES[clampSize(prefs.size)]}rem`,
     '--reader-leading': LEADING_VALUES[prefs.leading],
     '--reader-gap': SPACING_VALUES[prefs.spacing],
-    '--reader-measure': WIDTH_VALUES[prefs.width],
+    '--reader-measure': dragged && prefs.measure !== null ? `${prefs.measure}px` : `${WIDTH_REM[prefs.width]}rem`,
     '--reader-align': prefs.align,
   };
 }

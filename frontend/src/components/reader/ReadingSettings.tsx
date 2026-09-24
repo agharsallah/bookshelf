@@ -112,7 +112,7 @@ export function ReadingSettings({ prefs, onChange, onClose, opener }: ReadingSet
       </div>
       <Segmented label="Line spacing" options={LEADINGS} labels={LEADING_LABELS} value={prefs.leading} onChange={(leading) => onChange({ leading })} />
       <Segmented label="Paragraphs" options={SPACINGS} labels={SPACING_LABELS} value={prefs.spacing} onChange={(spacing) => onChange({ spacing })} />
-      <Segmented label="Width" options={WIDTHS} labels={WIDTH_LABELS} value={prefs.width} onChange={(width) => onChange({ width })} />
+      <Segmented label="Width" options={WIDTHS} labels={WIDTH_LABELS} value={prefs.width} onChange={(width) => onChange({ width, measure: null })} />
       <Segmented label="Alignment" options={ALIGNS} labels={ALIGN_LABELS} value={prefs.align} onChange={(align) => onChange({ align })} />
       <div className={styles.aids}>
         <AidSwitch
@@ -137,8 +137,8 @@ export function ReadingSettings({ prefs, onChange, onClose, opener }: ReadingSet
           className={styles.reset}
           disabled={isDefaultType(prefs)}
           onClick={() => {
-            const { font, size: s, leading, spacing, width, align } = DEFAULT_PREFS;
-            onChange({ font, size: s, leading, spacing, width, align });
+            const { font, size: s, leading, spacing, width, align, measure } = DEFAULT_PREFS;
+            onChange({ font, size: s, leading, spacing, width, align, measure });
           }}
         >
           Reset typography

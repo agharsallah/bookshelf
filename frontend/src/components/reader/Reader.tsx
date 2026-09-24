@@ -22,7 +22,9 @@ import { ShortcutHelp } from '../common/ShortcutHelp';
 import { Navigator, type NavSection, type NavUnit } from './Navigator';
 import type { Panes } from './panes';
 import { minutesLeft, timeLeftLabel, wordCount } from './progress';
-import { clampSize, prefsVars } from './prefs';
+import { readerLayout } from './layout';
+import { MeasureHandle } from './MeasureHandle';
+import { clampSize, prefsVars, WIDTH_REM } from './prefs';
 import { ReaderToolbar, type ReaderView } from './ReaderToolbar';
 import { ReadingSettings } from './ReadingSettings';
 import { SourceBlock } from './SourceBlock';
@@ -30,7 +32,7 @@ import { useReaderPrefs } from './usePrefs';
 import { actionFor, READER_SHORTCUTS, type ReaderAction } from './shortcuts';
 import { useFollowUrl } from './useFollowUrl';
 import { useReaderEvents } from './useReaderEvents';
-import { useAutoHide, useFocusChrome, useFullscreen } from './useReaderLayout';
+import { useAutoHide, useFocusChrome, useFullscreen, useMediaQuery } from './useReaderLayout';
 import styles from './Reader.module.css';
 
 export interface ReaderProps {
@@ -76,6 +78,11 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
   // Focus mode sets both panes aside without forgetting whether they were shown.
   const showRail = prefs.contents && !prefs.focus;
   const showPane = prefs.pane && !prefs.focus;
+  // Rendered on the server as the wide, two-pane layout; the real screen applies on hydration.
+  const wide = useMediaQuery(WIDE_QUERY, true);
+  const narrow = useMediaQuery(NARROW_QUERY, false);
+  const layout = readerLayout({ rail: showRail, pane: showPane, focus: prefs.focus, wide, narrow });
+  const readerRef = useRef<HTMLDivElement>(null);
   const { notes: wireNotes, saving, add, annotate, recolor, remove, review } = useNotes(initialNotes);
 
   const flat = useMemo(() => flatten(unit), [unit]);
@@ -198,11 +205,11 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
         fullscreen.toggle();
         break;
       case 'contents':
-        if (!prefs.focus && window.matchMedia(WIDE_QUERY).matches) setPrefs((p) => ({ contents: !p.contents }));
+        if (!prefs.focus && wide) setPrefs((p) => ({ contents: !p.contents }));
         else setContentsOpen((o) => !o);
         break;
       case 'pane':
-        if (window.matchMedia(NARROW_QUERY).matches) setView((v) => (v === 'source' ? 'distil' : 'source'));
+        if (narrow) setView((v) => (v === 'source' ? 'distil' : 'source'));
         else setPrefs((p) => (p.focus ? { focus: false, pane: true } : { pane: !p.pane }));
         break;
       case 'semantic':
@@ -252,14 +259,16 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
 
   return (
     <div
+      ref={readerRef}
       className={styles.reader}
       data-view={view}
+      data-layout={layout}
       data-rail={showRail ? undefined : 'off'}
       data-pane={showPane ? undefined : 'off'}
       data-focus={prefs.focus ? '' : undefined}
       data-semantic={prefs.semantic ? '' : undefined}
       data-spotlight={prefs.spotlight ? '' : undefined}
-      style={prefsVars(prefs) as CSSProperties}
+      style={prefsVars(prefs, layout === 'one') as CSSProperties}
     >
       <ReaderToolbar
         book={{ title: doc.title, href: `/documents/${doc.slug}` }}
@@ -315,6 +324,15 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
               level={node.depth - unit.depth}
             />
           ))}
+          {layout === 'one' ? (
+            <MeasureHandle
+              column={sourceRef}
+              root={readerRef}
+              centred={!showPane}
+              width={prefs.measure ?? WIDTH_REM[prefs.width] * 16}
+              onChange={(measure) => setPrefs({ measure })}
+            />
+          ) : null}
           <footer className={styles.end}>
             {next ? (
               <a href={readHref(next.anchor)}>Next: {next.heading}</a>

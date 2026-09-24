@@ -307,4 +307,51 @@ describe('<Reader>', () => {
     renderReader();
     expect(screen.getByText('1 min left')).toBeTruthy();
   });
+
+  // happy-dom is 1024px wide: the rail does not fit, so the pane is the only side pane on screen.
+  it('lets the text take the whole page once no side pane is shown', async () => {
+    renderReader();
+    const reader = document.querySelector<HTMLElement>('[data-view]')!;
+    expect(reader.dataset.layout).toBe('one');
+    await userEvent.click(screen.getByRole('button', { name: 'Distillation pane' }));
+    expect(reader.dataset.layout).toBe('fill');
+    expect(screen.queryByRole('separator', { name: 'Text width' })).toBeNull();
+  });
+
+  it('drags the text width with one side pane shown, and remembers it', () => {
+    renderReader();
+    const reader = document.querySelector<HTMLElement>('[data-view]')!;
+    const handle = screen.getByRole('separator', { name: 'Text width' });
+    // happy-dom lays nothing out: the column's edge is at 0, so grabbing there keeps the edge under the pointer.
+    fireEvent.pointerDown(handle, { button: 0, clientX: 0 });
+    fireEvent.pointerMove(window, { clientX: 760 });
+    expect(reader.dataset.resizing).toBe('');
+    expect(reader.style.getPropertyValue('--reader-measure')).toBe('760px');
+    fireEvent.pointerUp(window, { clientX: 760 });
+
+    expect(reader.dataset.resizing).toBeUndefined();
+    expect(JSON.parse(window.localStorage.getItem('bookshelf:reader')!)).toMatchObject({ measure: 760 });
+    expect(handle.getAttribute('aria-valuenow')).toBe('760');
+
+    fireEvent.doubleClick(handle);
+    expect(reader.style.getPropertyValue('--reader-measure')).toBe('40rem');
+  });
+
+  it('nudges the text width with the arrow keys; Enter goes back to the preset', async () => {
+    renderReader();
+    const reader = document.querySelector<HTMLElement>('[data-view]')!;
+    act(() => screen.getByRole('separator', { name: 'Text width' }).focus());
+    await userEvent.keyboard('{ArrowRight}{ArrowRight}{Shift>}{ArrowLeft}{/Shift}');
+    expect(reader.style.getPropertyValue('--reader-measure')).toBe(`${40 * 16 + 32 - 64}px`);
+    await userEvent.keyboard('{Enter}');
+    expect(reader.style.getPropertyValue('--reader-measure')).toBe('40rem');
+  });
+
+  it('keeps the width preset while both side panes or focus mode are on', async () => {
+    window.localStorage.setItem('bookshelf:reader', JSON.stringify({ measure: 900, focus: true }));
+    renderReader();
+    const reader = document.querySelector<HTMLElement>('[data-view]')!;
+    expect(reader.dataset.layout).toBe('focus');
+    expect(reader.style.getPropertyValue('--reader-measure')).toBe('40rem');
+  });
 });

@@ -1,8 +1,10 @@
 /*
  * Reader layout. Wider than the page frame: contents rail | the text at a book
  * measure | the distillation leaf, which stays in view with its own scroll.
- * Either side can be put away (`data-rail`, `data-pane` = off); focus mode puts
- * both away with the site chrome, and the text is centred on the page.
+ * Either side can be put away (`data-rail`, `data-pane` = off). The columns follow
+ * `data-layout` (layout.ts), worked out from the panes actually on screen: with one
+ * side put away the text width can be dragged, with both it fills the page, and
+ * focus mode centres it at the chosen width with the site chrome gone.
  */
 .reader {
   --bleed: min(100vw - 2.5rem, 92rem);
@@ -17,7 +19,9 @@
   --reader-measure: 40rem;
   --reader-align: start;
   --measure-col: minmax(0, var(--reader-measure));
-  --cols: 13rem var(--measure-col) minmax(24rem, 1fr);
+  --pane-min: 24rem;
+  --col-gap: var(--space-7);
+  --cols: 13rem var(--measure-col) minmax(var(--pane-min), 1fr);
   width: var(--bleed);
   margin-inline: calc(50% - var(--bleed) / 2);
   margin-block-start: calc(-1 * var(--space-6));
@@ -210,7 +214,7 @@
   display: grid;
   grid-template-columns: var(--cols);
   justify-content: center;
-  gap: var(--space-7);
+  gap: var(--col-gap);
   align-items: start;
   padding-block-start: var(--space-6);
 }
@@ -223,6 +227,7 @@
 }
 
 .source {
+  position: relative;
   min-width: 0;
   padding-block-end: 30dvh;
   font-family: var(--reader-font);
@@ -270,17 +275,33 @@
   opacity: 1;
 }
 
-/* A pane put away takes its column with it; an empty track opposite the rail keeps the text centred. */
-.reader[data-rail='off'] {
-  --cols: var(--measure-col) minmax(24rem, 1fr);
+/* One side put away: text beside the pane, or beside the rail with an empty track opposite to keep it centred. */
+.reader[data-layout='one'] {
+  --cols: var(--measure-col) minmax(var(--pane-min), 1fr);
 }
 
-.reader[data-pane='off'] {
+.reader[data-layout='one'][data-pane='off'] {
   --cols: 13rem var(--measure-col) 13rem;
 }
 
-.reader[data-rail='off'][data-pane='off'] {
+/* Both put away: the text runs the whole width of the page. */
+.reader[data-layout='fill'] {
+  --bleed: calc(100vw - 2.5rem);
+  --cols: minmax(0, 1fr);
+}
+
+.reader[data-layout='focus'] {
   --cols: var(--measure-col);
+}
+
+/* While dragging: no text selection, no easing on the column, the resize cursor everywhere. */
+.reader[data-resizing] {
+  cursor: col-resize;
+  user-select: none;
+}
+
+.reader[data-resizing] .source {
+  transition: none;
 }
 
 .reader[data-rail='off'] .navColumn,
@@ -308,17 +329,14 @@
 
 /* Without the rail, contents move into the toolbar. */
 @media (max-width: 90rem) {
-  .reader,
-  .reader[data-rail='off'] {
-    --cols: var(--measure-col) minmax(20rem, 1fr);
+  .reader {
+    --pane-min: 20rem;
+    --col-gap: var(--space-6);
   }
 
-  .reader[data-pane='off'] {
-    --cols: var(--measure-col);
-  }
-
-  .columns {
-    gap: var(--space-6);
+  /* Server-rendered as `both` before the screen size is known: the rail is hidden here anyway. */
+  .reader[data-layout='both'] {
+    --cols: var(--measure-col) minmax(var(--pane-min), 1fr);
   }
 
   .navColumn,

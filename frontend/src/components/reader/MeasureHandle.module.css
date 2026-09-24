@@ -1,0 +1,55 @@
+/* The text-width grip (MeasureHandle.tsx); the reader sets `data-resizing` on itself while it is dragged. */
+/* The grip on the text's edge, in the gutter between it and the pane (or the page). */
+.measureHandle {
+  position: absolute;
+  z-index: 2;
+  inset-block: 0;
+  inset-inline-end: calc(-0.5 * var(--col-gap, 3rem) - 0.5rem);
+  width: 1rem;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.measureHandle::before {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: calc(50% - 0.5px);
+  width: 1px;
+  background: var(--rule);
+  opacity: 0;
+  transition: opacity var(--dur-2) var(--ease-out);
+}
+
+/* The grip rides along the middle of the screen, however long the chapter. */
+.measureGrip {
+  position: sticky;
+  inset-block-start: calc(50dvh - 1.5rem);
+  display: block;
+  width: 5px;
+  height: 3rem;
+  margin-inline: auto;
+  border-radius: 3px;
+  background: var(--rule-strong);
+  opacity: 0.45;
+  transition:
+    opacity var(--dur-2) var(--ease-out),
+    background-color var(--dur-2) var(--ease-out);
+}
+
+.measureHandle:hover::before,
+.measureHandle:focus-visible::before,
+:global([data-resizing]) .measureHandle::before {
+  opacity: 1;
+}
+
+.measureHandle:hover .measureGrip,
+.measureHandle:focus-visible .measureGrip,
+:global([data-resizing]) .measureGrip {
+  background: var(--accent);
+  opacity: 1;
+}
+
+.measureHandle:focus-visible {
+  outline: none;
+}
