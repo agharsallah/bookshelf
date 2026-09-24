@@ -59,3 +59,16 @@ def test_structured_notes_of_two_notes_on_one_anchor_are_separate_scopes(
     two = draft(session, book, 2, anchor="ch01/s01/p001", type=kind, note_id=second.id)
 
     assert listed(api, latest=True) == {str(two.id): False, str(one.id): False}
+
+
+def test_version_history_of_a_structured_note_excludes_other_notes_on_the_anchor(
+    api: TestClient, session, book
+):
+    first, second = (make_note(session, book, "ch01/s01/p001") for _ in range(2))
+    kind = ArtifactType.STRUCTURED_NOTE
+    mine = draft(session, book, anchor="ch01/s01/p001", type=kind, note_id=first.id)
+    draft(session, book, 2, anchor="ch01/s01/p001", type=kind, note_id=second.id)
+
+    versions = api.get(f"{API}/{mine.id}/versions").json()
+
+    assert [v["id"] for v in versions] == [str(mine.id)]

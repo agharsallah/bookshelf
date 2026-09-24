@@ -137,6 +137,10 @@ def list_versions(artifact_id: uuid.UUID, session: SessionDep) -> list[ArtifactP
             Artifact.document_id == artifact.document_id,
             Artifact.type == artifact.type,
             same_anchor,
+            # Two notes on one anchor each have their own structured_note history.
+            col(Artifact.note_id).is_(None)
+            if artifact.note_id is None
+            else Artifact.note_id == artifact.note_id,
         )
         .order_by(col(Artifact.version))
     ).all()
