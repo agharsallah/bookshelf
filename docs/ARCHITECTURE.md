@@ -913,7 +913,7 @@ Keep Astro as the shell and routing layer; add React islands only where interact
 | Surface | Tech | Why |
 |---|---|---|
 | **Library** | Astro, static | Shelf grid, filters, ingest status. No client state worth shipping JS for |
-| **Reader** | React island | Two panes — source blocks left, distillation right — anchor-synced scrolling, highlight/note creation. Genuinely interactive |
+| **Reader** | React island | Two panes — source blocks left, distillation right — anchor-synced scrolling, highlight/note creation. Reading settings (font, size, spacing, width), panes you can put away, focus mode and full screen, passages colour-coded by role (quote, example, exercise…), all kept per browser. Genuinely interactive |
 | **Brief** | Astro, static | Renders one approved artifact. Server-rendered, instant, printable |
 | **Search** | React island | Query box, intent badge, grouped results, cited answer with click-through |
 | **Graph** | React island | Canvas force layout over a neighborhood endpoint, node cap enforced client-side |
