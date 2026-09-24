@@ -253,6 +253,9 @@ class QueryRouter:
     def _by_model(self, session: Session, query: str) -> Route | None:
         if self.runner is None:
             return None
+        # End the rules' read transaction: its pooled connection must not sit idle through a
+        # model call (up to its timeout, plus any wait for a free CLI slot).
+        session.rollback()
         try:
             reply = self._classify(query)
             return self._from_reply(session, query, reply)

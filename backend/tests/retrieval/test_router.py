@@ -131,3 +131,22 @@ def test_chapter_one_skips_front_matter_whose_anchor_also_ends_in_01(
     route = _route(session, "summarize chapter 1 of Meadows")
 
     assert route.anchor == "ch01"
+
+
+def test_the_classifier_runs_without_holding_a_database_connection(shelf: Shelf) -> None:
+    """The rules query Postgres first; the model call after them (up to 20 s, plus the wait
+    for a free CLI slot) must not keep that read transaction's connection checked out."""
+    from app.db.session import engine
+
+    held: list[int] = []
+
+    def reply(prompt: str) -> str:
+        held.append(engine.pool.checkedout())
+        return json.dumps({"intent": "addressed", "document": "Donella Meadows", "chapter": 1})
+
+    with Session(engine) as routing:
+        before = engine.pool.checkedout()
+        route = QueryRouter(FakeRunner(reply)).route(routing, "chapter 9 of the unknown volume")
+
+    assert (route.intent, route.anchor) == ("addressed", "ch01")
+    assert held == [before]
