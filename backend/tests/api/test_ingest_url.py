@@ -4,6 +4,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 import httpx
+import pytest
 from fastapi.testclient import TestClient
 
 from app.services import fetch
@@ -134,3 +135,13 @@ def test_only_http_urls_are_accepted(client: TestClient):
     response = client.post(URL, json={"url": "file:///etc/passwd"}, headers=AUTH)
 
     assert response.status_code == 422
+
+
+@pytest.mark.parametrize("url", ["http://💥/", "http://exa mple.com/", "https://a\x00b/"])
+def test_urls_httpx_cannot_parse_are_422(client: TestClient, web: Web, url: str):
+    web(lambda request: html())
+
+    response = client.post(URL, json={"url": url}, headers=AUTH)
+
+    assert response.status_code == 422
+    assert response.json()["error"]["details"][0]["field"] == "body.url"

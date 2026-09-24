@@ -123,6 +123,8 @@ def fetch_html(client: httpx.Client, url: str) -> FetchedPage:
                 if len(body) > MAX_BYTES:
                     raise _too_large()
             return FetchedPage(url=str(response.url), content=bytes(body))
+    except httpx.InvalidURL as exc:  # e.g. a host IDNA rejects, a control character
+        raise InvalidInputError(f"Not a valid URL: {exc}", field="body.url") from None
     except httpx.TooManyRedirects:
         raise InvalidInputError(f"More than {MAX_REDIRECTS} redirects.", field="body.url") from None
     except httpx.TimeoutException:

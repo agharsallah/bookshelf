@@ -75,7 +75,7 @@ def resolve_library_file(library_dir: Path, raw: str) -> Path:
         candidate = Path(*candidate.parts[1:])
     try:
         resolved = (root / candidate).resolve(strict=True)
-    except (FileNotFoundError, NotADirectoryError, RuntimeError, OSError):
+    except (OSError, RuntimeError, ValueError):  # ValueError: a NUL byte in the path
         raise InvalidInputError(f"No such file in the library: {raw}", field="body.path") from None
     if not resolved.is_relative_to(root) or resolved == root:
         raise InvalidInputError("Path escapes the library directory.", field="body.path")

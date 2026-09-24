@@ -65,8 +65,17 @@ def test_path_relative_to_the_library_and_title_override_are_accepted(
         "library/missing.pdf",
         "library/notes.txt",
         "library/sub",
+        "library/a\x00b.pdf",
     ],
-    ids=["dotdot-in-library", "dotdot", "absolute", "missing", "unsupported-suffix", "directory"],
+    ids=[
+        "dotdot-in-library",
+        "dotdot",
+        "absolute",
+        "missing",
+        "unsupported-suffix",
+        "directory",
+        "nul-byte",
+    ],
 )
 def test_paths_that_are_not_a_supported_library_file_are_rejected(
     client: TestClient, library_dir: Path, path: str
