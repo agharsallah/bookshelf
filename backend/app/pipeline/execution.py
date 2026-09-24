@@ -147,6 +147,7 @@ def build_artifact(
         element=prepared.selection.element,
         siblings=sibling_texts(session, prepared),
         schema_retry=schema_retry,
+        visible_anchors=prepared.selection.visible_anchors,
     )
     return Artifact(
         document_id=prepared.document.id,

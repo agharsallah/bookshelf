@@ -979,7 +979,7 @@ of the transport-level guardrails already in `backend/`.
 |---|---|---|
 | **Schema** | Output validated against the skill's `schema.json` | Retry once, then `failed` |
 | **Grounding** | Share of leaf spans carrying ≥1 valid `cites` anchor | < 0.9 → `needs_review` |
-| **Anchor validity** | Every cited anchor exists in this document | Reject, re-run |
+| **Anchor validity** | Every cited anchor exists in this document; and (skills only) lies in the scope's subtree or appears in the skill's inputs | Nonexistent: reject, re-run. Existing but never shown: flag `out_of_scope_cites` → `needs_review` |
 | **Compression** | Length vs. source within the type's band: summary ≤ 150 words, distillation 10–25 % | Outside → flag (too long = copying, too short = skipping) |
 | **Non-prose confidence** | per-kind skills self-report `confidence`; chart data needs ≥ 2 points, code must round-trip byte-identical, LaTeX must parse | `low` → `needs_review`, never cited by distillations until approved |
 | **Human bypass** | `origin = human` skips grounding and compression, keeps schema + anchor validity | Reject only on invalid anchors |

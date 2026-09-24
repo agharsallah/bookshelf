@@ -231,3 +231,55 @@ def test_the_model_runs_with_no_database_transaction_open(session, book, make_jo
 
     assert outcome.state is JobState.DONE
     assert seen == [0]
+
+
+def _flags(session, book, job, runner, skills_dir) -> tuple[Review, list[str]]:
+    run(session, job, runner, skills_dir)
+    (artifact,) = artifacts_of(session, book)
+    return artifact.review, artifact.gates["flags"]
+
+
+def test_citing_a_real_anchor_the_skill_never_saw_needs_review(session, book, make_job, skills_dir):
+    """A section note citing another chapter's passage cites something it was not shown:
+    grounded on paper, invented in fact. Soft flag, not a rejection (the anchor exists)."""
+    elsewhere = reply(body(paragraph("Balancing loops resist change.", "ch02/p001")))
+    job = make_job(JobKind.DISTIL_SECTION, book, "ch01/s01")
+
+    assert _flags(session, book, job, FakeRunner(elsewhere), skills_dir) == (
+        Review.NEEDS_REVIEW,
+        ["out_of_scope_cites"],
+    )
+
+
+@pytest.mark.parametrize(
+    ("cite", "flags"),
+    [
+        ("ch02/c001", []),  # the element itself (its scope)
+        ("ch01/s02/p001", []),  # outside the scope, but shown as context in the input
+        ("ch01/s01/p001", ["out_of_scope_cites"]),  # exists, never shown
+    ],
+)
+def test_a_cite_may_point_at_the_scope_or_anything_the_inputs_showed(
+    session, book, make_job, skills_dir, cite: str, flags: list[str]
+):
+    output = reply(body(paragraph("The loop adds inflow until the goal.", cite), confidence="high"))
+    job = make_job(JobKind.EXPLAIN_CODE, book, "ch02/c001")
+
+    assert _flags(session, book, job, FakeRunner(output), skills_dir)[1] == flags
+
+
+def test_interactive_imports_get_the_same_scope_check(session, book, skills_dir):
+    from app.pipeline import interactive
+
+    skill = load_catalogue(skills_dir)["summarize"]
+    current = prepare(session, skill, book, "ch02").input_hash
+
+    artifact = interactive.import_output(
+        session, skill="summarize", document=book.slug, anchor="ch02", input_hash=current,
+        output=body(paragraph("Stocks remember.", "ch01/s01/p001")), skills_dir=skills_dir,
+    )  # fmt: skip
+
+    assert (artifact.review, artifact.gates["flags"]) == (
+        Review.NEEDS_REVIEW,
+        ["out_of_scope_cites"],
+    )

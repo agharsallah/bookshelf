@@ -170,8 +170,12 @@ def evaluate(
     element: Mapping[str, Any] | None = None,
     siblings: Mapping[str, str] | None = None,
     schema_retry: bool = False,
+    visible_anchors: Collection[str] | None = None,
 ) -> GateReport:
-    """Score an output that already passed the hard gates."""
+    """Score an output that already passed the hard gates.
+
+    `visible_anchors`: what the skill was shown. A cite of an existing anchor outside it
+    (grounded on paper, but on a passage the model never saw) flags `out_of_scope_cites`."""
     words = count_words(plain_text(output))
     report = GateReport(words=words, schema_retry=schema_retry)
     if origin is Origin.HUMAN:  # D15 human bypass: schema + anchors only
@@ -193,6 +197,8 @@ def evaluate(
         report.flags.append("low_confidence")
     if element is not None and element.get("kind") == "code" and _code_rewritten(output, element):
         report.flags.append("code_not_verbatim")
+    if visible_anchors is not None and cited_anchors(output) - set(visible_anchors):
+        report.flags.append("out_of_scope_cites")
     for anchor in duplicates(plain_text(output), siblings or {}):
         report.flags.append(f"duplicate_of:{anchor}")
     return report

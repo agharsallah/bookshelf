@@ -7,7 +7,7 @@ explanations stay out of `figures` until a human approves them.
 """
 
 import uuid
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -38,6 +38,9 @@ class Selection:
     valid_anchors: frozenset[str]
     images: tuple[Path, ...] = ()  # absolute, for the CLI's `--add-dir`; never hashed
     element: dict[str, Any] | None = None
+    # What the skill could see: the scope's subtree plus every anchor named anywhere in
+    # `inputs` (e.g. the blocks section notes cite). None: every valid anchor.
+    visible_anchors: frozenset[str] | None = None
 
     def prompt_inputs(self) -> dict[str, Any]:
         """`inputs` as the batch prompt shows them: the element's media-relative
@@ -75,12 +78,22 @@ class Context:
         return sum(count_words(n.text or "") for n in leaves)
 
     def selection(self, extra: dict[str, Any], **kwargs: Any) -> Selection:
+        inputs = {**self.base(), **extra}
         return Selection(
-            inputs={**self.base(), **extra},
+            inputs=inputs,
             source_words=kwargs.pop("source_words", self.source_words()),
             valid_anchors=self.tree.anchors,
+            visible_anchors=self.visible_anchors(inputs),
             **kwargs,
         )
+
+    def visible_anchors(self, inputs: dict[str, Any]) -> frozenset[str]:
+        """The scope's subtree, plus every anchor the inputs mention (any string value)."""
+        known = self.tree.anchors
+        if self.node is None:
+            return known
+        subtree = {self.node.anchor, *(n.anchor for n in self.tree.walk(self.node))}
+        return frozenset(subtree | {s for s in _strings(inputs) if s in known})
 
     def require_node(self) -> Node:
         if self.node is None:
@@ -89,6 +102,18 @@ class Context:
 
 
 # --- Shared pieces -----------------------------------------------------------------------
+
+
+def _strings(value: Any) -> Iterator[str]:
+    """Every string in a JSON value, keys excluded."""
+    if isinstance(value, str):
+        yield value
+    elif isinstance(value, dict):
+        for child in value.values():
+            yield from _strings(child)
+    elif isinstance(value, list):
+        for child in value:
+            yield from _strings(child)
 
 
 def _in_scope(anchor: str | None, scope: Node | None) -> bool:
