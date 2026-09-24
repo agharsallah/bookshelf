@@ -103,6 +103,40 @@ def test_rate_limit_returns_429_with_retry_after():
     assert statuses[-1] == 429
 
 
+def _limited_app(max_requests: int) -> TestClient:
+    from app.core.config import Settings
+    from app.main import create_app
+
+    settings = Settings(
+        environment="test",  # type: ignore[arg-type]
+        rate_limit_requests=max_requests,
+        rate_limit_window_seconds=60,
+        api_key="test-secret-key",
+        log_json=False,
+    )
+    return TestClient(create_app(settings))
+
+
+def test_a_new_bogus_api_key_per_request_does_not_escape_the_rate_limit():
+    """Only the real key gets its own bucket; any other value counts against the caller's
+    address, or rotating a junk header would buy unlimited requests (and key guesses)."""
+    with _limited_app(3) as limited:
+        statuses = [
+            limited.get("/api/v1/jobs", headers={"X-API-Key": f"guess-{n}"}).status_code
+            for n in range(5)
+        ]
+
+    assert statuses == [200, 200, 200, 429, 429]
+
+
+def test_the_real_api_key_has_a_bucket_of_its_own():
+    with _limited_app(2) as limited:
+        anonymous = [limited.get("/api/v1/jobs").status_code for _ in range(3)]
+        keyed = [limited.get("/api/v1/jobs", headers=AUTH).status_code for _ in range(2)]
+
+    assert (anonymous, keyed) == ([200, 200, 429], [200, 200])
+
+
 def test_an_unhandled_error_keeps_the_request_id_in_envelope_and_header():
     """Starlette answers unhandled exceptions outside the request-context middleware; the
     envelope used to say `request_id: "-"`."""

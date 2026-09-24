@@ -93,6 +93,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         RateLimitMiddleware,
         max_requests=settings.rate_limit_requests,
         window_seconds=settings.rate_limit_window_seconds,
+        api_key=settings.api_key,
     )
     app.add_middleware(
         CORSMiddleware,

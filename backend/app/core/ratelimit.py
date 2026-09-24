@@ -6,6 +6,7 @@ swap `_InMemoryCounter` for Redis; the middleware contract stays the same.
 """
 
 import logging
+import secrets
 import time
 from threading import Lock
 
@@ -47,10 +48,13 @@ class _InMemoryCounter:
 
 
 class RateLimitMiddleware:
-    def __init__(self, app: ASGIApp, *, max_requests: int, window_seconds: int) -> None:
+    def __init__(
+        self, app: ASGIApp, *, max_requests: int, window_seconds: int, api_key: str | None = None
+    ) -> None:
         self.app = app
         self.max_requests = max_requests
         self.counter = _InMemoryCounter(window_seconds)
+        self._api_key = api_key.encode() if api_key else None
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http" or self.max_requests <= 0:
@@ -60,7 +64,7 @@ class RateLimitMiddleware:
             await self.app(scope, receive, send)
             return
 
-        key = _client_key(scope)
+        key = _client_key(scope, self._api_key)
         now = time.time()
         count, reset_at = self.counter.hit(key, now)
 
@@ -84,15 +88,17 @@ class RateLimitMiddleware:
         await self.app(scope, receive, send)
 
 
-def _client_key(scope: Scope) -> str:
-    """Identify the caller by API key when present, else by peer address.
+def _client_key(scope: Scope, api_key: bytes | None) -> str:
+    """Identify the caller by the API key when it presents the real one, else by peer
+    address. Any other `X-API-Key` value counts against the address: otherwise a fresh junk
+    value per request would get a fresh bucket, i.e. no limit at all (key guessing included).
 
     `X-Forwarded-For` is deliberately ignored: it is trivially spoofed unless the app
     sits behind a proxy that overwrites it. Run behind a proxy with `--proxy-headers`
     (see https://fastapi.tiangolo.com/advanced/behind-a-proxy/) to get real client IPs.
     """
     for raw_key, raw_value in scope["headers"]:
-        if raw_key == b"x-api-key":
-            return f"key:{hash(raw_value)}"
+        if raw_key == b"x-api-key" and api_key and secrets.compare_digest(raw_value, api_key):
+            return "key"
     client = scope.get("client")
     return f"ip:{client[0]}" if client else "ip:unknown"
