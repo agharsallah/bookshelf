@@ -99,7 +99,8 @@ describe('<IngestPanel>', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Add to shelf' }));
 
     expect((await screen.findByRole('status')).textContent).toContain('Waiting for the worker');
-    expect(FakeEventSource.last?.url).toBe('/api/jobs/stream');
+    // The stream opens in an effect after the status renders, so wait for it.
+    await vi.waitFor(() => expect(FakeEventSource.last?.url).toBe('/api/jobs/stream'));
 
     FakeEventSource.last?.emit('job', job('running', 1));
     expect((await screen.findByText(/Parsing/)).textContent).toContain('Parsing');
