@@ -65,7 +65,7 @@ class ConceptSummary(BaseModel):
     origin: Annotated[Origin, Field(description="`human` once a person created or edited it.")]
     edge_count: Annotated[
         int,
-        Field(description="Accepted edges, with the concepts merged into it folded in (lists)."),
+        Field(description="Accepted edges, with the concepts merged into it folded in."),
     ] = 0
 
 

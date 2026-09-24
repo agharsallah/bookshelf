@@ -168,8 +168,11 @@ def concept_detail(session: Session, concept: Concept) -> ConceptDetail:
                 evidence=[passage_out(found[r]) for r in edge.evidence if r in found],
             )
         )
+    edge_count = session.exec(select(EDGE_COUNT).where(Concept.id == concept.id)).one()
     return ConceptDetail(
-        concept=ConceptPublic.model_validate(concept),
+        concept=ConceptPublic.model_validate(concept).model_copy(
+            update={"edge_count": int(edge_count)}
+        ),
         blurb_passages=[passage_out(found[r]) for r in concept.blurb_cites if r in found],
         relations=[RelationGroup(relation=rel, edges=items) for rel, items in groups.items()],
     )

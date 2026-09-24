@@ -277,3 +277,13 @@ def test_a_blank_concept_name_is_a_validation_error(
     )
 
     assert (created.status_code, renamed.status_code, aliased.status_code) == (422, 422, 422)
+
+
+def test_a_concept_page_reports_the_same_edge_count_as_the_list(
+    client: TestClient, linked: Concept
+):
+    listed = client.get(f"{API}/concepts", params={"q": "little's law"}).json()["items"][0]
+    page = client.get(f"{API}/concepts/{linked.id}").json()["concept"]
+
+    assert listed["edge_count"] == 2  # defines + mentions; the same_as is only proposed
+    assert page["edge_count"] == 2
