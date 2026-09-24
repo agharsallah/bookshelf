@@ -31,10 +31,9 @@ from app.retrieval.collections import (
 )
 from app.retrieval.embedding import Embedder
 from app.retrieval.points import flatten_body
-from app.retrieval.refs import document_ref, load_refs, ref_from_payload, snippet
+from app.retrieval.refs import document_ref, load_refs, snippet
 from app.retrieval.router import QueryRouter, Route, is_lexical
 from app.schemas.search import (
-    DocumentRef,
     IndexState,
     ResolvedAddress,
     SearchFilters,
@@ -164,22 +163,21 @@ def _vector(
     ensure_ready(client, dense_dim=embedder.dense_dim)  # first search creates the layout
     vectors = hybrid.QueryVectors.embed(embedder, request.query)
     groups = max(request.limit, 2) if route.intent == "synthesis" else request.limit
-    distillations, lookups = hybrid.distillation_groups(client, vectors, filters, groups=groups)
+    distillations, _ = hybrid.distillation_groups(client, vectors, filters, groups=groups)
     if distillations:
         scopes = hybrid.scopes_of(distillations)
-        evidence, more = hybrid.evidence_blocks(client, vectors, scopes, filters.tags)
+        evidence, _ = hybrid.evidence_blocks(client, vectors, scopes, filters.tags)
     else:  # nothing distilled (yet): search the blocks directly
-        evidence, more = hybrid.block_groups(client, vectors, filters, groups=groups)
-    lookups |= more
+        evidence, _ = hybrid.block_groups(client, vectors, filters, groups=groups)
     candidates = distillations + evidence
     scores = embedder.rerank(request.query, [c.text[:RERANK_CHARS] for c in candidates])
     ranked = sorted(zip(candidates, scores, strict=True), key=lambda pair: -pair[1])
     by_document: OrderedDict[str, list[SearchHit]] = OrderedDict()
     for candidate, score in ranked:
         by_document.setdefault(candidate.document_id, []).append(_hit(candidate, score))
-    refs: dict[str, DocumentRef] = {i: ref_from_payload(p) for i, p in lookups.items()}
-    missing = [i for i in by_document if i not in refs]
-    refs |= load_refs(session, missing)
+    # Postgres, not the index, says which documents exist and what they are called (D1):
+    # points outlive a deleted document until its purge job runs, and payloads a title edit.
+    refs = load_refs(session, list(by_document))
     return [
         SearchGroup(document=refs[doc_id], hits=hits)
         for doc_id, hits in by_document.items()

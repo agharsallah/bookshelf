@@ -1,8 +1,7 @@
-"""Document references on the wire, built from a row or from a `documents` lookup payload."""
+"""Document references on the wire, always built from the `documents` row."""
 
 import uuid
 from collections.abc import Iterable
-from typing import Any
 
 from sqlmodel import Session, col, select
 
@@ -15,15 +14,6 @@ SNIPPET_CHARS = 320
 def document_ref(document: Document) -> DocumentRef:
     return DocumentRef(
         id=document.id, slug=document.slug, title=document.title, authors=list(document.authors)
-    )
-
-
-def ref_from_payload(payload: dict[str, Any]) -> DocumentRef:
-    return DocumentRef(
-        id=uuid.UUID(str(payload["document_id"])),
-        slug=str(payload["slug"]),
-        title=str(payload["title"]),
-        authors=[str(a) for a in payload.get("authors") or []],
     )
 
 

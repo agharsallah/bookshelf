@@ -160,3 +160,23 @@ def test_embed_job_indexes_its_document_and_without_one_rebuilds_all(
     everything = run_embed(JobContext(session, Job(kind=JobKind.EMBED)))
     assert everything.result["documents"] == 2
     assert qdrant.count("blocks").count == 6
+
+
+def test_deleting_a_document_queues_the_purge_of_its_points(
+    session: Session, indexed: Shelf, embedder: FakeEmbedder, qdrant: QdrantClient
+) -> None:
+    from sqlmodel import select
+
+    from app.services.documents import delete_document
+
+    senge_id = str(indexed.senge.id)
+    delete_document(session, indexed.senge)
+    purge = session.exec(select(Job).where(Job.kind == JobKind.EMBED)).one()
+
+    run_embed(JobContext(session, purge))
+
+    doc_ids = {p["document_id"] for p in _payloads(qdrant, "blocks").values()}
+    doc_ids |= {p["document_id"] for p in _payloads(qdrant, "distillations").values()}
+    assert doc_ids == {str(indexed.meadows.id)}
+    assert senge_id not in _payloads(qdrant, "documents")
+    assert _payloads(qdrant, "blocks")  # Meadows is untouched: no rebuild ran

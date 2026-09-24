@@ -24,6 +24,7 @@ from app.services.sql import contains_pattern
 
 CONTAINER_KINDS = [k for k in NodeKind if k.is_container]
 LEAF_KINDS = [k for k in NodeKind if not k.is_container]
+PURGE = "purge"  # `embed` job payload key: the id of a deleted document to drop from search
 
 
 def get_document(session: Session, ref: str) -> Document:
@@ -169,9 +170,20 @@ def update_document(session: Session, document: Document, changes: dict[str, Any
 
 
 def delete_document(session: Session, document: Document) -> None:
-    """Delete the row; nodes, notes, artifacts and jobs cascade. The file is never touched."""
+    """Delete the row; nodes, notes, artifacts and jobs cascade. The file is never touched.
+
+    Its search points are derived (D1) but live outside Postgres: an `embed` job without a
+    document (so it survives the cascade) purges them, committed with the delete.
+    """
     session.delete(document)
-    session.commit()
+    enqueue_or_live(session, purge_job(document.id))  # commits the delete and the job
+
+
+def purge_job(document_id: uuid.UUID) -> JobSpec:
+    """The `embed` job that drops a deleted document's points from the search index."""
+    return JobSpec(
+        kind=JobKind.EMBED, input_hash=f"purge:{document_id}", payload={PURGE: str(document_id)}
+    )
 
 
 def outline_job(document: Document, chapters: list[dict[str, Any]]) -> JobSpec:

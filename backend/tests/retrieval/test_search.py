@@ -158,3 +158,26 @@ def test_lexical_respects_tag_filters(
     )
 
     assert {g.document.slug for g in response.groups} == {"senge-fifth-discipline"}
+
+
+def test_a_deleted_document_never_comes_back_from_vector_search(
+    session: Session, indexed: Shelf, embedder: FakeEmbedder
+) -> None:
+    from app.services.documents import delete_document
+
+    delete_document(session, indexed.meadows)
+    response = _search(session, embedder, "balancing feedback loops stabilize a stock")
+
+    assert {g.document.slug for g in response.groups} == {"senge-fifth-discipline"}
+
+
+def test_vector_hits_carry_the_document_metadata_postgres_has_now(
+    session: Session, indexed: Shelf, embedder: FakeEmbedder
+) -> None:
+    indexed.meadows.title = "Thinking in Systems: A Primer"  # edited after indexing
+    session.add(indexed.meadows)
+    session.commit()
+
+    response = _search(session, embedder, "balancing feedback loops stabilize a stock")
+
+    assert response.groups[0].document.title == "Thinking in Systems: A Primer"
