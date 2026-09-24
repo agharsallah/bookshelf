@@ -112,11 +112,45 @@ export function buildProxyRequest(incoming: IncomingProxyRequest, config: ProxyC
   };
 }
 
-/** Copy upstream response headers minus the hop-by-hop ones. */
-export function proxyResponseHeaders(upstream: Headers): Headers {
+/** Where the proxy is mounted in the browser's origin. */
+export const PROXY_MOUNT = '/api';
+
+export interface LocationContext {
+  /** Backend base URL including the version prefix (ProxyConfig.backendUrl). */
+  backendUrl: string;
+  /** The upstream URL the response answers, for resolving relative locations. */
+  upstreamUrl: string;
+}
+
+/**
+ * A backend `Location` as the browser should see it: under the backend's API prefix →
+ * the same path under `/api`; anywhere else (another host, the backend root) → null,
+ * so the internal address never reaches the browser.
+ */
+export function proxyLocation(location: string, context: LocationContext): string | null {
+  if (!URL.canParse(location, context.upstreamUrl)) return null;
+  const target = new URL(location, context.upstreamUrl);
+  const base = new URL(context.backendUrl);
+  const prefix = `${base.pathname.replace(/\/+$/, '')}/`;
+  if (target.origin !== base.origin || !target.pathname.startsWith(prefix)) return null;
+  return `${PROXY_MOUNT}/${target.pathname.slice(prefix.length)}${target.search}${target.hash}`;
+}
+
+/**
+ * Copy upstream response headers minus the hop-by-hop ones. With `context`, a
+ * `Location` is rewritten to the proxy path or dropped (see `proxyLocation`).
+ */
+export function proxyResponseHeaders(upstream: Headers, context?: LocationContext): Headers {
   const headers = new Headers();
   upstream.forEach((value, key) => {
-    if (!HOP_BY_HOP_RESPONSE_HEADERS.has(key.toLowerCase())) headers.set(key, value);
+    const name = key.toLowerCase();
+    if (HOP_BY_HOP_RESPONSE_HEADERS.has(name)) return;
+    if (name === 'location') {
+      const mapped = context ? proxyLocation(value, context) : null;
+      if (mapped) headers.set(key, mapped);
+      return;
+    }
+    headers.set(key, value);
   });
   return headers;
 }

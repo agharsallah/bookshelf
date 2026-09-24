@@ -15,11 +15,12 @@ import { proxyConfig } from '../../lib/api/server';
 export const prerender = false;
 
 export const ALL: APIRoute = async ({ request, params, url }) => {
+  const config = proxyConfig();
   let upstream;
   try {
     upstream = buildProxyRequest(
       { method: request.method, path: params.path ?? '', search: url.search, headers: request.headers },
-      proxyConfig(),
+      config,
     );
   } catch (error) {
     if (error instanceof ProxyPathError) return proxyErrorResponse(400, 'bad_path', error.message);
@@ -43,6 +44,6 @@ export const ALL: APIRoute = async ({ request, params, url }) => {
   return new Response(response.body, {
     status: response.status,
     statusText: response.statusText,
-    headers: proxyResponseHeaders(response.headers),
+    headers: proxyResponseHeaders(response.headers, { backendUrl: config.backendUrl, upstreamUrl: upstream.url }),
   });
 };

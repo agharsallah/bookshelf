@@ -69,6 +69,28 @@ describe('proxyTarget', () => {
   });
 });
 
+describe('proxyResponseHeaders: Location', () => {
+  const upstream = 'http://backend:8000/api/v1/documents/42';
+  const location = (value: string) =>
+    proxyResponseHeaders(new Headers({ location: value }), { backendUrl: config.backendUrl, upstreamUrl: upstream }).get('location');
+
+  it.each([
+    ['an absolute backend URL', 'http://backend:8000/api/v1/documents/flow?x=1', '/api/documents/flow?x=1'],
+    ['a root-relative backend path', '/api/v1/documents/flow', '/api/documents/flow'],
+    ['a path relative to the request', 'tree', '/api/documents/tree'],
+  ])('maps %s to the same-origin proxy path', (_label, value, expected) => {
+    expect(location(value)).toBe(expected);
+  });
+
+  it.each([
+    ['another host', 'https://elsewhere.example/api/v1/x'],
+    ['the backend outside the API prefix', 'http://backend:8000/docs'],
+    ['a sibling prefix', 'http://backend:8000/api/v10/x'],
+  ])('drops a Location to %s rather than exposing it', (_label, value) => {
+    expect(location(value)).toBeNull();
+  });
+});
+
 describe('proxyResponseHeaders', () => {
   it('strips hop-by-hop and encoding headers the proxy re-computes', () => {
     const headers = proxyResponseHeaders(
