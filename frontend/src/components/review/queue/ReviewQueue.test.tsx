@@ -55,7 +55,8 @@ describe('<ReviewQueue>', () => {
 
     await waitFor(() => expect(row('1.2')).toBeTruthy());
     expect(calls.map((c) => c.body)).toEqual([{ action: 'reject' }, { action: 'reopen' }]);
-    expect(document.activeElement).toBe(row('1.2'));
+    // Focus follows once the restored item is back in the walk order (a render later).
+    await waitFor(() => expect(document.activeElement).toBe(row('1.2')));
   });
 
   it('a refused reopen is reported and the item stays reviewed', async () => {
