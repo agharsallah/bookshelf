@@ -72,3 +72,25 @@ def test_a_highlight_cannot_be_structured_by_hand(client: TestClient, session: S
 
     assert response.status_code == 422
     assert jobs(session) == []
+
+
+def test_words_added_concurrently_keep_the_first_and_answer_409_to_the_second(
+    session: Session,
+):
+    """Two PATCHes both read the highlight while it had no words; the second write must be
+    a clean 409 (D11), not the trigger's exception surfacing as a 500."""
+    from app.core.errors import ConflictError
+    from app.db.session import engine
+    from app.services import notes
+
+    note = make_note(session, make_book(session), ANCHOR, raw=None)
+    with Session(engine) as first:
+        notes.add_raw(first, notes.get_note(first, note.id), "first words")
+
+    with pytest.raises(ConflictError):
+        notes.add_raw(session, note, "second words")  # `note` was read before the first write
+
+    session.rollback()
+    session.refresh(note)
+    assert note.raw == "first words"
+    assert len(jobs(session)) == 1

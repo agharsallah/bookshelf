@@ -12,7 +12,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
 
-from sqlalchemy import func, tuple_
+from sqlalchemy import func, tuple_, update
 from sqlmodel import Session, col, select
 
 from app.core.errors import ConflictError, NotFoundError
@@ -95,15 +95,25 @@ def create_note(session: Session, data: NoteInput) -> tuple[Note, Job | None]:
 
 def add_raw(session: Session, note: Note, raw: str) -> tuple[Note, Job]:
     """Give a plain highlight its words, once (D11), and queue structuring."""
+    conflict = ConflictError(
+        "`raw` is immutable (D11): this note already has its words. "
+        "Delete it and create a new one instead.",
+        details=[{"field": "body.raw"}],
+    )
     if note.raw is not None:
-        raise ConflictError(
-            "`raw` is immutable (D11): this note already has its words. "
-            "Delete it and create a new one instead.",
-            details=[{"field": "body.raw"}],
-        )
-    note.raw = raw
-    session.add(note)
-    session.flush()
+        raise conflict
+    # Conditional, so a concurrent request that gave the words first wins cleanly: `note`
+    # may have been read before that write, and the D11 trigger would reject this one.
+    written = session.execute(
+        update(Note)
+        .where(col(Note.id) == note.id, col(Note.raw).is_(None))
+        .values(raw=raw)
+        .returning(col(Note.id))
+    ).first()
+    if written is None:
+        session.rollback()
+        raise conflict
+    session.refresh(note)
     job, _ = enqueue_or_live(session, structure_job_spec(note))  # commits raw + job together
     session.refresh(note)
     return note, job
