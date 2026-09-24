@@ -10,6 +10,7 @@ same rows through the same gates.
 
 import logging
 import uuid
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -24,6 +25,7 @@ from app.models.enums import ArtifactType, JobKind, JobState, Origin, RunMode
 from app.pipeline import artifacts, ceiling, gates
 from app.pipeline.bodies import plain_text
 from app.pipeline.hashing import input_hash
+from app.pipeline.repair import repair_blocks
 from app.pipeline.runner import ModelRunner, OutputError, run_structured
 from app.pipeline.selectors import Selection, SelectorError, select_inputs
 from app.pipeline.skills import Skill, load_catalogue, render_prompt, skill_for_job_kind
@@ -137,6 +139,7 @@ def build_artifact(
     run_mode: RunMode,
     model: str | None,
     schema_retry: bool = False,
+    repairs: Sequence[str] = (),
 ) -> Artifact:
     """Score an output that passed the hard gates and wrap it in an unsaved artifact."""
     report = gates.evaluate(
@@ -148,6 +151,7 @@ def build_artifact(
         siblings=sibling_texts(session, prepared),
         schema_retry=schema_retry,
         visible_anchors=prepared.selection.visible_anchors,
+        repairs=repairs,
     )
     return Artifact(
         document_id=prepared.document.id,
@@ -240,6 +244,7 @@ def execute_skill_job(
             tier=skill.meta.tier,
             validate=lambda output: output_problems(prepared, output),
             images=prepared.selection.images if skill.meta.vision else (),
+            repair=repair_blocks,
         )
     except OutputError as exc:
         raise PermanentJobError(f"output rejected after one retry: {exc}") from exc
@@ -251,6 +256,7 @@ def execute_skill_job(
         run_mode=RunMode.BATCH,
         model=run.model,
         schema_retry=run.retried,
+        repairs=run.repairs,
     )
     try:
         artifact = artifacts.insert(session, artifact, supersede=force)
@@ -263,6 +269,7 @@ def execute_skill_job(
             "artifact_id": str(artifact.id),
             "review": artifact.review.value,
             "grounding": artifact.gates.get("grounding"),
+            "repairs": run.repairs,
         },
     )
     return HandlerResult(

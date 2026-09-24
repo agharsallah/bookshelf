@@ -44,6 +44,8 @@ export interface ArtifactGates {
   /** e.g. `grounding_below_min`, `compression_low`, `low_confidence`, `duplicate_of:ch03/s02`. */
   flags?: string[];
   schema_retry?: boolean;
+  /** Render-block shape fixes applied before the schema gate, e.g. `paragraph: text → spans`. */
+  repairs?: string[];
 }
 
 export interface ArtifactPublic {

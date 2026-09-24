@@ -142,6 +142,7 @@ class StructuredRun:
     cost_tokens: int | None
     duration_ms: int
     retried: bool
+    repairs: list[str] = field(default_factory=list)  # shape fixes applied (`repair`)
 
 
 def _retry_prompt(prompt: str, problems: list[str]) -> str:
@@ -159,8 +160,12 @@ def run_structured(
     tier: Tier,
     validate: Validate,
     images: Sequence[Path] = (),
+    repair: Callable[[dict[str, Any]], list[str]] | None = None,
 ) -> StructuredRun:
-    """Run, parse and validate; on failure retry once with the problems appended.
+    """Run, parse, repair and validate; on failure retry once with the problems appended.
+
+    `repair` mends the parsed output in place before validation and returns what it fixed
+    (`app.pipeline.repair.repair_blocks` for render-block bodies).
 
     Raises `OutputError` when the second reply is still unusable.
     """
@@ -176,6 +181,7 @@ def run_structured(
         except OutputError as exc:
             problems = exc.problems
             continue
+        repairs = repair(output) if repair is not None else []
         problems = validate(output)
         if not problems:
             costs = [r.cost_tokens for r in runs if r.cost_tokens is not None]
@@ -185,6 +191,7 @@ def run_structured(
                 cost_tokens=sum(costs) if costs else None,
                 duration_ms=sum(r.duration_ms for r in runs),
                 retried=attempt == 1,
+                repairs=repairs,
             )
     raise OutputError(problems)
 

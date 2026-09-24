@@ -60,6 +60,7 @@ def test_skill_run_stores_a_draft_artifact_with_gates_and_provenance(
     assert artifact.citations == ["ch01/s01/p001"]
     assert artifact.gates == {
         "grounding": 1.0, "compression": None, "words": 5, "flags": [], "schema_retry": False,
+        "repairs": [],
     }  # fmt: skip
     assert artifact.input_hash == outcome.result["input_hash"]
     assert '"anchor": "ch01/s01/p001"' in runner.calls[0]["prompt"]
@@ -123,6 +124,20 @@ def test_a_fixed_reply_on_retry_is_stored_and_marked(session, book, make_job, sk
 
     (artifact,) = artifacts_of(session, book)
     assert artifact.gates["schema_retry"] is True
+
+
+def test_a_shape_slip_is_repaired_without_a_retry_and_recorded(session, book, make_job, skills_dir):
+    slip = {"type": "paragraph", "text": "A stock.", "cites": ["ch01/s01/p001"]}
+    slipped = reply({"blocks": [slip]})
+    runner = FakeRunner(slipped)
+
+    run(session, make_job(JobKind.DISTIL_SECTION, book, "ch01/s01"), runner, skills_dir)
+
+    (artifact,) = artifacts_of(session, book)
+    assert len(runner.calls) == 1
+    assert artifact.body == body(paragraph("A stock.", "ch01/s01/p001"))
+    assert artifact.gates["schema_retry"] is False
+    assert artifact.gates["repairs"] == ["paragraph: text → spans"]
 
 
 def test_vision_skill_receives_the_figure_image_path(session, book, make_job, skills_dir):

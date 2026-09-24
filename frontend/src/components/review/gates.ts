@@ -111,6 +111,14 @@ export function deriveGates(
       detail: 'The first output failed the schema; this is the corrected retry.',
     });
   }
+  if (record.repairs?.length) {
+    flags.push({
+      key: 'repairs',
+      label: 'Shape repaired',
+      tone: 'info',
+      detail: `Block nesting was fixed mechanically, no words changed: ${record.repairs.join('; ')}.`,
+    });
+  }
 
   const compressionOk = !compression || compression.status === 'within' || compression.status === 'unbanded';
   const passesAll =

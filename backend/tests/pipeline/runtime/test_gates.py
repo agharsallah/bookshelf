@@ -89,6 +89,19 @@ def test_schema_refs_resolve_through_the_render_contract_registry():
     ]
 
 
+def test_an_anyof_block_list_reports_what_is_wrong_in_the_block_type_meant():
+    """A skill's own block subset is an `anyOf`; the retry must name the fix ("spans"),
+    not say the block matches none of the schemas."""
+    blocks = {"anyOf": [{"$ref": f"{gates.RENDER_BLOCKS_ID}#/$defs/{name}"}
+                        for name in ("paragraph", "bullets", "table")]}  # fmt: skip
+    schema = {"type": "object", "properties": {"blocks": {"type": "array", "items": blocks}}}
+
+    problems = gates.schema_errors(schema, {"blocks": [{"type": "paragraph", "text": "A ship."}]})
+
+    assert "schema: blocks/0: 'spans' is a required property" in problems
+    assert not any("any of the given schemas" in p for p in problems)
+
+
 @pytest.mark.parametrize(
     ("words", "flags"),
     [(9, ["compression_low"]), (10, []), (25, []), (26, ["compression_high"])],
@@ -180,4 +193,5 @@ def test_human_origin_bypasses_the_soft_gates():
         "words": 3,
         "flags": [],
         "schema_retry": False,
+        "repairs": [],
     }

@@ -53,6 +53,15 @@ describe('deriveGates', () => {
     expect(deriveGates(artifact({ gates: { grounding: 1, schema_retry: true } }), distil).passesAll).toBe(true);
   });
 
+  it('shows mechanical shape repairs as an info badge that does not block bulk approval', () => {
+    const gates = deriveGates(artifact({ gates: { grounding: 1, repairs: ['paragraph: text → spans'] } }), distil);
+    expect(gates.flags).toEqual([
+      expect.objectContaining({ key: 'repairs', label: 'Shape repaired', tone: 'info' }),
+    ]);
+    expect(gates.flags[0]?.detail).toContain('paragraph: text → spans');
+    expect(gates.passesAll).toBe(true);
+  });
+
   it('marks human artifacts as bypassing grounding and compression', () => {
     const gates = deriveGates(artifact({ origin: 'human', gates: { grounding: null, compression: null, words: 40 } }));
     expect(gates).toMatchObject({ bypassed: true, grounding: null, compression: null, words: 40, passesAll: true });

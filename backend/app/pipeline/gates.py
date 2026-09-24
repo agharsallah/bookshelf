@@ -12,7 +12,7 @@ Human-authored artifacts (D15) pass the hard gates only: `origin = human` bypass
 """
 
 import json
-from collections.abc import Collection, Mapping
+from collections.abc import Collection, Mapping, Sequence
 from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
@@ -65,9 +65,11 @@ def schema_errors(
 
 def _explain(error: ValidationError) -> list[ValidationError]:
     """Replace "not valid under any of the given schemas" with the errors of the branch the
-    output meant: blocks are a `oneOf` keyed by `type`, so drop branches whose `type` const
-    failed and report what is wrong inside the one that is left."""
-    if error.validator != "oneOf" or not error.context:
+    output meant: blocks are a `oneOf` (the render contract) or an `anyOf` (a skill's own
+    subset) keyed by `type`, so drop branches whose `type` const failed and report what is
+    wrong inside the one that is left. The retry prompt then says e.g. "'spans' is a
+    required property" instead of a message no model can act on."""
+    if error.validator not in ("oneOf", "anyOf") or not error.context:
         return [error]
     branches: dict[Any, list[ValidationError]] = {}
     for sub in error.context:
@@ -108,6 +110,7 @@ class GateReport:
     words: int = 0
     flags: list[str] = field(default_factory=list)
     schema_retry: bool = False
+    repairs: list[str] = field(default_factory=list)  # render-block shape fixes (repair.py)
 
     @property
     def review(self) -> Review:
@@ -121,6 +124,7 @@ class GateReport:
             "words": self.words,
             "flags": self.flags,
             "schema_retry": self.schema_retry,
+            "repairs": self.repairs,
         }
 
 
@@ -171,13 +175,14 @@ def evaluate(
     siblings: Mapping[str, str] | None = None,
     schema_retry: bool = False,
     visible_anchors: Collection[str] | None = None,
+    repairs: Sequence[str] = (),
 ) -> GateReport:
     """Score an output that already passed the hard gates.
 
     `visible_anchors`: what the skill was shown. A cite of an existing anchor outside it
     (grounded on paper, but on a passage the model never saw) flags `out_of_scope_cites`."""
     words = count_words(plain_text(output))
-    report = GateReport(words=words, schema_retry=schema_retry)
+    report = GateReport(words=words, schema_retry=schema_retry, repairs=list(repairs))
     if origin is Origin.HUMAN:  # D15 human bypass: schema + anchors only
         return report
 
