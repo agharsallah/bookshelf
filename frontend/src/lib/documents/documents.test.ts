@@ -84,6 +84,14 @@ describe('chapterStatus', () => {
     );
     expect(status).toEqual({ summary: 'approved', distillation: null, waiting: 2 });
   });
+
+  it('does not count a draft a newer version supersedes', () => {
+    const drafts = [
+      { ...artifact({ type: 'chapter_distillation', review: 'draft' }), superseded: true },
+      artifact({ type: 'chapter_distillation', version: 2, review: 'approved', origin: 'human' }),
+    ];
+    expect(chapterStatus(drafts, 'ch01')).toEqual({ summary: null, distillation: 'approved', waiting: 0 });
+  });
 });
 
 describe('pipeline', () => {

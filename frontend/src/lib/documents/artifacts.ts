@@ -62,14 +62,15 @@ export function compareAnchors(a: string, b: string): number {
 export interface ChapterStatus {
   summary: Standing | null;
   distillation: Standing | null;
-  /** Unapproved artifacts anywhere in the chapter (sections, figures…). */
+  /** Unapproved artifacts anywhere in the chapter (sections, figures…), as the queue counts them. */
   waiting: number;
 }
 
-/** What exists for a chapter, for the outline chips. */
-export function chapterStatus(artifacts: readonly ArtifactPublic[], chapter: string): ChapterStatus {
+/** What exists for a chapter, for the outline chips. Superseded drafts wait for nobody. */
+export function chapterStatus(artifacts: readonly (ArtifactPublic & { superseded?: boolean })[], chapter: string): ChapterStatus {
   const waiting = new Set<string>();
   for (const a of artifacts) {
+    if (a.superseded) continue;
     if (a.anchor !== null && isUnder(a.anchor, chapter) && (a.review === 'draft' || a.review === 'needs_review')) {
       waiting.add(`${a.type}@${a.anchor}`);
     }

@@ -6,7 +6,7 @@
 import { problemOf, type ProblemInfo } from '../../components/common/Problem';
 import { ApiError } from '../api/errors';
 import { serverApi } from '../api/server';
-import type { ArtifactPublic, ArtifactType } from '../api/types/artifacts';
+import type { ArtifactListItem, ArtifactPublic, ArtifactType } from '../api/types/artifacts';
 import type { DocumentDetail, DocumentTree } from '../api/types/documents';
 import { fetchAll } from '../api/fetch-all';
 
@@ -32,7 +32,7 @@ export function getOutline(ref: string): Promise<DocumentTree> {
 export async function getArtifacts(
   documentId: string,
   filter: { type?: ArtifactType; anchor_prefix?: string; review?: ArtifactPublic['review'] } = {},
-): Promise<ArtifactPublic[]> {
-  const { items } = await fetchAll<ArtifactPublic>(serverApi(), 'artifacts', { document_id: documentId, ...filter });
+): Promise<ArtifactListItem[]> {
+  const { items } = await fetchAll<ArtifactListItem>(serverApi(), 'artifacts', { document_id: documentId, ...filter });
   return items;
 }
