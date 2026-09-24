@@ -2,8 +2,10 @@
 
 No Redis: `claim()` uses `FOR UPDATE SKIP LOCKED`, so any number of workers can poll
 the same table without double-claiming. `jobs_dedupe_idx` makes `enqueue()` idempotent
-for live work: enqueueing the same (kind, document, anchor, input_hash) while one is
-queued or running returns None instead of a second row.
+for waiting work: enqueueing the same (kind, document, anchor, input_hash) while one is
+queued returns None instead of a second row. While one *runs*, one follow-up may queue
+(its inputs may have changed meanwhile); `claim()` starts it only after the running one
+finished, so one scope never runs twice at once.
 """
 
 import json
@@ -45,7 +47,7 @@ def _now() -> datetime:
 
 
 def enqueue(session: Session, spec: JobSpec) -> Job | None:
-    """Insert a queued job. Returns None when identical live work already exists.
+    """Insert a queued job. Returns None when an identical job is already queued.
 
     Commits: the job must be visible to workers as soon as this returns.
     """
@@ -80,7 +82,8 @@ def enqueue(session: Session, spec: JobSpec) -> Job | None:
 def claim(session: Session, kinds: list[JobKind] | None = None) -> Job | None:
     """Atomically move the next runnable job to `running` and return it.
 
-    Also picks up `running` jobs whose lock went stale (crashed worker).
+    Also picks up `running` jobs whose lock went stale (crashed worker). A queued job waits
+    while an identical one (same kind, document, anchor, input_hash) is running.
     """
     kind_filter = "and kind = any(:kinds)" if kinds else ""
     row = session.execute(
@@ -89,8 +92,15 @@ def claim(session: Session, kinds: list[JobKind] | None = None) -> Job | None:
             update jobs set state = 'running', locked_at = now(),
                             started_at = coalesce(started_at, now()), attempts = attempts + 1
             where id = (
-              select id from jobs
-              where ((state = 'queued' and run_after <= now())
+              select id from jobs j
+              where ((state = 'queued' and run_after <= now()
+                      and not exists (select 1 from jobs r
+                                      where r.state = 'running' and r.kind = j.kind
+                                        and coalesce(r.document_id::text, '')
+                                            = coalesce(j.document_id::text, '')
+                                        and coalesce(r.anchor, '') = coalesce(j.anchor, '')
+                                        and coalesce(r.input_hash, '')
+                                            = coalesce(j.input_hash, '')))
                      or (state = 'running' and locked_at < now() - :stale))
                 {kind_filter}
               order by priority, run_after

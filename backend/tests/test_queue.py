@@ -32,6 +32,21 @@ def test_finished_work_can_be_enqueued_again(session: Session):
     assert queue.enqueue(session, JobSpec(kind=JobKind.EXPORT)) is not None
 
 
+def test_one_follow_up_queues_behind_a_running_job_and_waits_for_it(session: Session):
+    queue.enqueue(session, JobSpec(kind=JobKind.EXPORT, anchor="ch01"))
+    running = queue.claim(session)
+    follow_up = queue.enqueue(session, JobSpec(kind=JobKind.EXPORT, anchor="ch01"))
+    duplicate = queue.enqueue(session, JobSpec(kind=JobKind.EXPORT, anchor="ch01"))
+    other = queue.enqueue(session, JobSpec(kind=JobKind.EXPORT, anchor="ch02", priority=200))
+    assert running is not None and follow_up is not None and other is not None
+
+    assert duplicate is None
+    assert queue.claim(session) == other  # the same scope never runs twice at once
+    assert queue.claim(session) is None
+    queue.complete(session, running)
+    assert queue.claim(session) == follow_up
+
+
 def test_claim_respects_priority_and_marks_running(session: Session):
     queue.enqueue(session, JobSpec(kind=JobKind.EXPORT, anchor="low", priority=200))
     queue.enqueue(session, JobSpec(kind=JobKind.EXPORT, anchor="high", priority=10))

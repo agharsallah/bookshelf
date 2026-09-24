@@ -53,7 +53,7 @@ def get_job(job_id: uuid.UUID, session: SessionDep) -> JobPublic:
     summary="Enqueue a job",
 )
 def create_job(body: JobCreate, session: SessionDep, skills_dir: SkillsDirDep) -> JobAccepted:
-    """Queue a (re-)run. `deduplicated` is true when identical live work already exists:
+    """Queue a (re-)run. `deduplicated` is true when an identical job is already queued:
     same kind and scope, and the same `skill` (derive) or `note_id` (structure_note)."""
     request = job_service.JobRequest(
         kind=body.kind,
@@ -110,7 +110,7 @@ def cancel_job(job_id: uuid.UUID, session: SessionDep) -> JobPublic:
     description=(
         "Queues the same work again (kind, scope, skill, note, payload) without `force`, so "
         "an unchanged input is still a free skip. `409` unless the job `failed`; "
-        "`deduplicated` when identical live work already exists."
+        "`deduplicated` when an identical job is already queued."
     ),
 )
 def retry_job(job_id: uuid.UUID, session: SessionDep) -> JobAccepted:

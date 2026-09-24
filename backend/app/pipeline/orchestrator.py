@@ -8,7 +8,7 @@ Three lookup tables drive everything, so the pipeline reads top to bottom:
 
 A rule only *reads* (`State`) and returns a `Plan`; `_apply` runs the plan's effects (graph
 writes, which may hand back more jobs), enqueues, and moves the document status forward.
-Enqueueing is always safe to repeat: the queue dedupes live work and the handler skips
+Enqueueing is always safe to repeat: the queue dedupes queued work and the handler skips
 unchanged inputs, so rules may over-enqueue but never pay twice.
 
 Pipeline order per document:
