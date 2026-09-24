@@ -1,9 +1,9 @@
 /**
  * Which layout the reader is in, from the panes that are actually on screen (the
  * contents rail only fits on wide screens), and the geometry of dragging the text
- * column's width when exactly one side pane is shown.
+ * column's width while a side pane is shown.
  *
- * - `both`:  rail | text | pane, the text at the chosen width preset.
+ * - `both`:  rail | text | pane; the text width can be dragged.
  * - `one`:   one side pane put away; the text width can be dragged.
  * - `fill`:  both put away; the text takes the whole page width.
  * - `focus`: focus mode; the text centred at the chosen preset.
@@ -27,6 +27,16 @@ export function readerLayout({ rail, pane, focus, wide, narrow }: LayoutInput): 
   if (focus) return 'focus';
   const shown = (rail && wide ? 1 : 0) + (pane ? 1 : 0);
   return shown === 2 ? 'both' : shown === 1 ? 'one' : 'fill';
+}
+
+/** Layouts where the text width follows the grip rather than the preset. */
+export function canDragMeasure(layout: ReaderLayout): boolean {
+  return layout === 'both' || layout === 'one';
+}
+
+/** The text column is centred when no pane sits beside it (only the rail, opposite an empty track). */
+export function isCentred(layout: ReaderLayout, pane: boolean): boolean {
+  return layout === 'one' && !pane;
 }
 
 /** The narrowest a dragged text column may get, gutters included (px). */

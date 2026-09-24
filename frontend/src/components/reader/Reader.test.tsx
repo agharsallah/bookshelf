@@ -347,11 +347,35 @@ describe('<Reader>', () => {
     expect(reader.style.getPropertyValue('--reader-measure')).toBe('40rem');
   });
 
-  it('keeps the width preset while both side panes or focus mode are on', async () => {
+  it('keeps the width preset in focus mode', async () => {
     window.localStorage.setItem('bookshelf:reader', JSON.stringify({ measure: 900, focus: true }));
     renderReader();
     const reader = document.querySelector<HTMLElement>('[data-view]')!;
     expect(reader.dataset.layout).toBe('focus');
     expect(reader.style.getPropertyValue('--reader-measure')).toBe('40rem');
+  });
+
+  it('drags the text width with both side panes shown, where the rail fits', () => {
+    const matchMedia = window.matchMedia;
+    // A wide screen: the rail fits, one pane at a time does not apply.
+    window.matchMedia = ((query: string) => {
+      const list = matchMedia(query);
+      Object.defineProperty(list, 'matches', { value: query.includes('min-width') });
+      return list;
+    }) as typeof window.matchMedia;
+    try {
+      window.localStorage.setItem('bookshelf:reader', JSON.stringify({ measure: 720 }));
+      renderReader();
+      const reader = document.querySelector<HTMLElement>('[data-view]')!;
+      expect(reader.dataset.layout).toBe('both');
+      expect(reader.style.getPropertyValue('--reader-measure')).toBe('720px');
+      const handle = screen.getByRole('separator', { name: 'Text width' });
+      fireEvent.pointerDown(handle, { button: 0, clientX: 0 });
+      fireEvent.pointerMove(window, { clientX: 820 });
+      fireEvent.pointerUp(window, { clientX: 820 });
+      expect(JSON.parse(window.localStorage.getItem('bookshelf:reader')!)).toMatchObject({ measure: 820 });
+    } finally {
+      window.matchMedia = matchMedia;
+    }
   });
 });

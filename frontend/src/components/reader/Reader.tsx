@@ -22,7 +22,7 @@ import { ShortcutHelp } from '../common/ShortcutHelp';
 import { Navigator, type NavSection, type NavUnit } from './Navigator';
 import type { Panes } from './panes';
 import { minutesLeft, timeLeftLabel, wordCount } from './progress';
-import { readerLayout } from './layout';
+import { canDragMeasure, isCentred, readerLayout } from './layout';
 import { MeasureHandle } from './MeasureHandle';
 import { clampSize, prefsVars, WIDTH_REM } from './prefs';
 import { ReaderToolbar, type ReaderView } from './ReaderToolbar';
@@ -268,7 +268,7 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
       data-focus={prefs.focus ? '' : undefined}
       data-semantic={prefs.semantic ? '' : undefined}
       data-spotlight={prefs.spotlight ? '' : undefined}
-      style={prefsVars(prefs, layout === 'one') as CSSProperties}
+      style={prefsVars(prefs, canDragMeasure(layout)) as CSSProperties}
     >
       <ReaderToolbar
         book={{ title: doc.title, href: `/documents/${doc.slug}` }}
@@ -324,11 +324,11 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
               level={node.depth - unit.depth}
             />
           ))}
-          {layout === 'one' ? (
+          {canDragMeasure(layout) ? (
             <MeasureHandle
               column={sourceRef}
               root={readerRef}
-              centred={!showPane}
+              centred={isCentred(layout, showPane)}
               width={prefs.measure ?? WIDTH_REM[prefs.width] * 16}
               onChange={(measure) => setPrefs({ measure })}
             />

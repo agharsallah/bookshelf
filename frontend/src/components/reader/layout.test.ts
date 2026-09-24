@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { clampMeasure, dragMeasure, MIN_MEASURE, readerLayout } from './layout';
+import { canDragMeasure, clampMeasure, dragMeasure, isCentred, MIN_MEASURE, readerLayout } from './layout';
 
 const base = { rail: true, pane: true, focus: false, wide: true, narrow: false };
 
@@ -16,6 +16,16 @@ describe('readerLayout', () => {
   it('lets focus mode and phones win over the pane settings', () => {
     expect(readerLayout({ ...base, focus: true, rail: false, pane: false })).toBe('focus');
     expect(readerLayout({ ...base, narrow: true, focus: true })).toBe('stack');
+  });
+});
+
+describe('canDragMeasure / isCentred', () => {
+  it('drags the width while any side pane is shown, never in fill, focus or on phones', () => {
+    expect((['both', 'one', 'fill', 'focus', 'stack'] as const).map(canDragMeasure)).toEqual([true, true, false, false, false]);
+  });
+
+  it('centres the column only when the rail is its one neighbour', () => {
+    expect([isCentred('one', false), isCentred('one', true), isCentred('both', true)]).toEqual([true, false, false]);
   });
 });
 

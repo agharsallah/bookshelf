@@ -27,7 +27,7 @@ export interface ReaderPrefs {
   spacing: Spacing;
   width: Width;
   align: Align;
-  /** A dragged text width in px, used while exactly one side pane is shown; null: the `width` preset. */
+  /** A dragged text width in px, used while a side pane is shown; null: the `width` preset. */
   measure: number | null;
   /** The contents rail on the left (wide screens). */
   contents: boolean;
@@ -127,7 +127,7 @@ export function isDefaultType(prefs: ReaderPrefs): boolean {
 
 /**
  * The typography as custom properties for the reader root. `dragged`: the layout
- * lets a dragged width replace the preset (one side pane shown).
+ * lets a dragged width replace the preset (a side pane shown).
  */
 export function prefsVars(prefs: ReaderPrefs, dragged = false): Record<string, string> {
   return {

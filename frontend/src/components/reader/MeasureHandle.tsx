@@ -1,5 +1,5 @@
 /**
- * The grip on the text column's edge, shown while exactly one side pane is open:
+ * The grip on the text column's edge, shown while a side pane is open:
  * drag it to set how wide the text runs, arrow keys nudge it, a double click (or
  * Enter) goes back to the width preset. While dragging, the width is written
  * straight to the reader's custom property so a chapter's blocks don't re-render
