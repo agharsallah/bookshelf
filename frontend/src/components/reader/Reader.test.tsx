@@ -27,6 +27,7 @@ const unit = node('ch01', 'chapter', {
       children: [
         node('ch01/s01/p001', 'paragraph', { text: 'When a queue grows, people start more work.' }),
         node('ch01/s01/p002', 'paragraph', { text: 'Slack is not waste.', page_from: 2 }),
+        node('ch01/s01/p003', 'paragraph', { text: '𝑥 grows when 𝑦 falls.', page_from: 2 }),
       ],
     }),
   ],
@@ -113,6 +114,18 @@ describe('<Reader>', () => {
       color: 'sage',
     });
     const mark = await within(block('ch01/s01/p001')).findByText('queue grows');
+    expect(mark.closest('mark')?.dataset.color).toBe('sage');
+  });
+
+  // The backend validates and slices ranges in code points (Python); the DOM counts UTF-16 units.
+  it('sends and shows ranges in code points when the text has astral characters', async () => {
+    api.post.mockResolvedValue(created({ anchor: 'ch01/s01/p003', range: { start: 15, end: 20 }, raw: null, color: 'sage', job: null }));
+    renderReader();
+    selectInBlock('ch01/s01/p003', 17, 22);
+    await userEvent.click(await screen.findByRole('button', { name: 'Highlight sage' }));
+
+    expect(api.post).toHaveBeenCalledWith('notes', expect.objectContaining({ range: { start: 15, end: 20 } }));
+    const mark = await within(block('ch01/s01/p003')).findByText('falls');
     expect(mark.closest('mark')?.dataset.color).toBe('sage');
   });
 

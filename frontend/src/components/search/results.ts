@@ -5,6 +5,7 @@
  * keyboard navigation.
  */
 import type { SearchDocument, SearchGroup, SearchHit, SearchResponse } from '../../lib/api/types/search';
+import { toUtf16Offset } from '../../lib/codepoints';
 import { readerHref } from './links';
 
 export interface HitView {
@@ -60,10 +61,14 @@ export interface Segment {
   marked: boolean;
 }
 
-/** Split a snippet into plain and highlighted runs. Ranges are clamped, sorted and merged. */
+/**
+ * Split a snippet into plain and highlighted runs. Ranges arrive as code points (see
+ * lib/codepoints) and are converted, clamped, sorted and merged.
+ */
 export function highlightSegments(snippet: string, ranges: readonly (readonly [number, number])[] | null | undefined): Segment[] {
+  const clamp = (at: number) => Math.max(0, Math.min(toUtf16Offset(snippet, at), snippet.length));
   const clean = (ranges ?? [])
-    .map(([s, e]) => [Math.max(0, Math.min(s, snippet.length)), Math.max(0, Math.min(e, snippet.length))] as const)
+    .map(([s, e]) => [clamp(s), clamp(e)] as const)
     .filter(([s, e]) => e > s)
     .sort((a, b) => a[0] - b[0]);
   const merged: [number, number][] = [];

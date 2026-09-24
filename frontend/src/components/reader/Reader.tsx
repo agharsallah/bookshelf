@@ -9,6 +9,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { NoteDetail } from '../../lib/api/types/notes';
 import type { TreeNode } from '../../lib/api/types/documents';
 import type { HighlightColor } from '../../lib/contract';
+import { toCodePointRange, toUtf16Range } from '../../lib/codepoints';
 import { flatten } from '../../lib/documents/tree';
 import { useAnchorSync } from '../../lib/hooks/useAnchorSync';
 import { NoteComposer, type ComposerTarget } from '../notes/NoteComposer';
@@ -50,12 +51,17 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
   const [contentsOpen, setContentsOpen] = useState(false);
   const [composer, setComposer] = useState<{ target: ComposerTarget; compose: boolean } | null>(null);
   const [focusedNote, setFocusedNote] = useState<string | null>(null);
-  const { notes, saving, add, annotate, recolor, remove, review } = useNotes(initialNotes);
+  const { notes: wireNotes, saving, add, annotate, recolor, remove, review } = useNotes(initialNotes);
 
   const flat = useMemo(() => flatten(unit), [unit]);
   const anchors = useMemo(() => flat.map((f) => f.node.anchor), [flat]);
   const order = useMemo(() => new Map(anchors.map((a, i) => [a, i])), [anchors]);
   const texts = useMemo(() => new Map(flat.map((f) => [f.node.anchor, f.node.text ?? ''])), [flat]);
+  // Ranges are code points on the wire and UTF-16 offsets in the DOM (lib/codepoints).
+  const notes = useMemo(
+    () => wireNotes.map((n) => (n.range ? { ...n, range: toUtf16Range(texts.get(n.anchor) ?? '', n.range) } : n)),
+    [wireNotes, texts],
+  );
   const sectionOf = useMemo(() => new Map(flat.map((f) => [f.node.anchor, f.section])), [flat]);
   const pages = useMemo(() => {
     let last: number | null = null;
@@ -149,7 +155,8 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
   const save = async (raw: string | null, color: HighlightColor | null) => {
     if (!composer) return;
     const { target } = composer;
-    const created = await add({ documentId: doc.id, anchor: target.anchor, range: target.range, raw, color });
+    const range = target.range ? toCodePointRange(texts.get(target.anchor) ?? '', target.range) : null;
+    const created = await add({ documentId: doc.id, anchor: target.anchor, range, raw, color });
     if (created) {
       setComposer(null);
       window.getSelection()?.removeAllRanges();

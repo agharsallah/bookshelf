@@ -67,6 +67,16 @@ describe('highlightSegments', () => {
     ]);
   });
 
+  it('reads ranges as code points, as the backend (Python) counts them', () => {
+    // '𝑥' is one code point but two UTF-16 units.
+    expect(highlightSegments('𝑥 grows as 𝑦 falls', [[2, 7], [13, 18]])).toEqual([
+      { text: '𝑥 ', marked: false },
+      { text: 'grows', marked: true },
+      { text: ' as 𝑦 ', marked: false },
+      { text: 'falls', marked: true },
+    ]);
+  });
+
   it('returns the whole snippet unmarked without ranges', () => {
     expect(highlightSegments('plain', null)).toEqual([{ text: 'plain', marked: false }]);
   });
