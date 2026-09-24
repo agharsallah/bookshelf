@@ -262,3 +262,18 @@ def test_deleting_a_document_withdraws_its_part_of_the_graph(
     }  # the deleted book's `mentions` edge (a passage that no longer exists) is gone
     body = client.get(f"{API}/graph/neighborhood", params={"node": str(linked.id)}).json()
     assert not [n for n in body["nodes"] if n["id"].startswith(deleted)]
+
+
+@pytest.mark.parametrize("name", [" ", "\t\n"])
+def test_a_blank_concept_name_is_a_validation_error(
+    client: TestClient, make_concept: MakeConcept, name: str
+):
+    existing = make_concept("flow")
+
+    created = client.post(f"{API}/concepts", json={"canonical": name}, headers=AUTH)
+    renamed = client.patch(f"{API}/concepts/{existing.id}", json={"canonical": name}, headers=AUTH)
+    aliased = client.post(
+        f"{API}/concepts", json={"canonical": "stock", "aliases": [name]}, headers=AUTH
+    )
+
+    assert (created.status_code, renamed.status_code, aliased.status_code) == (422, 422, 422)

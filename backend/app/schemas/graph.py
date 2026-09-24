@@ -9,7 +9,7 @@ import uuid
 from datetime import datetime
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
 from app.models.enums import ConceptKind, EdgeStatus, EntityKind, Origin, Relation
 
@@ -31,7 +31,8 @@ EvidenceRef = Annotated[
         description="Qualified anchor `<document_id>#<anchor>`.",
     ),
 ]
-Name = Annotated[str, Field(min_length=1, max_length=200)]
+# Stripped first: a blank name would pass `min_length` and then fail the database's check.
+Name = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
 
 
 class DocumentRef(BaseModel):
