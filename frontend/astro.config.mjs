@@ -33,6 +33,13 @@ export default defineConfig({
         access: 'secret',
         optional: true,
       }),
+      // Comma-separated hosts this server answers (DNS-rebinding guard, src/middleware.ts).
+      // An entry without a port allows any port. Unset: localhost, 127.0.0.1 and [::1].
+      ALLOWED_HOSTS: envField.string({
+        context: 'server',
+        access: 'secret',
+        optional: true,
+      }),
     },
   },
 
