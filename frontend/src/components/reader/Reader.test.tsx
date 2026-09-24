@@ -85,7 +85,7 @@ beforeEach(() => {
 describe('<Reader>', () => {
   it('scrolls to and flashes the cited passage when a cite chip is clicked', async () => {
     renderReader();
-    await userEvent.click(screen.getByRole('link', { name: 'Source ch01/s01/p002' }));
+    await userEvent.click(screen.getByRole('link', { name: '1.1 ¶2, source ch01/s01/p002' }));
     const target = block('ch01/s01/p002');
     expect(target.scrollIntoView).toHaveBeenCalled();
     expect(target.classList.contains('is-flashing')).toBe(true);
@@ -95,7 +95,7 @@ describe('<Reader>', () => {
   it('lights up what cites a passage while it is hovered', () => {
     renderReader();
     fireEvent.mouseOver(block('ch01/s01/p002').querySelector('p')!);
-    const chip = screen.getByRole('link', { name: 'Source ch01/s01/p002' });
+    const chip = screen.getByRole('link', { name: '1.1 ¶2, source ch01/s01/p002' });
     expect(chip.classList.contains('is-cited')).toBe(true);
     fireEvent.mouseLeave(document.querySelector('article')!);
     expect(chip.classList.contains('is-cited')).toBe(false);

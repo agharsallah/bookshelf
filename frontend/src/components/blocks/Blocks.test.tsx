@@ -168,17 +168,18 @@ describe('cite chips', () => {
     spans: [{ text: 'Rules outrank parameters.', cites: ['ch06/s01/p003', 'ch06/s02/p011'] }],
   };
 
-  it('link to the anchor fragment by default and show a compact label', () => {
+  // WCAG 2.5.3 (label in name): voice-control users say what they see, so the
+  // accessible name starts with the visible label and then gives the full address.
+  it('link to the anchor fragment by default, named by their visible label and the anchor', () => {
     render(<Blocks blocks={[cited]} />);
-    const chip = screen.getByRole('link', { name: 'Source ch06/s01/p003' });
+    const chip = screen.getByRole('link', { name: '6.1 ¶3, source ch06/s01/p003' });
     expect(chip.getAttribute('href')).toBe('#ch06/s01/p003');
-    expect(chip.textContent).toContain('6.1 ¶3');
     expect(screen.getAllByRole('link')).toHaveLength(2);
   });
 
   it('use citeHref to build the link', () => {
     render(<Blocks blocks={[cited]} citeHref={(a) => `/read/meadows#${a}`} />);
-    expect(screen.getByRole('link', { name: 'Source ch06/s02/p011' }).getAttribute('href')).toBe(
+    expect(screen.getByRole('link', { name: '6.2 ¶11, source ch06/s02/p011' }).getAttribute('href')).toBe(
       '/read/meadows#ch06/s02/p011',
     );
   });
@@ -191,25 +192,24 @@ describe('cite chips', () => {
         citeTitle={(a) => `Thinking in Systems, ${a}`}
       />,
     );
-    const chip = screen.getByRole('link', { name: 'Source Thinking in Systems, ch06/s02/p011' });
-    expect(chip.textContent).toContain('A 011');
+    expect(screen.getByRole('link', { name: 'A 011, source Thinking in Systems, ch06/s02/p011' })).toBeTruthy();
   });
 
   it('call onCite with the anchor instead of navigating', async () => {
     const onCite = vi.fn();
     render(<Blocks blocks={[cited]} onCite={onCite} />);
-    const chip = screen.getByRole('link', { name: 'Source ch06/s02/p011' });
+    const chip = screen.getByRole('link', { name: '6.2 ¶11, source ch06/s02/p011' });
     const click = new MouseEvent('click', { bubbles: true, cancelable: true });
     chip.dispatchEvent(click);
     expect(click.defaultPrevented).toBe(true);
-    await userEvent.click(screen.getByRole('link', { name: 'Source ch06/s01/p003' }));
+    await userEvent.click(screen.getByRole('link', { name: '6.1 ¶3, source ch06/s01/p003' }));
     expect(onCite.mock.calls).toEqual([['ch06/s02/p011'], ['ch06/s01/p003']]);
   });
 
   it('list block-level sources on figures', () => {
     renderOne({ type: 'quote', text: 'q', cites: ['ch01/s01/p001'], page: null });
     expect(screen.getByText('Source')).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'Source ch01/s01/p001' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: '1.1 ¶1, source ch01/s01/p001' })).toBeTruthy();
   });
 });
 

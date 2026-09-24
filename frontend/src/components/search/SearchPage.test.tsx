@@ -81,7 +81,7 @@ describe('SearchPage', () => {
     stream.push(`event: answer\ndata: ${JSON.stringify(answer)}\n\n`);
     stream.finish();
     expect(await screen.findByText('Delays cause oscillation.')).toBeTruthy();
-    const chip = screen.getByRole('link', { name: 'Source Thinking in Systems, ch01/p002' });
+    const chip = screen.getByRole('link', { name: /, source Thinking in Systems, ch01\/p002$/ });
     expect(chip.getAttribute('href')).toBe('/documents/meadows/read/ch01/p002');
     expect(screen.queryByText('Searching (lexical)')).toBeNull();
   });

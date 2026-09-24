@@ -11,6 +11,7 @@ import styles from './CiteChip.module.css';
 export function CiteChip({ anchor }: { anchor: Anchor }) {
   const { citeHref, onCite, citeLabel, citeTitle } = useCite();
   const title = citeTitle ? citeTitle(anchor) : anchor;
+  const label = citeLabel ? citeLabel(anchor) : anchorLabel(anchor);
   const handleClick = onCite
     ? (event: MouseEvent<HTMLAnchorElement>) => {
         event.preventDefault();
@@ -22,10 +23,11 @@ export function CiteChip({ anchor }: { anchor: Anchor }) {
       className={styles.chip}
       href={citeHref(anchor)}
       data-anchor={anchor}
-      aria-label={`Source ${title}`}
+      // Starts with the visible label (WCAG 2.5.3), then the full address.
+      aria-label={`${label}, source ${title}`}
       onClick={handleClick}
     >
-      <span aria-hidden="true">{citeLabel ? citeLabel(anchor) : anchorLabel(anchor)}</span>
+      <span aria-hidden="true">{label}</span>
       <span className={styles.tip} aria-hidden="true">
         {title}
       </span>
