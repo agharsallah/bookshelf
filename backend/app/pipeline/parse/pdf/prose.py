@@ -93,8 +93,13 @@ def _centered_short(block: Block) -> bool:
     return middle and x1 - x0 < width * 0.6 and x0 > col0 + width * 0.1
 
 
+_MIN_FORMULA_CHARS = 3  # a lone `→` or `x` set apart is typography, not a formula
+
+
 def is_display_math(block: Block) -> bool:
     text = block.text
+    if len("".join(text.split())) < _MIN_FORMULA_CHARS:
+        return False
     if block.math_fraction >= 0.5 and len(text) <= 300:
         return True
     if len(block.lines) > 2 or not _centered_short(block):

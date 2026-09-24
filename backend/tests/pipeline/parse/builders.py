@@ -156,3 +156,32 @@ def boxed_diagram_pdf(
         _text(page, 72, 205, CAPTION, 10)
     doc.save(path)
     return path
+
+
+ARROW_BEFORE = "Out of the garage: the myth that every great product starts small."
+ARROW_AFTER = "Being the builder: the story of what you made with your own hands."
+
+
+def decorated_text_pdf(path: Path) -> Path:
+    """Text whose decorations are vector drawings: a list with bullets drawn as dots, a
+    table of contents with underlined links, and a lone centred arrow between paragraphs."""
+    doc = pymupdf.open()
+    page = doc.new_page()
+    _text(page, 72, 80, "Signals interviewers look for.")
+    for i, item in enumerate(["Scope of the work", "Ownership of results", "Ambiguity"]):
+        y = 110 + 16 * i
+        page.draw_circle((76, y - 4), 2, color=(0, 0, 0), fill=(0, 0, 0))
+        _text(page, 86, y, item)
+    for i, entry in enumerate(["Key Takeaways", "Common Pitfalls", "Symbols used"]):
+        y = 200 + 16 * i
+        _text(page, 72, y, entry)
+        page.draw_line((72, y + 2), (160, y + 2), color=(0, 0, 1), width=0.8)
+    font = pymupdf.Font("cjk")  # base-14 fonts cannot encode the arrow
+    writer = pymupdf.TextWriter(page.rect)
+    column = font.text_length(ARROW_BEFORE, fontsize=11)
+    arrow_x = 72 + (column - font.text_length("→", fontsize=11)) / 2  # centred
+    for x, y, text in [(72, 280, ARROW_BEFORE), (arrow_x, 300, "→"), (72, 320, ARROW_AFTER)]:
+        writer.append((x, y), text, font=font, fontsize=11)
+    writer.write_text(page)
+    doc.save(path)
+    return path

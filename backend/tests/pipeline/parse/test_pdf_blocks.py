@@ -18,6 +18,7 @@ from tests.pipeline.parse.builders import (
     TABLE_HEADER,
     TABLE_ROWS,
     boxed_diagram_pdf,
+    decorated_text_pdf,
     diagram_pdf,
     list_pdf,
 )
@@ -182,3 +183,14 @@ def test_boxes_of_a_diagram_are_a_figure_not_an_aside(
     assert [p.text for p in of_kind(parsed, NodeKind.PARAGRAPH)] == [
         "The stock and its inflow are drawn below."
     ]
+
+
+def test_text_decorations_drawn_as_vectors_are_not_figures(tmp_path: Path):
+    """Bullet dots and link underlines sit beside their text; a lone arrow is no formula."""
+    parsed = parse_pdf(decorated_text_pdf(tmp_path / "t.pdf"), slug="t", media_dir=tmp_path)
+
+    assert of_kind(parsed, NodeKind.FIGURE) == []
+    assert of_kind(parsed, NodeKind.MATH) == []
+    text = " ".join(n.text for n in parsed.walk() if not n.kind.is_container)
+    assert "Ownership of results" in text
+    assert "Common Pitfalls" in text

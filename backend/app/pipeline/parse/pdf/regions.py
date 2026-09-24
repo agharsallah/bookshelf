@@ -22,6 +22,9 @@ from app.pipeline.parse.text import FIGURE_CAPTION, TABLE_CAPTION, aside_label, 
 
 _CAPTION_GAP = 72.0  # max vertical distance between a graphic and its caption (pt)
 _CLUSTER_PAD = 20.0  # drawings closer than this belong to the same figure
+_DOT = 8.0  # a drawing no bigger than this either way is a mark (a bullet), not a shape
+_RULE = 3.0  # a drawing thinner than this is a rule (underline, bar)
+_TEXT_REACH = 12.0  # how far from a text block a mark still belongs to it (a bullet's gap)
 
 
 @dataclass
@@ -176,6 +179,16 @@ def cluster(boxes: list[Bbox]) -> list[tuple[Bbox, int]]:
     return sorted(clusters, key=lambda c: (c[0][1], c[0][0]))
 
 
+def _text_decoration(box: Bbox, blocks: list[Block]) -> bool:
+    """A mark that belongs to the text beside it, not to a graphic: a bullet drawn as a
+    vector dot, a hyperlink underline, a bar beside a pull quote. Only clusters made of
+    nothing but such marks are dropped, so a diagram's arrowheads still count as its own."""
+    w, h = box[2] - box[0], box[3] - box[1]
+    if not (w <= _DOT and h <= _DOT) and min(w, h) > _RULE:
+        return False
+    return any(geo.intersects(geo.pad(b.bbox, _TEXT_REACH), box) for b in blocks)
+
+
 def _figures(
     page: pymupdf.Page,
     page_no: int,
@@ -189,6 +202,7 @@ def _figures(
     page_area = geo.area(page_box)
     boxes: list[Bbox] = []
     images: list[Bbox] = []
+    shapes: list[Bbox] = []  # drawings that are not text decorations
     for raw in mupdf.image_boxes(page):
         box = geo.clip(raw, page_box)
         big_enough = box[2] - box[0] >= 24 and box[3] - box[1] >= 24
@@ -202,10 +216,13 @@ def _figures(
             continue  # separators and page backgrounds; short connectors stay in
         if not any(geo.intersects(box, area) for area in excluded):
             boxes.append(box)
+            if not _text_decoration(box, out.blocks):
+                shapes.append(box)
     for area, members in cluster(boxes):
         has_image = any(geo.contains(area, image) for image in images)
         small = area[3] - area[1] < 30 or (members < 3 and geo.area(area) < 4000)
-        if small and not has_image:
+        only_decoration = not any(geo.contains(area, shape) for shape in shapes)
+        if (small or only_decoration) and not has_image:
             continue
         area = geo.clip(area, page_box)
         out.absorb(area)  # axis labels and callouts inside the graphic
