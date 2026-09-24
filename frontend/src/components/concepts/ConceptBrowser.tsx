@@ -16,6 +16,7 @@ import styles from './Browser.module.css';
 
 const KIND_LABELS: Record<ConceptKind, string> = { concept: 'Concepts', framework: 'Frameworks', person: 'People', work: 'Works', term: 'Terms' };
 const SORT_LABELS: Record<ConceptSort, string> = { alpha: 'A to Z', connected: 'Most connected', recent: 'Newest' };
+const SORT_PHRASES: Record<ConceptSort, string> = { alpha: 'A to Z', connected: 'most connected first', recent: 'newest first' };
 const links = (n: number) => `${n} link${n === 1 ? '' : 's'}`;
 
 export interface ConceptBrowserProps {
@@ -128,7 +129,7 @@ export function ConceptBrowser({ initial, api = browserApi, debounceMs = 180 }: 
 
       {problem ? <Problem inline title="Concepts could not be loaded." problem={problem} /> : null}
       <p className={styles.count} aria-live="polite">
-        {page ? (q.trim() ? `${page.total} ${page.total === 1 ? 'match' : 'matches'}` : `${page.total} concepts, ${SORT_LABELS[sort].toLowerCase()}`) : ''}
+        {page ? (q.trim() ? `${page.total} ${page.total === 1 ? 'match' : 'matches'}` : `${page.total} concepts, ${SORT_PHRASES[sort]}`) : ''}
       </p>
       {items.length === 0 && page ? (
         <p className={styles.empty}>

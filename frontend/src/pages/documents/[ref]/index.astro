@@ -48,8 +48,10 @@ const statuses: Record<string, ChapterStatus> = Object.fromEntries(
 );
 const brief = data ? pickBest(data.artifacts, 'book_brief', null) : null;
 const first = defaultUnit(units);
-const chapterDerive = data ? deriveSkills(data.skills, 'chapter') : [];
-const documentDerive = data ? deriveSkills(data.skills, 'document') : [];
+// Study material waits for a confirmed outline: it reads the chapters as parsed.
+const deriving = data !== null && data.doc.status !== 'needs_review';
+const chapterDerive = data && deriving ? deriveSkills(data.skills, 'chapter') : [];
+const documentDerive = data && deriving ? deriveSkills(data.skills, 'document') : [];
 const distilled = Object.values(statuses).some((s) => s.distillation === 'approved');
 const parsed = data !== null && !['registered', 'parsing', 'parse_failed'].includes(data.doc.status);
 const needsReview = data?.doc.status === 'needs_review';

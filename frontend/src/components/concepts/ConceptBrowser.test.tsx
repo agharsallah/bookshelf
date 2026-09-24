@@ -20,6 +20,6 @@ describe('<ConceptBrowser>', () => {
 
     await waitFor(() => expect(calls.at(-1)?.query).toMatchObject({ sort: 'connected' }));
     expect(await screen.findByText('7 links')).toBeTruthy();
-    expect(screen.getByText('2 concepts, most connected')).toBeTruthy();
+    expect(screen.getByText('2 concepts, most connected first')).toBeTruthy();
   });
 });
