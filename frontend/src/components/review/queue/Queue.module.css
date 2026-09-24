@@ -163,6 +163,7 @@
 }
 
 .row:hover .check,
+.check:focus-visible,
 .row[data-selected] .check,
 .row[data-focused] .check {
   opacity: 1;

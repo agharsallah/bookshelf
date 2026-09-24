@@ -190,13 +190,14 @@
   text-decoration: underline;
 }
 
+/* Quieter at rest by colour, not opacity: faded text fell to 2.6:1 on paper (WCAG AA is 4.5:1). */
 .sectionAction {
-  opacity: 0.55;
+  color: var(--ink-3);
 }
 
 .section:hover .sectionAction,
 .sectionAction:focus-visible {
-  opacity: 1;
+  color: var(--ink-2);
 }
 
 .empty {

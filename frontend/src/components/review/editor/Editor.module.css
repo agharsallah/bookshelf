@@ -123,13 +123,6 @@
 
 .insert {
   justify-self: center;
-  opacity: 0.55;
-  transition: opacity var(--dur-1) var(--ease-out);
-}
-
-.insert:hover,
-.insert:focus-within {
-  opacity: 1;
 }
 
 .insert select {
