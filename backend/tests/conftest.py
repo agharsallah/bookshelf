@@ -28,8 +28,15 @@ sys.modules.setdefault("fastembed", None)
 _ADMIN_URL = os.environ.get(
     "BOOKSHELF_TEST_ADMIN_URL", "postgresql://bookshelf@127.0.0.1:54329/postgres"
 )
-_DB_NAME = f"bookshelf_test_{os.getpid()}_{uuid.uuid4().hex[:6]}"
-_TMP = Path(tempfile.mkdtemp(prefix="bookshelf-test-"))
+# `from tests.conftest import ...` runs this module a second time (pytest loaded it as
+# `conftest`): reuse the first run's database and folders instead of creating new ones.
+_FIRST_RUN = "BOOKSHELF_TEST_DB_NAME" not in os.environ
+_DB_NAME = os.environ.setdefault(
+    "BOOKSHELF_TEST_DB_NAME", f"bookshelf_test_{os.getpid()}_{uuid.uuid4().hex[:6]}"
+)
+_TMP = Path(
+    os.environ.setdefault("BOOKSHELF_TEST_TMP", tempfile.mkdtemp(prefix="bookshelf-test-"))
+)
 _DB_URL = _ADMIN_URL.rsplit("/", 1)[0].replace("postgresql://", "postgresql+psycopg://", 1)
 
 os.environ.update(
@@ -50,7 +57,7 @@ os.environ.update(
         "BOOKSHELF_CLAUDE_BIN": "/nonexistent/claude-must-be-faked-in-tests",
     }
 )
-(_TMP / "library").mkdir()
+(_TMP / "library").mkdir(exist_ok=True)
 
 
 def _admin() -> psycopg.Connection:
@@ -62,8 +69,9 @@ def _admin() -> psycopg.Connection:
         ) from exc
 
 
-with _admin() as _conn:
-    _conn.execute(f'create database "{_DB_NAME}"')
+if _FIRST_RUN:
+    with _admin() as _conn:
+        _conn.execute(f'create database "{_DB_NAME}"')
 
 from fastapi.testclient import TestClient  # noqa: E402
 from sqlalchemy import text  # noqa: E402
