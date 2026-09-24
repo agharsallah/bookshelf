@@ -38,6 +38,22 @@
   --tone-contrast: light-dark(#3b5670, #a3bcd6);
   --tone-question: light-dark(#1c6470, #7ccbd6);
 
+  /* ── Code: Shiki's css-variables theme (lib/highlight.ts). Used by render blocks and
+     the reader's source blocks; each token clears AA on --paper-sunken. ── */
+  --shiki-foreground: var(--ink);
+  --shiki-background: var(--paper-sunken);
+  --shiki-token-keyword: light-dark(#7a2f6e, #dc8fcf);
+  --shiki-token-string: light-dark(#1e6b5c, #8fd1bd);
+  --shiki-token-string-expression: light-dark(#1e6b5c, #8fd1bd);
+  --shiki-token-comment: light-dark(#655f54, #8d8779);
+  --shiki-token-constant: light-dark(#85570a, #e2b560);
+  --shiki-token-function: light-dark(#34448f, #9daef0);
+  --shiki-token-parameter: light-dark(#454b5c, #cfc8b8);
+  --shiki-token-punctuation: light-dark(#5f6474, #9a9486);
+  --shiki-token-link: var(--accent);
+  --shiki-token-inserted: var(--tone-insight);
+  --shiki-token-deleted: var(--tone-important);
+
   /* ── Highlighter washes (text stays --ink; all ≥ 6.5:1) ─────── */
   --hl-amber: light-dark(#f6dc8c, #5c4a1c);
   --hl-rose: light-dark(#f2c1c8, #5e3039);

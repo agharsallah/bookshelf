@@ -1,5 +1,5 @@
 /**
- * Highlighted code must stay readable: every Shiki token colour (Code.module.css) against
+ * Highlighted code must stay readable: every Shiki token colour (tokens.css) against
  * the sunken leaf code sits on (tokens.css), in both themes, at WCAG AA for body text.
  */
 import { readFileSync } from 'node:fs';
@@ -25,8 +25,9 @@ function contrast(a: string, b: string): number {
   return ((hi ?? 0) + 0.05) / ((lo ?? 0) + 0.05);
 }
 
-const sunken = pairs(css('../../styles/tokens.css')).get('--paper-sunken');
-const tokens = [...pairs(css('./Code.module.css'))].filter(([name]) => name.startsWith('--shiki-token-'));
+const all = pairs(css('../../styles/tokens.css'));
+const sunken = all.get('--paper-sunken');
+const tokens = [...all].filter(([name]) => name.startsWith('--shiki-token-'));
 
 describe('Shiki token colours', () => {
   it('are all defined as light/dark pairs next to a sunken background', () => {
