@@ -1,7 +1,7 @@
 ---
 /**
  * Reader: `/documents/{ref}/read/{anchor?}`. Loads the chapter that contains the
- * anchor (the first real chapter when there is none), its artifacts and notes,
+ * anchor (the first real chapter when there is none), its artifacts, the book's notes,
  * pre-renders code and math, and hands everything to the reader island.
  */
 import BaseLayout from '../../../../layouts/BaseLayout.astro';
@@ -32,7 +32,8 @@ const loaded = await load(async () => {
   const [subtree, artifacts, notes] = await Promise.all([
     api.get<NodeSubtree>(`nodes/${doc.slug}/${unit.anchor}`),
     getArtifacts(doc.id, { anchor_prefix: unit.anchor }),
-    fetchAll<NoteDetail>(api, 'notes', { document_id: doc.id, anchor: unit.anchor }),
+    // The whole book's notes: the chapter's are shown in place, all of them in the notes list.
+    fetchAll<NoteDetail>(api, 'notes', { document_id: doc.id }),
   ]);
   const flat = flatten(subtree.node);
   const headings = Object.fromEntries(

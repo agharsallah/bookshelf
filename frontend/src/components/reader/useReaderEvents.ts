@@ -1,13 +1,14 @@
 /**
  * The reader's DOM-level interactions, kept out of the component body:
  * selection → highlight toolbar, cross-pane hover highlighting, copy-link handles,
- * clicks on existing highlights, and the keyboard shortcuts
+ * clicks on existing highlights (in the text and on the pane), and the keyboard shortcuts
  * (j/k block, [/] chapter, n note, Esc close; the rest via `onAction`).
  */
 import { useEffect, useRef, type RefObject } from 'react';
 import { toast } from '../document/toast';
 import type { ComposerTarget } from '../notes/NoteComposer';
 import { blockOf, selectionRange } from './offsets';
+import { paneSelectionTarget } from './paneMarks';
 import { isTyping, markCiting, SOURCE_ATTR, sourceBlock } from './dom';
 import { TEXT_KINDS } from './SourceBlock';
 
@@ -26,6 +27,8 @@ export interface ReaderEventOptions {
   onNoteClick: (noteId: string) => void;
   /** A figure's Magnify button (`data-magnify` = its anchor). */
   onMagnify: (anchor: string) => void;
+  /** A plain click on the distillation or summary text, to open a highlight under it. */
+  onPaneClick: (x: number, y: number) => void;
   /** Any other key press; return true when it was a shortcut, to claim it. */
   onAction: (event: KeyboardEvent) => boolean;
 }
@@ -105,6 +108,18 @@ export function useReaderEvents(options: ReaderEventOptions): void {
       undoCited?.();
       undoCited = null;
     };
+    const onPaneUp = () => {
+      setTimeout(() => latest.current.onSelect(pane ? paneSelectionTarget(pane) : null), 0);
+    };
+    const onPaneKeyUp = (event: KeyboardEvent) => {
+      if (event.shiftKey || event.key === 'Shift') onPaneUp();
+    };
+    const onPaneClick = (event: MouseEvent) => {
+      const target = event.target instanceof Element ? event.target : null;
+      const selection = window.getSelection();
+      if (target?.closest('a, button, input, textarea') || (selection && !selection.isCollapsed)) return;
+      latest.current.onPaneClick(event.clientX, event.clientY);
+    };
     const onPaneOver = (event: MouseEvent) => {
       const chip = event.target instanceof Element ? event.target.closest<HTMLElement>('[data-anchor]') : null;
       const next = chip?.dataset.anchor ? sourceBlock(source, chip.dataset.anchor) : null;
@@ -150,6 +165,9 @@ export function useReaderEvents(options: ReaderEventOptions): void {
     source.addEventListener('mouseover', onSourceOver);
     source.addEventListener('mouseleave', onSourceLeave);
     pane?.addEventListener('mouseover', onPaneOver);
+    pane?.addEventListener('mouseup', onPaneUp);
+    pane?.addEventListener('keyup', onPaneKeyUp);
+    pane?.addEventListener('click', onPaneClick);
     document.addEventListener('keydown', onKeyDown);
     return () => {
       source.removeEventListener('mouseup', onPointerUp);
@@ -158,6 +176,9 @@ export function useReaderEvents(options: ReaderEventOptions): void {
       source.removeEventListener('mouseover', onSourceOver);
       source.removeEventListener('mouseleave', onSourceLeave);
       pane?.removeEventListener('mouseover', onPaneOver);
+      pane?.removeEventListener('mouseup', onPaneUp);
+      pane?.removeEventListener('keyup', onPaneKeyUp);
+      pane?.removeEventListener('click', onPaneClick);
       document.removeEventListener('keydown', onKeyDown);
       undoCited?.();
       citing?.classList.remove('is-citing');

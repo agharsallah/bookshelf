@@ -74,7 +74,7 @@ function selectInBlock(anchor: string, start: number, end: number) {
 }
 
 const created = (overrides: object) => ({
-  id: 'n1', document_id: 'doc-1', anchor: 'ch01/s01/p001', range: null, raw: 'x', color: null, created_at: '2026-09-23T10:00:00Z', job: {}, ...overrides,
+  id: 'n1', document_id: 'doc-1', anchor: 'ch01/s01/p001', range: null, raw: 'x', color: null, target: 'source' as const, artifact_id: null, block: null, quote: null, created_at: '2026-09-23T10:00:00Z', job: {}, ...overrides,
 });
 
 beforeEach(() => {
@@ -143,7 +143,7 @@ describe('<Reader>', () => {
   });
 
   it('gives an existing highlight its words once, with PATCH', async () => {
-    const highlight: NoteDetail = { ...created({ range: { start: 7, end: 18 }, raw: null, color: 'sky' }), structured: null, detached: false };
+    const highlight: NoteDetail = { ...created({ range: { start: 7, end: 18 }, raw: null, color: 'sky' }), structured: null, detached: false, passage: 'queue grows' };
     api.patch.mockResolvedValue({ ...highlight, raw: 'Why more work?' });
     renderReader([highlight]);
     await userEvent.click(screen.getByRole('button', { name: 'Distillation' }));

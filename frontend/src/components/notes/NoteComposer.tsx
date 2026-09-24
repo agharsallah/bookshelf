@@ -13,6 +13,11 @@ export interface ComposerTarget {
   range: { start: number; end: number } | null;
   /** The selected passage, shown as the quote. */
   passage: string;
+  /**
+   * Set when the passage is on the reading pane (distillation or summary) rather than
+   * the source: the artifact, its render block, the words, and the range in code points.
+   */
+  pane?: { artifactId: string; block: number; quote: string; range: { start: number; end: number } };
   /** Viewport coordinates to place the toolbar at (centre-bottom of the selection). */
   x: number;
   y: number;

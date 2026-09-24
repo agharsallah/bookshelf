@@ -8,6 +8,13 @@ import type { ApiClient } from '../../lib/api/client';
 import type { HighlightColor } from '../../lib/contract';
 import type { NoteCreate, NoteCreated, NoteDetail, NoteRange } from '../../lib/api/types/notes';
 
+/** A passage of the chapter distillation or summary, instead of the source text. */
+export interface PanePassage {
+  artifactId: string;
+  block: number;
+  quote: string;
+}
+
 export type NotesApi = Pick<ApiClient, 'get' | 'post' | 'patch' | 'delete'>;
 
 export interface NewNote {
@@ -17,6 +24,9 @@ export interface NewNote {
   /** Your words; null (or blank) for a plain highlight. */
   raw: string | null;
   color: HighlightColor | null;
+  /** The marked words, shown on the card until the list is reloaded. */
+  passage: string | null;
+  pane?: PanePassage;
 }
 
 /** Create a note and return it in list shape (no structured version yet). */
@@ -27,6 +37,7 @@ export async function createNote(api: NotesApi, note: NewNote): Promise<NoteDeta
     ...(note.raw?.trim() ? { raw: note.raw } : {}),
     ...(note.range ? { range: note.range } : {}),
     ...(note.color ? { color: note.color } : {}),
+    ...(note.pane ? { artifact_id: note.pane.artifactId, block: note.pane.block, quote: note.pane.quote } : {}),
   };
   const created = await api.post<NoteCreated>('notes', body);
   return {
@@ -36,9 +47,14 @@ export async function createNote(api: NotesApi, note: NewNote): Promise<NoteDeta
     range: created.range,
     raw: created.raw,
     color: created.color,
+    target: created.target,
+    artifact_id: created.artifact_id,
+    block: created.block,
+    quote: created.quote,
     created_at: created.created_at,
     structured: null,
     detached: false,
+    passage: note.passage,
   };
 }
 

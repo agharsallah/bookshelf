@@ -25,7 +25,8 @@ router = APIRouter(prefix="/notes", tags=["notes"])
     description=(
         "The anchor must exist in the document; `range` must lie within the node's text. "
         "With `raw`, queues a `structure_note` job whose artifact appears on `GET /notes`; "
-        "without it the note is a plain highlight and `job` is null (no model call)."
+        "without it the note is a plain highlight and `job` is null (no model call). "
+        "With `artifact_id`, the note marks a passage of a chapter distillation or summary."
     ),
 )
 def create_note(body: NoteCreate, session: SessionDep) -> NoteCreated:
@@ -35,6 +36,9 @@ def create_note(body: NoteCreate, session: SessionDep) -> NoteCreated:
         raw=body.raw,
         range=(body.range.start, body.range.end) if body.range else None,
         color=body.color,
+        artifact_id=body.artifact_id,
+        block=body.block,
+        quote=body.quote,
     )
     note, job = notes.create_note(session, data)
     return NoteCreated.model_validate(

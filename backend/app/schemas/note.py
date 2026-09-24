@@ -7,7 +7,7 @@ from typing import Annotated, Any, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from app.models.enums import NoteColor, Review
+from app.models.enums import NoteColor, NoteTarget, Review
 from app.schemas.job import JobPublic
 from app.schemas.node import Anchor
 from app.services.notes import NoteView
@@ -56,6 +56,27 @@ class NoteCreate(BaseModel):
         ),
     ] = None
     color: NoteColor | None = None
+    artifact_id: Annotated[
+        uuid.UUID | None,
+        Field(
+            description=(
+                "Mark a passage of a chapter distillation or summary instead of the source: "
+                "`anchor` is then the artifact's anchor, `range` is into render block `block`'s "
+                "text, and `quote` is exactly the marked words."
+            )
+        ),
+    ] = None
+    block: Annotated[int | None, Field(ge=0)] = None
+    quote: Annotated[str | None, Field(min_length=1, max_length=2000)] = None
+
+    @model_validator(mode="after")
+    def _pane_fields_together(self) -> Self:
+        pane = (self.block is not None, self.quote is not None)
+        if self.artifact_id is None and any(pane):
+            raise ValueError("`block` and `quote` only apply with `artifact_id`.")
+        if self.artifact_id is not None and not (all(pane) and self.range is not None):
+            raise ValueError("A note with `artifact_id` needs `block`, `range` and `quote`.")
+        return self
 
 
 class NoteUpdate(BaseModel):
@@ -85,6 +106,10 @@ class NotePublic(BaseModel):
     range: dict[str, int] | None
     raw: str | None
     color: NoteColor | None
+    target: NoteTarget
+    artifact_id: uuid.UUID | None
+    block: int | None
+    quote: str | None
     created_at: datetime
 
 
@@ -104,7 +129,15 @@ class StructuredNotePublic(BaseModel):
 class NoteDetail(NotePublic):
     structured: StructuredNotePublic | None
     detached: Annotated[
-        bool, Field(description="True when the anchor no longer exists after a re-parse.")
+        bool,
+        Field(
+            description="True when what the note marks no longer exists (a re-parse removed "
+            "its anchor, or its artifact was deleted)."
+        ),
+    ]
+    passage: Annotated[
+        str | None,
+        Field(description="The marked words; null for a whole-block note or a detached one."),
     ]
 
     @classmethod
@@ -116,6 +149,7 @@ class NoteDetail(NotePublic):
                 if view.structured
                 else None,
                 "detached": view.detached,
+                "passage": view.passage,
             }
         )
 

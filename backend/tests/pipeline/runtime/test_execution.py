@@ -8,7 +8,16 @@ from sqlmodel import Session, select
 from app.jobs import queue
 from app.jobs.registry import PermanentJobError, get_handler
 from app.models import Artifact, Document, Note
-from app.models.enums import ArtifactType, JobKind, JobState, Origin, Review, RunMode, Tier
+from app.models.enums import (
+    ArtifactType,
+    JobKind,
+    JobState,
+    NoteTarget,
+    Origin,
+    Review,
+    RunMode,
+    Tier,
+)
 from app.pipeline.execution import execute_skill_job, prepare
 from app.pipeline.runner import FakeRunner
 from app.pipeline.skills import load_catalogue
@@ -228,6 +237,32 @@ def test_structure_note_links_the_artifact_to_its_note(session, book, make_job, 
     (artifact,) = artifacts_of(session, book)
     assert artifact.note_id == note.id
     assert '"highlighted_text": "Balancing"' in runner.calls[0]["prompt"]
+
+
+def test_structure_note_on_a_summary_quotes_the_marked_words(session, book, make_job, skills_dir):
+    note = Note(
+        document_id=book.id,
+        anchor="ch02",
+        raw="so this is the gist",
+        target=NoteTarget.CHAPTER_SUMMARY,
+        block=0,
+        range={"start": 0, "end": 10},
+        quote="Loops pull",
+    )
+    session.add(note)
+    session.commit()
+    runner = FakeRunner(reply(body(paragraph("Balancing loops seek goals.", "ch02"))))
+
+    run(
+        session,
+        make_job(JobKind.STRUCTURE_NOTE, book, "ch02", note_id=str(note.id)),
+        runner,
+        skills_dir,
+    )
+
+    prompt = runner.calls[0]["prompt"]
+    assert '"highlighted_text": "Loops pull"' in prompt
+    assert '"marks": "chapter_summary"' in prompt
 
 
 def test_the_model_runs_with_no_database_transaction_open(session, book, make_job, skills_dir):

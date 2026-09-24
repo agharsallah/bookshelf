@@ -297,11 +297,14 @@ def note_context(ctx: Context) -> Selection:
         raise SelectorError(f"note {note.id} is detached: anchor {note.anchor} no longer exists")
     span = note.range or {}
     start, end = span.get("start"), span.get("end")
-    highlighted = (
-        node.text[start:end]
-        if node.text and isinstance(start, int) and isinstance(end, int)
-        else None
-    )
+    if note.quote is not None:  # a passage of the distillation/summary, not the source
+        highlighted: str | None = note.quote
+    else:
+        highlighted = (
+            node.text[start:end]
+            if node.text and isinstance(start, int) and isinstance(end, int)
+            else None
+        )
     section = ctx.tree.enclosing(node, _SECTION_KINDS) or node
     chapter = ctx.tree.chapter_of(node)
     kind = ArtifactType.CHAPTER_DISTILLATION
@@ -314,6 +317,7 @@ def note_context(ctx: Context) -> Selection:
                 "raw": note.raw,
                 "anchor": note.anchor,
                 "highlighted_text": highlighted,
+                "marks": note.target.value,
             },
             "blocks": [block(n) for n in ctx.tree.leaves(section)],
             "distillation": distillation.body if distillation is not None else None,

@@ -39,7 +39,7 @@ export function CiteChip({ anchor }: { anchor: Anchor }) {
 export function CiteMarks({ anchors }: { anchors: readonly Anchor[] }) {
   if (anchors.length === 0) return null;
   return (
-    <sup className={styles.marks}>
+    <sup className={styles.marks} data-cites="">
       {anchors.map((anchor) => (
         <CiteChip key={anchor} anchor={anchor} />
       ))}
@@ -51,7 +51,7 @@ export function CiteMarks({ anchors }: { anchors: readonly Anchor[] }) {
 export function BlockSources({ anchors }: { anchors: readonly Anchor[] }) {
   if (anchors.length === 0) return null;
   return (
-    <span className={styles.sources}>
+    <span className={styles.sources} data-cites="">
       <span className={styles.sourcesLabel}>{anchors.length === 1 ? 'Source' : 'Sources'}</span>
       {anchors.map((anchor) => (
         <CiteChip key={anchor} anchor={anchor} />

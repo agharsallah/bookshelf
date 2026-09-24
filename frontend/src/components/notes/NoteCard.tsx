@@ -14,9 +14,10 @@ import styles from './NotesPanel.module.css';
 
 export interface NoteCardProps {
   note: NoteDetail;
-  passage: string | null;
   focused: boolean;
-  onReveal: (anchor: string) => void;
+  /** A pane note on an earlier version of the distillation or summary than the one shown. */
+  earlier?: boolean;
+  onReveal: (note: NoteDetail) => void;
   onCite: (anchor: string) => void;
   onColor: (note: NoteDetail, color: HighlightColor) => void;
   /** Give a plain highlight its words; resolves true once they are stored. */
@@ -24,6 +25,8 @@ export interface NoteCardProps {
   onDelete: (note: NoteDetail) => void;
   onReview: (note: NoteDetail, action: 'approve' | 'reject') => void;
 }
+
+const PANE_WORDS = { chapter_distillation: 'Distillation', chapter_summary: 'Summary' } as const;
 
 const REVIEW_WORDS = { draft: 'Suggested', needs_review: 'Suggested, flagged', approved: 'Accepted', rejected: 'Dismissed' } as const;
 
@@ -70,7 +73,7 @@ function AddWords({ note, onAddWords }: Pick<NoteCardProps, 'note' | 'onAddWords
   );
 }
 
-export function NoteCard({ note, passage, focused, onReveal, onCite, onColor, onAddWords, onDelete, onReview }: NoteCardProps) {
+export function NoteCard({ note, focused, earlier = false, onReveal, onCite, onColor, onAddWords, onDelete, onReview }: NoteCardProps) {
   const [confirming, setConfirming] = useState(false);
   const structured = note.structured;
   const showStructured = structured !== null && structured.review !== 'rejected';
@@ -85,15 +88,18 @@ export function NoteCard({ note, passage, focused, onReveal, onCite, onColor, on
       aria-label={`Note on ${note.anchor}`}
     >
       <header className={styles.cardHead}>
-        <button type="button" className={styles.where} onClick={() => onReveal(note.anchor)} disabled={note.detached}>
-          {anchorLabel(note.anchor)}
+        <button type="button" className={styles.where} onClick={() => onReveal(note)} disabled={note.detached}>
+          {note.target === 'source' ? anchorLabel(note.anchor) : `${PANE_WORDS[note.target]}, ${anchorLabel(note.anchor)}`}
         </button>
         <time className={styles.when} dateTime={note.created_at}>
           {new Date(note.created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
         </time>
       </header>
 
-      {passage ? <blockquote className={styles.passage}>{passage}</blockquote> : null}
+      {note.passage ? <blockquote className={styles.passage}>{note.passage}</blockquote> : null}
+      {earlier && !note.detached ? (
+        <p className={styles.earlier}>On an earlier version of the {note.target === 'chapter_summary' ? 'summary' : 'distillation'}.</p>
+      ) : null}
 
       <div className={showStructured ? styles.sideBySide : undefined}>
         <div className={styles.raw}>

@@ -54,6 +54,14 @@ class NoteColor(StrEnum):
     VIOLET = "violet"
 
 
+class NoteTarget(StrEnum):
+    """What a note marks: the source text, or a passage of a chapter's reading pane."""
+
+    SOURCE = "source"
+    CHAPTER_DISTILLATION = "chapter_distillation"
+    CHAPTER_SUMMARY = "chapter_summary"
+
+
 class ArtifactType(StrEnum):
     OUTLINE_OVERRIDE = "outline_override"
     FIGURE_DESCRIPTION = "figure_description"

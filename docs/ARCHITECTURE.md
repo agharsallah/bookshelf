@@ -226,6 +226,10 @@ create table notes (
   range         jsonb,                       -- {start,end} char offsets for highlights
   raw           text not null,               -- YOUR WORDS. never rewritten (D11)
   color         text,                        -- highlight tone
+  target        text not null default 'source', -- or chapter_distillation / chapter_summary
+  artifact_id   uuid references artifacts on delete set null, -- the pane passage's artifact
+  block         int,                         -- its render block (range is into that block's text)
+  quote         text,                        -- the marked words, kept across artifact versions
   created_at    timestamptz not null default now()
 );
 
@@ -752,6 +756,13 @@ in the same commit.
 `structure-note` takes `note.raw` and emits a `structured_note` artifact in the same render
 contract — tidied, tagged, linked to concepts, and cited back to the passage you highlighted.
 The raw text is never touched and stays visible next to the structured version (D11).
+
+Notes can also mark a passage of the chapter distillation or summary shown in the reader's
+pane (`target`, `artifact_id`, `block`, `quote`). The pane paints them with the CSS Custom
+Highlight API, so render blocks stay untouched. A newer artifact version leaves the note in
+the list ("on an earlier version") with its quote; a deleted artifact leaves it detached.
+The reader loads the whole book's notes: the chapter's are shown in place, and the notes
+list switches between this chapter and the whole book, grouped by chapter.
 
 ```mermaid
 sequenceDiagram

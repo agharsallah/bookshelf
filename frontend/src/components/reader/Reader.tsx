@@ -2,7 +2,8 @@
  * The reader island: one chapter, source blocks on the left and what the shelf
  * knows about them on the right, kept in step as you scroll (unless locked).
  * Cite chips scroll to and flash their passage; hovering a passage lights up what
- * cites it. Select text to highlight or annotate it. The URL follows the block in
+ * cites it. Select text (of the source, the distillation or the summary) to highlight
+ * or annotate it; your notes list covers the chapter or the whole book. The URL follows the block in
  * view so any position can be shared.
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
@@ -10,13 +11,14 @@ import type { NoteDetail } from '../../lib/api/types/notes';
 import type { TreeNode } from '../../lib/api/types/documents';
 import type { HighlightColor } from '../../lib/contract';
 import { toCodePointRange, toUtf16Range } from '../../lib/codepoints';
-import { flatten, pageMarkers } from '../../lib/documents/tree';
+import { flatten, isUnder, pageMarkers } from '../../lib/documents/tree';
 import { useAnchorSync } from '../../lib/hooks/useAnchorSync';
 import { NoteComposer, type ComposerTarget } from '../notes/NoteComposer';
-import { NotesPanel } from '../notes/NotesPanel';
+import { NotesPanel, type NotesScope } from '../notes/NotesPanel';
 import { useNotes } from '../notes/useNotes';
 import { DistillPane, type Tab } from './DistillPane';
 import { revealBlock, sourceBlock, SOURCE_ATTR } from './dom';
+import { paintPaneNotes, paneNoteAt, revealPaneNote } from './paneMarks';
 import { groupMarks, marksFor, notedBlocks, type MarksByAnchor } from './marks';
 import { ShortcutHelp } from '../common/ShortcutHelp';
 import { Navigator, type NavSection, type NavUnit } from './Navigator';
@@ -42,6 +44,7 @@ export interface ReaderProps {
   unit: TreeNode;
   units: NavUnit[];
   panes: Panes;
+  /** Every note in the book: the chapter's are shown in place, the rest in the notes list. */
   notes: NoteDetail[];
   codeHtml: Record<string, string>;
   initialAnchor: string | null;
@@ -71,6 +74,7 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
   const [prefs, setPrefs] = useReaderPrefs();
   const [composer, setComposer] = useState<{ target: ComposerTarget; compose: boolean } | null>(null);
   const [focusedNote, setFocusedNote] = useState<string | null>(null);
+  const [notesScope, setNotesScope] = useState<NotesScope>('chapter');
   const composerHost = useRef<HTMLDivElement>(null);
   const contentsButton = useRef<HTMLButtonElement>(null);
   const settingsButton = useRef<HTMLButtonElement>(null);
@@ -91,10 +95,20 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
   const anchors = useMemo(() => flat.map((f) => f.node.anchor), [flat]);
   const order = useMemo(() => new Map(anchors.map((a, i) => [a, i])), [anchors]);
   const texts = useMemo(() => new Map(flat.map((f) => [f.node.anchor, f.node.text ?? ''])), [flat]);
+  const chapterNotes = useMemo(() => wireNotes.filter((n) => isUnder(n.anchor, unit.anchor)), [wireNotes, unit.anchor]);
   // Ranges are code points on the wire and UTF-16 offsets in the DOM (lib/codepoints).
   const notes = useMemo(
-    () => wireNotes.map((n) => (n.range ? { ...n, range: toUtf16Range(texts.get(n.anchor) ?? '', n.range) } : n)),
-    [wireNotes, texts],
+    () =>
+      chapterNotes
+        .filter((n) => n.target === 'source')
+        .map((n) => (n.range ? { ...n, range: toUtf16Range(texts.get(n.anchor) ?? '', n.range) } : n)),
+    [chapterNotes, texts],
+  );
+  // Notes on the distillation and summary are painted over the pane (paneMarks.ts).
+  const paneNotes = useMemo(() => chapterNotes.filter((n) => n.target !== 'source' && !n.detached), [chapterNotes]);
+  const currentArtifacts = useMemo(
+    () => new Set([panes.distillation?.id, panes.summary?.id].filter((id): id is string => Boolean(id))),
+    [panes.distillation, panes.summary],
   );
   const sectionOf = useMemo(() => new Map(flat.map((f) => [f.node.anchor, f.section])), [flat]);
   const pages = useMemo(() => pageMarkers(flat), [flat]);
@@ -127,6 +141,8 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
     return () => el?.removeAttribute('data-active');
   }, [active]);
 
+  useEffect(() => (paneRef.current ? paintPaneNotes(paneRef.current, paneNotes) : undefined), [paneNotes, tab, view]);
+
   const readHref = useCallback((anchor: string) => `/documents/${doc.slug}/read/${anchor}`, [doc.slug]);
   const index = units.findIndex((u) => u.anchor === unit.anchor);
   const prev = units[index - 1] ?? null;
@@ -154,6 +170,17 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
     setFocusedNote(id);
     requestAnimationFrame(() => paneRef.current?.querySelector<HTMLElement>(`[data-note-id="${CSS.escape(id)}"]`)?.focus());
   }, []);
+
+  /** Show what a note marks: its passage in the text, its block on the pane, or its chapter. */
+  const revealNote = (note: NoteDetail) => {
+    if (note.target === 'source') return onCite(note.anchor);
+    if (!isUnder(note.anchor, unit.anchor)) return window.location.assign(readHref(note.anchor));
+    setView('distil');
+    setTab(note.target === 'chapter_summary' ? 'summary' : 'distillation');
+    requestAnimationFrame(() => {
+      if (paneRef.current) revealPaneNote(paneRef.current, note);
+    });
+  };
 
   /** Close the composer; if focus was in it (or already lost), hand it back to its block. */
   const closeComposer = () => {
@@ -190,6 +217,10 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
     },
     onNoteClick: openNote,
     onMagnify: openFigure,
+    onPaneClick: (x, y) => {
+      const id = paneNoteAt(paneNotes, x, y);
+      if (id) openNote(id);
+    },
   });
 
   /** A shortcut or toolbar action; `t` and `d` fall back to the popover and view switch where the panes don't fit. */
@@ -229,8 +260,19 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
   const save = async (raw: string | null, color: HighlightColor | null) => {
     if (!composer) return;
     const { target } = composer;
-    const range = target.range ? toCodePointRange(texts.get(target.anchor) ?? '', target.range) : null;
-    const created = await add({ documentId: doc.id, anchor: target.anchor, range, raw, color });
+    const { pane } = target;
+    const text = texts.get(target.anchor) ?? '';
+    const range = pane ? pane.range : target.range ? toCodePointRange(text, target.range) : null;
+    const passage = pane ? pane.quote : target.range ? text.slice(target.range.start, target.range.end) : null;
+    const created = await add({
+      documentId: doc.id,
+      anchor: target.anchor,
+      range,
+      raw,
+      color,
+      passage,
+      ...(pane ? { pane: { artifactId: pane.artifactId, block: pane.block, quote: pane.quote } } : {}),
+    });
     if (created) {
       closeComposer();
       window.getSelection()?.removeAllRanges();
@@ -344,7 +386,7 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
             panes={panes}
             tab={tab}
             onTab={setTab}
-            notesCount={notes.length}
+            notesCount={chapterNotes.length}
             activeAnchor={active}
             activeSection={activeSection}
             locked={locked}
@@ -354,11 +396,15 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
             onMagnify={openDrawing}
             notes={
               <NotesPanel
-                notes={notes}
+                notes={wireNotes}
+                unit={unit.anchor}
+                units={units}
+                scope={notesScope}
+                onScope={setNotesScope}
                 order={order}
-                texts={texts}
+                currentArtifacts={currentArtifacts}
                 focusedId={focusedNote}
-                onReveal={onCite}
+                onReveal={revealNote}
                 onCite={onCite}
                 onColor={(note, color) => void recolor(note, color)}
                 onAddWords={annotate}

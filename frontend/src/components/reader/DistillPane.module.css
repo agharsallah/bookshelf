@@ -143,3 +143,33 @@
   background: var(--accent);
   color: var(--paper-raised);
 }
+
+/* Your highlights on the distillation or summary (paneMarks.ts, CSS Custom Highlight API). */
+::highlight(note-amber) { background-color: var(--hl-amber); }
+::highlight(note-rose) { background-color: var(--hl-rose); }
+::highlight(note-sage) { background-color: var(--hl-sage); }
+::highlight(note-sky) { background-color: var(--hl-sky); }
+::highlight(note-violet) { background-color: var(--hl-violet); }
+
+/* A note's block, when the notes list reveals it. */
+.entry :global([data-block].is-flashing) {
+  animation: pane-flash 1.6s var(--ease-out);
+}
+
+@keyframes pane-flash {
+  0%,
+  30% {
+    background-color: var(--accent-wash);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .entry :global([data-block].is-flashing) {
+    animation: none;
+    outline: 2px solid var(--accent);
+    outline-offset: 0.3rem;
+  }
+}

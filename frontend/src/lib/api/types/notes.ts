@@ -14,13 +14,23 @@ export interface NoteRange {
   end: number;
 }
 
-/** `POST /notes`. Omit `raw` for a plain highlight. */
+/** What a note marks: the source text, or a passage of the chapter distillation/summary. */
+export type NoteTarget = 'source' | 'chapter_distillation' | 'chapter_summary';
+
+/**
+ * `POST /notes`. Omit `raw` for a plain highlight. With `artifact_id` the note marks a
+ * passage of a distillation or summary: `anchor` is the artifact's, `range` is into
+ * render block `block`'s text, and `quote` is exactly the marked words.
+ */
 export interface NoteCreate {
   document_id: string;
   anchor: string;
   range?: NoteRange | null;
   raw?: string;
   color?: HighlightColor | null;
+  artifact_id?: string;
+  block?: number;
+  quote?: string;
 }
 
 /**
@@ -37,6 +47,11 @@ export interface NotePublic {
   /** Null for a plain highlight. */
   raw: string | null;
   color: HighlightColor | null;
+  target: NoteTarget;
+  /** The artifact a pane note marks (null for the source, or once it was deleted). */
+  artifact_id: string | null;
+  block: number | null;
+  quote: string | null;
   created_at: string;
 }
 
@@ -60,8 +75,10 @@ export interface StructuredNote {
 /** `GET /notes` item. */
 export interface NoteDetail extends NotePublic {
   structured: StructuredNote | null;
-  /** True when the anchor no longer exists after a re-parse. */
+  /** True when what the note marks no longer exists (re-parse, or its artifact was deleted). */
   detached: boolean;
+  /** The marked words; null for a whole-block note or a detached one. */
+  passage: string | null;
 }
 
 /** `201` body of `POST /notes`: the stored note plus its `structure_note` job (null for a highlight). */

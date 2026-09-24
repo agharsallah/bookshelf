@@ -59,7 +59,8 @@ describe('bodyBlocks', () => {
 
 const note = (o: Partial<NoteDetail>): NoteDetail => ({
   id: 'n', document_id: 'd', anchor: 'ch01/p001', range: { start: 0, end: 3 }, raw: 'r', color: 'sky',
-  created_at: '2026-01-01T00:00:00Z', structured: null, detached: false, ...o,
+  target: 'source', artifact_id: null, block: null, quote: null,
+  created_at: '2026-01-01T00:00:00Z', structured: null, detached: false, passage: null, ...o,
 });
 
 describe('groupMarks', () => {

@@ -2,7 +2,8 @@
  * The right pane: what the shelf knows about this chapter, in tabs — the chapter
  * distillation, the summary, section notes, explanations of figures/tables/code,
  * and your notes. Unapproved artifacts carry a "draft" badge. Unless locked, the
- * pane follows the section being read on the left.
+ * pane follows the section being read on the left. Passages of the distillation and
+ * summary can be highlighted and annotated, like the source text.
  */
 import { useEffect, useRef, type KeyboardEvent, type ReactNode, type RefObject } from 'react';
 import { anchorLabel } from '../../lib/anchors';
@@ -11,6 +12,7 @@ import { isUnder } from '../../lib/documents/tree';
 import { Blocks } from '../blocks/Blocks';
 import type { MagnifyHandler } from '../blocks/MagnifyContext';
 import { scrollPaneTo } from './dom';
+import { NOTABLE_ATTR, NOTABLE_TARGET_ATTR } from './paneMarks';
 import type { PaneEntry, Panes } from './panes';
 import styles from './DistillPane.module.css';
 
@@ -50,9 +52,17 @@ function Badge({ entry }: { entry: PaneEntry }) {
   );
 }
 
+/** The distillation and summary take highlights and notes (paneMarks.ts). */
+const NOTABLE_TYPES = new Set(['chapter_distillation', 'chapter_summary']);
+
 function Entry({ entry, heading, onCite, citeHref, onMagnify }: { entry: PaneEntry; heading: boolean } & Pick<DistillPaneProps, 'onCite' | 'citeHref' | 'onMagnify'>) {
+  const notable = NOTABLE_TYPES.has(entry.type);
   return (
-    <section className={styles.entry} data-scope={entry.anchor}>
+    <section
+      className={styles.entry}
+      data-scope={entry.anchor}
+      {...(notable ? { [NOTABLE_ATTR]: entry.id, [NOTABLE_TARGET_ATTR]: entry.type } : {})}
+    >
       {heading ? (
         <h3 className={styles.entryTitle}>
           <button type="button" className={styles.scope} onClick={() => onCite(entry.anchor)}>
