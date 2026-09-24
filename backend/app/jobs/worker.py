@@ -7,7 +7,9 @@
 Handlers register themselves on import; the worker imports every module under
 `app.pipeline.handlers`, then claims only the kinds that have a handler, so work for a
 stage nobody implements yet simply waits in the queue. Each job runs in its own thread
-and Session (the real work is a `claude -p` subprocess, so threads are enough). The
+and Session (the real work is a `claude -p` subprocess, so threads are enough), and a
+heartbeat renews its lock while it runs: a job may outlive `queue.STALE_AFTER` (several
+long CLI runs), and only a dead worker's job may be reclaimed. The
 worker owns state transitions: success → `complete`, `PermanentJobError` → `failed`,
 anything else → retry with backoff. Then the orchestrator decides what comes next.
 
@@ -22,6 +24,7 @@ import logging
 import pkgutil
 import signal
 import threading
+import uuid
 from collections.abc import Callable, Collection, Mapping, Sequence
 from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
 from types import FrameType
@@ -74,6 +77,7 @@ class Worker:
         on_done: OnDone = default_on_done,
         only: Collection[JobKind] | None = None,
         exclude: Collection[JobKind] = (),
+        heartbeat_seconds: float | None = None,
     ) -> None:
         settings = get_settings()
         self.concurrency = concurrency or settings.worker_concurrency
@@ -83,6 +87,7 @@ class Worker:
         self._on_done = on_done
         self._only = frozenset(only) if only is not None else None
         self._exclude = frozenset(exclude)
+        self.heartbeat_seconds = heartbeat_seconds or queue.HEARTBEAT_SECONDS
         self.stop = threading.Event()
 
     # -- handler lookup -------------------------------------------------------------
@@ -111,8 +116,30 @@ class Worker:
                 session.expunge(job)
             return job
 
+    def _beat(self, job_id: uuid.UUID, done: threading.Event) -> None:
+        """Renew the job's lock until `done` is set (own session: never the job's)."""
+        while not done.wait(self.heartbeat_seconds):
+            try:
+                with self._session_factory() as session:
+                    if not queue.heartbeat(session, job_id):
+                        return
+            except Exception:  # a missed beat is harmless; the next one retries
+                logger.warning("Job heartbeat failed", extra={"job_id": str(job_id)}, exc_info=True)
+
     def execute(self, job: Job) -> JobState:
-        """Run one claimed job to its next state, in a fresh session."""
+        """Run one claimed job to its next state, in a fresh session, renewing its lock."""
+        done = threading.Event()
+        beat = threading.Thread(
+            target=self._beat, args=(job.id, done), name=f"heartbeat-{job.id}", daemon=True
+        )
+        beat.start()
+        try:
+            return self._execute(job)
+        finally:
+            done.set()
+            beat.join()
+
+    def _execute(self, job: Job) -> JobState:
         with self._session_factory() as session:
             job = session.merge(job, load=True)
             handler = self.handler_for(job.kind)

@@ -4,11 +4,14 @@ and the outbox import CLI."""
 import argparse
 import json
 import threading
+import time
 from pathlib import Path
 
 import pytest
+from sqlalchemy import text
 from sqlmodel import Session, select
 
+from app.db.session import engine
 from app.jobs import queue
 from app.jobs.queue import JobSpec
 from app.jobs.registry import HandlerResult, JobContext, PermanentJobError
@@ -78,6 +81,45 @@ def test_permanent_errors_fail_at_once_and_others_are_retried_later(session: Ses
     assert (jobs["flaky"].state, jobs["flaky"].attempts) == (JobState.QUEUED, 1)
     assert jobs["flaky"].error == "RuntimeError: CLI rate limited"
     assert done == [JobState.FAILED]  # a job waiting for its retry is not "done" yet
+
+
+def _lock_age_seconds(job_id: object) -> float:
+    with Session(engine) as db:
+        age = db.execute(
+            text("select extract(epoch from now() - locked_at) from jobs where id = :id"),
+            {"id": job_id},
+        ).scalar_one()
+    return float(age)
+
+
+def test_a_job_outliving_the_stale_timeout_is_not_reclaimed_while_its_worker_lives(
+    session: Session,
+):
+    queue.enqueue(session, JobSpec(kind=JobKind.EXPORT, anchor="long-cli-run"))
+    reclaimed: list[Job | None] = []
+
+    def export(ctx: JobContext) -> HandlerResult:
+        # Pretend this run has taken an hour (a long `claude` call): the lock looks stale.
+        with Session(engine) as other:
+            other.execute(
+                text("update jobs set locked_at = now() - interval '1 hour' where id = :id"),
+                {"id": ctx.job.id},
+            )
+            other.commit()
+            deadline = time.monotonic() + 5
+            while _lock_age_seconds(ctx.job.id) > 60 and time.monotonic() < deadline:
+                threading.Event().wait(0.01)
+            reclaimed.append(queue.claim(other, [JobKind.EXPORT]))
+        return HandlerResult()
+
+    worker = Worker(
+        concurrency=1, poll_seconds=0.01, heartbeat_seconds=0.01, handlers={JobKind.EXPORT: export}
+    )
+
+    assert worker.run(once=True) == 1
+    job = jobs_by_anchor(session)["long-cli-run"]
+    assert reclaimed == [None]  # a second worker must not run it again
+    assert (job.state, job.attempts) == (JobState.DONE, 1)
 
 
 def test_only_kinds_with_a_handler_are_claimed(session: Session):

@@ -21,8 +21,10 @@ from app.models.enums import JobKind, JobState, RunMode
 
 # Exponential backoff between attempts: 30s, 2m, 8m, ...
 _BACKOFF_BASE_SECONDS = 30
-# A running job whose worker died is reclaimed after this long.
+# A running job whose worker died is reclaimed after this long. A live worker renews the
+# lock every `HEARTBEAT_SECONDS` (`heartbeat`), so a long job is never taken for a dead one.
 STALE_AFTER = timedelta(minutes=30)
+HEARTBEAT_SECONDS = 60.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -107,6 +109,19 @@ def claim(session: Session, kinds: list[JobKind] | None = None) -> Job | None:
     if job is not None:
         session.refresh(job)
     return job
+
+
+def heartbeat(session: Session, job_id: uuid.UUID) -> bool:
+    """Renew a running job's lock so `claim()` does not reclaim it as stale. Commits.
+
+    Returns False when the job is no longer running (finished, or reclaimed after all).
+    """
+    row = session.execute(
+        text("update jobs set locked_at = now() where id = :id and state = 'running' returning id"),
+        {"id": job_id},
+    ).first()
+    session.commit()
+    return row is not None
 
 
 def complete(
