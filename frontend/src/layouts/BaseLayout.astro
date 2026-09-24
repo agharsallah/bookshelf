@@ -224,6 +224,12 @@ const isCurrent = (href: string) => path === href || path.startsWith(`${href}/`)
     border-block-start: 1px solid var(--rule);
   }
 
+  /* The reader's focus mode (components/reader/useReaderLayout.ts) sets the chrome aside. */
+  :global(html[data-reader-focus]) .masthead,
+  :global(html[data-reader-focus]) .colophon {
+    display: none;
+  }
+
   .colophon-inner {
     justify-content: space-between;
     min-height: 3rem;

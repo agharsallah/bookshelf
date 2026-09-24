@@ -2,7 +2,7 @@
  * The reader's DOM-level interactions, kept out of the component body:
  * selection → highlight toolbar, cross-pane hover highlighting, copy-link handles,
  * clicks on existing highlights, and the keyboard shortcuts
- * (j/k block, [/] chapter, n note, Esc close).
+ * (j/k block, [/] chapter, n note, Esc close; the rest via `onAction`).
  */
 import { useEffect, useRef, type RefObject } from 'react';
 import { toast } from '../document/toast';
@@ -24,6 +24,8 @@ export interface ReaderEventOptions {
   onCompose: (target: ComposerTarget) => void;
   onEscape: () => void;
   onNoteClick: (noteId: string) => void;
+  /** Any other key press; return true when it was a shortcut, to claim it. */
+  onAction: (event: KeyboardEvent) => boolean;
 }
 
 function selectionTarget(root: HTMLElement): ComposerTarget | null {
@@ -125,6 +127,8 @@ export function useReaderEvents(options: ReaderEventOptions): void {
         window.location.assign(o.nextHref);
       } else if (event.key === '[' && o.prevHref) {
         window.location.assign(o.prevHref);
+      } else if (o.onAction(event)) {
+        event.preventDefault();
       } else if (event.key === 'n' && current) {
         event.preventDefault();
         const selected = selectionTarget(source);

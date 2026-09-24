@@ -1,6 +1,8 @@
 /*
  * Reader layout. Wider than the page frame: contents rail | the text at a book
  * measure | the distillation leaf, which stays in view with its own scroll.
+ * Either side can be put away (`data-rail`, `data-pane` = off); focus mode puts
+ * both away with the site chrome, and the text is centred on the page.
  */
 .reader {
   --bleed: min(100vw - 2.5rem, 92rem);
@@ -14,6 +16,8 @@
   --reader-gap: 0.9em;
   --reader-measure: 40rem;
   --reader-align: start;
+  --measure-col: minmax(0, var(--reader-measure));
+  --cols: 13rem var(--measure-col) minmax(24rem, 1fr);
   width: var(--bleed);
   margin-inline: calc(50% - var(--bleed) / 2);
   margin-block-start: calc(-1 * var(--space-6));
@@ -33,6 +37,16 @@
   border-block-end: 1px solid var(--rule);
   background: color-mix(in oklab, var(--paper) 94%, transparent);
   backdrop-filter: blur(8px);
+  transition:
+    translate var(--dur-3) var(--ease-out),
+    opacity var(--dur-3) var(--ease-out);
+}
+
+/* Focus mode: tucked away while you read; scroll up or point at the top to bring it back. */
+.toolbar[data-hidden] {
+  translate: 0 -100%;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .titles {
@@ -107,6 +121,11 @@
   color: var(--paper) !important;
 }
 
+.panelToggles {
+  display: inline-flex;
+  gap: var(--space-1);
+}
+
 .chapterNav {
   display: inline-flex;
   gap: var(--space-1);
@@ -155,7 +174,8 @@
 
 .columns {
   display: grid;
-  grid-template-columns: 13rem minmax(0, var(--reader-measure)) minmax(24rem, 1fr);
+  grid-template-columns: var(--cols);
+  justify-content: center;
   gap: var(--space-7);
   align-items: start;
   padding-block-start: var(--space-6);
@@ -204,14 +224,59 @@
   font-size: var(--text-ui);
 }
 
+/* A pane put away takes its column with it; an empty track opposite the rail keeps the text centred. */
+.reader[data-rail='off'] {
+  --cols: var(--measure-col) minmax(24rem, 1fr);
+}
+
+.reader[data-pane='off'] {
+  --cols: 13rem var(--measure-col) 13rem;
+}
+
+.reader[data-rail='off'][data-pane='off'] {
+  --cols: var(--measure-col);
+}
+
+.reader[data-rail='off'] .navColumn,
+.reader[data-pane='off'] .distil,
+.reader[data-pane='off'] .lock {
+  display: none;
+}
+
+/* Focus mode: no site chrome above the toolbar, only the text and its contents popover. */
+.reader[data-focus] {
+  --masthead: 0px;
+}
+
+.reader[data-focus] .panelToggles {
+  display: none;
+}
+
+.reader[data-focus] .contentsButton {
+  display: inline-block !important;
+}
+
+.reader[data-focus] .columns {
+  padding-block-start: var(--space-7);
+}
+
 /* Without the rail, contents move into the toolbar. */
 @media (max-width: 90rem) {
+  .reader,
+  .reader[data-rail='off'] {
+    --cols: var(--measure-col) minmax(20rem, 1fr);
+  }
+
+  .reader[data-pane='off'] {
+    --cols: var(--measure-col);
+  }
+
   .columns {
-    grid-template-columns: minmax(0, var(--reader-measure)) minmax(20rem, 1fr);
     gap: var(--space-6);
   }
 
-  .navColumn {
+  .navColumn,
+  .railToggle {
     display: none;
   }
 
@@ -236,7 +301,8 @@
     margin-inline: 0;
   }
 
-  .lock {
+  .lock,
+  .panelToggles {
     display: none;
   }
 
@@ -254,6 +320,11 @@
   .reader[data-view='source'] .distil,
   .reader[data-view='distil'] .source {
     display: none;
+  }
+
+  /* Here the view switch decides, whatever the wide-screen pane setting is. */
+  .reader[data-view='distil'] .distil {
+    display: block;
   }
 
   .chapter {

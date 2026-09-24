@@ -144,7 +144,7 @@ describe('<Reader>', () => {
     const highlight: NoteDetail = { ...created({ range: { start: 7, end: 18 }, raw: null, color: 'sky' }), structured: null, detached: false };
     api.patch.mockResolvedValue({ ...highlight, raw: 'Why more work?' });
     renderReader([highlight]);
-    await userEvent.click(screen.getByRole('button', { name: /Distillation/ }));
+    await userEvent.click(screen.getByRole('button', { name: 'Distillation' }));
     await userEvent.click(screen.getByRole('tab', { name: /^Your notes/ }));
     await userEvent.click(screen.getByRole('button', { name: 'Add a note' }));
     await userEvent.type(screen.getByLabelText(/Your words, kept exactly/), 'Why more work?');
@@ -228,5 +228,43 @@ describe('<Reader>', () => {
     await userEvent.click(button);
     await userEvent.keyboard('{Escape}');
     expect([screen.queryByRole('dialog', { name: 'Reading settings' }), document.activeElement]).toEqual([null, button]);
+  });
+
+  it('f enters focus mode: both panes and the site chrome step aside; Escape leaves it', async () => {
+    renderReader();
+    const reader = document.querySelector<HTMLElement>('[data-view]')!;
+    await userEvent.keyboard('f');
+    expect([reader.dataset.focus, reader.dataset.rail, reader.dataset.pane]).toEqual(['', 'off', 'off']);
+    expect(document.documentElement.dataset.readerFocus).toBe('');
+    expect(screen.getByRole('button', { name: 'Focus mode' }).getAttribute('aria-pressed')).toBe('true');
+
+    await userEvent.keyboard('{Escape}');
+    expect(reader.dataset.focus).toBeUndefined();
+    expect(document.documentElement.dataset.readerFocus).toBeUndefined();
+    // Leaving focus brings back the panes as they were.
+    expect([reader.dataset.rail, reader.dataset.pane]).toEqual([undefined, undefined]);
+  });
+
+  it('puts the distillation pane away and remembers it', async () => {
+    renderReader();
+    const reader = document.querySelector<HTMLElement>('[data-view]')!;
+    await userEvent.click(screen.getByRole('button', { name: 'Distillation pane' }));
+    expect(reader.dataset.pane).toBe('off');
+    expect(JSON.parse(window.localStorage.getItem('bookshelf:reader')!)).toMatchObject({ pane: false });
+    await userEvent.keyboard('d');
+    expect(reader.dataset.pane).toBeUndefined();
+  });
+
+  it('t opens the contents popover where the rail does not fit', async () => {
+    renderReader();
+    await userEvent.keyboard('t');
+    expect(screen.getByRole('button', { name: 'Contents' }).getAttribute('aria-expanded')).toBe('true');
+  });
+
+  it('+ and - step the text size', async () => {
+    renderReader();
+    const reader = document.querySelector<HTMLElement>('[data-view]')!;
+    await userEvent.keyboard('++-');
+    expect(reader.style.getPropertyValue('--reader-size')).toBe('1.25rem');
   });
 });

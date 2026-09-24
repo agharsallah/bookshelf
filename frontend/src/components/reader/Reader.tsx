@@ -20,12 +20,14 @@ import { revealBlock, sourceBlock, SOURCE_ATTR } from './dom';
 import { groupMarks, marksFor, notedBlocks, type MarksByAnchor } from './marks';
 import { Navigator, type NavSection, type NavUnit } from './Navigator';
 import type { Panes } from './panes';
-import { prefsVars } from './prefs';
+import { clampSize, prefsVars } from './prefs';
 import { ReaderToolbar, type ReaderView } from './ReaderToolbar';
 import { ReadingSettings } from './ReadingSettings';
 import { SourceBlock } from './SourceBlock';
 import { useReaderPrefs } from './usePrefs';
+import { actionFor, type ReaderAction } from './shortcuts';
 import { useReaderEvents } from './useReaderEvents';
+import { useAutoHide, useFocusChrome, useFullscreen } from './useReaderLayout';
 import styles from './Reader.module.css';
 
 export interface ReaderProps {
@@ -38,6 +40,10 @@ export interface ReaderProps {
   initialAnchor: string | null;
   truncated: boolean;
 }
+
+/** Where the contents rail fits beside the text, and where one pane shows at a time (Reader.module.css). */
+const WIDE_QUERY = '(min-width: 90.0625rem)';
+const NARROW_QUERY = '(max-width: 56rem)';
 
 function firstTab(panes: Panes): Tab {
   if (panes.distillation) return 'distillation';
@@ -60,6 +66,12 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
   const composerHost = useRef<HTMLDivElement>(null);
   const contentsButton = useRef<HTMLButtonElement>(null);
   const settingsButton = useRef<HTMLButtonElement>(null);
+  const fullscreen = useFullscreen();
+  useFocusChrome(prefs.focus);
+  const toolbarHidden = useAutoHide(prefs.focus, contentsOpen || settingsOpen || composer !== null);
+  // Focus mode sets both panes aside without forgetting whether they were shown.
+  const showRail = prefs.contents && !prefs.focus;
+  const showPane = prefs.pane && !prefs.focus;
   const { notes: wireNotes, saving, add, annotate, recolor, remove, review } = useNotes(initialNotes);
 
   const flat = useMemo(() => flatten(unit), [unit]);
@@ -163,14 +175,44 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
     onSelect: (target) => setComposer((current) => (current?.compose ? current : target ? { target, compose: false } : null)),
     onCompose: (target) => setComposer({ target, compose: true }),
     onEscape: () => {
+      if (!composer && !contentsOpen && !settingsOpen && prefs.focus) setPrefs({ focus: false });
       closeComposer();
       if (contentsOpen) contentsButton.current?.focus();
       if (settingsOpen) settingsButton.current?.focus();
       setContentsOpen(false);
       setSettingsOpen(false);
     },
+    onAction: (event) => {
+      const action = actionFor(event);
+      if (action) runAction(action);
+      return action !== null;
+    },
     onNoteClick: openNote,
   });
+
+  /** A shortcut or toolbar action; `t` and `d` fall back to the popover and view switch where the panes don't fit. */
+  function runAction(action: ReaderAction) {
+    switch (action) {
+      case 'focus':
+        setPrefs((p) => ({ focus: !p.focus }));
+        break;
+      case 'fullscreen':
+        fullscreen.toggle();
+        break;
+      case 'contents':
+        if (!prefs.focus && window.matchMedia(WIDE_QUERY).matches) setPrefs((p) => ({ contents: !p.contents }));
+        else setContentsOpen((o) => !o);
+        break;
+      case 'pane':
+        if (window.matchMedia(NARROW_QUERY).matches) setView((v) => (v === 'source' ? 'distil' : 'source'));
+        else setPrefs((p) => (p.focus ? { focus: false, pane: true } : { pane: !p.pane }));
+        break;
+      case 'bigger':
+      case 'smaller':
+        setPrefs((p) => ({ size: clampSize(p.size + (action === 'bigger' ? 1 : -1)) }));
+        break;
+    }
+  }
 
   /** `raw` null: a plain highlight (no words, no model call). */
   const save = async (raw: string | null, color: HighlightColor | null) => {
@@ -202,7 +244,14 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
   const closeSettings = useCallback(() => setSettingsOpen(false), []);
 
   return (
-    <div className={styles.reader} data-view={view} style={prefsVars(prefs) as CSSProperties}>
+    <div
+      className={styles.reader}
+      data-view={view}
+      data-rail={showRail ? undefined : 'off'}
+      data-pane={showPane ? undefined : 'off'}
+      data-focus={prefs.focus ? '' : undefined}
+      style={prefsVars(prefs) as CSSProperties}
+    >
       <ReaderToolbar
         book={{ title: doc.title, href: `/documents/${doc.slug}` }}
         chapter={unit.heading ?? unit.anchor}
@@ -225,6 +274,16 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
           button: settingsButton,
           panel: <ReadingSettings prefs={prefs} onChange={setPrefs} onClose={closeSettings} opener={settingsButton} />,
         }}
+        layout={{
+          rail: showRail,
+          pane: showPane,
+          focus: prefs.focus,
+          onRail: () => runAction('contents'),
+          onPane: () => runAction('pane'),
+          onFocus: () => runAction('focus'),
+          fullscreen,
+        }}
+        hidden={toolbarHidden}
       />
 
       <div className={styles.columns}>
