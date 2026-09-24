@@ -13,6 +13,7 @@ import { ArtifactBody } from '../body/ArtifactBody';
 import { Tabs, type TabSpec } from '../common/Tabs';
 import { VersionDiff } from '../diff/VersionDiff';
 import { BlockEditor } from '../editor/BlockEditor';
+import { blankBody } from '../editor/model';
 import { EvidencePanel } from '../evidence/EvidencePanel';
 import { tallyGrounding } from '../evidence/grounding';
 import { ProofView } from '../evidence/ProofView';
@@ -121,7 +122,8 @@ export function ArtifactDetail({
   };
 
   const saveNew = async (body: Record<string, unknown>) => {
-    const created = await createArtifact(api, { document_id: artifact.document_id, type: artifact.type, anchor: artifact.anchor, body });
+    const { document_id, type, anchor, note_id } = artifact;
+    const created = await createArtifact(api, { document_id, type, anchor, note_id, body });
     navigate(`/review/${created.id}`);
   };
 
@@ -174,7 +176,7 @@ export function ArtifactDetail({
               </h2>
               <BlockEditor
                 key={mode}
-                initialBody={mode === 'edit' ? artifact.body : { blocks: [] }}
+                initialBody={mode === 'edit' ? artifact.body : blankBody(artifact.body)}
                 sources={sources}
                 saveLabel={mode === 'edit' ? 'Save as a new version' : 'Save and approve'}
                 onSave={mode === 'edit' ? saveEdit : saveNew}

@@ -57,6 +57,34 @@ describe('<ArtifactDetail> editing', () => {
   });
 });
 
+describe('<ArtifactDetail> writing by hand', () => {
+  // The backend checks a hand-written body against the producing skill's schema
+  // (structure-note requires tags and concepts) and links it to its note by note_id.
+  it('posts a new structured note in the skill\'s shape, linked to its note', async () => {
+    const structured = artifact({
+      id: 'sn1',
+      type: 'structured_note',
+      skill: 'structure-note',
+      anchor: 'ch01/s01/p001',
+      note_id: 'note-7',
+      body: { blocks: [{ type: 'paragraph', spans: [{ text: 'Model words.', cites: ['ch01/s01/p001'] }] }], tags: ['stocks'], concepts: ['flow'] },
+    });
+    const { api, calls } = fakeApi({ 'GET documents/doc1/blocks': () => emptyPage, 'POST artifacts': () => ({ ...structured, id: 'sn2' }) });
+    const user = userEvent.setup();
+    const navigate = vi.fn();
+    render(<ArtifactDetail artifact={structured} versions={[structured]} documentTitle="Systems" skills={[]} initialMode="write" api={api} navigate={navigate} />);
+
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Insert a block at position 1' }), 'paragraph');
+    await user.type(screen.getByRole('textbox', { name: 'Text text' }), 'My own words.');
+    await user.click(screen.getByRole('button', { name: 'Save and approve' }));
+
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/review/sn2'));
+    const post = calls.find((c) => c.method === 'POST' && c.path === 'artifacts');
+    expect(post?.body).toMatchObject({ type: 'structured_note', note_id: 'note-7', body: { tags: ['stocks'], concepts: ['flow'] } });
+    expect((post?.body as { body: { blocks: unknown[] } }).body.blocks).toHaveLength(1);
+  });
+});
+
 describe('<ArtifactDetail> verdicts and re-runs', () => {
   it('re-runs a quiz through derive with its skill, forced', async () => {
     const quiz = artifact({ id: 'quiz', type: 'quiz', skill: 'make-quiz', anchor: 'ch03', body: { items: [] } });

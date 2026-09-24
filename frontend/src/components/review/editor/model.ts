@@ -50,6 +50,16 @@ export function withBlockLists(body: Json, lists: readonly BlockList[]): Json {
   return lists.reduce<Json>((acc, list) => setIn(acc, list.path, list.blocks) as Json, body);
 }
 
+/**
+ * The starting point for writing a body by hand: the same shape with every block list
+ * emptied. Other fields stay, because the producing skill's schema (which the backend
+ * checks hand-written bodies against) requires them — `tags`/`concepts` on a structured
+ * note, `caption`/`takeaway` on a figure. A body with no block list is kept whole.
+ */
+export function blankBody(body: Json): Json {
+  return withBlockLists(body, blockLists(body).map((list) => ({ ...list, blocks: [] })));
+}
+
 /** The editable span groups of a block, in reading order. */
 export function spanGroups(block: RenderBlock): Span[][] {
   switch (block.type) {
