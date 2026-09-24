@@ -259,7 +259,7 @@ AFTER_JOB: dict[JobKind, JobRule] = {
     JobKind.EMBED: embed_finished,
     JobKind.LINK_CONCEPTS: link_finished,
 }
-# Failed jobs only unblock barriers; they never count as the stage's output.
+# Failed (or cancelled) jobs only unblock barriers; they never count as the stage's output.
 ON_FAILURE = ELEMENT_KINDS
 
 AFTER_APPROVAL: dict[ArtifactType, ReviewRule] = {
@@ -314,10 +314,15 @@ def _apply(state: State, plan: Plan) -> list[Job]:
 def on_job_done(session: Session, job: Job) -> list[Job]:
     """Advance the document after a terminal job. Returns the jobs it enqueued."""
     rule = AFTER_JOB.get(job.kind)
-    finished = job.state in (JobState.DONE, JobState.SKIPPED)
+    # A job cancelled by a person produced nothing: like a failure, it only releases barriers
+    # (a cancelled embed must not make the document `indexed`, nor queue linking).
+    cancelled = job.state is JobState.SKIPPED and job.error == queue.CANCELLED
+    finished = job.state is JobState.DONE or (job.state is JobState.SKIPPED and not cancelled)
     if rule is None or job.document_id is None:
         return []
-    if not finished and not (job.state is JobState.FAILED and job.kind in ON_FAILURE):
+    if not finished and not (
+        (job.state is JobState.FAILED or cancelled) and job.kind in ON_FAILURE
+    ):
         return []
     state = _state(session, job.document_id)
     return _apply(state, rule(state, job)) if state is not None else []

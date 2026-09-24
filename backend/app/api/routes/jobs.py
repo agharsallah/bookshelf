@@ -81,9 +81,10 @@ def _job(session: SessionDep, job_id: uuid.UUID) -> Job:
     dependencies=[Depends(require_api_key)],
     summary="Cancel a queued job",
     description=(
-        "A `queued` job becomes `skipped` with error `cancelled by user`, and the pipeline "
-        "moves on as for any finished job (e.g. the last element job releases section "
-        "notes). `409` for a job that is running or finished."
+        "A `queued` job becomes `skipped` with error `cancelled by user`. Like a failed job "
+        "it releases stage barriers (e.g. the last element job releases section notes) but "
+        "never counts as the stage's output (a cancelled `embed` does not make the document "
+        "`indexed`). `409` for a job that is running or finished."
     ),
 )
 def cancel_job(job_id: uuid.UUID, session: SessionDep) -> JobPublic:

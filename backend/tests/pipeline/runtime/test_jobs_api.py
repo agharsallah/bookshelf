@@ -3,6 +3,7 @@
 import uuid
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 
@@ -132,6 +133,27 @@ def test_cancelling_the_last_element_job_releases_the_section_notes(
 
     queued = session.exec(select(Job).where(Job.kind == JobKind.DISTIL_SECTION)).all()
     assert sorted(j.anchor or "" for j in queued) == ["ch01/s01", "ch01/s02", "ch02"]
+
+
+@pytest.mark.parametrize(
+    ("kind", "status"),
+    [(JobKind.EMBED, DocumentStatus.DISTILLED), (JobKind.LINK_CONCEPTS, DocumentStatus.INDEXED)],
+)
+def test_a_cancelled_stage_does_not_count_as_done(
+    api: TestClient, session: Session, book: Document, kind: JobKind, status: DocumentStatus
+):
+    """Cancelling a queued embed must not mark the document `indexed` (nothing was indexed)
+    nor queue concept linking; a cancelled link job must not mark it `linked`."""
+    book.status = status
+    session.add(book)
+    session.commit()
+    job = job_of(session, kind, book)
+
+    api.delete(f"{URL}/{job.id}", headers=AUTH)
+
+    session.refresh(book)
+    others = session.exec(select(Job).where(Job.id != job.id)).all()
+    assert (book.status, others) == (status, [])
 
 
 def test_retrying_a_failed_job_queues_the_same_work_without_force(
