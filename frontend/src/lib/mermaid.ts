@@ -15,15 +15,21 @@ function label(text: string): string {
   return `"${safe}"`;
 }
 
+/**
+ * Mermaid-safe node id. Contract ids may be Mermaid keywords (`end`, `graph`, `style`,
+ * `click`…) that break the parse, and edge endpoints are not pattern-checked at all,
+ * so every id is prefixed and reduced to word characters.
+ */
+function nodeId(id: string): string {
+  return `n_${id.replace(/\W/g, '_')}`;
+}
+
 export function toMermaid(block: DiagramBlock): string {
   const lines = [`flowchart ${block.direction ?? 'TD'}`];
-  for (const node of block.nodes) lines.push(`  ${node.id}[${label(node.label)}]`);
+  for (const node of block.nodes) lines.push(`  ${nodeId(node.id)}[${label(node.label)}]`);
   for (const edge of block.edges) {
-    lines.push(
-      edge.label
-        ? `  ${edge.from} -->|${label(edge.label)}| ${edge.to}`
-        : `  ${edge.from} --> ${edge.to}`,
-    );
+    const [from, to] = [nodeId(edge.from), nodeId(edge.to)];
+    lines.push(edge.label ? `  ${from} -->|${label(edge.label)}| ${to}` : `  ${from} --> ${to}`);
   }
   return lines.join('\n');
 }

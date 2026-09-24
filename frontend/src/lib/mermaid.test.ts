@@ -19,10 +19,10 @@ describe('toMermaid', () => {
     expect(source).toBe(
       [
         'flowchart LR',
-        '  a["Stock #quot;S#quot;"]',
-        '  b["Flow #lt;in#gt;"]',
-        '  b -->|"fills"| a',
-        '  a --> b',
+        '  n_a["Stock #quot;S#quot;"]',
+        '  n_b["Flow #lt;in#gt;"]',
+        '  n_b -->|"fills"| n_a',
+        '  n_a --> n_b',
       ].join('\n'),
     );
   });
