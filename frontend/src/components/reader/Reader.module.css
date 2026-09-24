@@ -42,11 +42,25 @@
     opacity var(--dur-3) var(--ease-out);
 }
 
-/* Focus mode: tucked away while you read; scroll up or point at the top to bring it back. */
+/* Focus mode: tucked away while you read (only the progress line stays); scroll up or point at the top to bring it back. */
 .toolbar[data-hidden] {
   translate: 0 -100%;
-  opacity: 0;
   pointer-events: none;
+}
+
+.toolbar[data-hidden] > :not(.progressLine) {
+  opacity: 0;
+}
+
+.progressLine {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-end: -2px;
+  height: 2px;
+  background: var(--accent);
+  transform: scaleX(var(--progress, 0));
+  transform-origin: left center;
+  transition: transform var(--dur-3) var(--ease-out);
 }
 
 .titles {
@@ -66,6 +80,26 @@
 
 .book:hover {
   color: var(--accent);
+}
+
+.bookLine {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-width: 0;
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+}
+
+.timeLeft {
+  flex: none;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.timeLeft::before {
+  content: '·';
+  margin-inline-end: var(--space-2);
 }
 
 .chapter {
@@ -224,6 +258,18 @@
   font-size: var(--text-ui);
 }
 
+/* Spotlight: every block but the one being read (or pointed at) fades back. */
+.reader[data-spotlight] .source > :global([data-source-anchor]) {
+  opacity: 0.3;
+  transition: opacity var(--dur-3) var(--ease-out);
+}
+
+.reader[data-spotlight] .source > :global([data-source-anchor][data-active]),
+.reader[data-spotlight] .source > :global([data-source-anchor]):hover,
+.reader[data-spotlight] .source > :global([data-source-anchor]):focus-within {
+  opacity: 1;
+}
+
 /* A pane put away takes its column with it; an empty track opposite the rail keeps the text centred. */
 .reader[data-rail='off'] {
   --cols: var(--measure-col) minmax(24rem, 1fr);
@@ -302,7 +348,8 @@
   }
 
   .lock,
-  .panelToggles {
+  .panelToggles,
+  .helpButton {
     display: none;
   }
 

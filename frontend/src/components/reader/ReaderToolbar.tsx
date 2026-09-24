@@ -5,7 +5,8 @@
  * slides away while you read (`hidden`).
  */
 import type { ReactNode, RefObject } from 'react';
-import { CollapseIcon, ContentsIcon, ExpandIcon, FocusIcon, PaneIcon, TypeIcon } from './icons';
+import type { CSSProperties } from 'react';
+import { CollapseIcon, ContentsIcon, ExpandIcon, FocusIcon, KeyboardIcon, PaneIcon, TypeIcon } from './icons';
 import type { NavUnit } from './Navigator';
 import styles from './Reader.module.css';
 
@@ -33,17 +34,24 @@ export interface ReaderToolbarProps {
     fullscreen: { active: boolean; supported: boolean; toggle: () => void };
   };
   hidden: boolean;
+  /** 0–1 through the chapter, drawn along the toolbar's lower edge (still visible when it is tucked away). */
+  progress: number;
+  timeLeft: string;
+  onHelp: () => void;
 }
 
 export function ReaderToolbar(props: ReaderToolbarProps) {
-  const { book, chapter, prev, next, readHref, view, onView, locked, onLock, contents, settings, layout, hidden } = props;
+  const { book, chapter, prev, next, readHref, view, onView, locked, onLock, contents, settings, layout, hidden, progress, timeLeft, onHelp } = props;
   const { fullscreen } = layout;
   return (
     <div className={styles.toolbar} data-hidden={hidden ? '' : undefined}>
       <div className={styles.titles}>
-        <a className={styles.book} href={book.href}>
-          {book.title}
-        </a>
+        <span className={styles.bookLine}>
+          <a className={styles.book} href={book.href}>
+            {book.title}
+          </a>
+          <span className={styles.timeLeft}>{timeLeft}</span>
+        </span>
         <h1 className={styles.chapter}>{chapter}</h1>
       </div>
       <div className={styles.controls}>
@@ -88,11 +96,15 @@ export function ReaderToolbar(props: ReaderToolbarProps) {
             {fullscreen.active ? <CollapseIcon /> : <ExpandIcon />}
           </button>
         ) : null}
+        <button type="button" className={`${styles.icon} ${styles.helpButton}`} aria-label="Keyboard shortcuts" title="Keyboard shortcuts (?)" onClick={onHelp}>
+          <KeyboardIcon />
+        </button>
         <span className={styles.chapterNav}>
           {prev ? <a href={readHref(prev.anchor)} aria-label={`Previous chapter: ${prev.heading}`} title="Previous chapter ([)">‹</a> : null}
           {next ? <a href={readHref(next.anchor)} aria-label={`Next chapter: ${next.heading}`} title="Next chapter (])">›</a> : null}
         </span>
       </div>
+      <span className={styles.progressLine} aria-hidden="true" style={{ '--progress': progress } as CSSProperties} />
       {contents.open ? <div className={styles.contentsPopover}>{contents.popover}</div> : null}
       {settings.open ? settings.panel : null}
     </div>

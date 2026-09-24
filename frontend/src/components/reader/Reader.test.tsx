@@ -285,4 +285,26 @@ describe('<Reader>', () => {
     await userEvent.click(screen.getByRole('switch', { name: /Colour-code passages/ }));
     expect(reader.dataset.semantic).toBeUndefined();
   });
+
+  it('s spotlights the block being read; the switch in the settings says so', async () => {
+    renderReader();
+    const reader = document.querySelector<HTMLElement>('[data-view]')!;
+    await userEvent.keyboard('s');
+    expect(reader.dataset.spotlight).toBe('');
+    await userEvent.click(screen.getByRole('button', { name: 'Reading settings' }));
+    expect(screen.getByRole('switch', { name: /Spotlight/ }).getAttribute('aria-checked')).toBe('true');
+  });
+
+  it('? lists the reader shortcuts', async () => {
+    renderReader();
+    await userEvent.keyboard('?');
+    const sheet = screen.getByRole('dialog', { name: 'Keyboard shortcuts' });
+    expect(within(sheet).getByText('Focus mode')).toBeTruthy();
+    expect(within(sheet).getByText('Colour-code quotes, examples, asides')).toBeTruthy();
+  });
+
+  it('shows how long the rest of the chapter should take', () => {
+    renderReader();
+    expect(screen.getByText('1 min left')).toBeTruthy();
+  });
 });

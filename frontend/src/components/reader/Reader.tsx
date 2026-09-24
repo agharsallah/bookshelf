@@ -18,14 +18,17 @@ import { useNotes } from '../notes/useNotes';
 import { DistillPane, type Tab } from './DistillPane';
 import { revealBlock, sourceBlock, SOURCE_ATTR } from './dom';
 import { groupMarks, marksFor, notedBlocks, type MarksByAnchor } from './marks';
+import { ShortcutHelp } from '../common/ShortcutHelp';
 import { Navigator, type NavSection, type NavUnit } from './Navigator';
 import type { Panes } from './panes';
+import { minutesLeft, timeLeftLabel, wordCount } from './progress';
 import { clampSize, prefsVars } from './prefs';
 import { ReaderToolbar, type ReaderView } from './ReaderToolbar';
-import { AidSwitch, ReadingSettings, RoleLegend } from './ReadingSettings';
+import { ReadingSettings } from './ReadingSettings';
 import { SourceBlock } from './SourceBlock';
 import { useReaderPrefs } from './usePrefs';
-import { actionFor, type ReaderAction } from './shortcuts';
+import { actionFor, READER_SHORTCUTS, type ReaderAction } from './shortcuts';
+import { useFollowUrl } from './useFollowUrl';
 import { useReaderEvents } from './useReaderEvents';
 import { useAutoHide, useFocusChrome, useFullscreen } from './useReaderLayout';
 import styles from './Reader.module.css';
@@ -60,6 +63,7 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
   const [view, setView] = useState<ReaderView>('source');
   const [contentsOpen, setContentsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   const [prefs, setPrefs] = useReaderPrefs();
   const [composer, setComposer] = useState<{ target: ComposerTarget; compose: boolean } | null>(null);
   const [focusedNote, setFocusedNote] = useState<string | null>(null);
@@ -111,29 +115,22 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
   const active = useAnchorSync(sourceRef, SOURCE_ATTR, [flat.length]);
   const activeSection = active ? (sectionOf.get(active) ?? null) : null;
   const progress = active ? ((order.get(active) ?? 0) + 1) / Math.max(1, anchors.length) : 0;
+  const words = useMemo(() => flat.map(({ node }) => wordCount(node.text ?? '')), [flat]);
+  const timeLeft = timeLeftLabel(minutesLeft(words, active ? (order.get(active) ?? 0) : 0));
+
+  // The block being read carries `data-active`, for the spotlight. Set on the DOM so no block re-renders.
+  useEffect(() => {
+    const el = active && sourceRef.current ? sourceBlock(sourceRef.current, active) : null;
+    el?.setAttribute('data-active', '');
+    return () => el?.removeAttribute('data-active');
+  }, [active]);
 
   const readHref = useCallback((anchor: string) => `/documents/${doc.slug}/read/${anchor}`, [doc.slug]);
   const index = units.findIndex((u) => u.anchor === unit.anchor);
   const prev = units[index - 1] ?? null;
   const next = units[index + 1] ?? null;
 
-  // A shared link keeps its anchor until the reader moves on their own.
-  const holdUrl = useRef(Boolean(initialAnchor));
-  useEffect(() => {
-    const release = () => {
-      holdUrl.current = false;
-    };
-    const events = ['wheel', 'touchstart', 'keydown', 'mousedown'] as const;
-    events.forEach((e) => window.addEventListener(e, release, { once: true, passive: true }));
-    return () => events.forEach((e) => window.removeEventListener(e, release));
-  }, []);
-
-  // The URL follows the block in view (replaceState, so history is not flooded).
-  useEffect(() => {
-    if (!active || holdUrl.current) return;
-    const timer = setTimeout(() => window.history.replaceState(window.history.state, '', readHref(active)), 250);
-    return () => clearTimeout(timer);
-  }, [active, readHref]);
+  useFollowUrl(active, readHref, initialAnchor);
 
   // Land on the anchor from the URL.
   useEffect(() => {
@@ -175,6 +172,7 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
     onSelect: (target) => setComposer((current) => (current?.compose ? current : target ? { target, compose: false } : null)),
     onCompose: (target) => setComposer({ target, compose: true }),
     onEscape: () => {
+      if (helpOpen) return;
       if (!composer && !contentsOpen && !settingsOpen && prefs.focus) setPrefs({ focus: false });
       closeComposer();
       if (contentsOpen) contentsButton.current?.focus();
@@ -183,7 +181,7 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
       setSettingsOpen(false);
     },
     onAction: (event) => {
-      const action = actionFor(event);
+      const action = helpOpen ? null : actionFor(event);
       if (action) runAction(action);
       return action !== null;
     },
@@ -209,6 +207,12 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
         break;
       case 'semantic':
         setPrefs((p) => ({ semantic: !p.semantic }));
+        break;
+      case 'spotlight':
+        setPrefs((p) => ({ spotlight: !p.spotlight }));
+        break;
+      case 'help':
+        setHelpOpen(true);
         break;
       case 'bigger':
       case 'smaller':
@@ -254,6 +258,7 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
       data-pane={showPane ? undefined : 'off'}
       data-focus={prefs.focus ? '' : undefined}
       data-semantic={prefs.semantic ? '' : undefined}
+      data-spotlight={prefs.spotlight ? '' : undefined}
       style={prefsVars(prefs) as CSSProperties}
     >
       <ReaderToolbar
@@ -276,18 +281,7 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
           open: settingsOpen,
           onToggle: () => setSettingsOpen((o) => !o),
           button: settingsButton,
-          panel: (
-            <ReadingSettings prefs={prefs} onChange={setPrefs} onClose={closeSettings} opener={settingsButton}>
-              <AidSwitch
-                label="Colour-code passages"
-                hint="Quotes, examples, exercises, warnings…"
-                shortcut="c"
-                on={prefs.semantic}
-                onToggle={() => runAction('semantic')}
-              />
-              {prefs.semantic ? <RoleLegend /> : null}
-            </ReadingSettings>
-          ),
+          panel: <ReadingSettings prefs={prefs} onChange={setPrefs} onClose={closeSettings} opener={settingsButton} />,
         }}
         layout={{
           rail: showRail,
@@ -299,6 +293,9 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
           fullscreen,
         }}
         hidden={toolbarHidden}
+        progress={progress}
+        timeLeft={timeLeft}
+        onHelp={() => setHelpOpen(true)}
       />
 
       <div className={styles.columns}>
@@ -356,6 +353,8 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
           />
         </div>
       </div>
+
+      <ShortcutHelp open={helpOpen} shortcuts={READER_SHORTCUTS} onClose={() => setHelpOpen(false)} />
 
       <div ref={composerHost}>
       {composer ? (

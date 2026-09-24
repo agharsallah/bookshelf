@@ -63,11 +63,9 @@ export interface ReadingSettingsProps {
   onClose: () => void;
   /** The button that opened the panel: clicks on it are not "outside". */
   opener: RefObject<HTMLElement | null>;
-  /** The reading aids, rendered under the typography. */
-  children?: ReactNode;
 }
 
-export function ReadingSettings({ prefs, onChange, onClose, opener, children }: ReadingSettingsProps) {
+export function ReadingSettings({ prefs, onChange, onClose, opener }: ReadingSettingsProps) {
   const panel = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -116,7 +114,23 @@ export function ReadingSettings({ prefs, onChange, onClose, opener, children }: 
       <Segmented label="Paragraphs" options={SPACINGS} labels={SPACING_LABELS} value={prefs.spacing} onChange={(spacing) => onChange({ spacing })} />
       <Segmented label="Width" options={WIDTHS} labels={WIDTH_LABELS} value={prefs.width} onChange={(width) => onChange({ width })} />
       <Segmented label="Alignment" options={ALIGNS} labels={ALIGN_LABELS} value={prefs.align} onChange={(align) => onChange({ align })} />
-      {children ? <div className={styles.aids}>{children}</div> : null}
+      <div className={styles.aids}>
+        <AidSwitch
+          label="Colour-code passages"
+          hint="Quotes, examples, exercises, warnings…"
+          shortcut="c"
+          on={prefs.semantic}
+          onToggle={() => onChange((p) => ({ semantic: !p.semantic }))}
+        />
+        {prefs.semantic ? <RoleLegend /> : null}
+        <AidSwitch
+          label="Spotlight"
+          hint="Dim everything but the block you are reading"
+          shortcut="s"
+          on={prefs.spotlight}
+          onToggle={() => onChange((p) => ({ spotlight: !p.spotlight }))}
+        />
+      </div>
       <div className={styles.footer}>
         <button
           type="button"
@@ -135,7 +149,7 @@ export function ReadingSettings({ prefs, onChange, onClose, opener, children }: 
 }
 
 /** What each colour means in the colour-coded mode; swatches use the same `data-role` hues as the text. */
-export function RoleLegend() {
+function RoleLegend() {
   return (
     <ul className={styles.legend} aria-label="Colour key">
       {PASSAGE_ROLES.map((role) => (
@@ -148,7 +162,7 @@ export function RoleLegend() {
 }
 
 /** A labelled on/off switch for the reading aids. */
-export function AidSwitch({ label, hint, shortcut, on, onToggle }: { label: string; hint: string; shortcut: string; on: boolean; onToggle: () => void }) {
+function AidSwitch({ label, hint, shortcut, on, onToggle }: { label: string; hint: string; shortcut: string; on: boolean; onToggle: () => void }) {
   return (
     <button type="button" role="switch" aria-checked={on} className={styles.switch} onClick={onToggle}>
       <span className={styles.track} aria-hidden="true" />
