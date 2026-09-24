@@ -52,6 +52,7 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
   const [composer, setComposer] = useState<{ target: ComposerTarget; compose: boolean } | null>(null);
   const [focusedNote, setFocusedNote] = useState<string | null>(null);
   const composerHost = useRef<HTMLDivElement>(null);
+  const contentsButton = useRef<HTMLButtonElement>(null);
   const { notes: wireNotes, saving, add, annotate, recolor, remove, review } = useNotes(initialNotes);
 
   const flat = useMemo(() => flatten(unit), [unit]);
@@ -156,6 +157,7 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
     onCompose: (target) => setComposer({ target, compose: true }),
     onEscape: () => {
       closeComposer();
+      if (contentsOpen) contentsButton.current?.focus();
       setContentsOpen(false);
     },
     onNoteClick: openNote,
@@ -198,7 +200,7 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
           <h1 className={styles.chapter}>{unit.heading ?? unit.anchor}</h1>
         </div>
         <div className={styles.controls}>
-          <button type="button" className={styles.contentsButton} aria-expanded={contentsOpen} onClick={() => setContentsOpen((o) => !o)}>
+          <button ref={contentsButton} type="button" className={styles.contentsButton} aria-expanded={contentsOpen} onClick={() => setContentsOpen((o) => !o)}>
             Contents
           </button>
           <div className={styles.viewSwitch} role="group" aria-label="Show">

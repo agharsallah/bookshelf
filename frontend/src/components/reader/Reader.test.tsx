@@ -178,6 +178,17 @@ describe('<Reader>', () => {
     expect(document.activeElement).toBe(block('ch01/s01/p002'));
   });
 
+  it('Escape closes the contents popover and returns focus to its button', async () => {
+    renderReader();
+    const button = screen.getByRole('button', { name: 'Contents' });
+    await userEvent.click(button);
+    expect(button.getAttribute('aria-expanded')).toBe('true');
+    const [, popoverLink] = screen.getAllByRole('link', { name: /Why it lags/ });
+    act(() => popoverLink?.focus());
+    await userEvent.keyboard('{Escape}');
+    expect([button.getAttribute('aria-expanded'), document.activeElement]).toEqual(['false', button]);
+  });
+
   it('j and k move focus between blocks in reading order', async () => {
     renderReader();
     act(() => block('ch01/s01').focus());
