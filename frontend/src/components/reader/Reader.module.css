@@ -7,6 +7,13 @@
   /* The site masthead's height (BaseLayout), which the sticky toolbar sits under. */
   --masthead: 3.5rem;
   --toolbar: 4.5rem;
+  /* Typography defaults; the reading settings override them inline (prefs.ts). */
+  --reader-font: var(--font-read);
+  --reader-size: var(--text-base);
+  --reader-leading: var(--leading-read);
+  --reader-gap: 0.9em;
+  --reader-measure: 40rem;
+  --reader-align: start;
   width: var(--bleed);
   margin-inline: calc(50% - var(--bleed) / 2);
   margin-block-start: calc(-1 * var(--space-6));
@@ -87,6 +94,14 @@
   color: var(--ink);
 }
 
+/* Square icon buttons; the name is in aria-label. */
+.controls .icon {
+  display: inline-grid;
+  place-items: center;
+  width: 2rem;
+  padding: 0;
+}
+
 .lock[aria-pressed='true'] {
   background: var(--ink) !important;
   color: var(--paper) !important;
@@ -140,7 +155,7 @@
 
 .columns {
   display: grid;
-  grid-template-columns: 13rem minmax(0, 40rem) minmax(24rem, 1fr);
+  grid-template-columns: 13rem minmax(0, var(--reader-measure)) minmax(24rem, 1fr);
   gap: var(--space-7);
   align-items: start;
   padding-block-start: var(--space-6);
@@ -156,6 +171,10 @@
 .source {
   min-width: 0;
   padding-block-end: 30dvh;
+  font-family: var(--reader-font);
+  font-size: var(--reader-size);
+  line-height: var(--reader-leading);
+  transition: font-size var(--dur-2) var(--ease-out);
 }
 
 .distil {
@@ -188,7 +207,7 @@
 /* Without the rail, contents move into the toolbar. */
 @media (max-width: 90rem) {
   .columns {
-    grid-template-columns: minmax(0, 40rem) minmax(20rem, 1fr);
+    grid-template-columns: minmax(0, var(--reader-measure)) minmax(20rem, 1fr);
     gap: var(--space-6);
   }
 

@@ -62,7 +62,10 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   padding: var(--space-4) var(--space-5) var(--space-7);
-  font-size: 1.03rem;
+  /* Follows the reader's font, a step smaller than the text it explains. */
+  font-family: var(--reader-font, var(--font-read));
+  font-size: calc(var(--reader-size, 1.125rem) * 0.915);
+  line-height: var(--reader-leading, var(--leading-read));
 }
 
 .scroll:focus-visible {

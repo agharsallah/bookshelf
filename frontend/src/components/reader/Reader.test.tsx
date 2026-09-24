@@ -76,6 +76,7 @@ const created = (overrides: object) => ({
 });
 
 beforeEach(() => {
+  window.localStorage.clear();
   api.post.mockReset();
   api.patch.mockReset();
   window.getSelection()?.removeAllRanges();
@@ -201,5 +202,31 @@ describe('<Reader>', () => {
   it('marks the page in the margin only when it changes', () => {
     renderReader();
     expect(screen.getAllByLabelText(/^Page \d+$/).map((el) => el.getAttribute('aria-label'))).toEqual(['Page 1', 'Page 2']);
+  });
+
+  it('sets the text as chosen in the reading settings and remembers it', async () => {
+    renderReader();
+    const reader = document.querySelector<HTMLElement>('article')!.closest<HTMLElement>('[data-view]')!;
+    await userEvent.click(screen.getByRole('button', { name: 'Reading settings' }));
+    const panel = screen.getByRole('dialog', { name: 'Reading settings' });
+    await userEvent.click(within(panel).getByRole('button', { name: 'Larger text' }));
+    await userEvent.click(within(panel).getByRole('button', { name: /Sans/ }));
+    await userEvent.click(within(panel).getByRole('button', { name: 'Justified' }));
+
+    expect(reader.style.getPropertyValue('--reader-size')).toBe('1.25rem');
+    expect(reader.style.getPropertyValue('--reader-font')).toBe('var(--font-ui)');
+    expect(reader.style.getPropertyValue('--reader-align')).toBe('justify');
+    expect(JSON.parse(window.localStorage.getItem('bookshelf:reader')!)).toMatchObject({ size: 4, font: 'sans', align: 'justify' });
+
+    await userEvent.click(within(panel).getByRole('button', { name: 'Reset typography' }));
+    expect(reader.style.getPropertyValue('--reader-size')).toBe('1.125rem');
+  });
+
+  it('Escape closes the reading settings and returns focus to their button', async () => {
+    renderReader();
+    const button = screen.getByRole('button', { name: 'Reading settings' });
+    await userEvent.click(button);
+    await userEvent.keyboard('{Escape}');
+    expect([screen.queryByRole('dialog', { name: 'Reading settings' }), document.activeElement]).toEqual([null, button]);
   });
 });

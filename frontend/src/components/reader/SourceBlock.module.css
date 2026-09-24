@@ -15,7 +15,7 @@
 }
 
 .block + .block {
-  margin-block-start: var(--space-4);
+  margin-block-start: var(--reader-gap, var(--space-4));
 }
 
 .block[data-kind='section'] {
@@ -64,23 +64,25 @@
   background-color: color-mix(in oklab, var(--accent-wash) 70%, transparent);
 }
 
+/* Headings scale with the reader's text size (26 · 21 · 18 at the default 18px). */
 .heading {
-  font-size: var(--text-lg);
+  font-size: 1.444em;
   font-weight: 520;
 }
 
 h3.heading {
-  font-size: var(--text-md);
+  font-size: 1.167em;
 }
 
 h4.heading {
-  font-size: var(--text-base);
+  font-size: 1em;
 }
 
 .text,
 .quote p,
 .aside p {
   hyphens: auto;
+  text-align: var(--reader-align, start);
 }
 
 .list {

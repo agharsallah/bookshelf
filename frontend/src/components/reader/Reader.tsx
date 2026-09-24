@@ -5,7 +5,7 @@
  * cites it. Select text to highlight or annotate it. The URL follows the block in
  * view so any position can be shared.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import type { NoteDetail } from '../../lib/api/types/notes';
 import type { TreeNode } from '../../lib/api/types/documents';
 import type { HighlightColor } from '../../lib/contract';
@@ -20,7 +20,11 @@ import { revealBlock, sourceBlock, SOURCE_ATTR } from './dom';
 import { groupMarks, marksFor, notedBlocks, type MarksByAnchor } from './marks';
 import { Navigator, type NavSection, type NavUnit } from './Navigator';
 import type { Panes } from './panes';
+import { prefsVars } from './prefs';
+import { ReaderToolbar, type ReaderView } from './ReaderToolbar';
+import { ReadingSettings } from './ReadingSettings';
 import { SourceBlock } from './SourceBlock';
+import { useReaderPrefs } from './usePrefs';
 import { useReaderEvents } from './useReaderEvents';
 import styles from './Reader.module.css';
 
@@ -47,12 +51,15 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
   const paneRef = useRef<HTMLDivElement>(null);
   const [tab, setTab] = useState<Tab>(() => firstTab(panes));
   const [locked, setLocked] = useState(false);
-  const [view, setView] = useState<'source' | 'distil'>('source');
+  const [view, setView] = useState<ReaderView>('source');
   const [contentsOpen, setContentsOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [prefs, setPrefs] = useReaderPrefs();
   const [composer, setComposer] = useState<{ target: ComposerTarget; compose: boolean } | null>(null);
   const [focusedNote, setFocusedNote] = useState<string | null>(null);
   const composerHost = useRef<HTMLDivElement>(null);
   const contentsButton = useRef<HTMLButtonElement>(null);
+  const settingsButton = useRef<HTMLButtonElement>(null);
   const { notes: wireNotes, saving, add, annotate, recolor, remove, review } = useNotes(initialNotes);
 
   const flat = useMemo(() => flatten(unit), [unit]);
@@ -158,7 +165,9 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
     onEscape: () => {
       closeComposer();
       if (contentsOpen) contentsButton.current?.focus();
+      if (settingsOpen) settingsButton.current?.focus();
       setContentsOpen(false);
+      setSettingsOpen(false);
     },
     onNoteClick: openNote,
   });
@@ -190,37 +199,33 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
     />
   );
 
+  const closeSettings = useCallback(() => setSettingsOpen(false), []);
+
   return (
-    <div className={styles.reader} data-view={view}>
-      <div className={styles.toolbar}>
-        <div className={styles.titles}>
-          <a className={styles.book} href={`/documents/${doc.slug}`}>
-            {doc.title}
-          </a>
-          <h1 className={styles.chapter}>{unit.heading ?? unit.anchor}</h1>
-        </div>
-        <div className={styles.controls}>
-          <button ref={contentsButton} type="button" className={styles.contentsButton} aria-expanded={contentsOpen} onClick={() => setContentsOpen((o) => !o)}>
-            Contents
-          </button>
-          <div className={styles.viewSwitch} role="group" aria-label="Show">
-            <button type="button" aria-pressed={view === 'source'} onClick={() => setView('source')}>
-              Text
-            </button>
-            <button type="button" aria-pressed={view === 'distil'} onClick={() => setView('distil')}>
-              Distillation
-            </button>
-          </div>
-          <button type="button" className={styles.lock} aria-pressed={locked} onClick={() => setLocked((l) => !l)} title="Keep the right pane where it is while you scroll">
-            {locked ? 'Unlock pane' : 'Lock pane'}
-          </button>
-          <span className={styles.chapterNav}>
-            {prev ? <a href={readHref(prev.anchor)} aria-label={`Previous chapter: ${prev.heading}`} title="Previous chapter ([)">‹</a> : null}
-            {next ? <a href={readHref(next.anchor)} aria-label={`Next chapter: ${next.heading}`} title="Next chapter (])">›</a> : null}
-          </span>
-        </div>
-        {contentsOpen ? <div className={styles.contentsPopover}>{navigator}</div> : null}
-      </div>
+    <div className={styles.reader} data-view={view} style={prefsVars(prefs) as CSSProperties}>
+      <ReaderToolbar
+        book={{ title: doc.title, href: `/documents/${doc.slug}` }}
+        chapter={unit.heading ?? unit.anchor}
+        prev={prev}
+        next={next}
+        readHref={readHref}
+        view={view}
+        onView={setView}
+        locked={locked}
+        onLock={() => setLocked((l) => !l)}
+        contents={{
+          open: contentsOpen,
+          onToggle: () => setContentsOpen((o) => !o),
+          button: contentsButton,
+          popover: navigator,
+        }}
+        settings={{
+          open: settingsOpen,
+          onToggle: () => setSettingsOpen((o) => !o),
+          button: settingsButton,
+          panel: <ReadingSettings prefs={prefs} onChange={setPrefs} onClose={closeSettings} opener={settingsButton} />,
+        }}
+      />
 
       <div className={styles.columns}>
         <aside className={styles.navColumn}>{navigator}</aside>
