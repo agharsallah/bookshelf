@@ -141,3 +141,24 @@ def test_no_evidence_means_no_model_call(
     name, payload = events[-1]
     assert (name, getattr(payload, "code", None)) == ("error", "no_evidence")
     assert runner.calls == []
+
+
+def test_the_model_runs_without_holding_a_database_connection(
+    indexed: Shelf, embedder: FakeEmbedder
+) -> None:
+    """The answer route's session must not sit idle in a transaction (a pooled connection)
+    for a model run of up to minutes: a few open answers would exhaust the pool."""
+    from app.db.session import engine
+
+    held: list[int] = []
+
+    def reply(prompt: str) -> str:
+        held.append(engine.pool.checkedout())
+        return _reply(VALID)
+
+    with Session(engine) as answering:
+        before = engine.pool.checkedout()
+        events = _stream(answering, embedder, FakeRunner(reply), "balancing feedback loops")
+
+    assert events[-1][0] == "answer"
+    assert held == [before]

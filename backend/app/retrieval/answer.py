@@ -166,6 +166,9 @@ def stream(
         if lifecycle.stopping.is_set():  # do not start a model run the reload would wait on
             yield "error", ErrorEvent(code="shutting_down", message="The server is restarting.")
             return
+        # The evidence is plain data now: give the connection back to the pool instead of
+        # holding it idle in a transaction for a model run of up to minutes.
+        session.close()
         yield "status", StatusEvent(stage="writing", message="Writing a cited answer")
         yield "answer", synthesize(runner, request.query, evidence, outcome.response.relations)
     except OutputError as exc:
