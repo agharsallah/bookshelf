@@ -8,6 +8,7 @@
  */
 import { memo, type ReactNode } from 'react';
 import type { TreeNode } from '../../lib/api/types/documents';
+import { mediaSrc } from './figures';
 import { clip, pieces, segment, topColor, type Mark, type Piece, type Segment } from './segments';
 import { isPassage, roleOf } from './semantics';
 import spanStyles from '../blocks/Spans.module.css';
@@ -50,6 +51,18 @@ function Runs({ text, segments, piece }: { text: string; segments: Segment[]; pi
         );
       })}
     </>
+  );
+}
+
+/** An image that opens in the lightbox: a button the reader's click handler picks up by `data-magnify`. */
+function Magnifiable({ anchor, label, children }: { anchor: string; label: string; children: ReactNode }) {
+  return (
+    <button type="button" className={styles.magnify} data-magnify={anchor} aria-label={`Magnify: ${label}`}>
+      {children}
+      <span className={styles.magnifyBadge} aria-hidden="true">
+        ⤢ Magnify
+      </span>
+    </button>
   );
 }
 
@@ -131,13 +144,15 @@ function body(node: TreeNode, marks: readonly Mark[], codeHtml: string | undefin
       return (
         <figure className={styles.figure}>
           {node.meta.image_path ? (
-            <img
-              className={styles.image}
-              src={`/api/media/${node.meta.image_path}`}
-              alt={node.meta.caption ?? (text || 'Figure')}
-              loading="lazy"
-              decoding="async"
-            />
+            <Magnifiable anchor={node.anchor} label={node.meta.caption ?? (text || 'figure')}>
+              <img
+                className={styles.image}
+                src={mediaSrc(node.meta.image_path)}
+                alt={node.meta.caption ?? (text || 'Figure')}
+                loading="lazy"
+                decoding="async"
+              />
+            </Magnifiable>
           ) : (
             <p className={styles.missing}>The figure image was not extracted.</p>
           )}
@@ -159,7 +174,9 @@ function body(node: TreeNode, marks: readonly Mark[], codeHtml: string | undefin
       );
     case 'math':
       return node.meta.image_path ? (
-        <img className={styles.math} src={`/api/media/${node.meta.image_path}`} alt={text || 'Formula'} loading="lazy" />
+        <Magnifiable anchor={node.anchor} label={text || 'formula'}>
+          <img className={styles.math} src={mediaSrc(node.meta.image_path)} alt={text || 'Formula'} loading="lazy" />
+        </Magnifiable>
       ) : (
         <pre className={styles.pre}>{text}</pre>
       );

@@ -4,7 +4,7 @@ import type { TreeNode } from '../api/types/documents';
 import { chapterStatus, pickBest, pickBestUnder } from './artifacts';
 import { fetchAll } from '../api/fetch-all';
 import { pipelineFraction, stepState } from './pipeline';
-import { defaultUnit, flatten, isUnder, pageSpan, readingUnits, unitFor } from './tree';
+import { defaultUnit, flatten, isUnder, pageMarkers, pageSpan, readingUnits, unitFor } from './tree';
 
 function artifact(overrides: Partial<ArtifactPublic>): ArtifactPublic {
   return {
@@ -166,5 +166,18 @@ describe('fetchAll', () => {
     };
     const result = await fetchAll<number>(api, 'notes');
     expect([result.items.length, result.complete, offsets]).toEqual([130, true, [0, 100]]);
+  });
+});
+
+describe('pageMarkers', () => {
+  const leaf = (anchor: string, kind: TreeNode['kind'], page: number | null): TreeNode => ({
+    id: anchor, anchor, kind, ordinal: 0, depth: 1, heading: null, text: null, page_from: page, page_to: page, meta: {}, children: [],
+  });
+
+  it('marks a page where it changes, skipping section headings and pageless blocks', () => {
+    const flat = [leaf('s1', 'section', 1), leaf('p1', 'paragraph', 1), leaf('p2', 'paragraph', 1), leaf('p3', 'paragraph', null), leaf('s2', 'section', 2), leaf('p4', 'paragraph', 2)].map(
+      (node) => ({ node, section: 's1' }),
+    );
+    expect(pageMarkers(flat)).toEqual([null, 1, null, null, null, 2]);
   });
 });

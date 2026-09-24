@@ -9,6 +9,7 @@ import { anchorLabel } from '../../lib/anchors';
 import type { RenderBlock } from '../../lib/contract';
 import { isUnder } from '../../lib/documents/tree';
 import { Blocks } from '../blocks/Blocks';
+import type { MagnifyHandler } from '../blocks/MagnifyContext';
 import { scrollPaneTo } from './dom';
 import type { PaneEntry, Panes } from './panes';
 import styles from './DistillPane.module.css';
@@ -36,6 +37,8 @@ export interface DistillPaneProps {
   paneRef: RefObject<HTMLDivElement | null>;
   onCite: (anchor: string) => void;
   citeHref: (anchor: string) => string;
+  /** Open a drawn figure (diagram, chart) in the lightbox. */
+  onMagnify: MagnifyHandler;
 }
 
 function Badge({ entry }: { entry: PaneEntry }) {
@@ -47,7 +50,7 @@ function Badge({ entry }: { entry: PaneEntry }) {
   );
 }
 
-function Entry({ entry, heading, onCite, citeHref }: { entry: PaneEntry; heading: boolean } & Pick<DistillPaneProps, 'onCite' | 'citeHref'>) {
+function Entry({ entry, heading, onCite, citeHref, onMagnify }: { entry: PaneEntry; heading: boolean } & Pick<DistillPaneProps, 'onCite' | 'citeHref' | 'onMagnify'>) {
   return (
     <section className={styles.entry} data-scope={entry.anchor}>
       {heading ? (
@@ -59,7 +62,7 @@ function Entry({ entry, heading, onCite, citeHref }: { entry: PaneEntry; heading
         </h3>
       ) : null}
       <Badge entry={entry} />
-      <Blocks blocks={entry.blocks as RenderBlock[]} onCite={onCite} citeHref={citeHref} />
+      <Blocks blocks={entry.blocks as RenderBlock[]} onCite={onCite} citeHref={citeHref} onMagnify={onMagnify} />
     </section>
   );
 }
@@ -133,9 +136,9 @@ export function DistillPane(props: DistillPaneProps) {
         {tab === 'notes' ? (
           props.notes
         ) : single ? (
-          <Entry entry={single} heading={false} onCite={props.onCite} citeHref={props.citeHref} />
+          <Entry entry={single} heading={false} onCite={props.onCite} citeHref={props.citeHref} onMagnify={props.onMagnify} />
         ) : list.length > 0 ? (
-          list.map((entry) => <Entry key={entry.id} entry={entry} heading onCite={props.onCite} citeHref={props.citeHref} />)
+          list.map((entry) => <Entry key={entry.id} entry={entry} heading onCite={props.onCite} citeHref={props.citeHref} onMagnify={props.onMagnify} />)
         ) : (
           <p className={styles.empty}>{EMPTY[tab]}</p>
         )}

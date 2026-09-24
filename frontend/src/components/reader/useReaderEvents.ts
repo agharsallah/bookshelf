@@ -24,6 +24,8 @@ export interface ReaderEventOptions {
   onCompose: (target: ComposerTarget) => void;
   onEscape: () => void;
   onNoteClick: (noteId: string) => void;
+  /** A figure's Magnify button (`data-magnify` = its anchor). */
+  onMagnify: (anchor: string) => void;
   /** Any other key press; return true when it was a shortcut, to claim it. */
   onAction: (event: KeyboardEvent) => boolean;
 }
@@ -76,6 +78,11 @@ export function useReaderEvents(options: ReaderEventOptions): void {
           () => toast('Link copied.', 'good'),
           () => toast(url, 'info'),
         );
+        return;
+      }
+      const magnify = target?.closest<HTMLElement>('[data-magnify]');
+      if (magnify) {
+        latest.current.onMagnify(magnify.dataset.magnify ?? '');
         return;
       }
       const mark = target?.closest<HTMLElement>('mark[data-notes]');

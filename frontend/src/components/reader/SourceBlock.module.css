@@ -150,6 +150,52 @@ h4.heading {
   background: #fff;
 }
 
+/* Figures open in the lightbox: the whole image is the button, a badge says so on hover. */
+.magnify {
+  position: relative;
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-m);
+  background: none;
+  cursor: zoom-in;
+}
+
+/* A formula stays centred. */
+.magnify:has(.math) {
+  margin-inline: auto;
+}
+
+.magnifyBadge {
+  position: absolute;
+  inset-block-start: var(--space-2);
+  inset-inline-end: var(--space-2);
+  padding: 0.15rem var(--space-2);
+  border-radius: var(--radius-m);
+  background: color-mix(in oklab, var(--ink) 82%, transparent);
+  color: var(--paper);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  opacity: 0;
+  translate: 0 -0.2rem;
+  transition:
+    opacity var(--dur-2) var(--ease-out),
+    translate var(--dur-2) var(--ease-out);
+  pointer-events: none;
+}
+
+.magnify:hover .magnifyBadge,
+.magnify:focus-visible .magnifyBadge {
+  opacity: 1;
+  translate: 0 0;
+}
+
+.magnify:hover .image {
+  border-color: var(--rule-strong);
+}
+
 .missing {
   padding: var(--space-4);
   border: 1px dashed var(--rule-strong);

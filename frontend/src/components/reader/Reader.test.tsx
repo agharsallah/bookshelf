@@ -29,6 +29,7 @@ const unit = node('ch01', 'chapter', {
         node('ch01/s01/p002', 'paragraph', { text: 'Slack is not waste.', page_from: 2 }),
         node('ch01/s01/p003', 'paragraph', { text: '𝑥 grows when 𝑦 falls.', page_from: 2 }),
         node('ch01/s01/p004', 'paragraph', { text: 'For example, a team at capacity waits longer.', page_from: 2 }),
+        node('ch01/s01/f001', 'figure', { page_from: 2, meta: { image_path: 'flow/ch01/f001.png', caption: 'Figure 1.1 The loop' } }),
       ],
     }),
   ],
@@ -377,5 +378,21 @@ describe('<Reader>', () => {
     } finally {
       window.matchMedia = matchMedia;
     }
+  });
+
+  it('magnifies a figure in the lightbox, and "Show in text" lands back on it', async () => {
+    renderReader();
+    await userEvent.click(screen.getByRole('button', { name: 'Magnify: Figure 1.1 The loop' }));
+    const lightbox = screen.getByRole('dialog', { name: 'Figure 1.1 The loop' });
+    expect(within(lightbox).getByText('Page 2')).toBeTruthy();
+
+    // Its keys stay in the lightbox: + zooms the figure, not the text.
+    const reader = document.querySelector<HTMLElement>('[data-view]')!;
+    await userEvent.keyboard('+');
+    expect(reader.style.getPropertyValue('--reader-size')).toBe('1.125rem');
+
+    await userEvent.click(within(lightbox).getByRole('button', { name: 'Show in text' }));
+    expect(screen.queryByRole('dialog', { name: 'Figure 1.1 The loop' })).toBeNull();
+    await waitFor(() => expect(block('ch01/s01/f001').classList.contains('is-flashing')).toBe(true));
   });
 });

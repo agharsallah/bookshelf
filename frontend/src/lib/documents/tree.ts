@@ -59,6 +59,17 @@ export function flatten(unit: TreeNode): FlatNode[] {
   return out;
 }
 
+/** Per flat node, the page to mark in the margin: only where it changes, never on a section heading. */
+export function pageMarkers(flat: readonly FlatNode[]): (number | null)[] {
+  let last: number | null = null;
+  return flat.map(({ node }) => {
+    if (node.page_from === null || node.kind === 'section') return null;
+    const changed = node.page_from !== last;
+    last = node.page_from;
+    return changed ? node.page_from : null;
+  });
+}
+
 /** Sections of a unit, nested, for the navigator. */
 export function sectionsOf(unit: TreeNode): TreeNode[] {
   return unit.children.filter((c) => c.kind === 'section');

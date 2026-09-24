@@ -10,7 +10,7 @@ import type { NoteDetail } from '../../lib/api/types/notes';
 import type { TreeNode } from '../../lib/api/types/documents';
 import type { HighlightColor } from '../../lib/contract';
 import { toCodePointRange, toUtf16Range } from '../../lib/codepoints';
-import { flatten } from '../../lib/documents/tree';
+import { flatten, pageMarkers } from '../../lib/documents/tree';
 import { useAnchorSync } from '../../lib/hooks/useAnchorSync';
 import { NoteComposer, type ComposerTarget } from '../notes/NoteComposer';
 import { NotesPanel } from '../notes/NotesPanel';
@@ -22,6 +22,7 @@ import { ShortcutHelp } from '../common/ShortcutHelp';
 import { Navigator, type NavSection, type NavUnit } from './Navigator';
 import type { Panes } from './panes';
 import { minutesLeft, timeLeftLabel, wordCount } from './progress';
+import { figureItems } from './figures';
 import { canDragMeasure, isCentred, readerLayout } from './layout';
 import { MeasureHandle } from './MeasureHandle';
 import { clampSize, prefsVars, WIDTH_REM } from './prefs';
@@ -30,6 +31,7 @@ import { ReadingSettings } from './ReadingSettings';
 import { SourceBlock } from './SourceBlock';
 import { useReaderPrefs } from './usePrefs';
 import { actionFor, READER_SHORTCUTS, type ReaderAction } from './shortcuts';
+import { useFigureLightbox } from './useFigureLightbox';
 import { useFollowUrl } from './useFollowUrl';
 import { useReaderEvents } from './useReaderEvents';
 import { useAutoHide, useFocusChrome, useFullscreen, useMediaQuery } from './useReaderLayout';
@@ -95,15 +97,7 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
     [wireNotes, texts],
   );
   const sectionOf = useMemo(() => new Map(flat.map((f) => [f.node.anchor, f.section])), [flat]);
-  const pages = useMemo(() => {
-    let last: number | null = null;
-    return flat.map(({ node }) => {
-      const page = node.page_from;
-      const show = page !== null && page !== last && node.kind !== 'section';
-      if (page !== null && node.kind !== 'section') last = page;
-      return show ? page : null;
-    });
-  }, [flat]);
+  const pages = useMemo(() => pageMarkers(flat), [flat]);
   const navSections: NavSection[] = useMemo(
     () =>
       flat
@@ -122,6 +116,7 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
   const active = useAnchorSync(sourceRef, SOURCE_ATTR, [flat.length]);
   const activeSection = active ? (sectionOf.get(active) ?? null) : null;
   const progress = active ? ((order.get(active) ?? 0) + 1) / Math.max(1, anchors.length) : 0;
+  const figures = useMemo(() => figureItems(flat.map((f) => f.node)), [flat]);
   const words = useMemo(() => flat.map(({ node }) => wordCount(node.text ?? '')), [flat]);
   const timeLeft = timeLeftLabel(minutesLeft(words, active ? (order.get(active) ?? 0) : 0));
 
@@ -151,6 +146,7 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
     },
     [readHref],
   );
+  const { openFigure, openDrawing, open: lightboxOpen, lightbox } = useFigureLightbox(figures, onCite);
 
   const openNote = useCallback((id: string) => {
     setTab('notes');
@@ -179,7 +175,7 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
     onSelect: (target) => setComposer((current) => (current?.compose ? current : target ? { target, compose: false } : null)),
     onCompose: (target) => setComposer({ target, compose: true }),
     onEscape: () => {
-      if (helpOpen) return;
+      if (helpOpen || lightboxOpen) return;
       if (!composer && !contentsOpen && !settingsOpen && prefs.focus) setPrefs({ focus: false });
       closeComposer();
       if (contentsOpen) contentsButton.current?.focus();
@@ -188,11 +184,12 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
       setSettingsOpen(false);
     },
     onAction: (event) => {
-      const action = helpOpen ? null : actionFor(event);
+      const action = helpOpen || lightboxOpen ? null : actionFor(event);
       if (action) runAction(action);
       return action !== null;
     },
     onNoteClick: openNote,
+    onMagnify: openFigure,
   });
 
   /** A shortcut or toolbar action; `t` and `d` fall back to the popover and view switch where the panes don't fit. */
@@ -354,6 +351,7 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
             paneRef={paneRef}
             onCite={onCite}
             citeHref={readHref}
+            onMagnify={openDrawing}
             notes={
               <NotesPanel
                 notes={notes}
@@ -371,6 +369,8 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
           />
         </div>
       </div>
+
+      {lightbox}
 
       <ShortcutHelp open={helpOpen} shortcuts={READER_SHORTCUTS} onClose={() => setHelpOpen(false)} />
 
