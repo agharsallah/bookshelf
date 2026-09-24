@@ -10,16 +10,22 @@ export type ToastTone = 'info' | 'good' | 'bad';
 const REGION_ID = 'bookshelf-toasts';
 const LIFETIME_MS = 5000;
 
-function region(doc: Document): HTMLElement {
+/**
+ * A region created now cannot announce what is put in it in the same moment: screen
+ * readers only report changes to a live region they already know about.
+ */
+const FIRST_MESSAGE_DELAY_MS = 100;
+
+function region(doc: Document): { el: HTMLElement; fresh: boolean } {
   const existing = doc.getElementById(REGION_ID);
-  if (existing) return existing;
+  if (existing) return { el: existing, fresh: false };
   const el = doc.createElement('div');
   el.id = REGION_ID;
   el.className = styles.region ?? '';
   el.setAttribute('role', 'status');
   el.setAttribute('aria-live', 'polite');
   doc.body.append(el);
-  return el;
+  return { el, fresh: true };
 }
 
 /** Show a message for a few seconds; returns a function that dismisses it early. */
@@ -28,11 +34,16 @@ export function toast(message: string, tone: ToastTone = 'info', doc: Document =
   item.className = styles.toast ?? '';
   item.dataset.tone = tone;
   item.textContent = message;
-  region(doc).append(item);
-  const remove = () => item.remove();
-  const timer = setTimeout(remove, LIFETIME_MS);
+  const { el, fresh } = region(doc);
+  let timer: ReturnType<typeof setTimeout>;
+  const show = () => {
+    el.append(item);
+    timer = setTimeout(() => item.remove(), LIFETIME_MS);
+  };
+  if (fresh) timer = setTimeout(show, FIRST_MESSAGE_DELAY_MS);
+  else show();
   return () => {
     clearTimeout(timer);
-    remove();
+    item.remove();
   };
 }
