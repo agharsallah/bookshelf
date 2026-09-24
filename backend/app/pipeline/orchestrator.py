@@ -22,6 +22,7 @@ Pipeline order per document:
 """
 
 import logging
+import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
@@ -203,6 +204,17 @@ def chapter_finished(state: State, job: Job) -> Plan:
     return _brief_if_complete(state)
 
 
+def brief_finished(state: State, job: Job) -> Plan:
+    """A brief run that was an idempotency hit on an *approved* brief (e.g. after a re-parse
+    changed nothing it reads) counts as that approval: index again, as `brief_approved`.
+    A new brief waits for a human, as always."""
+    covering = (job.result or {}).get("artifact_id") if job.state is JobState.SKIPPED else None
+    brief = state.session.get(Artifact, uuid.UUID(covering)) if isinstance(covering, str) else None
+    if brief is None or brief.review is not Review.APPROVED:
+        return Plan()
+    return brief_approved(state, brief)
+
+
 def embed_finished(state: State, job: Job) -> Plan:
     return Plan(jobs=[state.spec(JobKind.LINK_CONCEPTS)], status=DocumentStatus.INDEXED)
 
@@ -256,6 +268,7 @@ AFTER_JOB: dict[JobKind, JobRule] = {
     **dict.fromkeys(ELEMENT_KINDS, element_finished),
     JobKind.DISTIL_SECTION: section_finished,
     JobKind.DISTIL_CHAPTER: chapter_finished,
+    JobKind.BRIEF: brief_finished,
     JobKind.EMBED: embed_finished,
     JobKind.LINK_CONCEPTS: link_finished,
 }

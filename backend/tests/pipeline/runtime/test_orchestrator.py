@@ -161,6 +161,29 @@ def test_approving_the_brief_marks_distilled_and_queues_embedding(session, book)
     assert status(session, book) is DocumentStatus.DISTILLED
 
 
+def test_a_re_run_brief_that_hits_its_approved_version_resumes_indexing(session, book, make_job):
+    """After a re-parse the document is `parsed` again and every stage re-runs; an unchanged
+    brief is an idempotency skip onto the approved row, which must count as that approval
+    (else the document stalls at `distilling` and its changed blocks are never re-indexed)."""
+    brief = store(session, book, ArtifactType.BOOK_BRIEF, None, Review.APPROVED)
+    job = make_job(JobKind.BRIEF, book)
+    queue.complete(session, job, state=JobState.SKIPPED, result={"artifact_id": str(brief.id)})
+
+    enqueued = orchestrator.on_job_done(session, job)
+
+    assert [(j.kind, j.anchor) for j in enqueued] == [(JobKind.EMBED, None)]
+    assert status(session, book) is DocumentStatus.DISTILLED
+
+
+def test_a_brief_run_waiting_for_its_approval_advances_nothing(session, book, make_job):
+    draft = store(session, book, ArtifactType.BOOK_BRIEF, None)
+    job = make_job(JobKind.BRIEF, book)
+    queue.complete(session, job, result={"artifact_id": str(draft.id)})
+
+    assert orchestrator.on_job_done(session, job) == []
+    assert status(session, book) is DocumentStatus.PARSED
+
+
 def test_a_draft_brief_does_not_advance_anything(session, book):
     assert (
         orchestrator.on_review(session, store(session, book, ArtifactType.BOOK_BRIEF, None)) == []
