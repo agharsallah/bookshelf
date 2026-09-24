@@ -14,6 +14,8 @@ from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from psycopg import errors as pg_errors
+from sqlalchemy.exc import DataError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.core.logging import request_id_ctx
@@ -124,6 +126,18 @@ def register_exception_handlers(app: FastAPI) -> None:
             details=details,
         )
 
+    @app.exception_handler(DataError)
+    async def _unstorable_text(request: Request, exc: DataError) -> JSONResponse:
+        # A NUL character (or `\\u0000` in JSON) in any string the request carries reaches
+        # Postgres, which cannot store or compare it: the caller's input, not our bug.
+        if _is_unstorable_text(exc):
+            return error_response(
+                status.HTTP_422_UNPROCESSABLE_CONTENT,
+                "validation_error",
+                "Request contains a NUL character, which text fields cannot hold.",
+            )
+        return await _unhandled(request, exc)
+
     @app.exception_handler(Exception)
     async def _unhandled(request: Request, exc: Exception) -> JSONResponse:
         # Starlette runs this handler in its outermost middleware, outside the request
@@ -152,3 +166,9 @@ def register_exception_handlers(app: FastAPI) -> None:
         finally:
             if token is not None:
                 request_id_ctx.reset(token)
+
+
+def _is_unstorable_text(exc: DataError) -> bool:
+    """psycopg refuses NUL in text parameters; Postgres refuses `\\u0000` in JSONB."""
+    orig = exc.orig
+    return isinstance(orig, pg_errors.UntranslatableCharacter) or "NUL (0x00)" in str(orig)

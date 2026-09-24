@@ -1,5 +1,6 @@
 """The guardrails themselves: auth, limits, headers, error shape."""
 
+import pytest
 from fastapi.testclient import TestClient
 
 from tests.conftest import AUTH
@@ -50,6 +51,27 @@ def test_oversized_body_is_413(client: TestClient):
 
     assert response.status_code == 413
     assert response.json()["error"]["code"] == "payload_too_large"
+
+
+@pytest.mark.parametrize(
+    ("method", "path", "kwargs"),
+    [
+        ("get", "/api/v1/documents", {"params": {"q": "stock\x00flow"}}),
+        ("get", "/api/v1/documents/%00", {}),
+        ("post", "/api/v1/search", {"json": {"query": "a\x00b", "mode": "lexical"}}),
+        ("post", "/api/v1/concepts", {"json": {"canonical": "a\x00b"}, "headers": AUTH}),
+        ("post", "/api/v1/jobs", {"json": {"kind": "export", "anchor": "a\x00"}, "headers": AUTH}),
+    ],
+)
+def test_text_postgres_cannot_store_is_a_422_not_a_500(method: str, path: str, kwargs: dict):
+    """NUL characters (and `\\u0000` in JSON) cannot enter Postgres text or JSONB."""
+    from app.main import create_app
+
+    with TestClient(create_app(), raise_server_exceptions=False) as lenient:
+        response = lenient.request(method, path, **kwargs)
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "validation_error"
 
 
 def test_security_headers_and_request_id(client: TestClient):
