@@ -507,6 +507,11 @@ Aliases resolve to whatever the CLI currently maps them to; the resolved model n
 the CLI's JSON result and stored in `artifacts.model`, so promoting a skill up a tier is a
 one-line change whose effect on grounding score you can read off the `artifacts` table.
 
+`BOOKSHELF_MODEL_EXPLORE` / `BOOKSHELF_MODEL_DISTIL` / `BOOKSHELF_MODEL_REASON` override a rung
+per deployment without touching code (e.g. a whole book on `haiku` for a cheap first pass). The
+model is not part of `input_hash`, so artifacts made on another model stay live; force a re-run
+to redo them.
+
 ---
 
 ## 8. Parsing: a three-tier ladder
@@ -652,8 +657,8 @@ The part that decides whether the system is worth using.
 | | Summary | Distillation |
 |---|---|---|
 | Question it answers | What is this chapter about? | What must I retain from it? |
-| Length | ≤ 150 words, prose | 10–25 % of the source, structured |
-| Keeps | Topic, thesis, scope | Arguments, mechanisms, definitions, examples that carry weight, caveats, figures' takeaways |
+| Length | ≤ 150 words, prose | 25–60 % of the source, structured, in depth (gates: section notes 25–90 %, chapter guides 20–100 %) |
+| Keeps | Topic, thesis, scope | Every argument, framework (all its parts), procedure, criterion, definition, model worked example, caveat and figure takeaway; Mermaid `diagram` blocks for the structures the text states |
 | Drops | Everything else | Rhetoric, repetition, transitions |
 | Tier | explore (Haiku) | distil (Sonnet) |
 | Used by | Library cards, search result headers, "should I reread this?" | Reader right pane, brief, quiz/FAQ generation, concept linking |
@@ -980,7 +985,7 @@ of the transport-level guardrails already in `backend/`.
 | **Schema** | Output validated against the skill's `schema.json` | Retry once, then `failed` |
 | **Grounding** | Share of leaf spans carrying ≥1 valid `cites` anchor | < 0.9 → `needs_review` |
 | **Anchor validity** | Every cited anchor exists in this document; and (skills only) lies in the scope's subtree or appears in the skill's inputs | Nonexistent: reject, re-run. Existing but never shown: flag `out_of_scope_cites` → `needs_review` |
-| **Compression** | Length vs. source within the type's band: summary ≤ 150 words, distillation 10–25 % | Outside → flag (too long = copying, too short = skipping) |
+| **Compression** | Length vs. source within the type's band: summary ≤ 150 words, distillation 25–90 % (chapter 20–100 %) | Outside → flag (too long = copying, too short = skipping) |
 | **Non-prose confidence** | per-kind skills self-report `confidence`; chart data needs ≥ 2 points, code must round-trip byte-identical, LaTeX must parse | `low` → `needs_review`, never cited by distillations until approved |
 | **Human bypass** | `origin = human` skips grounding and compression, keeps schema + anchor validity | Reject only on invalid anchors |
 | **Duplication** | Similarity between sibling distillations | Above threshold → flag for the brief's dedup pass |

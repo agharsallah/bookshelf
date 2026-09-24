@@ -6,49 +6,125 @@
       "spans": [
         {
           "text": "Over a long enough period, the average number of items in a system equals their arrival rate times the average time each spends inside.",
-          "cites": ["ch02/s01/p001"]
+          "cites": [
+            "ch02/s01/p001"
+          ]
         }
       ]
     },
     {
       "type": "math",
       "latex": "L = \\lambda W",
+      "cites": [
+        "ch02/s01/m001"
+      ],
       "meaning": [
         {
           "text": "Items in the system = arrival rate × time in the system.",
-          "cites": ["ch02/s01/m001", "ch02/s01/p001"]
-        }
-      ],
-      "cites": ["ch02/s01/m001"]
-    },
-    {
-      "type": "callout",
-      "tone": "caution",
-      "title": "Only for stable systems",
-      "spans": [
-        {
-          "text": "It holds whatever the arrival pattern, variability or order of service, ",
-          "cites": ["ch02/s01/p002"]
-        },
-        {
-          "text": "but only while items leave as fast as they arrive; a backlog that grows every week breaks it.",
-          "cites": ["ch02/s01/p003"]
+          "cites": [
+            "ch02/s01/m001",
+            "ch02/s01/p001"
+          ]
         }
       ]
     },
     {
-      "type": "paragraph",
-      "spans": [
-        { "text": "Rearranged, it forecasts: ", "cites": ["ch02/s01/p004"] },
+      "type": "diagram",
+      "direction": "LR",
+      "nodes": [
         {
-          "text": "expected time in the system ≈ work in progress ÷ throughput",
-          "cites": ["ch02/s01/p004"],
-          "mark": "strong"
+          "id": "wip",
+          "label": "Work in progress (L)"
         },
         {
-          "text": " — thirty items in progress at ten finished a week means about three weeks for a new item.",
-          "cites": ["ch02/s01/p004"]
+          "id": "tp",
+          "label": "Throughput (λ)"
+        },
+        {
+          "id": "wait",
+          "label": "Time in system (W)"
         }
+      ],
+      "edges": [
+        {
+          "from": "wip",
+          "to": "wait",
+          "label": "more WIP → longer wait"
+        },
+        {
+          "from": "tp",
+          "to": "wait",
+          "label": "higher throughput → shorter wait"
+        }
+      ],
+      "cites": [
+        "ch02/s01/p004",
+        "ch02/s01/p005"
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Where it applies"
+    },
+    {
+      "type": "bullets",
+      "items": [
+        [
+          {
+            "text": "Any arrival pattern, any variability, any order of service.",
+            "cites": [
+              "ch02/s01/p002"
+            ]
+          }
+        ],
+        [
+          {
+            "text": "Only stable systems: on average items leave as fast as they arrive.",
+            "cites": [
+              "ch02/s01/p003"
+            ]
+          }
+        ]
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "caution",
+      "title": "A growing backlog breaks it",
+      "spans": [
+        {
+          "text": "A backlog that grows every week is not stable, and the law says nothing useful about it.",
+          "cites": [
+            "ch02/s01/p003"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Using it"
+    },
+    {
+      "type": "steps",
+      "items": [
+        [
+          {
+            "text": "Hold throughput fixed: the only lever on waiting time is holding fewer items at once.",
+            "cites": [
+              "ch02/s01/p004"
+            ]
+          }
+        ],
+        [
+          {
+            "text": "Or raise throughput: the same queue then drains faster.",
+            "cites": [
+              "ch02/s01/p004"
+            ]
+          }
+        ]
       ]
     },
     {
@@ -57,7 +133,9 @@
       "spans": [
         {
           "text": "Starting more work to speed up delivery: at the same throughput, more work in progress lengthens waits in exactly the same proportion.",
-          "cites": ["ch02/s01/p005"]
+          "cites": [
+            "ch02/s01/p005"
+          ]
         }
       ]
     }

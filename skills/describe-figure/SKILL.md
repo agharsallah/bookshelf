@@ -104,6 +104,26 @@ One JSON object: `{"kind", "caption", "alt", "blocks", "takeaway", "confidence"}
 `blocks` holds 1–6 render blocks (`paragraph`, `bullets`, `table`, `chart`, `diagram`) with
 the transcription first, and `takeaway` is a single span `{"text", "cites"}`.
 
+Text always lives in spans, never in a bare `text` field on a block:
+
+- `paragraph`: `{"type": "paragraph", "spans": [{"text": "…", "cites": ["<element anchor>"]}]}`
+- `bullets`: `{"type": "bullets", "items": [[{"text": "…", "cites": ["<anchor>"]}], …]}`
+
+A `photo` (an illustration, say) is one such `paragraph`:
+
+```json
+{
+  "kind": "photo",
+  "caption": "A cargo ship stacked with containers",
+  "alt": "Watercolor of a container ship on rough seas, stacked high with colored containers.",
+  "blocks": [
+    {"type": "paragraph", "spans": [{"text": "A watercolor of a heavily loaded container ship crossing rough water, illustrating the section on the shift in scale.", "cites": ["ch21/f003"]}]}
+  ],
+  "takeaway": {"text": "The illustration stands for the jump in scale the chapter describes.", "cites": ["ch21/f003", "ch21/p012"]},
+  "confidence": "medium"
+}
+```
+
 ## Example
 
 Input (excerpt): `element` = `{"anchor": "ch03/s01/f001", "kind": "figure", "meta": {"caption": "Figure 3.1 Waiting time as utilization rises"}, "image_path": "okafor-queueing/ch03-s01-f001.png"}`;

@@ -1,6 +1,6 @@
 name: distil-section
-version: 1
-description: Distil one section into a cited section note — what the reader must retain, at 10–25% of the section's words, in render blocks.
+version: 2
+description: Distil one section into an in-depth cited study note — every framework, procedure, example and caveat, with Mermaid diagrams, at 25–60% of the section's words.
 tier: distil
 job_kind: distil_section
 artifact_type: section_note
@@ -10,4 +10,6 @@ selector: scope_blocks
 vision: false
 gates:
   grounding_min: 0.9
-  compression: [0.10, 0.25]   # output words / words of the section's leaf blocks (§9 D14)
+  # output words / words of the section's leaf blocks (§9 D14). In-depth notes aim for 25–60%;
+  # list- and checklist-dense sections legitimately run longer, so the flag starts at 90%.
+  compression: [0.25, 0.90]

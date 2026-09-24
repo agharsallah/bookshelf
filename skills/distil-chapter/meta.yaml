@@ -1,6 +1,6 @@
 name: distil-chapter
-version: 1
-description: Merge a chapter's section notes into one cited chapter distillation — the chapter's argument, deduplicated, with important/remember/antipattern callouts.
+version: 2
+description: Merge a chapter's in-depth section notes into one cited chapter study guide — a big-picture Mermaid diagram, every framework at full depth, deduplicated, with callouts and a practice checklist.
 tier: distil
 job_kind: distil_chapter
 artifact_type: chapter_distillation
@@ -12,6 +12,6 @@ gates:
   # Basis: output words / the chapter's SOURCE words (all leaf blocks under the chapter),
   # the same denominator distil-section uses — not the section notes' words. The runtime's
   # Selection.source_words is the scope's leaf-block word count for this selector. So the
-  # band means what §9 says ("10–25% of the source") at both ranks; since section notes are
-  # already in that band, the prompt aims for ~70–100% of the notes' combined length.
-  compression: [0.10, 0.25]
+  # band means what §9 says at both ranks; since in-depth section notes run at 25–60% of the
+  # source, the prompt aims for ~80–100% of the notes' combined length.
+  compression: [0.20, 1.00]   # checklist chapters keep every item: flag only beyond the source
