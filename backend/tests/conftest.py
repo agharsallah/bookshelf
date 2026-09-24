@@ -34,9 +34,7 @@ _FIRST_RUN = "BOOKSHELF_TEST_DB_NAME" not in os.environ
 _DB_NAME = os.environ.setdefault(
     "BOOKSHELF_TEST_DB_NAME", f"bookshelf_test_{os.getpid()}_{uuid.uuid4().hex[:6]}"
 )
-_TMP = Path(
-    os.environ.setdefault("BOOKSHELF_TEST_TMP", tempfile.mkdtemp(prefix="bookshelf-test-"))
-)
+_TMP = Path(os.environ.setdefault("BOOKSHELF_TEST_TMP", tempfile.mkdtemp(prefix="bookshelf-test-")))
 _DB_URL = _ADMIN_URL.rsplit("/", 1)[0].replace("postgresql://", "postgresql+psycopg://", 1)
 
 os.environ.update(
