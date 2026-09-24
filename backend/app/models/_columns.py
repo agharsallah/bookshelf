@@ -19,7 +19,9 @@ def text_array(*, nullable: bool = False) -> Any:
 
 def jsonb(*, nullable: bool = False, server_default: str | None = "{}") -> Any:
     default = f"'{server_default}'::jsonb" if server_default is not None else None
-    return Column(JSONB, nullable=nullable, server_default=default)
+    # `none_as_null`: Python None must be SQL NULL, not the JSON value `null`, or
+    # `IS NULL` filters (e.g. jobs.result, documents.outline_override) silently miss rows.
+    return Column(JSONB(none_as_null=True), nullable=nullable, server_default=default)
 
 
 def timestamptz(*, nullable: bool = False) -> Any:
