@@ -32,8 +32,11 @@
   color: var(--paper-raised);
 }
 
-/* Full anchor, revealed on hover/focus like a pencilled note above the line. */
+/* Full anchor, revealed on hover/focus like a pencilled note above the line. Hidden
+   with display: none (not just opacity) so an unseen tip near the edge never widens
+   the page; the fade survives through allow-discrete and @starting-style. */
 .tip {
+  display: none;
   position: absolute;
   inset-block-end: calc(100% + 0.55em);
   inset-inline-start: 50%;
@@ -53,13 +56,23 @@
   translate: -50% 0.25em;
   transition:
     opacity var(--dur-2) var(--ease-out),
-    translate var(--dur-2) var(--ease-out);
+    translate var(--dur-2) var(--ease-out),
+    display var(--dur-2) allow-discrete;
 }
 
 .chip:hover .tip,
 .chip:focus-visible .tip {
+  display: block;
   opacity: 1;
   translate: -50% 0;
+}
+
+@starting-style {
+  .chip:hover .tip,
+  .chip:focus-visible .tip {
+    opacity: 0;
+    translate: -50% 0.25em;
+  }
 }
 
 .sources {

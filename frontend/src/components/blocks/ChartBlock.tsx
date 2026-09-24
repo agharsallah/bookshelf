@@ -40,29 +40,32 @@ function Legend({ kind, series }: { kind: Chart['kind']; series: SeriesGeometry[
 
 function DataTable({ block, id }: { block: Chart; id: string }) {
   return (
-    <table className="visually-hidden" id={id}>
-      <caption>{block.title ?? 'Chart data'}</caption>
-      <thead>
-        <tr>
-          <th scope="col">{block.x.label}</th>
-          {block.series.map((s) => (
-            <th key={s.name} scope="col">
-              {s.name}
-            </th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {block.x.values.map((x, i) => (
-          <tr key={i}>
-            <th scope="row">{xText(x)}</th>
+    // The wrapper is what is hidden: a table ignores `width: 1px` and would widen the page.
+    <div className="visually-hidden">
+      <table id={id}>
+        <caption>{block.title ?? 'Chart data'}</caption>
+        <thead>
+          <tr>
+            <th scope="col">{block.x.label}</th>
             {block.series.map((s) => (
-              <td key={s.name}>{formatValue(s.values[i] ?? null)}</td>
+              <th key={s.name} scope="col">
+                {s.name}
+              </th>
             ))}
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {block.x.values.map((x, i) => (
+            <tr key={i}>
+              <th scope="row">{xText(x)}</th>
+              {block.series.map((s) => (
+                <td key={s.name}>{formatValue(s.values[i] ?? null)}</td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
