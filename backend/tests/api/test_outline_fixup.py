@@ -147,3 +147,14 @@ def test_the_parser_rejects_overlapping_chapters_like_the_api_does():
         OUTLINE_OVERRIDE.validate_python(
             [{"title": "A", "page_from": 1, "page_to": 10}, {"title": "B", "page_from": 9}]
         )
+
+
+def test_a_section_past_the_last_page_is_rejected_when_its_chapter_is_open_ended(
+    client: TestClient, session
+):
+    doc = make_book(session, page_count=30)
+    chapters = [{"title": "Body", "page_from": 1, "sections": [{"title": "Late", "page_from": 31}]}]
+
+    response = client.patch(f"{URL}/{doc.slug}/outline", json={"chapters": chapters}, headers=AUTH)
+
+    assert response.status_code == 422

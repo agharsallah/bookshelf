@@ -197,7 +197,12 @@ def set_outline(
     """
     if document.page_count is not None:
         for chapter in chapters:
-            last = max(chapter["page_from"], chapter.get("page_to") or 0)
+            sections = chapter.get("sections") or []
+            last = max(
+                chapter["page_from"],
+                chapter.get("page_to") or 0,
+                *(section["page_from"] for section in sections),
+            )
             if last > document.page_count:
                 raise InvalidInputError(
                     f"'{chapter['title']}' reaches page {last}, "
