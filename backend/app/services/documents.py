@@ -172,11 +172,18 @@ def update_document(session: Session, document: Document, changes: dict[str, Any
 def delete_document(session: Session, document: Document) -> None:
     """Delete the row; nodes, notes, artifacts and jobs cascade. The file is never touched.
 
-    Its search points are derived (D1) but live outside Postgres: an `embed` job without a
-    document (so it survives the cascade) purges them, committed with the delete.
+    Derived stores follow (D1): the document's part of the idea graph (its concept links'
+    and diagram seeds' edges, and concepts only they kept alive) is withdrawn in the same
+    transaction, and its search points, which live outside Postgres, are purged by an
+    `embed` job without a document (so it survives the cascade).
     """
+    from app.graph import pipeline as graph  # the graph imports services; keep this one-way
+
+    document_id = document.id
     session.delete(document)
-    enqueue_or_live(session, purge_job(document.id))  # commits the delete and the job
+    session.flush()  # the cascade is gone before the graph is re-synced without it
+    graph.refresh_document(session, document_id)  # commits the delete with the withdrawal
+    enqueue_or_live(session, purge_job(document_id))
 
 
 def purge_job(document_id: uuid.UUID) -> JobSpec:

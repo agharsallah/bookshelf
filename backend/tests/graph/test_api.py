@@ -10,7 +10,17 @@ from app.graph import apply
 from app.models import Concept, Document, Edge
 from app.models.enums import EdgeStatus, EntityKind, Relation
 from tests.conftest import AUTH
-from tests.graph.conftest import MakeConcept, c, concept, concept_named, edge, links, n, store
+from tests.graph.conftest import (
+    MakeConcept,
+    c,
+    concept,
+    concept_named,
+    edge,
+    links,
+    n,
+    relations,
+    store,
+)
 
 API = "/api/v1"
 
@@ -236,3 +246,19 @@ def test_a_dedup_proposal_shows_the_verdict_kept_on_the_edge(
         "Same cap.",
     )
     assert proposal["suggested_survivor"] == str(b.id)
+
+
+def test_deleting_a_document_withdraws_its_part_of_the_graph(
+    client: TestClient, session: Session, linked: Concept, systems: Document
+):
+    deleted = f"node:{systems.id}"
+    response = client.delete(f"{API}/documents/{systems.slug}", headers=AUTH)
+
+    session.expire_all()
+    assert response.status_code == 204
+    assert relations(session) == {
+        ("ch01/p001", "defines", "little's law", "accepted"),
+        ("wip cap", "same_as", "little's law", "proposed"),
+    }  # the deleted book's `mentions` edge (a passage that no longer exists) is gone
+    body = client.get(f"{API}/graph/neighborhood", params={"node": str(linked.id)}).json()
+    assert not [n for n in body["nodes"] if n["id"].startswith(deleted)]
