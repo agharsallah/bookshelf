@@ -19,5 +19,5 @@ def test_importing_the_conftest_module_creates_no_second_database():
             (f"bookshelf_test_{os.getpid()}_%",),
         ).fetchone()
 
-    assert conftest._DB_NAME == engine.url.database
+    assert engine.url.database == conftest._DB_NAME
     assert mine == (1,)
