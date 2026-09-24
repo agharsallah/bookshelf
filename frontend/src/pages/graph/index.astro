@@ -46,7 +46,7 @@ const queueProblem: ProblemInfo | null = proposals.status === 'rejected' ? probl
           Merges to confirm{queue && queue.length > 0 ? <span class="count">{queue.length}</span> : null}
         </h2>
         <p class="note">Two names that may be one idea. Nothing merges until you say so, and every merge can be undone.</p>
-        {queueProblem ? <Problem title="Merge proposals could not be loaded." problem={queueProblem} /> : <MergeQueue client:load proposals={queue ?? []} />}
+        {queueProblem ? <Problem title="Merge proposals could not be loaded." problem={queueProblem} /> : <MergeQueue client:visible proposals={queue ?? []} />}
       </section>
     </div>
   </div>
