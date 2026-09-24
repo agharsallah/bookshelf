@@ -9,12 +9,12 @@ import { browserApi, type ApiClient } from '../../../lib/api/client';
 import type { ArtifactListItem } from '../../../lib/api/types/artifacts';
 import type { SkillPublic } from '../../../lib/api/types/skills';
 import type { DocumentLabel } from '../api';
-import { ShortcutHelp } from '../common/ShortcutHelp';
+import { ShortcutHelp } from '../../common/ShortcutHelp';
 import { Toaster, useToasts } from '../common/Toasts';
 import { deriveGates } from '../gates';
 import { TYPE_LABELS } from '../labels';
 import { filterQueue, flatOrder, groupQueue, type QueueFilters as Filters } from '../queue';
-import { currentId, initialTriage, keyToCommand, triageReducer, type TriageCommand } from '../triage';
+import { currentId, initialTriage, keyToCommand, SHORTCUTS, triageReducer, type TriageCommand } from '../triage';
 import { ArtifactPreview, reviewHref } from './ArtifactPreview';
 import { QueueFilters } from './QueueFilters';
 import { QueueRow } from './QueueRow';
@@ -250,7 +250,7 @@ export function ReviewQueue({ items: initial, documents, headings, skills, api =
         </div>
       )}
 
-      <ShortcutHelp open={triage.help} onClose={() => dispatch({ type: 'help', open: false })} />
+      <ShortcutHelp open={triage.help} shortcuts={SHORTCUTS} onClose={() => dispatch({ type: 'help', open: false })} />
       <Toaster toasts={toasts} onDismiss={dismiss} onHold={hold} onRelease={release} />
     </div>
   );

@@ -1,9 +1,19 @@
-/** The `?` sheet: every triage shortcut, in a modal dialog that returns focus on close. */
+/** The `?` sheet: a list of keyboard shortcuts, in a modal dialog that returns focus on close. */
 import { useEffect, useRef } from 'react';
-import { SHORTCUTS } from '../triage';
 import styles from './ShortcutHelp.module.css';
 
-export function ShortcutHelp({ open, onClose }: { open: boolean; onClose: () => void }) {
+export interface Shortcut {
+  keys: readonly string[];
+  label: string;
+}
+
+export interface ShortcutHelpProps {
+  open: boolean;
+  shortcuts: readonly Shortcut[];
+  onClose: () => void;
+}
+
+export function ShortcutHelp({ open, shortcuts, onClose }: ShortcutHelpProps) {
   const dialog = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
@@ -19,7 +29,7 @@ export function ShortcutHelp({ open, onClose }: { open: boolean; onClose: () => 
         Keyboard shortcuts
       </h2>
       <dl className={styles.list}>
-        {SHORTCUTS.map((s) => (
+        {shortcuts.map((s) => (
           <div key={s.label} className={styles.item}>
             <dt>
               {s.keys.map((k) => (

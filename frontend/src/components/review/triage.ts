@@ -5,6 +5,7 @@
  * optimistically; the cursor keeps its index, so it lands on the next item. Undo
  * reopens the artifact, which brings it back through `sync`; `focus` then lands on it.
  */
+import type { Shortcut } from '../common/ShortcutHelp';
 
 export type TriageCommand =
   | 'next'
@@ -44,7 +45,7 @@ const KEYMAP: Readonly<Record<string, TriageCommand>> = {
 };
 
 /** The shortcut sheet, in the order the help dialog lists it. */
-export const SHORTCUTS: readonly { keys: string[]; label: string }[] = [
+export const SHORTCUTS: readonly Shortcut[] = [
   { keys: ['j', '↓'], label: 'Next item' },
   { keys: ['k', '↑'], label: 'Previous item' },
   { keys: ['a'], label: 'Approve' },
