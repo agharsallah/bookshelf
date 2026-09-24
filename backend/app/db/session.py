@@ -29,3 +29,16 @@ engine = create_engine(
 def get_session() -> Generator[Session, None, None]:
     with Session(engine) as session:
         yield session
+
+
+def release(session: Session) -> None:
+    """End the session's transaction before slow work that needs no database (a CLI run,
+    an embedding batch), so its pooled connection is returned instead of sitting idle in a
+    transaction, holding row locks. Pending changes are committed; loaded objects keep
+    their state (not expired, so reading them afterwards costs no query per object)."""
+    expire = session.expire_on_commit
+    session.expire_on_commit = False
+    try:
+        session.commit()
+    finally:
+        session.expire_on_commit = expire

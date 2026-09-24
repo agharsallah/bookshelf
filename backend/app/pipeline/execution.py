@@ -17,6 +17,7 @@ from typing import Any
 from sqlmodel import Session, select
 
 from app.core.config import get_settings
+from app.db.session import release
 from app.jobs.registry import HandlerResult, PermanentJobError
 from app.models import Artifact, Document, Job
 from app.models.enums import ArtifactType, JobKind, JobState, Origin, RunMode
@@ -231,6 +232,7 @@ def execute_skill_job(
         session, job, document, SKILL_JOB_KINDS, max_runs or settings.max_runs_per_document
     )
     prompt = render_prompt(skill.prompt, prepared.selection.prompt_inputs())
+    release(session)  # no transaction open through the CLI run(s)
     try:
         run = run_structured(
             runner,

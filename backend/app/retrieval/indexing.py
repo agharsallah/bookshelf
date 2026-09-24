@@ -22,6 +22,7 @@ from typing import Any
 from qdrant_client import QdrantClient, models
 from sqlmodel import Session
 
+from app.db.session import release
 from app.models import Document
 from app.pipeline.tree import Tree
 from app.retrieval.client import Collection, collection_name, get_client
@@ -170,20 +171,22 @@ def index_document(
         tree, approved_artifacts(session, document.id), model_id=embedder.model_id
     )
     _upsert_document(client, document)
+    document_id = document.id
+    release(session)  # everything is read: no transaction open while embedding
     common: dict[str, Any] = {"embedder": embedder, "force": force}
     block_counts = sync_points(
-        client, Collection.BLOCKS, document.id, blocks, avg_len=BLOCKS_AVG_LEN, **common
+        client, Collection.BLOCKS, document_id, blocks, avg_len=BLOCKS_AVG_LEN, **common
     )
     distillation_counts = sync_points(
         client,
         Collection.DISTILLATIONS,
-        document.id,
+        document_id,
         distillations,
         avg_len=DISTILLATIONS_AVG_LEN,
         **common,
     )
     return {
-        "document_id": str(document.id),
+        "document_id": str(document_id),
         "model_id": embedder.model_id,
         "blocks": asdict(block_counts),
         "distillations": asdict(distillation_counts),

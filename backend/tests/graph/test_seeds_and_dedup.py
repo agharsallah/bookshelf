@@ -141,3 +141,28 @@ def test_pairs_below_the_threshold_never_reach_the_model(session, make_concept: 
 
     assert runner.calls == []
     assert session.exec(select(Edge)).all() == []
+
+
+def test_dedup_embeds_and_asks_the_model_with_no_database_transaction_open(
+    session, make_concept: MakeConcept
+):
+    from tests.conftest import idle_transactions
+
+    seen: list[tuple[str, int]] = []
+
+    class Watching(TableEmbedder):
+        def dense(self, texts):
+            seen.append(("embed", idle_transactions()))
+            return super().dense(texts)
+
+    def model(prompt: str) -> str:
+        seen.append(("model", idle_transactions()))
+        return VERDICT_SAME
+
+    new, _ = make_concept("wip cap"), make_concept("wip limit")
+    dedup.run_dedup(
+        session, [new.id], runner=FakeRunner(model), embedder=Watching(VECTORS),
+        skills_dir=get_settings().skills_dir, threshold=0.88, limit=10,
+    )  # fmt: skip
+
+    assert seen == [("embed", 0), ("model", 0)]

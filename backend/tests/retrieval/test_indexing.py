@@ -4,7 +4,7 @@ import uuid
 from typing import Any
 
 from qdrant_client import QdrantClient
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from app.jobs.registry import JobContext
 from app.models import Job
@@ -180,3 +180,25 @@ def test_deleting_a_document_queues_the_purge_of_its_points(
     assert doc_ids == {str(indexed.meadows.id)}
     assert senge_id not in _payloads(qdrant, "documents")
     assert _payloads(qdrant, "blocks")  # Meadows is untouched: no rebuild ran
+
+
+def test_embedding_runs_with_no_database_transaction_open(
+    session: Session, shelf: Shelf, qdrant: QdrantClient
+) -> None:
+    from app.retrieval.collections import ensure_collections
+    from tests.conftest import idle_transactions
+
+    seen: list[int] = []
+
+    class Watching(FakeEmbedder):
+        def dense(self, texts):
+            seen.append(idle_transactions())
+            return super().dense(texts)
+
+    embedder = Watching()
+    ensure_collections(dense_dim=embedder.dense_dim, client=qdrant)
+    session.exec(select(Job)).all()  # the handler's session has already read something
+
+    index_document(session, shelf.meadows, embedder=embedder, client=qdrant)
+
+    assert seen and set(seen) == {0}

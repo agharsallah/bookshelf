@@ -92,6 +92,18 @@ def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
         conn.execute(f'drop database if exists "{_DB_NAME}" with (force)')
 
 
+def idle_transactions() -> int:
+    """Connections to the test database sitting idle inside an open transaction: what a
+    session holds while it waits on slow non-database work (a CLI run, an embedding)."""
+    with _admin() as conn:
+        row = conn.execute(
+            "select count(*) from pg_stat_activity "
+            "where datname = %s and state like 'idle in transaction%%'",
+            (engine.url.database,),  # not `_DB_NAME`: `tests.conftest` imports run it anew
+        ).fetchone()
+    return int(row[0]) if row else 0
+
+
 @pytest.fixture(autouse=True)
 def _clean_tables() -> Iterator[None]:
     yield

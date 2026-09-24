@@ -213,3 +213,21 @@ def test_structure_note_links_the_artifact_to_its_note(session, book, make_job, 
     (artifact,) = artifacts_of(session, book)
     assert artifact.note_id == note.id
     assert '"highlighted_text": "Balancing"' in runner.calls[0]["prompt"]
+
+
+def test_the_model_runs_with_no_database_transaction_open(session, book, make_job, skills_dir):
+    """A CLI run takes minutes; the job's session must not sit idle in a transaction (a
+    pooled connection, plus row locks that block enqueues of the same scope) meanwhile."""
+    from tests.conftest import idle_transactions
+
+    seen: list[int] = []
+
+    def model(prompt: str) -> str:
+        seen.append(idle_transactions())
+        return GROUNDED
+
+    job = make_job(JobKind.DISTIL_SECTION, book, "ch01/s01")
+    outcome = run(session, job, FakeRunner(model), skills_dir)
+
+    assert outcome.state is JobState.DONE
+    assert seen == [0]

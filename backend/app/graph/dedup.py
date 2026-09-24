@@ -20,6 +20,7 @@ from typing import Any, Protocol
 
 from sqlmodel import Session, col, select
 
+from app.db.session import release
 from app.graph import names
 from app.graph.edges import DEDUP_ORIGIN_PREFIX, EdgeDraft, find_edge, union
 from app.graph.refs import Ref, split_anchor
@@ -95,9 +96,9 @@ def candidates(
     fresh = [c for c in pool if c.id in wanted]
     if not fresh or len(pool) < 2:
         return []
-    vectors = dict(
-        zip([c.id for c in pool], embedder.dense([concept_text(c) for c in pool]), strict=True)
-    )
+    ids, texts = [c.id for c in pool], [concept_text(c) for c in pool]
+    release(session)  # no transaction open while embedding
+    vectors = dict(zip(ids, embedder.dense(texts), strict=True))
     judged = _judged_pairs(session)
     found: dict[frozenset[str], Candidate] = {}
     for a in fresh:
@@ -142,6 +143,7 @@ def confirm(
     }
     prompt = render_prompt(skill.prompt, {"pair": pair})
     a_id, b_id = str(candidate.a.id), str(candidate.b.id)
+    release(session)  # no transaction open through the CLI run(s)
     try:
         run = run_structured(
             runner,
