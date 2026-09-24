@@ -41,7 +41,7 @@ export function ReviewQueue({ items: initial, documents, headings, skills, api =
   const [items, setItems] = useState(initial);
   const [hidden, setHidden] = useState<ReadonlySet<string>>(new Set());
   const [filters, setFilters] = useState<Filters>({});
-  const { toasts, push, dismiss } = useToasts(TOAST_MS);
+  const { toasts, push, dismiss, hold, release } = useToasts(TOAST_MS);
   const rows = useRef(new Map<string, HTMLButtonElement>());
   const wantFocus = useRef(false);
   /** An item coming back (undo) to focus once it is in the walk order again. */
@@ -251,7 +251,7 @@ export function ReviewQueue({ items: initial, documents, headings, skills, api =
       )}
 
       <ShortcutHelp open={triage.help} onClose={() => dispatch({ type: 'help', open: false })} />
-      <Toaster toasts={toasts} onDismiss={dismiss} />
+      <Toaster toasts={toasts} onDismiss={dismiss} onHold={hold} onRelease={release} />
     </div>
   );
 }

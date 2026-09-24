@@ -43,7 +43,7 @@ export function MergeQueue({ proposals, api = browserApi }: MergeQueueProps) {
   const [state, dispatch] = useReducer(mergeQueueReducer, { items: proposals });
   const [survivors, setSurvivors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<string | null>(null);
-  const { toasts, push, dismiss } = useToasts(8000);
+  const { toasts, push, dismiss, hold, release } = useToasts(8000);
 
   const survivorOf = (p: MergeProposal) => survivors[p.edge_id] ?? defaultSurvivor(p);
   const fail = (title: string, error: unknown) => push({ id: `err-${Date.now()}`, tone: 'error', message: `${title} ${problemOf(error).message}` });
@@ -156,7 +156,7 @@ export function MergeQueue({ proposals, api = browserApi }: MergeQueueProps) {
           })}
         </ol>
       )}
-      <Toaster toasts={toasts} onDismiss={dismiss} />
+      <Toaster toasts={toasts} onDismiss={dismiss} onHold={hold} onRelease={release} />
     </div>
   );
 }
