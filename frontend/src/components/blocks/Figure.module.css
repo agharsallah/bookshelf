@@ -1,5 +1,37 @@
 .figure {
+  position: relative;
   min-width: 0;
+}
+
+.magnify {
+  position: absolute;
+  z-index: 1;
+  inset-block-start: var(--space-2);
+  inset-inline-end: var(--space-2);
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-m);
+  background: var(--paper-raised);
+  color: var(--ink-2);
+  font-size: var(--text-base);
+  line-height: 1;
+  cursor: zoom-in;
+  opacity: 0.6;
+  transition: opacity var(--dur-1) var(--ease-out);
+}
+
+.figure:hover > .magnify,
+.magnify:focus-visible {
+  opacity: 1;
+}
+
+/* A diagram has nothing to magnify until Mermaid has drawn it. */
+.figure[data-figure='diagram']:not([data-rendered]) > .magnify {
+  display: none;
 }
 
 .caption {

@@ -13,6 +13,7 @@ import { defaultCiteHref } from '../../lib/anchors';
 import type { RenderBlock } from '../../lib/contract';
 import type { PreparedBlock } from '../../lib/prepare';
 import { CiteProvider, type CiteOptions } from './CiteContext';
+import { MagnifyProvider, type MagnifyHandler } from './MagnifyContext';
 import { componentFor } from './registry';
 import { UnknownBlock } from './UnknownBlock';
 import styles from './Blocks.module.css';
@@ -21,22 +22,26 @@ export interface BlocksProps extends CiteOptions {
   /** Contract blocks, ideally passed through `prepareBlocks` first. */
   blocks: readonly (PreparedBlock | RenderBlock)[];
   className?: string;
+  /** Give drawn figures a Magnify button that hands their drawing here. */
+  onMagnify?: MagnifyHandler | undefined;
 }
 
-export function Blocks({ blocks, onCite, citeHref = defaultCiteHref, citeLabel, citeTitle, className }: BlocksProps) {
+export function Blocks({ blocks, onCite, citeHref = defaultCiteHref, citeLabel, citeTitle, className, onMagnify }: BlocksProps) {
   const cite = useMemo(() => ({ onCite, citeHref, citeLabel, citeTitle }), [onCite, citeHref, citeLabel, citeTitle]);
   return (
     <CiteProvider value={cite}>
-      <div className={className ? `${styles.blocks} ${className}` : styles.blocks} data-blocks="">
-        {blocks.map((block, index) => {
-          const Component = componentFor((block as { type?: unknown }).type);
-          return (
-            <div key={index} className={styles.block} data-block={block.type}>
-              {Component ? <Component block={block} /> : <UnknownBlock block={block} />}
-            </div>
-          );
-        })}
-      </div>
+      <MagnifyProvider value={onMagnify ?? null}>
+        <div className={className ? `${styles.blocks} ${className}` : styles.blocks} data-blocks="">
+          {blocks.map((block, index) => {
+            const Component = componentFor((block as { type?: unknown }).type);
+            return (
+              <div key={index} className={styles.block} data-block={block.type}>
+                {Component ? <Component block={block} /> : <UnknownBlock block={block} />}
+              </div>
+            );
+          })}
+        </div>
+      </MagnifyProvider>
     </CiteProvider>
   );
 }

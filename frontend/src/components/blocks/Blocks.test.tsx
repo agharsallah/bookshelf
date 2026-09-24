@@ -90,6 +90,18 @@ describe('<Blocks> renders each block type', () => {
     expect(document.querySelectorAll('path[d^="M"]')).toHaveLength(1);
   });
 
+  it('gives drawn figures a Magnify button only where the page offers one', async () => {
+    const chart: RenderBlock = { type: 'chart', kind: 'bar', title: 'Effect by point', x: { label: 'Point', values: ['Rules'] }, series: [{ name: 'Effect', values: [3] }], cites: [] };
+    const { unmount } = renderOne(chart);
+    expect(screen.queryByRole('button', { name: /Magnify/ })).toBeNull();
+    unmount();
+
+    const onMagnify = vi.fn();
+    render(<Blocks blocks={[chart]} onMagnify={onMagnify} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Magnify: Effect by point' }));
+    expect(onMagnify).toHaveBeenCalledWith(expect.objectContaining({ title: 'Effect by point', html: expect.stringMatching(/^<svg/) }));
+  });
+
   it('diagram as a text version, then the Mermaid drawing once rendered', async () => {
     const { container } = renderOne({
       type: 'diagram',
