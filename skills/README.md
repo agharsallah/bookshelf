@@ -102,7 +102,7 @@ plus the selector-specific keys:
 | `element_context` | `element: {anchor, kind, text, meta, image_path?}`, `context: [block]` (±2 blocks). `image_path` is relative to `.media/` in the inputs (so `input_hash` is location-independent); the batch prompt shows it resolved to the absolute file | describe-figure, explain-code, describe-math, explain-table |
 | `scope_blocks` | `blocks: [block]` (all leaves under scope, reading order), `figures: [{anchor, takeaway, blocks}]` (non-low-confidence element explanations inside scope). For a section-scope skill on a chapter that has sections, only the chapter's intro leaves (those no section holds): the intro's `section_note` lives on the chapter anchor and is the first item of `chapter_section_notes` | summarize, distil-section, extract-quotes |
 | `chapter_section_notes` | `section_notes: [{anchor, heading, body}]`, `figures` as above | distil-chapter |
-| `document_chapters` | `chapter_distillations: [{anchor, heading, body}]`, `shelf: [{slug, title, authors, thesis}]` (other documents' brief theses), `existing_concepts: [{canonical, aliases, kind}]` | write-brief, link-concepts, make-glossary, make-faq (document scope) |
+| `document_chapters` | `chapter_distillations: [{anchor, heading, body}]`, `shelf: [{slug, title, authors, thesis}]` (other documents' brief theses), `existing_concepts: [{canonical, aliases, kind}]` | write-brief, write-guide, link-concepts, make-glossary, make-faq (document scope) |
 | `chapter_distillation` | `chapter_distillations: [one item]` | make-quiz, make-faq (chapter), make-flashcards |
 | `note_context` | `note: {id, raw, anchor, highlighted_text}`, `blocks` (anchor's section), `distillation` (nearest chapter distillation body or null), `existing_concepts` | structure-note |
 
@@ -129,6 +129,7 @@ Gates walk the whole output: any object with `text` + `cites` is a leaf span, an
 | summarize | `{blocks}` (3–5 paragraphs, ≤150 words) |
 | distil-section, distil-chapter | `{blocks}` |
 | write-brief | `{sections: [{key, title, blocks}], read_next: [{slug, anchor?, reason: spans}]}` with keys in order `thesis, ideas, structure, changes, weaknesses, read_next` |
+| write-guide | `{sections: [{key, title, blocks}], journey: [{anchor, role, takeaway: spans}], themes: [{name, spans}], numbers: [{value, label: spans}]}` with section keys in order `overview, map, deep_dive, practice`; `map` opens with a `diagram`; `role` is one of `setup, concept, method, evidence, application, synthesis` |
 | structure-note | `{blocks, tags: [str], concepts: [str]}` |
 | link-concepts | `{concepts: [{canonical, aliases, kind, blurb: spans}], edges: [{src, dst, relation, weight, evidence: [anchor]}]}` where an endpoint is `{kind: concept, ref: <canonical>}` or `{kind: node, ref: <anchor>}` |
 | extract-quotes | `{blocks}` (quote blocks only) |

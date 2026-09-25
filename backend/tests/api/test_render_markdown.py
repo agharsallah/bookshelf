@@ -150,3 +150,24 @@ def test_quiz_faq_and_flashcard_items_render():
         "#### Why?\n\nFeedback.\n\n"
         "**Stock**: An accumulation."
     )
+
+
+def test_guide_journey_themes_and_numbers_become_headed_lists():
+    body = {
+        "sections": [{"key": "overview", "title": "The book in brief", "blocks": []}],
+        "journey": [
+            {"anchor": "ch01", "role": "setup", "takeaway": [span("Frames it.", "ch01/p001")]}
+        ],
+        "themes": [{"name": "Flow", "spans": [span("Returns.", "ch01/p002", "ch02/p001")]}],
+        "numbers": [{"value": "80%", "label": [span("Threshold.", "ch02/p003")]}],
+    }
+
+    assert render_blocks(body_blocks(body)) == (
+        "### The book in brief\n\n"
+        "### Chapter by chapter\n\n"
+        "- **ch01 (setup)** Frames it. <sup>[ch01/p001](#ch01/p001)</sup>\n\n"
+        "### Themes\n\n"
+        "- **Flow.** Returns. <sup>[ch01/p002](#ch01/p002), [ch02/p001](#ch02/p001)</sup>\n\n"
+        "### Key numbers\n\n"
+        "- **80%:** Threshold. <sup>[ch02/p003](#ch02/p003)</sup>"
+    )

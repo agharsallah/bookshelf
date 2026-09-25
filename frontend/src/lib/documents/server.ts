@@ -29,6 +29,11 @@ export function getOutline(ref: string): Promise<DocumentTree> {
   return serverApi().get<DocumentTree>(`documents/${encodeURIComponent(ref)}/tree`, { query: { depth: 4 } });
 }
 
+/** The whole tree with its blocks (for word counts and reading times). */
+export function getFullTree(ref: string): Promise<DocumentTree> {
+  return serverApi().get<DocumentTree>(`documents/${encodeURIComponent(ref)}/tree`, { query: { depth: 20, include: 'blocks' } });
+}
+
 export async function getArtifacts(
   documentId: string,
   filter: { type?: ArtifactType; anchor_prefix?: string; review?: ArtifactPublic['review'] } = {},

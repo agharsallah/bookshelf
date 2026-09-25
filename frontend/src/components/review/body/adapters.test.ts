@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { walkSpans } from '../../../lib/contract';
 import { tallyGrounding } from '../evidence/grounding';
+import guideExample from '../../../../../skills/write-guide/example.json';
 import { adaptBody, isSynthetic } from './adapters';
 
 const cited = (text: string, anchor = 'ch01/p001') => ({ text, cites: [anchor] });
@@ -28,6 +29,39 @@ describe('adaptBody', () => {
       read_next: [{ slug: 'meadows-systems', reason: [cited('Same loops.')] }],
     });
     expect(adapted.blocks.map((b) => (b.type === 'heading' ? `h:${b.text}` : b.type))).toEqual(['h:Thesis', 'paragraph', 'h:Read next', 'bullets']);
+  });
+
+  it('lays the book guide out in page order, with its structured lists under their own headings', () => {
+    const adapted = adaptBody('book_guide', guideExample);
+    const headings = adapted.blocks.flatMap((b) => (b.type === 'heading' && b.level === 2 ? [b.text] : []));
+    expect(headings).toEqual([
+      'The book in brief',
+      'Numbers to remember',
+      'The big picture',
+      'Chapter by chapter',
+      'Themes',
+      'The core ideas in depth',
+      "Little's law",
+      'The utilization curve',
+      'Limiting work in progress',
+      'Hidden queues',
+      'Putting the book to work',
+    ]);
+    expect(adapted.blocks.filter((b) => b.type === 'definition')).toHaveLength(4); // 3 themes + 1 in the deep dive
+  });
+
+  it('never counts the guide labels it adds (chapter · role, the number) as claims', () => {
+    const adapted = adaptBody('book_guide', {
+      sections: [{ key: 'overview', title: 'The book in brief', blocks: [] }],
+      journey: [{ anchor: 'ch01', role: 'setup', takeaway: [cited('Frames it.')] }],
+      numbers: [{ value: '80%', label: [cited('Threshold.')] }],
+    });
+    expect(tallyGrounding(adapted.blocks)).toEqual({ total: 2, cited: 2, blocks: [] });
+    const labels: string[] = [];
+    walkSpans(adapted.blocks, (span) => {
+      if (isSynthetic(span)) labels.push(span.text);
+    });
+    expect(labels).toEqual(['80%', 'ch01 · Sets up']);
   });
 
   it('shows quiz choices with the answer marked, and the cited explanation', () => {

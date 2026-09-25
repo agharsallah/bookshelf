@@ -5,9 +5,9 @@ passed the contract's schema (gates enforce that before an artifact is stored), 
 missing optional keys never raise. Citations become links to in-document anchors, so
 `[ch03/p014](#ch03/p014)` resolves against the ids an export writes for every node.
 
-Also: `body_blocks` flattens the non-`blocks` artifact bodies (brief sections, FAQ,
-quiz, flashcards, takeaways) into blocks, and `markdown_table` / `fence` are shared
-with the tree export.
+Also: `body_blocks` flattens the non-`blocks` artifact bodies (brief and guide sections,
+the guide's journey, themes and numbers, FAQ, quiz, flashcards, takeaways) into blocks,
+and `markdown_table` / `fence` are shared with the tree export.
 """
 
 from collections.abc import Callable, Iterable, Sequence
@@ -240,20 +240,55 @@ def render_blocks(blocks: Iterable[Block]) -> str:
 def body_blocks(body: dict[str, Any]) -> list[Block]:
     """Every renderable block in an artifact body, in reading order.
 
-    Handles `{blocks}`, brief `{sections: [{title, blocks}]}`, a `takeaway` span, and the
-    item-list bodies of FAQ (`question`/`answer`), quiz (`choices`/`explanation`) and
-    flashcards (`front`/`back`).
+    Handles `{blocks}`, brief and guide `{sections: [{title, blocks}]}`, the guide's
+    `journey` / `themes` / `numbers`, a `takeaway` span, and the item-list bodies of FAQ
+    (`question`/`answer`), quiz (`choices`/`explanation`) and flashcards (`front`/`back`).
     """
     blocks: list[Block] = list(body.get("blocks", []))
     for section in body.get("sections", []):
         if section.get("title"):
             blocks.append({"type": "heading", "level": 3, "text": section["title"]})
         blocks.extend(section.get("blocks", []))
+    blocks.extend(_guide_blocks(body))
     for item in body.get("items", []):
         blocks.extend(_item_blocks(item))
     if isinstance(body.get("takeaway"), dict):
         blocks.append({"type": "paragraph", "spans": [body["takeaway"]]})
     return blocks
+
+
+def _labelled(label: str, spans: Any) -> list[Block]:
+    """A list item: a bold label span (structure, uncited) followed by the item's spans."""
+    rest = spans if isinstance(spans, list) else []
+    return [{"text": label, "cites": [], "mark": "strong"}, *rest]
+
+
+def _guide_label(key: str, item: dict[str, Any]) -> str:
+    if key == "journey":
+        return f"{item.get('anchor', '')} ({item.get('role', '')})"
+    if key == "themes":
+        return f"{item.get('name', '')}."
+    return f"{item.get('value', '')}:"
+
+
+# Guide list key → (heading, the key holding each item's spans).
+_GUIDE_LISTS = {
+    "journey": ("Chapter by chapter", "takeaway"),
+    "themes": ("Themes", "spans"),
+    "numbers": ("Key numbers", "label"),
+}
+
+
+def _guide_blocks(body: dict[str, Any]) -> list[Block]:
+    """The book guide's structured lists (skills/write-guide) as headed bullet lists."""
+    out: list[Block] = []
+    for key, (title, spans) in _GUIDE_LISTS.items():
+        items = [i for i in body.get(key) or [] if isinstance(i, dict)]
+        if items:
+            out.append({"type": "heading", "level": 3, "text": title})
+            bullets = [_labelled(_guide_label(key, i), i.get(spans)) for i in items]
+            out.append({"type": "bullets", "items": bullets})
+    return out
 
 
 def _item_blocks(item: dict[str, Any]) -> list[Block]:

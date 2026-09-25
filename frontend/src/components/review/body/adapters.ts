@@ -8,6 +8,7 @@
  */
 import type { ArtifactType } from '../../../lib/api/types/artifacts';
 import type { Confidence, RenderBlock, Span, Spans } from '../../../lib/contract';
+import { ROLE_LABELS, parseGuide, type GuideKey } from '../../guide/guide';
 
 const SYNTHETIC = new WeakSet<Span>();
 
@@ -79,6 +80,34 @@ function brief(body: Json): RenderBlock[] {
     );
   }
   return out;
+}
+
+/** The guide in page order: its block sections, with the journey, themes and numbers as lists. */
+function guide(body: Json): RenderBlock[] {
+  const parsed = parseGuide(body);
+  if (!parsed) return [];
+  const section = (key: GuideKey): RenderBlock[] => {
+    const found = parsed.sections.find((s) => s.key === key);
+    return found ? [{ type: 'heading', level: 2, text: found.title }, ...found.blocks] : [];
+  };
+  const list = (title: string, items: Spans[]): RenderBlock[] =>
+    items.length > 0 ? [{ type: 'heading', level: 2, text: title }, { type: 'bullets', items }] : [];
+  return [
+    ...section('overview'),
+    ...list(
+      'Numbers to remember',
+      parsed.numbers.map((n) => [synthetic(n.value, 'strong'), ...n.label]),
+    ),
+    ...section('map'),
+    ...list(
+      'Chapter by chapter',
+      parsed.journey.map((j) => [synthetic(`${j.anchor} · ${j.role ? ROLE_LABELS[j.role] : 'no role'}`, 'strong'), ...j.takeaway]),
+    ),
+    ...(parsed.themes.length > 0 ? [{ type: 'heading', level: 2, text: 'Themes' } as RenderBlock] : []),
+    ...parsed.themes.map((t): RenderBlock => ({ type: 'definition', term: t.name, spans: t.spans })),
+    ...section('deep_dive'),
+    ...section('practice'),
+  ];
 }
 
 function quiz(body: Json): RenderBlock[] {
@@ -161,6 +190,8 @@ export function adaptBody(type: ArtifactType, raw: unknown): AdaptedBody {
   switch (type) {
     case 'book_brief':
       return { blocks: brief(body), facts: [], confidence };
+    case 'book_guide':
+      return { blocks: guide(body), facts: [], confidence };
     case 'quiz':
       return { blocks: quiz(body), facts: [], confidence };
     case 'faq':

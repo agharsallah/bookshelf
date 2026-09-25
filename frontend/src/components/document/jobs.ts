@@ -42,6 +42,7 @@ const DERIVE_LABELS: Partial<Record<ArtifactType, string>> = {
   quote_set: 'Pick quotes',
   flashcards: 'Make flashcards',
   glossary: 'Make a glossary',
+  book_guide: 'Write the book guide',
 };
 
 export function deriveLabel(skill: Pick<SkillPublic, 'name' | 'artifact_type'>): string {

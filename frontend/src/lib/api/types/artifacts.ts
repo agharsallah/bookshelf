@@ -14,6 +14,7 @@ export const ARTIFACT_TYPES = [
   'section_note',
   'chapter_distillation',
   'book_brief',
+  'book_guide',
   'structured_note',
   'concept_links',
   'quote_set',

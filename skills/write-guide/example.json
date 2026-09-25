@@ -1,0 +1,751 @@
+{
+  "sections": [
+    {
+      "key": "overview",
+      "title": "The book in brief",
+      "blocks": [
+        {
+          "type": "callout",
+          "tone": "important",
+          "spans": [
+            {
+              "text": "Knowledge work is slow because it waits, and the waiting is governed by how much work is in progress and how busy people are.",
+              "cites": [
+                "ch01/s01/p002",
+                "ch02/s01/p001",
+                "ch03/s01/p004"
+              ]
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "spans": [
+            {
+              "text": "The book starts from a measurement: most of an item's delivery time is spent waiting, not being worked on. ",
+              "cites": [
+                "ch01/s01/p002"
+              ]
+            },
+            {
+              "text": "Faster people or longer hours cannot fix a delay that happens while nobody is working.",
+              "cites": [
+                "ch01/s02/p003"
+              ]
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "spans": [
+            {
+              "text": "Two pieces of queueing arithmetic explain the waiting. ",
+              "cites": [
+                "ch02/s01/p001"
+              ]
+            },
+            {
+              "text": "Little's law ties work in progress to time in the system, so more WIP at the same throughput means longer waits; ",
+              "cites": [
+                "ch02/s01/p001",
+                "ch02/s01/p005"
+              ]
+            },
+            {
+              "text": "the utilization curve shows waiting staying modest to about 70% and exploding past 80%, made worse by variability.",
+              "cites": [
+                "ch03/s01/p004",
+                "ch03/s02/p003"
+              ]
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "spans": [
+            {
+              "text": "The middle of the book turns the mechanism into levers and tests them: WIP limits cut average cycle time from 31 to about 10 days with flat throughput, ",
+              "cites": [
+                "ch04/s02/t001",
+                "ch04/s02/p005"
+              ]
+            },
+            {
+              "text": "and smaller batches shorten waits for the same reason.",
+              "cites": [
+                "ch05/s02/p003"
+              ]
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "spans": [
+            {
+              "text": "It closes by finding the queues nobody measures — approvals, hand-offs, work turned away at a limit — ",
+              "cites": [
+                "ch06/s01/p001",
+                "ch06/s02/p004"
+              ]
+            },
+            {
+              "text": "and by recasting management as tending the flow of work rather than the busyness of people.",
+              "cites": [
+                "ch07/s01/p001"
+              ]
+            }
+          ]
+        },
+        {
+          "type": "bullets",
+          "items": [
+            [
+              {
+                "text": "Forecast delivery from WIP and throughput instead of effort estimates.",
+                "cites": [
+                  "ch02/s02/p002"
+                ]
+              }
+            ],
+            [
+              {
+                "text": "Choose a WIP limit and a slack level for a team, and defend them.",
+                "cites": [
+                  "ch04/s01/p002",
+                  "ch03/s03/p006"
+                ]
+              }
+            ],
+            [
+              {
+                "text": "Find and shorten the hidden queues in your own process.",
+                "cites": [
+                  "ch06/s02/p004"
+                ]
+              }
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "key": "map",
+      "title": "The big picture",
+      "blocks": [
+        {
+          "type": "diagram",
+          "direction": "LR",
+          "nodes": [
+            {
+              "id": "wip",
+              "label": "Work in progress"
+            },
+            {
+              "id": "util",
+              "label": "Utilization"
+            },
+            {
+              "id": "var",
+              "label": "Variability"
+            },
+            {
+              "id": "wait",
+              "label": "Waiting time"
+            },
+            {
+              "id": "cycle",
+              "label": "Cycle time"
+            },
+            {
+              "id": "limit",
+              "label": "WIP limit"
+            },
+            {
+              "id": "batch",
+              "label": "Small batches"
+            },
+            {
+              "id": "slack",
+              "label": "15–20% slack"
+            },
+            {
+              "id": "hidden",
+              "label": "Hidden queues"
+            }
+          ],
+          "edges": [
+            {
+              "from": "wip",
+              "to": "wait",
+              "label": "Little's law"
+            },
+            {
+              "from": "util",
+              "to": "wait",
+              "label": "explodes past ~80%"
+            },
+            {
+              "from": "var",
+              "to": "wait",
+              "label": "multiplies"
+            },
+            {
+              "from": "wait",
+              "to": "cycle",
+              "label": "dominates"
+            },
+            {
+              "from": "limit",
+              "to": "wip",
+              "label": "caps"
+            },
+            {
+              "from": "batch",
+              "to": "wip",
+              "label": "reduces"
+            },
+            {
+              "from": "slack",
+              "to": "util",
+              "label": "caps"
+            },
+            {
+              "from": "hidden",
+              "to": "wait",
+              "label": "adds unmeasured"
+            }
+          ],
+          "cites": [
+            "ch02/s01/p001",
+            "ch03/s01/p004",
+            "ch03/s02/p003",
+            "ch01/s01/p002",
+            "ch04/s01/p002",
+            "ch05/s02/p003",
+            "ch03/s03/p006",
+            "ch06/s01/p001"
+          ]
+        },
+        {
+          "type": "paragraph",
+          "spans": [
+            {
+              "text": "Read the map from the right: cycle time is mostly waiting, and every lever the book offers acts on waiting through work in progress or utilization.",
+              "cites": [
+                "ch01/s01/p002",
+                "ch07/s01/p001"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "deep_dive",
+      "title": "The core ideas in depth",
+      "blocks": [
+        {
+          "type": "heading",
+          "level": 2,
+          "text": "Little's law"
+        },
+        {
+          "type": "definition",
+          "term": "Little's law",
+          "spans": [
+            {
+              "text": "Average work in progress equals throughput times average time in the system.",
+              "cites": [
+                "ch02/s01/p001"
+              ]
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "spans": [
+            {
+              "text": "Because throughput is set by capacity, adding work in progress without adding capacity only lengthens the time each item spends inside; ",
+              "cites": [
+                "ch02/s01/p003",
+                "ch02/s01/p005"
+              ]
+            },
+            {
+              "text": "the same identity turns into a forecast: divide the items in progress by weekly throughput to get the expected wait.",
+              "cites": [
+                "ch02/s02/p002"
+              ]
+            }
+          ]
+        },
+        {
+          "type": "callout",
+          "tone": "antipattern",
+          "spans": [
+            {
+              "text": "Starting more work to speed up delivery: at fixed throughput it can only make every item later.",
+              "cites": [
+                "ch02/s01/p005"
+              ]
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "level": 2,
+          "text": "The utilization curve"
+        },
+        {
+          "type": "paragraph",
+          "spans": [
+            {
+              "text": "Waiting stays modest up to about 70% utilization and then rises steeply: at 90% an item waits about nine times its service time.",
+              "cites": [
+                "ch03/s01/p004",
+                "ch03/s01/f001"
+              ]
+            }
+          ]
+        },
+        {
+          "type": "chart",
+          "kind": "line",
+          "title": "Waiting time against utilization",
+          "x": {
+            "label": "Utilization (%)",
+            "values": [
+              50,
+              70,
+              80,
+              90,
+              95
+            ]
+          },
+          "y": {
+            "label": "Wait (× service time)"
+          },
+          "series": [
+            {
+              "name": "Wait",
+              "values": [
+                1,
+                2.3,
+                4,
+                9,
+                19
+              ]
+            }
+          ],
+          "cites": [
+            "ch03/s01/f001"
+          ]
+        },
+        {
+          "type": "callout",
+          "tone": "insight",
+          "spans": [
+            {
+              "text": "Variability multiplies the effect of utilization, which is why the same load feels fine one week and jammed the next.",
+              "cites": [
+                "ch03/s02/p003",
+                "ch03/s02/p006"
+              ]
+            }
+          ]
+        },
+        {
+          "type": "callout",
+          "tone": "remember",
+          "spans": [
+            {
+              "text": "Keep 15–20% of capacity unallocated.",
+              "cites": [
+                "ch03/s03/p006"
+              ]
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "level": 2,
+          "text": "Limiting work in progress"
+        },
+        {
+          "type": "steps",
+          "items": [
+            [
+              {
+                "text": "Count the items in progress per person today.",
+                "cites": [
+                  "ch04/s01/p001"
+                ]
+              }
+            ],
+            [
+              {
+                "text": "Set the limit just below that count and make it visible on the board.",
+                "cites": [
+                  "ch04/s01/p002"
+                ]
+              }
+            ],
+            [
+              {
+                "text": "When the limit is reached, help finish an item instead of starting one.",
+                "cites": [
+                  "ch04/s01/p003"
+                ]
+              }
+            ]
+          ]
+        },
+        {
+          "type": "table",
+          "header": [
+            "Measure",
+            "Before limits",
+            "After limits"
+          ],
+          "rows": [
+            [
+              {
+                "text": "Average cycle time",
+                "cites": [
+                  "ch04/s02/t001"
+                ]
+              },
+              {
+                "text": "31 days",
+                "cites": [
+                  "ch04/s02/t001"
+                ]
+              },
+              {
+                "text": "about 10 days",
+                "cites": [
+                  "ch04/s02/t001"
+                ]
+              }
+            ],
+            [
+              {
+                "text": "Throughput",
+                "cites": [
+                  "ch04/s02/t001"
+                ]
+              },
+              {
+                "text": "flat",
+                "cites": [
+                  "ch04/s02/p005"
+                ]
+              },
+              {
+                "text": "flat",
+                "cites": [
+                  "ch04/s02/p005"
+                ]
+              }
+            ]
+          ]
+        },
+        {
+          "type": "callout",
+          "tone": "caution",
+          "spans": [
+            {
+              "text": "The evidence comes from teams the author worked with over twelve weeks.",
+              "cites": [
+                "ch04/s02/p001"
+              ]
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "level": 2,
+          "text": "Hidden queues"
+        },
+        {
+          "type": "paragraph",
+          "spans": [
+            {
+              "text": "Most waiting happens where nobody measures it — approvals, hand-offs and work turned away at a limit — so it has to be made visible before it can be managed.",
+              "cites": [
+                "ch06/s01/p001",
+                "ch06/s02/p004",
+                "ch04/s03/p003"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "practice",
+      "title": "Putting the book to work",
+      "blocks": [
+        {
+          "type": "steps",
+          "items": [
+            [
+              {
+                "text": "Map every queue an item passes through, including approvals and hand-offs.",
+                "cites": [
+                  "ch06/s02/p004"
+                ]
+              }
+            ],
+            [
+              {
+                "text": "Measure throughput per week and forecast from WIP divided by throughput.",
+                "cites": [
+                  "ch02/s02/p002"
+                ]
+              }
+            ],
+            [
+              {
+                "text": "Set an explicit WIP limit and stop starting before you start finishing.",
+                "cites": [
+                  "ch04/s01/p002"
+                ]
+              }
+            ],
+            [
+              {
+                "text": "Plan with 15–20% of capacity unallocated.",
+                "cites": [
+                  "ch03/s03/p006"
+                ]
+              }
+            ],
+            [
+              {
+                "text": "Cut batch sizes so less work sits in the system at once.",
+                "cites": [
+                  "ch05/s02/p003"
+                ]
+              }
+            ],
+            [
+              {
+                "text": "Review utilization weekly and cut intake once it passes 80%.",
+                "cites": [
+                  "ch03/s03/p007"
+                ]
+              }
+            ]
+          ]
+        },
+        {
+          "type": "callout",
+          "tone": "antipattern",
+          "spans": [
+            {
+              "text": "Responding to slow delivery by starting more work, or by planning people to 100% of their time.",
+              "cites": [
+                "ch02/s01/p005",
+                "ch03/s03/p002"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "journey": [
+    {
+      "anchor": "ch01",
+      "role": "setup",
+      "takeaway": [
+        {
+          "text": "Establishes that delivery time is mostly waiting time — the fact the rest of the book explains.",
+          "cites": [
+            "ch01/s01/p002"
+          ]
+        }
+      ]
+    },
+    {
+      "anchor": "ch02",
+      "role": "concept",
+      "takeaway": [
+        {
+          "text": "Supplies the first mechanism: at fixed throughput, more work in progress means longer waits.",
+          "cites": [
+            "ch02/s01/p001"
+          ]
+        }
+      ]
+    },
+    {
+      "anchor": "ch03",
+      "role": "concept",
+      "takeaway": [
+        {
+          "text": "Adds the second: past about 80% utilization, waiting explodes, and variability makes it worse.",
+          "cites": [
+            "ch03/s01/p004",
+            "ch03/s02/p003"
+          ]
+        }
+      ]
+    },
+    {
+      "anchor": "ch04",
+      "role": "evidence",
+      "takeaway": [
+        {
+          "text": "Shows WIP limits cutting cycle time from 31 to about 10 days with flat throughput.",
+          "cites": [
+            "ch04/s02/t001"
+          ]
+        }
+      ]
+    },
+    {
+      "anchor": "ch05",
+      "role": "method",
+      "takeaway": [
+        {
+          "text": "Turns the same arithmetic into a second lever: smaller batches.",
+          "cites": [
+            "ch05/s02/p003"
+          ]
+        }
+      ]
+    },
+    {
+      "anchor": "ch06",
+      "role": "application",
+      "takeaway": [
+        {
+          "text": "Applies the model to the queues nobody measures — approvals and hand-offs.",
+          "cites": [
+            "ch06/s01/p001"
+          ]
+        }
+      ]
+    },
+    {
+      "anchor": "ch07",
+      "role": "synthesis",
+      "takeaway": [
+        {
+          "text": "Recasts management as tending the flow of work, not the busyness of people.",
+          "cites": [
+            "ch07/s01/p001"
+          ]
+        }
+      ]
+    }
+  ],
+  "themes": [
+    {
+      "name": "Waiting, not working",
+      "spans": [
+        {
+          "text": "Delivery time is dominated by waiting, first measured in the opening chapter ",
+          "cites": [
+            "ch01/s01/p002"
+          ]
+        },
+        {
+          "text": "and later traced to approvals and hand-offs nobody measures.",
+          "cites": [
+            "ch06/s01/p001"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Less in progress, more done",
+      "spans": [
+        {
+          "text": "Little's law makes work in progress the lever, ",
+          "cites": [
+            "ch02/s01/p001"
+          ]
+        },
+        {
+          "text": "WIP limits prove it on real teams, ",
+          "cites": [
+            "ch04/s02/t001"
+          ]
+        },
+        {
+          "text": "and small batches work for the same reason.",
+          "cites": [
+            "ch05/s02/p003"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Slack is capacity",
+      "spans": [
+        {
+          "text": "Running people near full utilization guarantees queues; ",
+          "cites": [
+            "ch03/s01/p004",
+            "ch03/s03/p002"
+          ]
+        },
+        {
+          "text": "managing flow means protecting slack deliberately.",
+          "cites": [
+            "ch07/s01/p003"
+          ]
+        }
+      ]
+    }
+  ],
+  "numbers": [
+    {
+      "value": "~80%",
+      "label": [
+        {
+          "text": "Utilization past which waiting explodes",
+          "cites": [
+            "ch03/s01/p004"
+          ]
+        }
+      ]
+    },
+    {
+      "value": "~9×",
+      "label": [
+        {
+          "text": "Wait relative to service time at 90% utilization",
+          "cites": [
+            "ch03/s01/f001"
+          ]
+        }
+      ]
+    },
+    {
+      "value": "31 → 10 days",
+      "label": [
+        {
+          "text": "Average cycle time before and after WIP limits",
+          "cites": [
+            "ch04/s02/t001"
+          ]
+        }
+      ]
+    },
+    {
+      "value": "15–20%",
+      "label": [
+        {
+          "text": "Capacity to leave unallocated",
+          "cites": [
+            "ch03/s03/p006"
+          ]
+        }
+      ]
+    }
+  ]
+}

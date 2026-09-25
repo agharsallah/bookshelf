@@ -73,6 +73,7 @@ class ArtifactType(StrEnum):
     SECTION_NOTE = "section_note"
     CHAPTER_DISTILLATION = "chapter_distillation"
     BOOK_BRIEF = "book_brief"
+    BOOK_GUIDE = "book_guide"
     STRUCTURED_NOTE = "structured_note"
     CONCEPT_LINKS = "concept_links"
     QUOTE_SET = "quote_set"

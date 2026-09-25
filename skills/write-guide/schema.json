@@ -1,0 +1,277 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bookshelf.local/skills/write-guide/schema.json",
+  "title": "write-guide output",
+  "description": "The in-depth book guide: four block sections in a fixed order (overview, map, deep_dive, practice) plus three structured lists the guide page draws as visuals — the chapter journey, the recurring themes (a theme x chapter heatmap is computed from their cites) and the key numbers.",
+  "type": "object",
+  "required": [
+    "sections",
+    "journey",
+    "themes",
+    "numbers"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "sections": {
+      "type": "array",
+      "minItems": 4,
+      "items": false,
+      "prefixItems": [
+        {
+          "type": "object",
+          "description": "The whole argument, end to end: 3-6 paragraphs, optionally an important callout and a bullets block.",
+          "required": [
+            "key",
+            "title",
+            "blocks"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "key": {
+              "const": "overview"
+            },
+            "title": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "blocks": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 8,
+              "items": {
+                "anyOf": [
+                  {
+                    "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/paragraph"
+                  },
+                  {
+                    "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/callout"
+                  },
+                  {
+                    "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/bullets"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "description": "The big-picture diagram of the whole book first; at most two supporting blocks after it.",
+          "required": [
+            "key",
+            "title",
+            "blocks"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "key": {
+              "const": "map"
+            },
+            "title": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "blocks": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 3,
+              "prefixItems": [
+                {
+                  "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/diagram"
+                }
+              ],
+              "items": {
+                "anyOf": [
+                  {
+                    "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/diagram"
+                  },
+                  {
+                    "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/paragraph"
+                  },
+                  {
+                    "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/table"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "description": "The in-depth distillation of the book's core ideas under level-2 headings, with diagrams, tables, charts and callouts.",
+          "required": [
+            "key",
+            "title",
+            "blocks"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "key": {
+              "const": "deep_dive"
+            },
+            "title": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "blocks": {
+              "type": "array",
+              "minItems": 4,
+              "maxItems": 150,
+              "items": {
+                "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/block"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "description": "The book as a playbook: an integrated steps checklist, plus antipatterns.",
+          "required": [
+            "key",
+            "title",
+            "blocks"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "key": {
+              "const": "practice"
+            },
+            "title": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "blocks": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 6,
+              "items": {
+                "anyOf": [
+                  {
+                    "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/steps"
+                  },
+                  {
+                    "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/bullets"
+                  },
+                  {
+                    "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/callout"
+                  },
+                  {
+                    "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/paragraph"
+                  },
+                  {
+                    "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/table"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "journey": {
+      "type": "array",
+      "description": "One entry per chapter distillation, in reading order.",
+      "minItems": 1,
+      "maxItems": 80,
+      "items": {
+        "type": "object",
+        "required": [
+          "anchor",
+          "role",
+          "takeaway"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "anchor": {
+            "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/anchor"
+          },
+          "role": {
+            "enum": [
+              "setup",
+              "concept",
+              "method",
+              "evidence",
+              "application",
+              "synthesis"
+            ]
+          },
+          "takeaway": {
+            "allOf": [
+              {
+                "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/spans"
+              },
+              {
+                "maxItems": 3
+              }
+            ]
+          }
+        }
+      }
+    },
+    "themes": {
+      "type": "array",
+      "description": "Ideas the book returns to across chapters; each cites one or more anchors in every chapter it appears in.",
+      "minItems": 3,
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "spans"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60
+          },
+          "spans": {
+            "allOf": [
+              {
+                "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/spans"
+              },
+              {
+                "maxItems": 6
+              }
+            ]
+          }
+        }
+      }
+    },
+    "numbers": {
+      "type": "array",
+      "description": "Figures worth remembering, as the book states them.",
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "required": [
+          "value",
+          "label"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "value": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 24
+          },
+          "label": {
+            "allOf": [
+              {
+                "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/spans"
+              },
+              {
+                "maxItems": 2
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

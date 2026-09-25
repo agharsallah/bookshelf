@@ -330,7 +330,7 @@ stateDiagram-v2
   parsed --> needs_review : outline guessed (tier 2/3)
   needs_review --> parsed : human fixes outline
   parsed --> enriching : describe-figure · explain-code · describe-math · summarize
-  enriching --> distilling : distil-section → distil-chapter → write-brief
+  enriching --> distilling : distil-section → distil-chapter → write-brief (+ write-guide)
   distilling --> needs_review : grounding < 0.9
   needs_review --> distilling : human approves / edits / re-runs
   distilling --> distilled : brief approved
@@ -490,6 +490,7 @@ Consequences:
 | `distil-section` | `section_note` | section | distil | render blocks, every span cited |
 | `distil-chapter` | `chapter_distillation` | chapter | distil | render blocks incl. `callout` tones `important` `remember` `antipattern` |
 | `write-brief` | `book_brief` | document | reason | fixed one-page shape (§9) |
+| `write-guide` | `book_guide` | document | reason | the in-depth, visual guide (§9): four block sections + `journey`, `themes`, `numbers` |
 | `structure-note` | `structured_note` | note | explore | render blocks + `concepts[]`, cites the highlighted anchor |
 | `link-concepts` | concepts + edges | document | reason | `{concepts: [...], edges: [{src, dst, relation, evidence[]}]}` |
 | `extract-quotes` | `quote_set` | chapter | distil | `quote` blocks with `page` |
@@ -793,6 +794,28 @@ five to seven load-bearing ideas · the argument's structure · what it changes 
 where it is weak or dated · read-next pointers into your own shelf*. That last section is the
 one only this system can write.
 
+### Format of a book guide
+
+The brief is deliberately one page; the **book guide** (`write-guide`, `book_guide`) is its
+in-depth, visual companion: *what a reader needs to grasp the whole book in two minutes, then
+learn its core ideas properly*. It reads the same input as the brief (every chapter
+distillation) and is queued alongside it as a `derive` job (`skill: write-guide`, deduped with a
+manual run by its `skill:<name>` key). Approving it on an already indexed document queues
+`embed`, so search sees it; it never gates the pipeline.
+
+| Part | Shape | Drawn on `/documents/{slug}/guide` as |
+|---|---|---|
+| `overview` | 3–6 paragraphs + an `important` callout | the whole argument, end to end |
+| `numbers` | `[{value, label: spans}]` | stat tiles |
+| `map` | a `diagram` first | the big-picture Mermaid map of the book |
+| `journey` | one `{anchor, role, takeaway}` per chapter | an arc strip (segment = share of reading, colour = role) and timed chapter rows |
+| `themes` | `[{name, spans}]`, spans citing every chapter the theme appears in | a theme × chapter heatmap **computed from the cites**, so it cannot claim a chapter it does not cite |
+| `deep_dive` | any render blocks under level-2 headings | the core ideas at depth: diagrams, tables, charts, callouts |
+| `practice` | `steps` + `antipattern` callout | the book as one playbook |
+
+Reading times come from the document tree (words ÷ 238 wpm), not from the model. Roles take the
+validated `--series-*` colours in a fixed order; the heatmap uses one hue, light to dark.
+
 ### Derived artifacts
 
 Once approved distillations exist, everything below is a cheap, separate skill over them. None of
@@ -806,18 +829,20 @@ flowchart TD
 
   CD[("approved chapter_distillation(s)")]:::out
   B["write-brief"]:::sk --> BR["book_brief<br/>one page"]:::out
+  W["write-guide"]:::sk --> GD["book_guide<br/>in depth, visual"]:::out
   Q["make-quiz"]:::sk --> QZ["quiz<br/>MCQ + open, cited answers"]:::out
   F["make-faq"]:::sk --> FQ["faq<br/>questions a reader would ask"]:::out
   X["extract-quotes"]:::sk --> QT["quote_set<br/>verbatim, paged"]:::out
   C["make-flashcards"]:::sk --> FC["flashcards<br/>from remember callouts"]:::out
   G["make-glossary"]:::sk --> GL["glossary<br/>from definition blocks"]:::out
 
-  CD --> B & Q & F & X & C & G
+  CD --> B & W & Q & F & X & C & G
 ```
 
 | Artifact | From | Shape | Why it earns a slot |
 |---|---|---|---|
 | `book_brief` | all chapter distillations | fixed one-page (above) | the thing you reread a year later |
+| `book_guide` | all chapter distillations | sections + journey, themes, numbers (above) | understanding the whole book at a glance, then in depth |
 | `quiz` | one chapter | `{question, choices[], answer, cites[]}` | active recall; wrong answers link to the passage |
 | `faq` | chapter or document | `{question, answer_spans[]}` | how a colleague would ask; good search seed |
 | `quote_set` | one chapter | `quote` blocks with `page` | citable verbatim material for your own writing |
@@ -931,6 +956,7 @@ Keep Astro as the shell and routing layer; add React islands only where interact
 | **Library** | Astro, static | Shelf grid, filters, ingest status. No client state worth shipping JS for |
 | **Reader** | React island | Two panes — source blocks left, distillation right — anchor-synced scrolling, highlight/note creation. Reading settings (font, size, spacing, width), panes you can put away, focus mode and full screen, passages colour-coded by role (quote, example, exercise…), all kept per browser. Genuinely interactive |
 | **Brief** | Astro, static | Renders one approved artifact. Server-rendered, instant, printable |
+| **Guide** | Astro, static | The book guide with its charts (arc strip, chapter rows, theme heatmap, stat tiles) as server-rendered React; CSS-only hover tips, no island |
 | **Search** | React island | Query box, intent badge, grouped results, cited answer with click-through |
 | **Graph** | React island | Canvas force layout over a neighborhood endpoint, node cap enforced client-side |
 | **Review queue** | React island | Draft artifacts, diff against the previous version, approve / edit / reject / re-run |

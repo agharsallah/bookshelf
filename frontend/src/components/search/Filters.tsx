@@ -18,6 +18,7 @@ export const FILTER_TYPES: ArtifactType[] = [
   'chapter_distillation',
   'chapter_summary',
   'book_brief',
+  'book_guide',
   'book_summary',
   'structured_note',
   'glossary',

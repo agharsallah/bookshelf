@@ -1,0 +1,15 @@
+name: write-guide
+version: 1
+description: The in-depth, visual book guide from all chapter distillations — the whole argument end to end, a big-picture map, the chapter journey, recurring themes, key numbers, every core framework at depth, and a playbook.
+tier: reason
+job_kind: derive
+artifact_type: book_guide
+scope: document
+selector: document_chapters
+vision: false
+gates:
+  grounding_min: 0.9
+  # A guide, not a page: long enough to replace rereading the book for the core ideas,
+  # short enough to read in one sitting. No compression band — its length follows the
+  # number of frameworks, not the book's word count.
+  max_words: 6000

@@ -47,6 +47,7 @@ const statuses: Record<string, ChapterStatus> = Object.fromEntries(
   units.map((u) => [u.anchor, chapterStatus(data?.artifacts ?? [], u.anchor)]),
 );
 const brief = data ? pickBest(data.artifacts, 'book_brief', null) : null;
+const guide = data ? pickBest(data.artifacts, 'book_guide', null) : null;
 const first = defaultUnit(units);
 // Study material waits for a confirmed outline: it reads the chapters as parsed.
 const deriving = data !== null && data.doc.status !== 'needs_review';
@@ -110,6 +111,11 @@ const exportsBase = data ? `/api/exports/${data.doc.slug}` : '';
             {brief ? (
               <a class="brief" href={`/documents/${data.doc.slug}/brief`}>
                 {brief.standing === 'approved' ? 'Read the brief' : 'Brief (draft, waiting for review)'}
+              </a>
+            ) : null}
+            {guide ? (
+              <a class="brief" href={`/documents/${data.doc.slug}/guide`}>
+                {guide.standing === 'approved' ? 'Open the book guide' : 'Book guide (draft)'}
               </a>
             ) : null}
           </div>

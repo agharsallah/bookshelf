@@ -43,6 +43,7 @@ INDEXED_TYPES = frozenset(
         ArtifactType.SECTION_NOTE,
         ArtifactType.CHAPTER_DISTILLATION,
         ArtifactType.BOOK_BRIEF,
+        ArtifactType.BOOK_GUIDE,
         ArtifactType.FIGURE_DESCRIPTION,
         ArtifactType.CODE_EXPLANATION,
         ArtifactType.MATH_DESCRIPTION,

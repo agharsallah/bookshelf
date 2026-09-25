@@ -51,6 +51,7 @@ RERANK_CHARS = 1500
 _TYPE_ORDER = [
     ArtifactType.CHAPTER_DISTILLATION,
     ArtifactType.BOOK_BRIEF,
+    ArtifactType.BOOK_GUIDE,
     ArtifactType.SECTION_NOTE,
     ArtifactType.CHAPTER_SUMMARY,
     ArtifactType.BOOK_SUMMARY,

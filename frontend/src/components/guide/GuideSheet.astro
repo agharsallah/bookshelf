@@ -1,0 +1,392 @@
+---
+/**
+ * The book guide as one long, visual page: at a glance first (size, the whole argument,
+ * the numbers to remember, the big-picture map, the chapter journey, the themes), then
+ * the core ideas at depth and the book as a playbook. Server-rendered; cite chips and
+ * chapter links go into the reader.
+ */
+import { Blocks } from '../blocks/Blocks';
+import type { PreparedBlock } from '../../lib/prepare';
+import ChapterJourney from './ChapterJourney';
+import NumberTiles from './NumberTiles';
+import ThemeHeatmap from './ThemeHeatmap';
+import type { ChapterRow, Glance, GuideKey, GuideSection, KeyNumber, Theme } from './guide';
+
+interface Props {
+  slug: string;
+  title: string;
+  authors: string[];
+  year: number | null;
+  sections: (GuideSection & { blocks: PreparedBlock[] })[];
+  rows: ChapterRow[];
+  themes: Theme[];
+  numbers: KeyNumber[];
+  glance: Glance[];
+  approvedOn: string | null;
+  version: number;
+  draft: boolean;
+  hasBrief: boolean;
+}
+
+const { slug, title, authors, year, sections, rows, themes, numbers, glance, approvedOn, version, draft, hasBrief } = Astro.props;
+const citeHref = (anchor: string) => `/documents/${slug}/read/${anchor}`;
+const byKey = new Map<GuideKey, GuideSection & { blocks: PreparedBlock[] }>(sections.map((s) => [s.key, s]));
+const overview = byKey.get('overview');
+const map = byKey.get('map');
+const deep = byKey.get('deep_dive');
+const practice = byKey.get('practice');
+
+// The deep dive's own table of contents: its level-2 headings.
+const ideas = (deep?.blocks ?? []).flatMap((b) => (b.type === 'heading' && b.level === 2 ? [b.text] : []));
+
+const nav = [
+  overview && { id: 'guide-overview', label: overview.title },
+  numbers.length > 0 && { id: 'guide-numbers', label: 'Numbers' },
+  map && { id: 'guide-map', label: map.title },
+  rows.length > 0 && { id: 'guide-journey', label: 'Chapter by chapter' },
+  themes.length > 0 && { id: 'guide-themes', label: 'Themes' },
+  deep && { id: 'guide-deep', label: deep.title },
+  practice && { id: 'guide-practice', label: practice.title },
+].filter((item): item is { id: string; label: string } => Boolean(item));
+---
+
+<article class="sheet" aria-labelledby="guide-title">
+  <header class="head">
+    <p class="kind">Book guide{draft && <span class="draft">Draft, waiting for review</span>}</p>
+    <h1 id="guide-title">{title}</h1>
+    <p class="byline">
+      {authors.join(', ')}{year ? `, ${year}` : ''}
+    </p>
+    <p class="stamp">
+      Version {version}{approvedOn ? `, approved ${approvedOn}` : ''}
+    </p>
+    {
+      glance.length > 0 && (
+        <div class="glance">
+          <NumberTiles tiles={glance} variant="quiet" label="At a glance" />
+        </div>
+      )
+    }
+  </header>
+
+  <nav class="toc" aria-label="On this page">
+    <ul>
+      {
+        nav.map((item) => (
+          <li>
+            <a href={`#${item.id}`}>{item.label}</a>
+          </li>
+        ))
+      }
+    </ul>
+  </nav>
+
+  {
+    overview && (
+      <section class="part overview" id="guide-overview" aria-labelledby="guide-overview-h">
+        <h2 id="guide-overview-h">{overview.title}</h2>
+        <Blocks blocks={overview.blocks} citeHref={citeHref} />
+      </section>
+    )
+  }
+
+  {
+    numbers.length > 0 && (
+      <section class="part" id="guide-numbers" aria-labelledby="guide-numbers-h">
+        <h2 id="guide-numbers-h">Numbers to remember</h2>
+        <NumberTiles tiles={numbers} citeHref={citeHref} label="Numbers to remember" />
+      </section>
+    )
+  }
+
+  {
+    map && (
+      <section class="part" id="guide-map" aria-labelledby="guide-map-h">
+        <h2 id="guide-map-h">{map.title}</h2>
+        <Blocks blocks={map.blocks} citeHref={citeHref} />
+      </section>
+    )
+  }
+
+  {
+    rows.length > 0 && (
+      <section class="part" id="guide-journey" aria-labelledby="guide-journey-h">
+        <h2 id="guide-journey-h">Chapter by chapter</h2>
+        <ChapterJourney rows={rows} citeHref={citeHref} />
+      </section>
+    )
+  }
+
+  {
+    themes.length > 0 && (
+      <section class="part" id="guide-themes" aria-labelledby="guide-themes-h">
+        <h2 id="guide-themes-h">Ideas that run through the book</h2>
+        <p class="lede">Where the author returns to each theme. Darker cells cite more passages; select one to open the first.</p>
+        <ThemeHeatmap themes={themes} rows={rows} citeHref={citeHref} />
+      </section>
+    )
+  }
+
+  {
+    deep && (
+      <section class="part deep" id="guide-deep" aria-labelledby="guide-deep-h">
+        <h2 id="guide-deep-h">{deep.title}</h2>
+        {ideas.length > 1 && (
+          <ol class="ideas" aria-label="Core ideas">
+            {ideas.map((idea) => (
+              <li>{idea}</li>
+            ))}
+          </ol>
+        )}
+        <Blocks blocks={deep.blocks} citeHref={citeHref} className="deep-blocks" />
+      </section>
+    )
+  }
+
+  {
+    practice && (
+      <section class="part practice" id="guide-practice" aria-labelledby="guide-practice-h">
+        <h2 id="guide-practice-h">{practice.title}</h2>
+        <Blocks blocks={practice.blocks} citeHref={citeHref} />
+      </section>
+    )
+  }
+
+  <footer class="foot">
+    {hasBrief && <a href={`/documents/${slug}/brief`}>Read the one-page brief</a>}
+    <a href={`/documents/${slug}`}>Back to the document</a>
+  </footer>
+</article>
+
+<style>
+  .sheet {
+    --sheet-pad: clamp(1rem, 4vw, 3.5rem);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr); /* wide diagrams and tables scroll, never the page */
+    gap: var(--space-7);
+    max-width: 68rem;
+    margin-inline: auto;
+    padding: var(--sheet-pad);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-l);
+    background: var(--paper-raised);
+    box-shadow: var(--shadow-lift);
+  }
+
+  .head {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: var(--space-1) var(--space-5);
+    padding-block-end: var(--space-5);
+    border-block-end: 2px solid var(--ink);
+  }
+
+  .kind {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    align-items: baseline;
+    color: var(--accent);
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+    font-weight: 600;
+  }
+
+  .draft {
+    padding: 0 var(--space-2);
+    border: 1px solid var(--tone-caution);
+    border-radius: var(--radius-m);
+    color: var(--tone-caution);
+    font-weight: 500;
+  }
+
+  h1 {
+    grid-column: 1 / -1;
+    font-size: clamp(2rem, 4.5vw, 3.25rem);
+    font-weight: 450;
+    letter-spacing: -0.02em;
+  }
+
+  .byline {
+    color: var(--ink-2);
+    font-style: italic;
+  }
+
+  .stamp {
+    align-self: end;
+    color: var(--ink-3);
+    font-family: var(--font-ui);
+    font-size: var(--text-xs);
+    text-align: end;
+  }
+
+  .glance {
+    grid-column: 1 / -1;
+    margin-block-start: var(--space-4);
+  }
+
+  .toc {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    margin-block: calc(-1 * var(--space-5));
+    padding-block: var(--space-2);
+    background: var(--paper-raised);
+    border-block-end: 1px solid var(--rule);
+  }
+
+  .toc ul {
+    display: flex;
+    gap: var(--space-1) var(--space-4);
+    margin: 0;
+    padding: 0;
+    overflow-x: auto;
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+    list-style: none;
+    scrollbar-width: none;
+  }
+
+  .toc a {
+    display: block;
+    padding-block: var(--space-1);
+    color: var(--ink-2);
+    white-space: nowrap;
+    text-decoration: none;
+  }
+
+  .toc a:hover {
+    color: var(--accent);
+  }
+
+  .part {
+    scroll-margin-block-start: 3.5rem;
+    min-inline-size: 0;
+  }
+
+  h2 {
+    margin-block-end: var(--space-4);
+    padding-block-end: var(--space-2);
+    border-block-end: 1px solid var(--rule);
+    font-size: var(--text-lg);
+    font-weight: 450;
+    letter-spacing: -0.01em;
+  }
+
+  .lede {
+    margin-block: calc(-1 * var(--space-2)) var(--space-4);
+    color: var(--ink-2);
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+  }
+
+  /* The whole argument reads like the opening of an essay. */
+  .overview :global([data-block='paragraph'] p) {
+    max-width: var(--measure);
+    font-size: var(--text-md);
+    line-height: 1.55;
+  }
+
+  .ideas {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin: 0 0 var(--space-5);
+    padding: 0;
+    list-style: none;
+    counter-reset: idea;
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+  }
+
+  .ideas li {
+    counter-increment: idea;
+    padding: var(--space-1) var(--space-3);
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    color: var(--ink-2);
+  }
+
+  .ideas li::before {
+    content: counter(idea) '  ';
+    color: var(--accent);
+    font-weight: 700;
+  }
+
+  /* Each core idea opens like a chapter of its own. */
+  .deep :global(.deep-blocks) {
+    max-width: 52rem;
+  }
+
+  .deep :global(.deep-blocks [data-block='heading'] h2) {
+    margin-block-start: var(--space-6);
+    padding-block-start: var(--space-4);
+    border-block-start: 1px solid var(--rule);
+    border-block-end: 0;
+    font-size: var(--text-md);
+  }
+
+  .deep :global(.deep-blocks [data-block='heading']:first-child h2) {
+    margin-block-start: 0;
+    padding-block-start: 0;
+    border-block-start: 0;
+  }
+
+  .practice :global([data-block='steps']) {
+    max-width: 52rem;
+  }
+
+  .foot {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-5);
+    padding-block-start: var(--space-4);
+    border-block-start: 1px solid var(--rule);
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+  }
+
+  .foot a {
+    color: var(--ink-3);
+  }
+
+  @media (max-width: 48rem) {
+    .head {
+      grid-template-columns: 1fr;
+    }
+
+    .stamp {
+      text-align: start;
+    }
+
+    .sheet {
+      gap: var(--space-6);
+    }
+  }
+
+  @media print {
+    .sheet {
+      max-width: none;
+      padding: 0;
+      border: 0;
+      box-shadow: none;
+      background: none;
+      font-size: 10pt;
+    }
+
+    .toc,
+    .foot {
+      display: none;
+    }
+
+    .sheet a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    h2 {
+      break-after: avoid;
+    }
+  }
+</style>

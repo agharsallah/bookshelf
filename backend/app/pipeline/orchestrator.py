@@ -16,7 +16,8 @@ Pipeline order per document:
     parse → describe_figure · explain_code · describe_math · explain_table · summarize
           → (all element jobs finished) distil_section per section scope
           → (all section notes of a chapter) distil_chapter
-          → (every chapter distilled) brief → human approves the brief → embed
+          → (every chapter distilled) brief + the book guide (derive: write-guide)
+          → human approves the brief → embed
           → link_concepts → linked
           → (concept_links applied to the idea graph) dedup: link_concepts, mode=dedup
 """
@@ -55,6 +56,9 @@ PRIORITY: dict[JobKind, int] = {
     JobKind.EMBED: 110,
     JobKind.LINK_CONCEPTS: 120,
 }
+# The in-depth book guide reads what the brief reads; it runs as a `derive` job, right after.
+GUIDE_SKILL = "write-guide"
+_GUIDE_PRIORITY = PRIORITY[JobKind.BRIEF] + 5
 # Statuses in which nothing advances: not parsed yet, or the outline waits for a human.
 BLOCKED = frozenset(
     {
@@ -120,6 +124,17 @@ class State:
     def spec(self, kind: JobKind, anchor: str | None = None) -> JobSpec:
         return JobSpec(
             kind=kind, document_id=self.document.id, anchor=anchor, priority=PRIORITY[kind]
+        )
+
+    def guide_spec(self) -> JobSpec:
+        """The `derive` job for the book guide, keyed like a manual run (`skill:<name>`) so
+        the queue dedupes the two."""
+        return JobSpec(
+            kind=JobKind.DERIVE,
+            document_id=self.document.id,
+            skill=GUIDE_SKILL,
+            input_hash=f"skill:{GUIDE_SKILL}",
+            priority=_GUIDE_PRIORITY,
         )
 
     def node(self, anchor: str | None) -> Node | None:
@@ -192,7 +207,7 @@ def _chapter_if_complete(state: State, anchor: str | None) -> Plan:
 def _brief_if_complete(state: State) -> Plan:
     chapters = state.tree.chapters()
     if chapters and all(state.has(ArtifactType.CHAPTER_DISTILLATION, c.anchor) for c in chapters):
-        return Plan(jobs=[state.spec(JobKind.BRIEF)])
+        return Plan(jobs=[state.spec(JobKind.BRIEF), state.guide_spec()])
     return Plan()
 
 
@@ -245,6 +260,14 @@ def brief_approved(state: State, artifact: Artifact) -> Plan:
     return Plan(jobs=[state.spec(JobKind.EMBED)], status=DocumentStatus.DISTILLED)
 
 
+def guide_approved(state: State, artifact: Artifact) -> Plan:
+    """The guide usually lands after the brief's embed ran: re-index an indexed document
+    so search sees it. Before that, the brief's own embed picks it up."""
+    if _RANK.get(state.document.status, -1) >= _RANK[DocumentStatus.INDEXED]:
+        return Plan(jobs=[state.spec(JobKind.EMBED)])
+    return Plan()
+
+
 def links_reviewed(state: State, artifact: Artifact) -> Plan:
     """Approve, edit or reject of a `concept_links`: the graph follows the effective version
     (a rejection falls back to the previous one, or withdraws the document's links)."""
@@ -279,6 +302,7 @@ AFTER_APPROVAL: dict[ArtifactType, ReviewRule] = {
     ArtifactType.SECTION_NOTE: section_approved,
     ArtifactType.CHAPTER_DISTILLATION: chapter_approved,
     ArtifactType.BOOK_BRIEF: brief_approved,
+    ArtifactType.BOOK_GUIDE: guide_approved,
     ArtifactType.CONCEPT_LINKS: links_reviewed,
     **dict.fromkeys(artifacts.ELEMENT_TYPES, element_approved),
 }

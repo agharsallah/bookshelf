@@ -221,6 +221,22 @@ def _drop_brief_idea(out: dict[str, Any]) -> None:
     out["sections"][1]["blocks"][0]["items"] = out["sections"][1]["blocks"][0]["items"][:4]
 
 
+def _guide_map_without_diagram(out: dict[str, Any]) -> None:
+    out["sections"][1]["blocks"] = out["sections"][1]["blocks"][1:]
+
+
+def _guide_unknown_role(out: dict[str, Any]) -> None:
+    out["journey"][0]["role"] = "summary"
+
+
+def _guide_two_themes(out: dict[str, Any]) -> None:
+    out["themes"] = out["themes"][:2]
+
+
+def _guide_long_number(out: dict[str, Any]) -> None:
+    out["numbers"][0]["value"] = "about eighty percent of capacity"
+
+
 def _two_paragraphs(out: dict[str, Any]) -> None:
     out["blocks"] = out["blocks"][:2]
 
@@ -257,6 +273,11 @@ def _table_copied_into_explanation(out: dict[str, Any]) -> None:
 TIGHTENINGS: list[tuple[str, Callable[[dict[str, Any]], None]]] = [
     ("write-brief", _swap_brief_sections),
     ("write-brief", _drop_brief_idea),
+    ("write-guide", _swap_brief_sections),
+    ("write-guide", _guide_map_without_diagram),
+    ("write-guide", _guide_unknown_role),
+    ("write-guide", _guide_two_themes),
+    ("write-guide", _guide_long_number),
     ("summarize", _two_paragraphs),
     ("extract-quotes", _append_paragraph),
     ("extract-quotes", _second_cite),

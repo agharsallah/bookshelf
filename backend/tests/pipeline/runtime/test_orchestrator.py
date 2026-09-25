@@ -149,7 +149,10 @@ def test_brief_waits_for_every_chapter_distillation(session, book, make_job):
         session, finish(session, make_job(JobKind.DISTIL_CHAPTER, book, "ch02"))
     )
 
-    assert [(j.kind, j.anchor) for j in enqueued] == [(JobKind.BRIEF, None)]
+    assert [(j.kind, j.anchor, j.skill) for j in enqueued] == [
+        (JobKind.BRIEF, None, None),
+        (JobKind.DERIVE, None, orchestrator.GUIDE_SKILL),
+    ]
 
 
 def test_approving_the_brief_marks_distilled_and_queues_embedding(session, book):
@@ -159,6 +162,18 @@ def test_approving_the_brief_marks_distilled_and_queues_embedding(session, book)
 
     assert [(j.kind, j.anchor) for j in enqueued] == [(JobKind.EMBED, None)]
     assert status(session, book) is DocumentStatus.DISTILLED
+
+
+def test_approving_a_guide_re_indexes_an_indexed_document_only(session, book):
+    guide = store(session, book, ArtifactType.BOOK_GUIDE, None, Review.APPROVED)
+    assert orchestrator.on_review(session, guide) == []
+
+    book.status = DocumentStatus.LINKED
+    session.add(book)
+    session.commit()
+    enqueued = orchestrator.on_review(session, guide)
+
+    assert [(j.kind, j.anchor) for j in enqueued] == [(JobKind.EMBED, None)]
 
 
 def test_a_re_run_brief_that_hits_its_approved_version_resumes_indexing(session, book, make_job):
