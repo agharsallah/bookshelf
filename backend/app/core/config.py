@@ -19,6 +19,16 @@ class Environment(StrEnum):
     TEST = "test"
 
 
+class Effort(StrEnum):
+    """How hard the model thinks (`claude --effort`), set per tier (D16)."""
+
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    XHIGH = "xhigh"
+    MAX = "max"
+
+
 # backend/app/core/config.py -> repo root
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
@@ -79,6 +89,11 @@ class Settings(BaseSettings):
     model_explore: str | None = None
     model_distil: str | None = None
     model_reason: str | None = None
+    # Effort per tier (`claude --effort`: low, medium, high, xhigh, max); blank keeps
+    # medium. Validated here: the CLI ignores a bad value and falls back to its own default.
+    effort_explore: Effort = Effort.MEDIUM
+    effort_distil: Effort = Effort.MEDIUM
+    effort_reason: Effort = Effort.MEDIUM
 
     # --- Idea graph (§11) ---------------------------------------------------
     # Concept dedup: cosine similarity that nominates a pair for the model to confirm, and
@@ -128,6 +143,16 @@ class Settings(BaseSettings):
     def _blank_is_unset(cls, value: object) -> object:
         """`KEY=` in a .env file means "not configured", not "the empty string"."""
         return None if isinstance(value, str) and not value.strip() else value
+
+    @field_validator("effort_explore", "effort_distil", "effort_reason", mode="before")
+    @classmethod
+    def _blank_effort_is_medium(cls, value: object) -> object:
+        """`BOOKSHELF_EFFORT_<TIER>=` keeps the default rather than failing validation."""
+        return (
+            Effort.MEDIUM
+            if value is None or (isinstance(value, str) and not value.strip())
+            else value
+        )
 
     @model_validator(mode="after")
     def _production_must_be_locked_down(self) -> "Settings":

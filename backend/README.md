@@ -57,7 +57,8 @@ POST /documents {path|url} → parse ─┬─ describe_figure · explain_code �
 - **Skills** (model): every skill-backed job selects its inputs, hashes them, skips if a
   live artifact covers the hash, else renders `skills/<name>/SKILL.md` and runs
   `claude -p` (tier → `haiku`/`sonnet`/`opus`, `app/pipeline/models.py`; override per
-  tier with `BOOKSHELF_MODEL_<TIER>`). Outputs pass
+  tier with `BOOKSHELF_MODEL_<TIER>`, and set its thinking effort with
+  `BOOKSHELF_EFFORT_<TIER>` = `low`…`max`, default `medium`). Outputs pass
   hard gates (schema, anchors; one retry) and soft gates (grounding, compression, …) and
   land as `draft` or `needs_review` artifacts for the review queue.
 - **Run ceiling**: after `max_runs_per_document` CLI runs a document is `paused`

@@ -11,6 +11,7 @@ from pathlib import Path
 
 import pytest
 
+from app.core.config import Settings
 from app.models.enums import Tier
 from app.pipeline.runner import (
     ClaudeCliRunner,
@@ -187,11 +188,25 @@ def test_cli_pipes_the_prompt_on_stdin_with_no_tools_from_a_neutral_cwd(fake_cla
     assert result.model == "claude-haiku-4-5-20251001"
     assert call["stdin"] == "Distil this."
     assert call["argv"] == [
-        "-p", "--model", "sonnet", "--output-format", "json", "--no-session-persistence",
+        "-p", "--model", "sonnet", "--effort", "medium", "--output-format", "json",
+        "--no-session-persistence",
         "--safe-mode", "--strict-mcp-config", "--permission-prompts", "none", "--tools", "",
     ]  # fmt: skip
     assert "bookshelf-claude-" in call["cwd"]
     assert not Path(call["cwd"]).exists()  # the temp dir is cleaned up
+
+
+def test_a_tier_effort_is_passed_to_the_cli_right_after_its_model(fake_claude, tmp_path):
+    script = fake_claude(PRINT_ENVELOPE)
+    settings = Settings(_env_file=None, effort_distil="high")  # type: ignore[call-arg]
+    runner = ClaudeCliRunner(
+        str(script), timeout_seconds=5, slots=threading.BoundedSemaphore(1), settings=settings
+    )
+
+    runner.run("Distil this.", tier=Tier.DISTIL)
+
+    argv = recorded(tmp_path)["argv"]
+    assert argv[:5] == ["-p", "--model", "sonnet", "--effort", "high"]
 
 
 def test_vision_runs_get_only_the_read_tool_scoped_to_the_image_dir(fake_claude, tmp_path):

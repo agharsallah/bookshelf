@@ -28,9 +28,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Protocol
 
-from app.core.config import get_settings
+from app.core.config import Settings, get_settings
 from app.models.enums import Tier
-from app.pipeline.models import cli_alias
+from app.pipeline.models import cli_alias, cli_effort
 
 _FENCE = re.compile(r"^\s*```[a-zA-Z0-9_-]*\s*\n(.*?)\n\s*```\s*$", re.DOTALL)
 _STDERR_TAIL = 2000
@@ -220,18 +220,23 @@ class ClaudeCliRunner:
         *,
         timeout_seconds: float | None = None,
         slots: threading.BoundedSemaphore | None = None,
+        settings: Settings | None = None,
     ) -> None:
-        settings = get_settings()
+        settings = settings or get_settings()
+        self._settings = settings
         self.claude_bin = claude_bin or settings.claude_bin
         self.timeout_seconds = timeout_seconds or settings.claude_timeout_seconds
         self._slots = slots
 
     def argv(self, tier: Tier, images: Sequence[Path] = ()) -> list[str]:
+        effort = cli_effort(tier, self._settings)
         argv = [
             self.claude_bin,
             "-p",
             "--model",
-            cli_alias(tier),
+            cli_alias(tier, self._settings),
+            "--effort",
+            effort.value,
             "--output-format",
             "json",
             "--no-session-persistence",

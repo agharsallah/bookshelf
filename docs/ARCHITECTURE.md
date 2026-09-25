@@ -513,9 +513,12 @@ the CLI's JSON result and stored in `artifacts.model`, so promoting a skill up a
 one-line change whose effect on grounding score you can read off the `artifacts` table.
 
 `BOOKSHELF_MODEL_EXPLORE` / `BOOKSHELF_MODEL_DISTIL` / `BOOKSHELF_MODEL_REASON` override a rung
-per deployment without touching code (e.g. a whole book on `haiku` for a cheap first pass). The
-model is not part of `input_hash`, so artifacts made on another model stay live; force a re-run
-to redo them.
+per deployment without touching code (e.g. a whole book on `haiku` for a cheap first pass), and
+`BOOKSHELF_EFFORT_EXPLORE` / `_DISTIL` / `_REASON` set how hard each rung thinks (`claude --effort`:
+`low`, `medium`, `high`, `xhigh`, `max`; every rung defaults to `medium`). An
+unknown effort fails at startup, because the CLI itself only warns and falls back. Neither model
+nor effort is part of `input_hash`, so artifacts made with other settings stay live; force a
+re-run to redo them.
 
 ---
 
