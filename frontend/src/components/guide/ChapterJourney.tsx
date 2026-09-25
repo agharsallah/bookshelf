@@ -6,6 +6,7 @@
  */
 import type { CSSProperties } from 'react';
 import type { Anchor } from '../../lib/contract';
+import { SourceLink } from '../blocks/CiteChip';
 import { CiteProvider } from '../blocks/CiteContext';
 import { Spans } from '../blocks/Spans';
 import { ROLE_LABELS, durationLabel, roleColor, roleCounts, type ChapterRow, type Role } from './guide';
@@ -29,26 +30,28 @@ const roleStyle = (role: Role | null) => ({ '--role': roleColor(role) }) as CSSP
 export interface ChapterJourneyProps {
   rows: readonly ChapterRow[];
   citeHref: (anchor: Anchor) => string;
+  /** Open a passage in place instead of following the link (plain clicks only). */
+  onCite?: ((anchor: Anchor) => void) | undefined;
 }
 
-export function ChapterJourney({ rows, citeHref }: ChapterJourneyProps) {
+export function ChapterJourney({ rows, citeHref, onCite }: ChapterJourneyProps) {
   const counts = roleCounts(rows);
   const unassigned = rows.filter((r) => r.role === null).length;
   const align = alignments(rows);
   return (
-    <CiteProvider value={{ citeHref }}>
+    <CiteProvider value={{ citeHref, onCite }}>
       <figure className={styles.arc}>
         <figcaption className={styles.arcCaption}>Each chapter's share of the reading, coloured by what it does for the argument</figcaption>
         <div className={styles.strip}>
           {rows.map((row, i) => (
-            <a
+            <SourceLink
               key={row.anchor}
-              href={citeHref(row.anchor)}
+              anchor={row.anchor}
               className={styles.segment}
               style={{ flexGrow: Math.max(row.weight, 0.001), ...roleStyle(row.role) }}
-              data-tip={`${row.number}. ${row.heading} · ${roleName(row.role)} · ${durationLabel(row.minutes)}`}
+              data-tip={`${row.label}. ${row.heading} · ${roleName(row.role)} · ${durationLabel(row.minutes)}`}
               data-align={align[i]}
-              aria-label={`Chapter ${row.number}, ${row.heading}: ${roleName(row.role)}, ${durationLabel(row.minutes)}`}
+              aria-label={`Chapter ${row.label}, ${row.heading}: ${roleName(row.role)}, ${durationLabel(row.minutes)}`}
             />
           ))}
         </div>
@@ -72,11 +75,11 @@ export function ChapterJourney({ rows, citeHref }: ChapterJourneyProps) {
         {rows.map((row) => (
           <li key={row.anchor} className={styles.row} style={roleStyle(row.role)}>
             <span className={styles.num} aria-hidden="true">
-              {row.number}
+              {row.label}
             </span>
             <div className={styles.rowBody}>
               <p className={styles.rowTitle}>
-                <a href={citeHref(row.anchor)}>{row.heading}</a>
+                <SourceLink anchor={row.anchor}>{row.heading}</SourceLink>
                 <span className={styles.role}>{roleName(row.role)}</span>
               </p>
               {row.takeaway.length > 0 && (

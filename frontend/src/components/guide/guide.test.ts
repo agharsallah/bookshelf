@@ -2,11 +2,14 @@ import { describe, expect, it } from 'vitest';
 import example from '../../../../skills/write-guide/example.json';
 import type { TreeNode } from '../../lib/api/types/documents';
 import {
+  chapterLabel,
   chapterRows,
   durationLabel,
   glance,
+  longestChain,
   minutesFor,
   parseGuide,
+  readableMap,
   roleColor,
   roleCounts,
   themeMatrix,
@@ -16,7 +19,7 @@ import {
 } from './guide';
 
 const span = (text: string, ...cites: string[]) => ({ text, cites });
-const unit = (anchor: string, words: number, frontMatter = false): Unit => ({ anchor, heading: `Heading ${anchor}`, words, frontMatter });
+const unit = (anchor: string, words: number, undistilled = false): Unit => ({ anchor, heading: `Heading ${anchor}`, words, undistilled });
 
 function guideOf(body: unknown): Guide {
   const guide = parseGuide(body as Record<string, unknown>);
@@ -80,7 +83,9 @@ describe('unitOf', () => {
       meta: {},
       children: [leaf('ch01/p001', 'one two three'), { ...leaf('ch01/s01', ''), children: [leaf('ch01/s01/p001', 'four five')] }],
     } as unknown as TreeNode;
-    expect(unitOf(chapter)).toEqual({ anchor: 'ch01', heading: 'Why work waits', words: 5, frontMatter: false });
+    expect(unitOf(chapter)).toEqual({ anchor: 'ch01', heading: 'Why work waits', words: 5, undistilled: false });
+    expect(unitOf({ ...chapter, meta: { skip: true } }).undistilled).toBe(true);
+    expect(unitOf({ ...chapter, meta: { front_matter: true } }).undistilled).toBe(true);
   });
 });
 
@@ -91,19 +96,22 @@ describe('chapterRows', () => {
     { anchor: 'ch99', role: 'evidence' as const, takeaway: [] },
   ];
 
-  it('joins roles to chapters, sizes bars by reading time and keeps unlisted real chapters', () => {
-    const rows = chapterRows([unit('fm01', 300, true), unit('ch01', 2380), unit('ch02', 4760), unit('ch03', 1190)], journey);
-    expect(rows.map((r) => [r.anchor, r.number, r.minutes, r.role])).toEqual([
-      ['ch01', 1, 10, 'setup'],
-      ['ch02', 2, 20, 'concept'],
-      ['ch03', 3, 5, null],
+  it('joins roles to chapters, sizes bars by reading time, keeps unlisted distilled chapters, drops skipped ones', () => {
+    const rows = chapterRows(
+      [unit('fm01', 300, true), unit('ch01', 2380), unit('ch02', 4760), unit('ch03', 1190), unit('ch04', 900, true)],
+      journey,
+    );
+    expect(rows.map((r) => [r.anchor, r.label, r.minutes, r.role])).toEqual([
+      ['ch01', '1', 10, 'setup'],
+      ['ch02', '2', 20, 'concept'],
+      ['ch03', '3', 5, null],
     ]);
     expect(rows.map((r) => r.share)).toEqual([0.5, 1, 0.25]);
     expect(rows.reduce((sum, r) => sum + r.weight, 0)).toBeCloseTo(1);
     expect(rows[0]?.takeaway).toEqual([span('Frames it.', 'ch01/p001')]);
   });
 
-  it('keeps front matter the guide describes', () => {
+  it('keeps front or back matter the guide describes', () => {
     const rows = chapterRows([unit('fm01', 900, true)], [{ anchor: 'fm01', role: 'setup', takeaway: [] }]);
     expect(rows.map((r) => r.anchor)).toEqual(['fm01']);
   });
@@ -165,5 +173,33 @@ describe('labels and stats', () => {
       { label: 'core ideas', value: '4' },
       { label: 'diagrams and charts', value: '2' },
     ]);
+  });
+});
+
+describe('chapterLabel', () => {
+  it("uses the book's chapter number, as cite chips do, and keeps other units' names", () => {
+    expect([chapterLabel('ch18'), chapterLabel('ch02'), chapterLabel('pt02/ch03'), chapterLabel('fm01')]).toEqual(['18', '2', '3', 'fm01']);
+  });
+});
+
+describe('readableMap', () => {
+  const node = (id: string) => ({ id, label: id });
+  const chain = (ids: string[]) => ids.slice(1).map((to, i) => ({ from: ids[i] ?? '', to }));
+
+  it('measures the longest path and survives cycles', () => {
+    const edges = [...chain(['a', 'b', 'c', 'd']), { from: 'd', to: 'b' }, { from: 'a', to: 'x' }];
+    expect(longestChain({ nodes: ['a', 'b', 'c', 'd', 'x'].map(node), edges })).toBe(4);
+    expect(longestChain({ nodes: [node('solo')], edges: [] })).toBe(1);
+  });
+
+  it('turns a long left-to-right map top-down and leaves short or other blocks alone', () => {
+    const ids = ['a', 'b', 'c', 'd', 'e', 'f'];
+    const long = { type: 'diagram' as const, direction: 'LR' as const, nodes: ids.map(node), edges: chain(ids), cites: ['ch01/p001'] };
+    const short = { ...long, nodes: ids.slice(0, 5).map(node), edges: chain(ids.slice(0, 5)) };
+    expect(readableMap(long).direction).toBe('TD');
+    expect(readableMap(short)).toBe(short);
+    expect(readableMap({ ...long, direction: 'TD' as const }).direction).toBe('TD');
+    const paragraph = { type: 'paragraph' as const, spans: [span('x', 'ch01/p001')] };
+    expect(readableMap(paragraph)).toBe(paragraph);
   });
 });

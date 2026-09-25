@@ -813,7 +813,10 @@ manual run by its `skill:<name>` key). Approving it on an already indexed docume
 | `deep_dive` | any render blocks under level-2 headings | the core ideas at depth: diagrams, tables, charts, callouts |
 | `practice` | `steps` + `antipattern` callout | the book as one playbook |
 
-Reading times come from the document tree (words ÷ 238 wpm), not from the model. Roles take the
+Reading times come from the document tree (words ÷ 238 wpm), not from the model; rows and
+heatmap columns carry the book's own chapter numbers (`ch18` → 18, as cite chips show them), and
+front matter and `skip` containers appear only if the guide describes them. A left-to-right map
+whose longest chain exceeds five nodes is drawn top-down on the page so its labels stay legible. Roles take the
 validated `--series-*` colours in a fixed order; the heatmap uses one hue, light to dark.
 
 ### Derived artifacts
@@ -956,7 +959,7 @@ Keep Astro as the shell and routing layer; add React islands only where interact
 | **Library** | Astro, static | Shelf grid, filters, ingest status. No client state worth shipping JS for |
 | **Reader** | React island | Two panes — source blocks left, distillation right — anchor-synced scrolling, highlight/note creation. Reading settings (font, size, spacing, width), panes you can put away, focus mode and full screen, passages colour-coded by role (quote, example, exercise…), all kept per browser. Genuinely interactive |
 | **Brief** | Astro, static | Renders one approved artifact. Server-rendered, instant, printable |
-| **Guide** | Astro, static | The book guide with its charts (arc strip, chapter rows, theme heatmap, stat tiles) as server-rendered React; CSS-only hover tips, no island |
+| **Guide** | Astro + one React island | The book guide with its charts (arc strip, chapter rows, theme heatmap, stat tiles), server-rendered then hydrated: a cite, chapter title or heatmap cell opens the passage in place (a drawer with the whole chapter, the cited block marked, previous / next chapter, "Open in reader"); diagrams and charts magnify in the reader's lightbox. ⌘/Ctrl/middle click still opens the reader |
 | **Search** | React island | Query box, intent badge, grouped results, cited answer with click-through |
 | **Graph** | React island | Canvas force layout over a neighborhood endpoint, node cap enforced client-side |
 | **Review queue** | React island | Draft artifacts, diff against the previous version, approve / edit / reject / re-run |

@@ -6,7 +6,7 @@
  */
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import GuideSheet from '../../../components/guide/GuideSheet.astro';
-import { chapterRows, glance, parseGuide, unitOf } from '../../../components/guide/guide';
+import { chapterLabel, chapterRows, glance, parseGuide, readableMap, unitOf } from '../../../components/guide/guide';
 import { Problem } from '../../../components/common/Problem';
 import { pickBest } from '../../../lib/documents/artifacts';
 import { getArtifacts, getDocument, getFullTree, load } from '../../../lib/documents/server';
@@ -28,9 +28,14 @@ const loaded = await load(async () => {
   if (!best || !guide) return { doc, hasBrief, sheet: null };
   const [tree, sections] = await Promise.all([
     getFullTree(doc.slug),
-    Promise.all(guide.sections.map(async (s) => ({ ...s, blocks: await prepareBlocks(s.blocks) }))),
+    Promise.all(
+      guide.sections.map(async (s) => ({ ...s, blocks: await prepareBlocks(s.key === 'map' ? s.blocks.map(readableMap) : s.blocks) })),
+    ),
   ]);
-  const rows = chapterRows(readingUnits(tree.nodes).map(unitOf), guide.journey);
+  const readable = readingUnits(tree.nodes);
+  const rows = chapterRows(readable.map(unitOf), guide.journey);
+  // Where a cite can open in place: every chapter, with the book's number for it.
+  const units = readable.map((u) => ({ anchor: u.anchor, heading: u.heading ?? u.anchor, label: chapterLabel(u.anchor) }));
   const at = best.artifact.reviewed_at ?? best.artifact.created_at;
   return {
     doc,
@@ -38,6 +43,7 @@ const loaded = await load(async () => {
     sheet: {
       sections,
       rows,
+      units,
       themes: guide.themes,
       numbers: guide.numbers,
       glance: glance(guide, rows, doc.page_count),
@@ -87,6 +93,7 @@ const data = loaded.ok ? loaded.value : null;
           year={data.doc.year}
           sections={data.sheet.sections}
           rows={data.sheet.rows}
+          units={data.sheet.units}
           themes={data.sheet.themes}
           numbers={data.sheet.numbers}
           glance={data.sheet.glance}

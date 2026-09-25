@@ -10,6 +10,8 @@ import { Lightbox, type LightboxItem } from '../figures/Lightbox';
 export function useFigureLightbox(
   figures: readonly LightboxItem[],
   reveal: (anchor: string) => void,
+  /** The line under a magnified drawing: where it comes from. */
+  drawingMeta = 'From the distillation',
 ): { openFigure: (anchor: string) => void; openDrawing: (target: MagnifyTarget) => void; open: boolean; lightbox: ReactNode } {
   const [state, setState] = useState<{ items: readonly LightboxItem[]; index: number } | null>(null);
 
@@ -22,8 +24,8 @@ export function useFigureLightbox(
   );
 
   const openDrawing = useCallback((target: MagnifyTarget) => {
-    setState({ items: [{ id: 'drawing', kind: 'svg', html: target.html, title: target.title, alt: target.alt, meta: 'From the distillation' }], index: 0 });
-  }, []);
+    setState({ items: [{ id: 'drawing', kind: 'svg', html: target.html, title: target.title, alt: target.alt, meta: drawingMeta }], index: 0 });
+  }, [drawingMeta]);
 
   const lightbox = state ? (
     <Lightbox

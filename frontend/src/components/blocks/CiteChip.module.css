@@ -1,7 +1,10 @@
 /* Cite chips read like marginalia: small, verdigris, never louder than the text. */
 .marks {
   display: inline-flex;
-  gap: 0.18em;
+  /* A claim citing many passages wraps its chips instead of widening the page. */
+  flex-wrap: wrap;
+  max-inline-size: 100%;
+  gap: 0.3em 0.18em;
   margin-inline-start: 0.12em;
   vertical-align: super;
   font-size: 0.62em;

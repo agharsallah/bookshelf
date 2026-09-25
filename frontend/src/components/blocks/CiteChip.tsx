@@ -2,22 +2,46 @@
  * Cite chips: the marginal marker after a claim. Each shows a compact, book-like
  * label (`3.2 ¶14`), reveals the full anchor on hover/focus, and links to the source.
  */
-import type { MouseEvent } from 'react';
+import type { ComponentProps, MouseEvent } from 'react';
 import { anchorLabel } from '../../lib/anchors';
 import type { Anchor } from '../../lib/contract';
 import { useCite } from './CiteContext';
 import styles from './CiteChip.module.css';
 
+/**
+ * A click the page may handle itself: the primary button with no modifier. ⌘/Ctrl-click,
+ * Shift-click and the middle button keep the browser's own "open in a new tab/window".
+ */
+export function isPlainClick(event: Pick<MouseEvent, 'button' | 'metaKey' | 'ctrlKey' | 'shiftKey' | 'altKey'>): boolean {
+  return event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey;
+}
+
+/** The click handler for a link to `anchor`: `onCite` on a plain click, else the link. */
+function useCiteClick(anchor: Anchor): ((event: MouseEvent<HTMLAnchorElement>) => void) | undefined {
+  const { onCite } = useCite();
+  if (!onCite) return undefined;
+  return (event) => {
+    if (!isPlainClick(event)) return;
+    event.preventDefault();
+    onCite(anchor);
+  };
+}
+
+/** Any link into the source (a chapter title, a heatmap cell) that behaves like a cite chip. */
+export function SourceLink({ anchor, children, ...rest }: { anchor: Anchor } & Omit<ComponentProps<'a'>, 'href' | 'onClick'>) {
+  const { citeHref } = useCite();
+  return (
+    <a {...rest} href={citeHref(anchor)} data-anchor={anchor} onClick={useCiteClick(anchor)}>
+      {children}
+    </a>
+  );
+}
+
 export function CiteChip({ anchor }: { anchor: Anchor }) {
-  const { citeHref, onCite, citeLabel, citeTitle } = useCite();
+  const { citeHref, citeLabel, citeTitle } = useCite();
   const title = citeTitle ? citeTitle(anchor) : anchor;
   const label = citeLabel ? citeLabel(anchor) : anchorLabel(anchor);
-  const handleClick = onCite
-    ? (event: MouseEvent<HTMLAnchorElement>) => {
-        event.preventDefault();
-        onCite(anchor);
-      }
-    : undefined;
+  const handleClick = useCiteClick(anchor);
   return (
     <a
       className={styles.chip}

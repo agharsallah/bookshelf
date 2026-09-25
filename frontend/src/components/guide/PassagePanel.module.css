@@ -1,0 +1,275 @@
+/*
+ * The passage drawer: slides in from the right over a dimmed guide on wide screens,
+ * rises as a near-full-height sheet on phones. The text inside reads like the reader.
+ */
+.panel {
+  position: fixed;
+  inset: 0 0 0 auto;
+  inline-size: min(46rem, 100vw);
+  max-inline-size: 100vw;
+  block-size: 100dvh;
+  max-block-size: 100dvh;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-inline-start: 1px solid var(--rule-strong);
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: -18px 0 48px -24px light-dark(rgb(29 35 50 / 0.45), rgb(0 0 0 / 0.8));
+  overscroll-behavior: contain;
+}
+
+.panel[open] {
+  animation: slide-in var(--dur-3) var(--ease-out);
+}
+
+/* The guide behind stays put while a passage is open. */
+:global(html):has(.panel[open]) {
+  overflow: hidden;
+}
+
+.panel::backdrop {
+  background: light-dark(rgb(29 35 50 / 0.28), rgb(0 0 0 / 0.55));
+  animation: fade-in var(--dur-3) var(--ease-out);
+}
+
+@keyframes slide-in {
+  from {
+    transform: translateX(2.5rem);
+    opacity: 0;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.sheet {
+  display: grid;
+  /* Pinned so a long word, table or listing scrolls inside instead of widening the panel. */
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  block-size: 100%;
+}
+
+.head {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-1) var(--space-4);
+  padding: var(--space-4) var(--space-5) var(--space-3);
+  border-block-end: 1px solid var(--rule);
+  background: var(--paper-raised);
+}
+
+.kicker {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--accent);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.section {
+  color: var(--ink-3);
+  font-weight: 500;
+}
+
+.title {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: 500;
+  line-height: var(--leading-tight);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  justify-content: flex-end;
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.action {
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-m);
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.action:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.close {
+  inline-size: 2rem;
+  block-size: 2rem;
+  border: 0;
+  border-radius: var(--radius-m);
+  background: transparent;
+  color: var(--ink-2);
+  font-size: var(--text-md);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.close:hover {
+  background: var(--paper-sunken);
+  color: var(--ink);
+}
+
+/* The chapter text, set like the reader's source column. */
+.body {
+  --reader-gap: var(--space-4);
+  --reader-align: start;
+  overflow-y: auto;
+  padding: var(--space-5) var(--space-2) 30dvh 0;
+  font-family: var(--font-read);
+  font-size: var(--text-base);
+  line-height: var(--leading-read);
+  scroll-padding-block: 5rem;
+}
+
+/* The cited block stays marked after its flash, so it is easy to find again. */
+.body :global([data-cited]) {
+  background-color: color-mix(in oklab, var(--accent-wash) 70%, transparent);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.notice,
+.problem {
+  margin: 0 var(--space-5) var(--space-4);
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.problem p + p {
+  margin-block-start: var(--space-2);
+}
+
+.skeleton {
+  display: grid;
+  gap: var(--space-4);
+  padding-inline: 3.25rem 2.25rem;
+}
+
+.skeleton span {
+  display: block;
+  block-size: 4.5rem;
+  border-radius: var(--radius-m);
+  background: linear-gradient(90deg, var(--paper-sunken), var(--paper-raised), var(--paper-sunken));
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+
+.skeleton span:nth-child(3n) {
+  block-size: 2.5rem;
+  inline-size: 70%;
+}
+
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.foot {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-5);
+  border-block-start: 1px solid var(--rule);
+  background: var(--paper-raised);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.step {
+  min-inline-size: 0;
+  max-inline-size: 48%;
+  overflow: hidden;
+  padding: var(--space-1) 0;
+  border: 0;
+  background: none;
+  color: var(--ink-2);
+  font: inherit;
+  text-align: start;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.step:hover {
+  color: var(--accent);
+}
+
+.stepNext {
+  margin-inline-start: auto;
+  text-align: end;
+}
+
+@media (max-width: 40rem) {
+  .panel {
+    inset: auto 0 0 0;
+    inline-size: 100vw;
+    block-size: 92dvh;
+    border-inline-start: 0;
+    border-block-start: 1px solid var(--rule-strong);
+    border-start-start-radius: var(--radius-l);
+    border-start-end-radius: var(--radius-l);
+  }
+
+  .panel[open] {
+    animation-name: rise;
+  }
+
+  @keyframes rise {
+    from {
+      transform: translateY(3rem);
+      opacity: 0;
+    }
+  }
+
+  .head {
+    grid-template-columns: minmax(0, 1fr);
+    padding-inline: var(--space-4);
+  }
+
+  .actions {
+    justify-content: flex-start;
+  }
+
+  /* The reader drops the block margins on phones; the panel keeps a gutter. */
+  .body {
+    padding-inline-start: var(--space-4);
+  }
+
+  .body :global([data-cited]) {
+    padding-inline-start: var(--space-3);
+  }
+
+  .close {
+    position: absolute;
+    inset-block-start: var(--space-3);
+    inset-inline-end: var(--space-3);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel[open],
+  .panel::backdrop,
+  .skeleton span {
+    animation: none;
+  }
+}

@@ -7,7 +7,7 @@
  * Also the page's pure view-model: chapter rows (reading time + role), the theme ×
  * chapter heatmap (computed from where each theme's spans cite), and at-a-glance stats.
  */
-import type { RenderBlock, Span } from '../../lib/contract';
+import type { DiagramBlock, RenderBlock, Span } from '../../lib/contract';
 import type { TreeNode } from '../../lib/api/types/documents';
 import { isUnder } from '../../lib/documents/tree';
 import { WORDS_PER_MINUTE, wordCount } from '../reader/progress';
@@ -112,7 +112,8 @@ export interface Unit {
   anchor: string;
   heading: string;
   words: number;
-  frontMatter: boolean;
+  /** Front matter, or a container the pipeline does not distil (`meta.skip`: appendices, back matter). */
+  undistilled: boolean;
 }
 
 /** Words under a node, from a tree fetched with its blocks. */
@@ -125,15 +126,15 @@ export function unitOf(node: TreeNode): Unit {
     anchor: node.anchor,
     heading: node.heading ?? node.anchor,
     words: wordsUnder(node),
-    frontMatter: Boolean(node.meta.front_matter),
+    undistilled: Boolean(node.meta.front_matter || node.meta.skip),
   };
 }
 
 export interface ChapterRow {
   anchor: string;
   heading: string;
-  /** 1-based position among the rows, for compact column labels. */
-  number: number;
+  /** The book's own chapter number (`ch18` → "18"), as cite chips show it. */
+  label: string;
   minutes: number;
   /** Reading time relative to the longest chapter, 0–1: the bar's length. */
   share: number;
@@ -143,18 +144,26 @@ export interface ChapterRow {
   takeaway: Span[];
 }
 
+/** `ch18` → "18", `pt02/ch03` → "3"; other units (`fm01`, `app02`) keep their segment. */
+export function chapterLabel(anchor: string): string {
+  const last = anchor.split('/').at(-1) ?? anchor;
+  const chapter = /^ch(\d+)$/.exec(last);
+  return chapter ? String(Number(chapter[1])) : last;
+}
+
 export function minutesFor(words: number): number {
   return words > 0 ? Math.max(1, Math.round(words / WORDS_PER_MINUTE)) : 0;
 }
 
 /**
- * One row per chapter the guide describes, plus every other chapter that is not front
- * matter (so a chapter the model skipped still shows, without a role), in reading order.
+ * One row per chapter the guide describes, plus every other chapter the pipeline distils
+ * (so a chapter the model skipped still shows, without a role), in reading order. Front
+ * matter, appendices and back matter appear only when the guide describes them.
  * A journey entry naming no chapter on the shelf is dropped: it cannot be placed.
  */
 export function chapterRows(units: readonly Unit[], journey: readonly JourneyEntry[]): ChapterRow[] {
   const entries = new Map(journey.map((j) => [j.anchor, j]));
-  const shown = units.filter((u) => entries.has(u.anchor) || (!u.frontMatter && u.words > 0));
+  const shown = units.filter((u) => entries.has(u.anchor) || (!u.undistilled && u.words > 0));
   const minutes = shown.map((u) => minutesFor(u.words));
   const longest = Math.max(1, ...minutes);
   const total = shown.reduce((sum, u) => sum + u.words, 0) || 1;
@@ -163,7 +172,7 @@ export function chapterRows(units: readonly Unit[], journey: readonly JourneyEnt
     return {
       anchor: unit.anchor,
       heading: unit.heading,
-      number: i + 1,
+      label: chapterLabel(unit.anchor),
       minutes: minutes[i] ?? 0,
       share: (minutes[i] ?? 0) / longest,
       weight: unit.words / total,
@@ -215,6 +224,35 @@ export function themeMatrix(themes: readonly Theme[], rows: readonly ChapterRow[
     })),
     reach: hits.filter((h) => h.length > 0).length,
   }));
+}
+
+/** Nodes on the longest edge path (cycles cut), for choosing a readable direction. */
+export function longestChain(block: Pick<DiagramBlock, 'nodes' | 'edges'>): number {
+  const next = new Map<string, string[]>();
+  for (const e of block.edges) next.set(e.from, [...(next.get(e.from) ?? []), e.to]);
+  const memo = new Map<string, number>();
+  const depth = (id: string, path: Set<string>): number => {
+    const known = memo.get(id);
+    if (known !== undefined) return known;
+    const inner = new Set(path).add(id);
+    const best = Math.max(0, ...(next.get(id) ?? []).filter((to) => !inner.has(to)).map((to) => depth(to, inner)));
+    memo.set(id, best + 1);
+    return best + 1;
+  };
+  return Math.max(0, ...block.nodes.map((n) => depth(n.id, new Set())));
+}
+
+/** Longest left-to-right chain the page column shows at a readable size. */
+export const MAX_LR_CHAIN = 5;
+
+/**
+ * The big-picture map as the page draws it: a left-to-right map longer than the column
+ * can hold would shrink to unreadable labels, so it is drawn top-down instead. The
+ * stored artifact is untouched; only the page's layout choice changes.
+ */
+export function readableMap<B extends RenderBlock>(block: B): B {
+  if (block.type !== 'diagram' || block.direction !== 'LR' || longestChain(block) <= MAX_LR_CHAIN) return block;
+  return { ...block, direction: 'TD' };
 }
 
 /** "45 min", "3 h", "6 h 20 min". */

@@ -5,6 +5,7 @@
  * first passage it counts. Below it, each theme as the guide states it.
  */
 import type { Anchor } from '../../lib/contract';
+import { SourceLink } from '../blocks/CiteChip';
 import { CiteProvider } from '../blocks/CiteContext';
 import { Spans } from '../blocks/Spans';
 import { HEAT_LEVELS, themeMatrix, type ChapterRow, type Theme } from './guide';
@@ -16,13 +17,15 @@ export interface ThemeHeatmapProps {
   themes: readonly Theme[];
   rows: readonly ChapterRow[];
   citeHref: (anchor: Anchor) => string;
+  /** Open a passage in place instead of following the link (plain clicks only). */
+  onCite?: ((anchor: Anchor) => void) | undefined;
 }
 
-export function ThemeHeatmap({ themes, rows, citeHref }: ThemeHeatmapProps) {
+export function ThemeHeatmap({ themes, rows, citeHref, onCite }: ThemeHeatmapProps) {
   const matrix = themeMatrix(themes, rows);
   const lastThird = Math.floor((rows.length * 2) / 3);
   return (
-    <CiteProvider value={{ citeHref }}>
+    <CiteProvider value={{ citeHref, onCite }}>
       <div className={styles.heatScroll}>
         <table className={styles.heat}>
           <caption className="visually-hidden">Passages citing each theme, by chapter</caption>
@@ -33,7 +36,7 @@ export function ThemeHeatmap({ themes, rows, citeHref }: ThemeHeatmapProps) {
               </th>
               {rows.map((row) => (
                 <th key={row.anchor} scope="col" className={styles.heatCol}>
-                  <abbr title={row.heading}>{row.number}</abbr>
+                  <abbr title={row.heading}>{row.label}</abbr>
                 </th>
               ))}
               <th scope="col" className={styles.heatReach}>
@@ -50,16 +53,16 @@ export function ThemeHeatmap({ themes, rows, citeHref }: ThemeHeatmapProps) {
                 {theme.cells.map((cell, i) => {
                   const row = rows[i];
                   if (!row) return null;
-                  const where = `chapter ${row.number}, ${row.heading}`;
+                  const where = `chapter ${row.label}, ${row.heading}`;
                   return (
                     <td key={row.anchor}>
                       {cell.first ? (
-                        <a
+                        <SourceLink
                           className={styles.cell}
-                          href={citeHref(cell.first)}
+                          anchor={cell.first}
                           data-level={cell.level}
                           data-align={i >= lastThird ? 'end' : 'start'}
-                          data-tip={`${row.number}. ${row.heading} · ${passages(cell.count)}`}
+                          data-tip={`${row.label}. ${row.heading} · ${passages(cell.count)}`}
                           aria-label={`${theme.name} in ${where}: ${passages(cell.count)}`}
                         />
                       ) : (

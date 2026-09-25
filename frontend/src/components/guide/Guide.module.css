@@ -243,7 +243,9 @@
   margin-block-start: -2rem;
 }
 
+/* The table fills the column; cells flex down to 1.1rem, then the wrapper scrolls. */
 .heat {
+  inline-size: 100%;
   border-collapse: separate;
   border-spacing: 3px;
   font-family: var(--font-ui);
@@ -261,7 +263,7 @@
 }
 
 .heatCol {
-  min-inline-size: 1.9rem;
+  min-inline-size: 1.1rem;
   color: var(--ink-3);
   font-size: var(--text-xs);
   font-variant-numeric: tabular-nums;
@@ -274,10 +276,12 @@
 }
 
 .heatName {
+  min-inline-size: 8rem;
+  max-inline-size: 15rem;
   padding-inline-end: var(--space-3);
   color: var(--ink);
+  line-height: var(--leading-tight);
   text-align: start;
-  white-space: nowrap;
 }
 
 .heatReach {
@@ -290,8 +294,11 @@
 
 .cell {
   display: block;
-  inline-size: 1.9rem;
-  block-size: 1.9rem;
+  inline-size: 100%;
+  min-inline-size: 1.1rem;
+  max-inline-size: 2.25rem;
+  block-size: 1.75rem;
+  margin-inline: auto;
   border-radius: var(--radius-s);
 }
 
@@ -333,7 +340,9 @@ a.cell:focus-visible {
 
 .heatKey .cell {
   inline-size: 0.9rem;
+  min-inline-size: 0;
   block-size: 0.9rem;
+  margin-inline: 0;
 }
 
 .heatKey span:first-child {
@@ -398,6 +407,12 @@ a.cell:focus-visible {
   font-weight: 450;
   line-height: var(--leading-tight);
   letter-spacing: -0.01em;
+}
+
+/* "31 → 10 days", "10/60/30%": long values step down a size instead of overflowing. */
+.value[data-long] {
+  font-size: var(--text-lg);
+  overflow-wrap: anywhere;
 }
 
 .tiles[data-variant='quiet'] {

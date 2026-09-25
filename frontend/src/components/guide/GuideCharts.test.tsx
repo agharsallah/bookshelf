@@ -6,7 +6,7 @@ import { ThemeHeatmap } from './ThemeHeatmap';
 import { chapterRows, type Unit } from './guide';
 
 const citeHref = (anchor: string) => `/documents/okafor/read/${anchor}`;
-const unit = (anchor: string, heading: string, words: number): Unit => ({ anchor, heading, words, frontMatter: false });
+const unit = (anchor: string, heading: string, words: number): Unit => ({ anchor, heading, words, undistilled: false });
 const rows = chapterRows(
   [unit('ch01', 'Why work waits', 2380), unit('ch02', "Little's law", 4760), unit('ch03', 'Slack', 1190)],
   [
@@ -16,6 +16,12 @@ const rows = chapterRows(
 );
 
 describe('ChapterJourney', () => {
+  it("numbers rows by the book's chapters, not their position", () => {
+    const later = chapterRows([unit('ch18', 'Handling sensitive conversations', 2380)], []);
+    render(<ChapterJourney rows={later} citeHref={citeHref} />);
+    expect(screen.getByRole('link', { name: /^Chapter 18, Handling sensitive conversations/ })).toBeTruthy();
+  });
+
   it('draws one arc segment and one row per chapter, linked into the reader', () => {
     render(<ChapterJourney rows={rows} citeHref={citeHref} />);
     const segment = screen.getByRole('link', { name: "Chapter 2, Little's law: Core idea, 20 min" });
@@ -56,5 +62,11 @@ describe('NumberTiles', () => {
     const tile = within(screen.getByRole('list', { name: 'Numbers' })).getByRole('listitem');
     expect(tile.textContent).toContain('~80%');
     expect(within(tile).getByRole('link').getAttribute('href')).toBe('/documents/okafor/read/ch03/p004');
+  });
+
+  it('steps a long value down a size so it stays inside its tile', () => {
+    render(<NumberTiles tiles={[{ value: '80%', label: 'short' }, { value: '10/60/30%', label: 'long' }]} label="Numbers" />);
+    const values = screen.getAllByText(/%$/);
+    expect(values.map((v) => v.hasAttribute('data-long'))).toEqual([false, true]);
   });
 });

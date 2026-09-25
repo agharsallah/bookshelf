@@ -68,10 +68,12 @@ The guide page draws your structured lists as visuals, so they must be exact:
       with an `important` callout stating the book's central claim in one or two sentences.
       A closing `bullets` block of "what you will be able to do" is allowed.
    2. `map` — "The big picture". **First block: a `diagram`** of the whole book — its core
-      concepts and frameworks and how they connect (`TD` for a hierarchy of ideas, `LR` for a
-      causal chain or process). 6–18 nodes; label edges with the relation ("causes", "limits",
-      "is measured by", "part of"). Every node and edge must be stated in a distillation; cite
-      the anchors that state them. Optionally follow with one short `paragraph` on how to read
+      concepts and frameworks and how they connect. **6–12 nodes, `TD` by default** — use `LR`
+      only for a chain of five steps or fewer, since a long `LR` map shrinks until it cannot be
+      read. **Node labels are names of at most five words** ("Story Catalog", not "Select:
+      Scope>Relevance>Uniqueness>Recency" — the parts belong in the deep dive). Label edges with
+      the relation ("causes", "limits", "is measured by", "part of"). Every node and edge must
+      be stated in a distillation; cite the anchors that state them. Optionally follow with one short `paragraph` on how to read
       the map, or a `table` comparing the book's main frameworks side by side.
    3. `deep_dive` — "The core ideas in depth". The substance, **at full depth**: one level-2
       `heading` per core idea or framework (usually 4–10), level 3 for its parts. For each:
@@ -81,8 +83,10 @@ The guide page draws your structured lists as visuals, so they must be exact:
         per core idea** where the distillations state a structure; merge the chapter
         distillations' diagrams of the same framework into one complete diagram;
       - a `table` for comparisons, options, criteria and "X vs Y";
-      - a `chart` only when the distillations carry the data (a transcribed chart or table):
-        copy the numbers exactly, never estimate or invent a series;
+      - a `chart` whenever the distillations state a set of comparable numbers — a transcribed
+        chart or table, a split ("10% context, 60% actions, 30% results" → a `bar` chart), a
+        before/after, values along a scale: copy the numbers exactly, never estimate, interpolate
+        or invent a value;
       - `steps` for procedures; `definition` for the terms the idea rests on;
       - callouts, each tone with one meaning: `important` = what the author insists on,
         `remember` = recall cold, `antipattern` = what the author warns against, `caution` =
@@ -106,8 +110,9 @@ The guide page draws your structured lists as visuals, so they must be exact:
    not a theme — move it to the deep dive.
 7. **`numbers`** (0–8) — the figures the book wants remembered: thresholds, results,
    proportions, counts of a framework's parts. `{"value": "80%", "label": [spans]}`: `value`
-   is the number as the book gives it, at most 24 characters ("~9×", "31 → 10 days", "4
-   stages"); the label says what it measures and cites it. A book with no memorable numbers
+   is **the number alone with its unit**, as the book gives it and ideally under ten
+   characters ("~9×", "31 → 10 days", "8", "~2 min" — not "8 signal areas"); the label says
+   what it counts or measures and cites it. A book with no memorable numbers
    gives `"numbers": []`.
 8. **Length:** about 2,000–4,500 words in all spans, never more than 6,000. Spend them in
    the deep dive.
