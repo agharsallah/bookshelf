@@ -2,7 +2,8 @@
 
     link_concepts job done · concept_links approved / edited / rejected
       → refresh_document: sync the document's effective concept_links (`apply`),
-        re-seed its diagram edges, and hand back a dedup job for the concepts it created
+        re-seed its diagram edges and its mention edges (every other document's too
+        when concepts came or went), and hand back a dedup job for the concepts it created
 
 Dedup is a job, not inline work: it embeds concepts and calls the model once per
 candidate pair, which must never run inside an HTTP request (an approval) or hold up the
@@ -19,7 +20,7 @@ from pathlib import Path
 from sqlmodel import Session
 
 from app.core.config import get_settings
-from app.graph import apply, diagram_seeds
+from app.graph import apply, diagram_seeds, mentions
 from app.graph.dedup import DenseEmbedder, run_dedup
 from app.jobs.queue import JobSpec
 from app.jobs.registry import HandlerResult, PermanentJobError
@@ -54,6 +55,9 @@ def refresh_document(session: Session, document_id: uuid.UUID) -> list[JobSpec]:
     """Bring the document's slice of the graph up to date. Returns the dedup job to queue."""
     applied = apply.sync_document(session, document_id)
     diagram_seeds.seed_document(session, document_id)
+    mentions.seed_document(session, document_id)
+    if applied.created or applied.removed:  # other books may name the new concepts
+        mentions.seed_all(session, exclude=document_id)
     spec = dedup_spec(document_id, applied.created)
     return [spec] if spec is not None else []
 

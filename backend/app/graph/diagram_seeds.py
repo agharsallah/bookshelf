@@ -24,7 +24,7 @@ from typing import Any
 from sqlmodel import Session
 
 from app.graph import names
-from app.graph.edges import SEED_ORIGINS, EdgeDraft, Reconciled, reconcile
+from app.graph.edges import DIAGRAM_ORIGINS, EdgeDraft, Reconciled, reconcile
 from app.graph.refs import Ref, split_anchor
 from app.models import Artifact, Concept, node_ref
 from app.models.enums import ArtifactType, EdgeStatus, Relation, Review
@@ -127,6 +127,6 @@ def seed_document(session: Session, document_id: uuid.UUID) -> Reconciled:
         figure = figure_artifacts(session, parts[0]).get(parts[1])
         return seed_origin(figure) if figure is not None else None
 
-    report = reconcile(session, document_id, drafts, owns=SEED_ORIGINS, owner_of=owner)
+    report = reconcile(session, document_id, drafts, owns=DIAGRAM_ORIGINS, owner_of=owner)
     session.commit()
     return report

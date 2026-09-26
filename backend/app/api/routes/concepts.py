@@ -1,7 +1,8 @@
 """Concepts (§11, §13): typeahead, concept pages with cross-book evidence, human curation.
 
 Reads are open; writes need `X-API-Key` and are recorded as `origin = human`. Merges are
-only ever applied here, by a person (§11); the dedup pass merely proposes them.
+only ever applied here, by a person (§11); the dedup pass merely proposes them. A write
+that changes which names exist re-scans the shelf for mentions (`app.graph.mentions`).
 """
 
 import uuid
@@ -11,7 +12,7 @@ from fastapi import APIRouter, Depends, Query, status
 from app.api.deps import LimitDep, OffsetDep, SessionDep
 from app.core.errors import ConflictError, NotFoundError
 from app.core.security import require_api_key
-from app.graph import curation, merge, views
+from app.graph import curation, mentions, merge, views
 from app.models import Concept
 from app.models.enums import ConceptKind
 from app.schemas.common import Page
@@ -84,6 +85,7 @@ def create_concept(body: ConceptCreate, session: SessionDep) -> ConceptPublic:
         blurb=body.blurb,
         blurb_cites=body.blurb_cites,
     )
+    mentions.seed_all(session)
     return ConceptPublic.model_validate(concept)
 
 
@@ -107,6 +109,8 @@ def update_concept(
         blurb_cites=body.blurb_cites,
         clear_blurb="blurb" in body.model_fields_set and body.blurb is None,
     )
+    if body.canonical is not None or body.aliases is not None:
+        mentions.seed_all(session)
     return ConceptPublic.model_validate(concept)
 
 
@@ -123,6 +127,7 @@ def merge_concept(concept_id: uuid.UUID, body: MergeRequest, session: SessionDep
         survivor = merge.merge(session, concept_id, body.into)
     except merge.MergeError as exc:
         raise ConflictError(str(exc)) from exc
+    mentions.seed_all(session)
     return ConceptPublic.model_validate(survivor)
 
 
@@ -138,4 +143,5 @@ def unmerge_concept(concept_id: uuid.UUID, session: SessionDep) -> ConceptPublic
         restored = merge.unmerge(session, concept_id)
     except merge.MergeError as exc:
         raise ConflictError(str(exc)) from exc
+    mentions.seed_all(session)
     return ConceptPublic.model_validate(restored)

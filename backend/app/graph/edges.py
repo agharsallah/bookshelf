@@ -7,6 +7,7 @@ apart (§11):
     skill:link-concepts@<v>#<artifact>    from a `concept_links` artifact (`apply`)
     human:concept_links#<artifact>        from a human-authored/edited `concept_links`
     seed:diagram@<v>#<artifact>           from a diagram in a `figure_description`
+    seed:mentions@<v>                     a section naming a known concept (`mentions`)
     skill:confirm-merge@<v>               a dedup verdict on a `same_as` pair
 
 An edge is unique per `(src, dst, relation)`, so two books asserting "little's law supports
@@ -31,7 +32,10 @@ from app.models.enums import EdgeStatus, EntityKind, Origin, Relation
 
 HUMAN = "human"
 LINK_ORIGINS = ("skill:link-concepts@%", "human:concept_links#%")
-SEED_ORIGINS = ("seed:diagram@%",)
+DIAGRAM_ORIGINS = ("seed:diagram@%",)
+MENTION_ORIGINS = ("seed:mentions@%",)
+# Seeds are candidates: a skill edge adopts one, and seeds alone never keep a concept alive.
+SEED_ORIGINS = DIAGRAM_ORIGINS + MENTION_ORIGINS
 DEDUP_ORIGIN_PREFIX = "skill:confirm-merge@"
 
 EdgeKey = tuple[EntityKind, str, EntityKind, str, Relation]
