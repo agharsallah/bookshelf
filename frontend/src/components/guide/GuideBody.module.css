@@ -14,8 +14,9 @@
   margin-block-end: var(--space-4);
   padding-block-end: var(--space-2);
   border-block-end: 1px solid var(--rule);
+  font-family: var(--font-read);
   font-size: var(--text-lg);
-  font-weight: 450;
+  font-weight: 560;
   letter-spacing: -0.01em;
 }
 

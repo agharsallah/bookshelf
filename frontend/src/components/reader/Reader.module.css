@@ -108,8 +108,10 @@
 
 .chapter {
   overflow: hidden;
+  font-family: var(--font-read);
   font-size: var(--text-md);
-  font-weight: 520;
+  font-weight: 600;
+  letter-spacing: -0.01em;
   text-overflow: ellipsis;
   white-space: nowrap;
 }

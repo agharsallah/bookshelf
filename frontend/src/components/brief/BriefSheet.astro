@@ -39,7 +39,7 @@ const readNextTitle = byKey.get('read_next')?.title ?? 'Read next';
     <p class="byline">
       {authors.join(', ')}{year ? `, ${year}` : ''}
     </p>
-    <p class="stamp">
+    <p class="stamp workshop-only">
       Version {version}{approvedOn ? `, approved ${approvedOn}` : ''}
     </p>
   </header>
@@ -123,6 +123,11 @@ const readNextTitle = byKey.get('read_next')?.title ?? 'Read next';
     font-family: var(--font-ui);
     font-size: var(--text-sm);
     font-weight: 600;
+  }
+
+  h1,
+  h2 {
+    font-family: var(--font-read);
   }
 
   h1 {

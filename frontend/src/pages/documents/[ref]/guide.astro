@@ -77,7 +77,7 @@ const data = loaded.ok ? loaded.value : null;
           <a href={`/documents/${data.doc.slug}`}>Back to the document</a>
           <span class="tool-actions">
             {data.sheet.draft && (
-              <a class="review" href="/review">
+              <a class="review workshop-only" href="/review">
                 Review the draft
               </a>
             )}

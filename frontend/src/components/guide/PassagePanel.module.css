@@ -88,8 +88,9 @@
 
 .title {
   margin: 0;
+  font-family: var(--font-read);
   font-size: var(--text-md);
-  font-weight: 500;
+  font-weight: 600;
   line-height: var(--leading-tight);
 }
 
