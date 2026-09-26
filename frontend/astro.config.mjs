@@ -47,17 +47,17 @@ export default defineConfig({
   fonts: [
     {
       provider: fontProviders.google(),
-      name: 'Literata',
-      cssVariable: '--font-literata',
+      name: 'Source Serif 4',
+      cssVariable: '--font-source-serif',
       weights: ['300 800'],
       styles: ['normal', 'italic'],
       fallbacks: ['Georgia', 'serif'],
     },
     {
       provider: fontProviders.google(),
-      name: 'Schibsted Grotesk',
-      cssVariable: '--font-schibsted',
-      weights: ['400 700'],
+      name: 'Hanken Grotesk',
+      cssVariable: '--font-hanken',
+      weights: ['400 800'],
       styles: ['normal'],
       fallbacks: ['system-ui', 'sans-serif'],
     },

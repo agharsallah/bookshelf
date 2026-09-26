@@ -3,82 +3,94 @@
  * both themes: the OS preference applies by default (`color-scheme: light dark`)
  * and `data-theme` on <html> (set by the theme bootstrap) pins one explicitly.
  *
- * Light is "vellum": rag paper, iron-gall ink, verdigris for anything that
- * points back at the source. Dark is "ink": the same page turned over — blue-black
- * ground, paper-colored text. All text pairs below clear WCAG AA (4.5:1).
+ * "Ink & highlighter": a study desk. Cool white paper and graphite for the page,
+ * blue-black fountain-pen ink for anything you can follow or press, and one
+ * chartreuse highlighter for what matters right now (where you are, what is new,
+ * what you marked). The book speaks in a serif; the tool speaks in a grotesk.
+ * Dark is the desk at night: slate paper, the same ink lightened, the marker dimmed.
+ * All text pairs below clear WCAG AA (4.5:1).
  */
 
 :root {
   color-scheme: light dark;
 
   /* ── Surfaces ─────────────────────────────────────────────── */
-  --paper: light-dark(#f3eee1, #161a24);
-  --paper-raised: light-dark(#faf7ef, #1e2331);
-  --paper-sunken: light-dark(#eae3d1, #11141c);
-  --rule: light-dark(#d8cfba, #2e3446);
-  --rule-strong: light-dark(#bdb29a, #434a5f);
+  --paper: light-dark(#f3f4f0, #14171c);
+  /* A sheet: the book's own content (distillations, briefs, guides, study cards). */
+  --paper-raised: light-dark(#ffffff, #1b1f26);
+  --paper-sunken: light-dark(#e8eae4, #0f1216);
+  --rule: light-dark(#dadcd5, #2a3038);
+  --rule-strong: light-dark(#b9bdb4, #434a55);
 
   /* ── Ink ──────────────────────────────────────────────────── */
-  --ink: light-dark(#1d2332, #e8e1d0);
-  --ink-2: light-dark(#454b5c, #bdb6a6);
-  --ink-3: light-dark(#5f6474, #9a9486);
+  --ink: light-dark(#1e2227, #e6e8e3);
+  --ink-2: light-dark(#454b53, #b9beb6);
+  --ink-3: light-dark(#5b616a, #959b93);
 
-  /* Verdigris: links, cites, focus — "this points somewhere". */
-  --accent: light-dark(#1e6b5c, #72c2ad);
-  --accent-wash: light-dark(#dcebe4, #1f3a36);
+  /* Fountain-pen ink: links, cites, actions, focus — "this points somewhere". */
+  --accent: light-dark(#22348c, #a9b8ff);
+  --accent-strong: light-dark(#17256b, #c9d3ff);
+  --accent-wash: light-dark(#e3e7f7, #222a47);
+  --on-accent: light-dark(#ffffff, #10152b);
   --focus: var(--accent);
-  --selection: light-dark(#cfe3da, #2a4a44);
 
-  /* ── Callout tones (§9): each has a hue, a glyph and a rule style ── */
-  --tone-important: light-dark(#9b2f22, #f08a77);
-  --tone-remember: light-dark(#34448f, #9daef0);
-  --tone-antipattern: light-dark(#7a2f6e, #dc8fcf);
-  --tone-insight: light-dark(#3f6b22, #a9cf7c);
-  --tone-caution: light-dark(#85570a, #e2b560);
-  --tone-contrast: light-dark(#3b5670, #a3bcd6);
-  --tone-question: light-dark(#1c6470, #7ccbd6);
+  /* The highlighter: current place, fresh things, your marks. Text on it stays ink. */
+  --marker: light-dark(#ddf25c, #c6d94a);
+  --marker-soft: light-dark(#eef8b0, #3a4220);
+  --marker-ink: #1e2227;
+  --selection: light-dark(#eaf69a, #46512a);
 
-  /* ── Code: Shiki's css-variables theme (lib/highlight.ts). Used by render blocks and
-     the reader's source blocks; each token clears AA on --paper-sunken. ── */
+  /* ── Callout tones (§9 render contract) ───────────────────── */
+  --tone-important: light-dark(#a3301f, #f2917d);
+  --tone-remember: light-dark(#3a3fa0, #a7acf3);
+  --tone-antipattern: light-dark(#80306f, #df95d2);
+  --tone-insight: light-dark(#3d6b1f, #abd07c);
+  --tone-caution: light-dark(#86570a, #e3b65f);
+  --tone-contrast: light-dark(#35566f, #a4bfd7);
+  --tone-question: light-dark(#17626d, #7ecbd5);
+
+  /* ── Code (Shiki css-variables theme) ─────────────────────── */
   --shiki-foreground: var(--ink);
   --shiki-background: var(--paper-sunken);
-  --shiki-token-keyword: light-dark(#7a2f6e, #dc8fcf);
-  --shiki-token-string: light-dark(#1e6b5c, #8fd1bd);
-  --shiki-token-string-expression: light-dark(#1e6b5c, #8fd1bd);
-  --shiki-token-comment: light-dark(#655f54, #8d8779);
-  --shiki-token-constant: light-dark(#85570a, #e2b560);
-  --shiki-token-function: light-dark(#34448f, #9daef0);
-  --shiki-token-parameter: light-dark(#454b5c, #cfc8b8);
-  --shiki-token-punctuation: light-dark(#5f6474, #9a9486);
+  --shiki-token-keyword: light-dark(#80306f, #df95d2);
+  --shiki-token-string: light-dark(#2f6b3a, #9fd3a8);
+  --shiki-token-string-expression: light-dark(#2f6b3a, #9fd3a8);
+  --shiki-token-comment: light-dark(#5d6259, #8f958b);
+  --shiki-token-constant: light-dark(#86570a, #e3b65f);
+  --shiki-token-function: light-dark(#22348c, #a9b8ff);
+  --shiki-token-parameter: light-dark(#454b53, #cbd0c8);
+  --shiki-token-punctuation: light-dark(#5b616a, #959b93);
   --shiki-token-link: var(--accent);
   --shiki-token-inserted: var(--tone-insight);
   --shiki-token-deleted: var(--tone-important);
 
-  /* ── Highlighter washes (text stays --ink; all ≥ 6.5:1) ─────── */
-  --hl-amber: light-dark(#f6dc8c, #5c4a1c);
-  --hl-rose: light-dark(#f2c1c8, #5e3039);
-  --hl-sage: light-dark(#cfe0be, #374b2b);
-  --hl-sky: light-dark(#c4ddf0, #2a445b);
-  --hl-violet: light-dark(#dccdf0, #43375d);
+  /* ── Highlights (reader marks) ────────────────────────────── */
+  --hl-amber: light-dark(#f7df8c, #5c4a1c);
+  --hl-rose: light-dark(#f4c3ca, #5e3039);
+  --hl-sage: light-dark(#e3f39a, #434d22);
+  --hl-sky: light-dark(#c8dcf3, #2a445b);
+  --hl-violet: light-dark(#dccff2, #43375d);
 
-  /* ── Chart series: validated for CVD + normal-vision separation in
-        this order on --paper-raised (dataviz validator). Never cycled. ── */
-  --series-1: light-dark(#00866e, #139e82);
-  --series-2: light-dark(#c28a12, #b5861f);
-  --series-3: light-dark(#a3478f, #bb62a6);
-  --series-4: light-dark(#4f8a2a, #6fa044);
-  --series-5: light-dark(#4a5bb5, #7384dc);
-  --series-6: light-dark(#c4553a, #d06a4f);
-  --series-other: light-dark(#8a8578, #6f6a60);
-  --chart-grid: light-dark(#e6dfcd, #2a3040);
-  --chart-axis: light-dark(#bdb29a, #434a5f);
+  /* ── Charts: ink first, then colours that stay apart for colour-blind readers ── */
+  --series-1: light-dark(#2f48b8, #8397f5);
+  --series-2: light-dark(#c28a12, #c69a2f);
+  --series-3: light-dark(#a3478f, #c26bb0);
+  --series-4: light-dark(#4f8a2a, #7cae4f);
+  --series-5: light-dark(#138a8a, #3fb4b4);
+  --series-6: light-dark(#c4553a, #d9765b);
+  --series-other: light-dark(#8a8d86, #6c716a);
+  --chart-grid: light-dark(#e4e6df, #262b33);
+  --chart-axis: light-dark(#b9bdb4, #434a55);
 
   /* ── Type ─────────────────────────────────────────────────── */
-  --font-read: var(--font-literata, Georgia, 'Times New Roman', serif);
-  --font-ui: var(--font-schibsted, system-ui, sans-serif);
+  /* The book's voice: reading text, book titles, distillations, study cards. */
+  --font-read: var(--font-source-serif, 'Iowan Old Style', Georgia, serif);
+  /* The tool's voice: navigation, controls, page titles, numbers. */
+  --font-ui: var(--font-hanken, system-ui, sans-serif);
+  /* Only for anchors (¶ cites), code and keys. */
   --font-mono: var(--font-plex-mono, ui-monospace, 'SF Mono', monospace);
 
-  /* A classical scale (Bringhurst): 12 · 14 · 15 · 18 · 21 · 26 · 36 · 52 */
+  /* A 1.25 scale around the reading size. */
   --text-xs: 0.75rem;
   --text-sm: 0.875rem;
   --text-ui: 0.9375rem;
@@ -87,13 +99,14 @@
   --text-lg: 1.625rem;
   --text-xl: 2.25rem;
   --text-2xl: 3.25rem;
+  --text-3xl: clamp(2.5rem, 6vw, 4.5rem);
 
   --leading-read: 1.62;
   --leading-ui: 1.4;
-  --leading-tight: 1.15;
+  --leading-tight: 1.12;
   --measure: 66ch;
 
-  /* ── Space (4px base) ─────────────────────────────────────── */
+  /* ── Space ────────────────────────────────────────────────── */
   --space-1: 0.25rem;
   --space-2: 0.5rem;
   --space-3: 0.75rem;
@@ -103,18 +116,28 @@
   --space-7: 3rem;
   --space-8: 4.5rem;
 
-  /* Radii encode hierarchy: marks < controls < panels. */
-  --radius-s: 2px;
-  --radius-m: 4px;
-  --radius-l: 8px;
+  /* Controls are small and square-ish; sheets are paper, softly rounded. */
+  --radius-s: 3px;
+  --radius-m: 6px;
+  --radius-l: 12px;
+  --radius-pill: 999px;
 
-  --shadow-lift: 0 1px 0 var(--rule), 0 10px 28px -14px light-dark(rgb(29 35 50 / 0.45), rgb(0 0 0 / 0.7));
+  /* Only sheets (the book's content) lift off the desk; tool panels sit flat with a rule. */
+  --shadow-lift:
+    0 1px 1px light-dark(rgb(30 34 39 / 0.05), rgb(0 0 0 / 0.4)),
+    0 12px 32px -18px light-dark(rgb(30 34 39 / 0.35), rgb(0 0 0 / 0.8));
+  --shadow-pop: 0 18px 48px -20px light-dark(rgb(30 34 39 / 0.45), rgb(0 0 0 / 0.9));
 
   /* ── Motion ───────────────────────────────────────────────── */
   --dur-1: 120ms;
   --dur-2: 200ms;
   --dur-3: 320ms;
+  --dur-4: 520ms;
   --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
+  /* The marker stroke: fast start, a soft landing. */
+  --ease-stroke: cubic-bezier(0.65, 0, 0.35, 1);
+  /* Turning a card: a slight overshoot, like paper settling. */
+  --ease-turn: cubic-bezier(0.3, 1.3, 0.5, 1);
 }
 
 :root[data-theme='light'] {
@@ -130,5 +153,6 @@
     --dur-1: 0ms;
     --dur-2: 0ms;
     --dur-3: 0ms;
+    --dur-4: 0ms;
   }
 }

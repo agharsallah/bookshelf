@@ -1,6 +1,10 @@
 /* Running text blocks: headings, paragraphs, lists, definitions, the unknown fallback. */
 .heading {
   color: var(--ink);
+  /* The book's own headings keep the book's voice. */
+  font-family: var(--font-read);
+  font-weight: 600;
+  letter-spacing: -0.01em;
   scroll-margin-top: var(--space-7);
 }
 

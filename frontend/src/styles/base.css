@@ -46,14 +46,23 @@ select {
   color: inherit;
 }
 
+/* Headings are the tool's voice by default; the book's own titles and headings opt
+   into the serif (`.book-title`, block headings), so you can always tell who speaks. */
 h1,
 h2,
 h3,
 h4 {
-  font-family: var(--font-read);
+  font-family: var(--font-ui);
   line-height: var(--leading-tight);
-  font-weight: 560;
+  font-weight: 650;
+  letter-spacing: -0.015em;
   text-wrap: balance;
+}
+
+.book-title {
+  font-family: var(--font-read);
+  font-weight: 560;
+  letter-spacing: -0.02em;
 }
 
 p {
@@ -99,6 +108,87 @@ samp {
   clip-path: inset(50%);
   white-space: nowrap;
   border: 0;
+}
+
+/* Hidden outside workshop mode (lib/workshop.ts): re-runs, job history, gate scores. */
+html:not([data-workshop]) .workshop-only {
+  display: none !important;
+}
+
+/* Hidden in workshop mode: the reader's simpler stand-in for something the workshop shows. */
+html[data-workshop] .reading-only {
+  display: none !important;
+}
+
+/* The highlighter: a stroke under the lower part of the words, as a pen would lay it. */
+.marker {
+  padding-inline: 0.12em;
+  margin-inline: -0.12em;
+  background: linear-gradient(to top, var(--marker) 0 42%, transparent 42%) no-repeat;
+  color: inherit;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+/* Shared buttons for pages and islands without their own. */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-block-size: 2.5rem;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-m);
+  background: var(--paper-raised);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: var(--text-ui);
+  font-weight: 600;
+  line-height: 1;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background var(--dur-1) var(--ease-out),
+    border-color var(--dur-1) var(--ease-out),
+    color var(--dur-1) var(--ease-out),
+    translate var(--dur-1) var(--ease-out);
+}
+
+.btn:hover {
+  border-color: var(--ink);
+  text-decoration: none;
+}
+
+.btn:active {
+  translate: 0 1px;
+}
+
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.btn-primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.btn-primary:hover {
+  border-color: var(--accent-strong);
+  background: var(--accent-strong);
+}
+
+.btn-quiet {
+  border-color: transparent;
+  background: transparent;
+  color: var(--accent);
+}
+
+.btn-quiet:hover {
+  border-color: transparent;
+  background: var(--accent-wash);
 }
 
 /* Cross-document view transitions: pages cross-fade instead of flashing. */

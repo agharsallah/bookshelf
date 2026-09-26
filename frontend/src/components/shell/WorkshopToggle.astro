@@ -1,0 +1,102 @@
+---
+/**
+ * Reading / workshop switch (lib/workshop.ts). The bootstrap in BaseLayout has already
+ * applied the mode before paint; this flips and persists it. A switch, not a button:
+ * it says which mode is on, and screen readers hear "Workshop tools, on/off".
+ */
+---
+
+<button class="workshop-toggle" type="button" role="switch" aria-checked="false" data-workshop-toggle title="Show review, pipeline and re-run tools">
+  <span class="track" aria-hidden="true"><span class="thumb"></span></span>
+  <span class="label">Workshop</span>
+</button>
+
+<script>
+  import { isWorkshop, setWorkshop, WORKSHOP_CHANGE_EVENT } from '../../lib/workshop';
+
+  function sync(button: HTMLButtonElement) {
+    const on = isWorkshop();
+    button.setAttribute('aria-checked', String(on));
+    button.title = on ? 'Hide review, pipeline and re-run tools' : 'Show review, pipeline and re-run tools';
+  }
+
+  for (const button of document.querySelectorAll<HTMLButtonElement>('[data-workshop-toggle]')) {
+    sync(button);
+    button.addEventListener('click', () => setWorkshop(!isWorkshop()));
+    window.addEventListener(WORKSHOP_CHANGE_EVENT, () => sync(button));
+  }
+</script>
+
+<style>
+  .workshop-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-block-size: 2.25rem;
+    padding: 0 var(--space-3) 0 var(--space-2);
+    border: 1px solid transparent;
+    border-radius: var(--radius-pill);
+    background: transparent;
+    color: var(--ink-2);
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    cursor: pointer;
+    transition:
+      color var(--dur-1) var(--ease-out),
+      border-color var(--dur-1) var(--ease-out);
+  }
+
+  .workshop-toggle:hover {
+    border-color: var(--rule);
+    color: var(--ink);
+  }
+
+  .track {
+    position: relative;
+    inline-size: 1.9rem;
+    block-size: 1.1rem;
+    border-radius: var(--radius-pill);
+    background: var(--rule-strong);
+    transition: background var(--dur-2) var(--ease-out);
+  }
+
+  .thumb {
+    position: absolute;
+    inset-block-start: 0.15rem;
+    inset-inline-start: 0.15rem;
+    inline-size: 0.8rem;
+    block-size: 0.8rem;
+    border-radius: 50%;
+    background: var(--paper-raised);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.25);
+    transition: translate var(--dur-2) var(--ease-turn);
+  }
+
+  .workshop-toggle[aria-checked='true'] .track {
+    background: var(--accent);
+  }
+
+  .workshop-toggle[aria-checked='true'] .thumb {
+    translate: 0.8rem 0;
+  }
+
+  .workshop-toggle[aria-checked='true'] {
+    color: var(--ink);
+  }
+
+  @media (max-width: 40rem) {
+    .label {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+
+    .workshop-toggle {
+      padding-inline: var(--space-2);
+    }
+  }
+</style>
