@@ -1,6 +1,6 @@
 /**
  * Everything the reader needs for the "what matters" mode, in one hook: the marks for
- * the chapter (always computed, shown by CSS only when the mode is on, so toggling it
+ * the chapter (the mark-salience skill's when it has run, else inferred; always computed, shown by CSS only when the mode is on, so toggling it
  * never re-renders the text), the meter, the card a marked passage opens, and the jump
  * to the next key idea.
  */
@@ -8,6 +8,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode, type RefObje
 import type { TreeNode } from '../../lib/api/types/documents';
 import { revealBlock } from './dom';
 import type { LexTerm } from './lexicon';
+import { mergeMarks } from './modelMarks';
 import type { Panes } from './panes';
 import { buildSalience, citeWeights, groupSalience, type Salient, type SalienceByAnchor } from './salience';
 import { SalienceCard } from './SalienceCard';
@@ -19,6 +20,8 @@ export interface SalienceModeOptions {
   nodes: readonly TreeNode[];
   panes: Panes;
   lexicon: readonly LexTerm[];
+  /** Marks from the mark-salience skill, placed on the text; null when it has not run on this chapter. */
+  modelMarks: readonly Salient[] | null;
   enabled: boolean;
   /** Where seen ideas are remembered: one key per chapter. */
   storageKey: string;
@@ -40,8 +43,13 @@ export interface SalienceMode {
 const PICKED_ATTR = 'data-picked';
 
 export function useSalienceMode(options: SalienceModeOptions): SalienceMode {
-  const { sourceRef, nodes, panes, lexicon, enabled, storageKey, order, activeAnchor, onKeep } = options;
-  const salients = useMemo(() => buildSalience(nodes, lexicon, citeWeights(panes)), [nodes, lexicon, panes]);
+  const { sourceRef, nodes, panes, lexicon, modelMarks, enabled, storageKey, order, activeAnchor, onKeep } = options;
+  const salients = useMemo(() => {
+    const inferred = buildSalience(nodes, lexicon, citeWeights(panes));
+    if (!modelMarks) return inferred;
+    const at = (s: Salient) => order.get(s.anchor) ?? 0;
+    return mergeMarks(modelMarks, inferred).sort((a, b) => at(a) - at(b) || a.start - b.start);
+  }, [nodes, lexicon, panes, modelMarks, order]);
   const byAnchor = useMemo(() => groupSalience(salients), [salients]);
   const byId = useMemo(() => new Map(salients.map((s) => [s.id, s])), [salients]);
   const { ideas, seen, nextIdea } = useSalience(sourceRef, salients, enabled, storageKey);

@@ -31,7 +31,7 @@ import { MeasureHandle } from './MeasureHandle';
 import { clampSize, prefsVars, WIDTH_REM } from './prefs';
 import { ReaderToolbar, type ReaderView } from './ReaderToolbar';
 import { ReadingSettings } from './ReadingSettings';
-import { salienceFor } from './salience';
+import { salienceFor, type Salient } from './salience';
 import { SourceBlock } from './SourceBlock';
 import { useReaderPrefs } from './usePrefs';
 import { actionFor, READER_SHORTCUTS, type ReaderAction } from './shortcuts';
@@ -53,6 +53,8 @@ export interface ReaderProps {
   codeHtml: Record<string, string>;
   /** The book's concepts and glossary terms, for the what-matters marks. */
   lexicon?: LexTerm[];
+  /** The mark-salience skill's marks for this chapter, placed on the text; null when it has not run. */
+  modelMarks?: Salient[] | null;
   initialAnchor: string | null;
   truncated: boolean;
 }
@@ -70,7 +72,7 @@ function firstTab(panes: Panes): Tab {
 
 const NO_TERMS: LexTerm[] = [];
 
-export function Reader({ document: doc, unit, units, panes, notes: initialNotes, codeHtml, lexicon = NO_TERMS, initialAnchor, truncated }: ReaderProps) {
+export function Reader({ document: doc, unit, units, panes, notes: initialNotes, codeHtml, lexicon = NO_TERMS, modelMarks = null, initialAnchor, truncated }: ReaderProps) {
   const sourceRef = useRef<HTMLDivElement>(null);
   const paneRef = useRef<HTMLDivElement>(null);
   const [tab, setTab] = useState<Tab>(() => firstTab(panes));
@@ -147,6 +149,7 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
     nodes,
     panes,
     lexicon,
+    modelMarks,
     enabled: prefs.salience,
     storageKey: `${doc.slug}:${unit.anchor}`,
     order,

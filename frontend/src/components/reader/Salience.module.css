@@ -184,6 +184,11 @@
   color: var(--ink-2);
 }
 
+.cardSource {
+  color: var(--ink-3);
+  font-size: var(--text-xs);
+}
+
 .cardActions {
   display: flex;
   flex-wrap: wrap;

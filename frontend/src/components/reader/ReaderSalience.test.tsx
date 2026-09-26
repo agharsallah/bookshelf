@@ -4,7 +4,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { TreeNode } from '../../lib/api/types/documents';
 import type * as MermaidModule from '../../lib/mermaid';
 import type { LexTerm } from './lexicon';
+import { marksFromBody } from './modelMarks';
 import type { Panes } from './panes';
+import type { Salient } from './salience';
 import { Reader } from './Reader';
 
 const api = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: vi.fn(), url: (p: string) => `/api/${p}` }));
@@ -60,7 +62,7 @@ function scrollTo(anchor: string) {
   if (observed.has(target)) act(() => report?.([{ target, isIntersecting: true }]));
 }
 
-function renderReader() {
+function renderReader(modelMarks: Salient[] | null = null) {
   return render(
     <Reader
       document={{ id: 'doc-1', slug: 'flow', title: 'Flow' }}
@@ -70,6 +72,7 @@ function renderReader() {
       notes={[]}
       codeHtml={{}}
       lexicon={lexicon}
+      modelMarks={modelMarks}
       initialAnchor={null}
       truncated={false}
     />,
@@ -147,6 +150,24 @@ describe('<Reader> what-matters mode', () => {
     await userEvent.keyboard('h.');
     expect(block('ch01/p001').scrollIntoView).toHaveBeenCalled();
     expect(block('ch01/p001').classList.contains('is-flashing')).toBe(true);
+  });
+
+  it("shows the mark-salience skill's marks in place of the inferred ones, and says so", async () => {
+    const chosen = 'Queues grow quietly until the waiting starts to hurt everyone.';
+    const flat = [unit, ...unit.children];
+    renderReader(marksFromBody({ marks: [{ tier: 'key', text: chosen, cites: ['ch01/p002'], why: 'Where the cost shows up.' }] }, flat));
+    await userEvent.keyboard('h');
+
+    expect(within(block('ch01/p002')).getByText(chosen).dataset.sal).toBe('key');
+    // The inferred sentence gives way; the inferred term, which the model left out, stays.
+    expect(within(block('ch01/p001')).getByText(KEY.slice('Slack'.length).trim()).dataset.sal).toBeUndefined();
+    await userEvent.click(within(block('ch01/p002')).getByText(chosen));
+    const card = screen.getByRole('dialog', { name: 'Key point' });
+    expect(within(card).getByText('Where the cost shows up.')).toBeTruthy();
+    expect(within(card).getByText('Chosen by Claude for this chapter')).toBeTruthy();
+    await userEvent.keyboard('{Escape}');
+    await userEvent.click(within(block('ch01/p001')).getByText('Slack'));
+    expect(within(screen.getByRole('dialog', { name: 'Slack' })).getByText('Inferred from what the notes cite')).toBeTruthy();
   });
 
   it('explains the marks in the reading settings', async () => {

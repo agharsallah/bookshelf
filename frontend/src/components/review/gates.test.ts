@@ -49,6 +49,11 @@ describe('deriveGates', () => {
     ]);
   });
 
+  it('names a mark the reader cannot place as a failed verbatim check', () => {
+    const gates = deriveGates(artifact({ gates: { grounding: 1, flags: ['not_verbatim'], schema_retry: false } }), distil);
+    expect(gates.flags.map((f) => [f.label, f.tone])).toEqual([['Not verbatim', 'fail']]);
+  });
+
   it('a schema retry alone does not block bulk approval', () => {
     expect(deriveGates(artifact({ gates: { grounding: 1, schema_retry: true } }), distil).passesAll).toBe(true);
   });

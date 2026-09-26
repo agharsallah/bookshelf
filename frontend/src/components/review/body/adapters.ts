@@ -194,6 +194,23 @@ function conceptLinks(body: Json): RenderBlock[] {
   ];
 }
 
+/** Salience marks: what each marks, in the book's words (cited), and why. */
+function salienceMarks(body: Json): RenderBlock[] {
+  const marks = list(body.marks).filter(isRecord);
+  if (marks.length === 0) return [];
+  return [
+    {
+      type: 'table',
+      header: ['Mark', 'Passage', 'Why'],
+      rows: marks.map((m) => [
+        synthetic(str(m.tier)),
+        { text: str(m.text), cites: list(m.cites).filter((c): c is string => typeof c === 'string') },
+        synthetic(str(m.why)),
+      ]),
+    },
+  ];
+}
+
 function outline(body: Json): RenderBlock[] {
   const chapters = list(body.chapters).filter(isRecord);
   return [
@@ -229,6 +246,8 @@ export function adaptBody(type: ArtifactType, raw: unknown): AdaptedBody {
       const cast = list(body.speakers).filter(isRecord).map((s) => `${str(s.role)} (${str(s.persona)})`);
       return { blocks: audioScript(body), facts: [...fact('Title', str(body.title)), ...fact('Cast', cast.join('; '))], confidence };
     }
+    case 'salience_marks':
+      return { blocks: salienceMarks(body), facts: [], confidence };
     case 'outline_override':
       return { blocks: outline(body), facts: [], confidence };
     case 'figure_description': {

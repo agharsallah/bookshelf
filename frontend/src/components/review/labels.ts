@@ -27,6 +27,7 @@ export const TYPE_LABELS: Record<ArtifactType, string> = {
   flashcards: 'Flashcards',
   glossary: 'Glossary',
   audio_summary: 'Audio summary script',
+  salience_marks: 'What matters (marks)',
 };
 
 export const REVIEW_LABELS: Record<Review, string> = {
@@ -60,6 +61,7 @@ const PRODUCER: Partial<Record<ArtifactType, JobKind>> = {
   flashcards: 'derive',
   glossary: 'derive',
   audio_summary: 'derive',
+  salience_marks: 'derive',
 };
 
 /**

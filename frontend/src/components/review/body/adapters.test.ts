@@ -125,6 +125,14 @@ describe('adaptBody', () => {
     });
   });
 
+  it('lists salience marks as a table: the tier, the passage citing its block, and why', () => {
+    const adapted = adaptBody('salience_marks', { marks: [{ tier: 'core', text: 'Slack is not waste.', cites: ['ch01/p002'], why: 'The thesis.' }] });
+    expect(adapted.blocks).toMatchObject([
+      { type: 'table', header: ['Mark', 'Passage', 'Why'], rows: [[{ text: 'core' }, { text: 'Slack is not waste.', cites: ['ch01/p002'] }, { text: 'The thesis.' }]] },
+    ]);
+    expect(adaptBody('salience_marks', { marks: [] }).blocks).toEqual([]);
+  });
+
   it('never counts the text it adds as uncited claims', () => {
     const adapted = adaptBody('quiz', { items: [{ question: 'Q?', choices: ['a', 'b', 'c'], answer: 1, explanation: [cited('E.')] }] });
     const added: boolean[] = [];

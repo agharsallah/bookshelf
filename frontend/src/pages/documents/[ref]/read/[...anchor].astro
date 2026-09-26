@@ -9,11 +9,13 @@ import BaseLayout from '../../../../layouts/BaseLayout.astro';
 import Reader from '../../../../components/reader/Reader';
 import { Problem } from '../../../../components/common/Problem';
 import { lexiconFromArtifacts } from '../../../../components/reader/lexicon';
+import { marksFromBody } from '../../../../components/reader/modelMarks';
 import { buildPanes, paneEntries } from '../../../../components/reader/panes';
 import { serverApi } from '../../../../lib/api/server';
 import type { NodeSubtree } from '../../../../lib/api/types/documents';
 import type { NoteDetail } from '../../../../lib/api/types/notes';
 import { fetchAll } from '../../../../lib/api/fetch-all';
+import { pickBest } from '../../../../lib/documents/artifacts';
 import { getArtifacts, getDocument, getOutline, load } from '../../../../lib/documents/server';
 import { defaultUnit, flatten, readingUnits, unitFor } from '../../../../lib/documents/tree';
 import { highlightCode } from '../../../../lib/highlight';
@@ -45,6 +47,7 @@ const loaded = await load(async () => {
     flat.map(({ node }) => [node.anchor, node.heading ?? node.meta.caption ?? '']).filter(([, h]) => h),
   );
   const panes = buildPanes(artifacts, unit.anchor, headings);
+  const modelMarks = marksFromBody(pickBest(artifacts, 'salience_marks', unit.anchor)?.artifact.body, flat.map(({ node }) => node));
   await Promise.all(
     paneEntries(panes).map(async (entry) => {
       entry.blocks = await prepareBlocks(entry.blocks);
@@ -59,7 +62,7 @@ const loaded = await load(async () => {
         if (html) codeHtml[node.anchor] = html;
       }),
   );
-  return { doc, units, missing: false as const, unit: subtree.node, truncated: subtree.truncated, panes, notes: notes.items, codeHtml, lexicon };
+  return { doc, units, missing: false as const, unit: subtree.node, truncated: subtree.truncated, panes, notes: notes.items, codeHtml, lexicon, modelMarks };
 });
 
 if (!loaded.ok && loaded.notFound) Astro.response.status = 404;
@@ -102,6 +105,7 @@ const title = data && !data.missing ? `${data.unit.heading ?? data.unit.anchor},
         notes={data.notes}
         codeHtml={data.codeHtml}
         lexicon={data.lexicon}
+        modelMarks={data.modelMarks}
         initialAnchor={requested}
         truncated={data.truncated}
       />

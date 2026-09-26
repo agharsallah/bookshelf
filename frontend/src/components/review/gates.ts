@@ -75,6 +75,13 @@ function flagFor(raw: string): GateFlag | null {
         tone: 'fail',
         detail: 'A code block citing the listing does not reproduce it byte for byte.',
       };
+    case 'not_verbatim':
+      return {
+        key: raw,
+        label: 'Not verbatim',
+        tone: 'fail',
+        detail: 'A marked passage is not found in the block it cites, so the reader cannot place it.',
+      };
     default:
       return { key: raw, label: raw.replaceAll('_', ' '), tone: 'warn', detail: raw };
   }

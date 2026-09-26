@@ -23,6 +23,7 @@ export const ARTIFACT_TYPES = [
   'flashcards',
   'glossary',
   'audio_summary',
+  'salience_marks',
 ] as const;
 export type ArtifactType = (typeof ARTIFACT_TYPES)[number];
 
