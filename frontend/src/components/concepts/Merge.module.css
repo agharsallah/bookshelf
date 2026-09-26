@@ -10,7 +10,8 @@
 
 .empty {
   color: var(--ink-2);
-  font-style: italic;
+  font-family: var(--font-ui);
+  font-size: var(--text-ui);
 }
 
 .list {
@@ -26,8 +27,8 @@
   gap: var(--space-3);
   padding: var(--space-4) var(--space-5);
   border: 1px solid var(--rule);
-  border-radius: var(--radius-l);
-  background: var(--paper-raised);
+  border-radius: var(--radius-m);
+  background: transparent;
 }
 
 .proposal:focus-visible {
@@ -81,8 +82,9 @@
 
 .name {
   color: var(--ink);
+  font-family: var(--font-read);
   font-size: var(--text-md);
-  font-style: italic;
+  font-weight: 560;
   line-height: var(--leading-tight);
   text-decoration: none;
 }
@@ -128,7 +130,8 @@
   padding-inline-start: var(--space-3);
   border-inline-start: 2px solid var(--rule-strong);
   color: var(--ink-2);
-  font-style: italic;
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
 }
 
 .evidence summary {
@@ -153,7 +156,8 @@
 .merge,
 .reject,
 .skip {
-  padding: var(--space-1) var(--space-4);
+  min-block-size: 2.25rem;
+  padding: 0 var(--space-4);
   border-radius: var(--radius-m);
   font-family: var(--font-ui);
   font-size: var(--text-sm);
@@ -162,14 +166,19 @@
 }
 
 .merge {
-  border: 1px solid var(--ink);
-  background: var(--ink);
-  color: var(--paper);
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.merge:hover:not(:disabled) {
+  border-color: var(--accent-strong);
+  background: var(--accent-strong);
 }
 
 .reject {
   border: 1px solid var(--rule-strong);
-  background: var(--paper);
+  background: transparent;
   color: var(--ink);
 }
 
@@ -189,7 +198,7 @@
 .keys {
   margin-inline-start: auto;
   color: var(--ink-3);
-  font-family: var(--font-ui);
+  font-family: var(--font-mono);
   font-size: var(--text-xs);
 }
 

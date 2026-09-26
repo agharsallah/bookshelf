@@ -50,6 +50,8 @@ export class GraphController {
   ) {
     this.ctx = canvas.getContext('2d');
     this.detach = this.listen();
+    // Labels are measured in the web fonts: draw again once they have loaded.
+    void document.fonts?.ready.then(() => this.request());
   }
 
   destroy(): void {

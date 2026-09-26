@@ -12,14 +12,26 @@ export interface GraphPalette {
   ink2: string;
   ink3: string;
   paper: string;
-  raised: string;
-  rule: string;
+  /** Ring guides, like a chart's gridlines. */
+  grid: string;
   accent: string;
+  /** The highlighter under the focus's name: "you are here". */
+  marker: string;
+  markerInk: string;
   kinds: Record<EntityKind, string>;
   relations: Record<Relation, string>;
 }
 
-const BASE = { ink: '--ink', ink2: '--ink-2', ink3: '--ink-3', paper: '--paper', raised: '--paper-raised', rule: '--rule-strong', accent: '--accent' } as const;
+const BASE = {
+  ink: '--ink',
+  ink2: '--ink-2',
+  ink3: '--ink-3',
+  paper: '--paper',
+  grid: '--chart-axis',
+  accent: '--accent',
+  marker: '--marker',
+  markerInk: '--marker-ink',
+} as const;
 
 /** Resolve tokens with `resolve(token) → css colour`; the probe does it in the browser. */
 export function buildPalette(resolve: (token: string) => string): GraphPalette {

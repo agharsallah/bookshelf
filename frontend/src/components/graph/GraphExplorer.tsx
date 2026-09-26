@@ -86,13 +86,21 @@ export function GraphExplorer({ focus: initialFocus, view: initialView, initial,
   const selectedEdge = selected?.kind === 'edge' ? model.edges.find((e) => e.id === selected.id) : undefined;
   const available = model.nodes.length + model.hidden;
   const title = focusNode?.label ?? 'Neighbourhood';
+  // A concept's own kind (framework, person…) says more than "Concept".
+  const sublabel = focusNode?.kind === 'concept' ? focusNode.data.sublabel : null;
+  const focusTag = sublabel ? sublabel.charAt(0).toUpperCase() + sublabel.slice(1) : focusNode ? KIND_STYLES[focusNode.kind].label : 'Focus';
 
   return (
     <div className={styles.explorer} aria-busy={loading}>
       <header className={styles.toolbar}>
         <div className={styles.focusHead}>
-          <p className={styles.focusKind}>{focusNode ? KIND_STYLES[focusNode.kind].label : 'Focus'}</p>
-          <h1 className={styles.focusTitle}>{title}</h1>
+          <a className={styles.back} href="/graph">
+            Concepts
+          </a>
+          <h1 className={`${styles.focusTitle} book-title`}>{title}</h1>
+          <p className={styles.focusKind}>
+            <span className={styles.tag}>{focusTag}</span>
+          </p>
         </div>
         <div className={styles.controls}>
           <fieldset className={styles.segmented}>

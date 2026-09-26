@@ -1,16 +1,17 @@
 ---
 /**
- * A concept (§11): its gloss and the passages that ground it, then every relation,
- * grouped and strongest first, with evidence across books linking into the reader.
- * Server-rendered; the graph island is one link away.
+ * A concept (§11): its gloss and the passages that ground it, a small chart of how much
+ * each book contributes, then every relation, grouped and strongest first, with evidence
+ * across books linking into the reader. Server-rendered; the graph island is one link away.
  */
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { ConceptRelations } from '../../components/concepts/ConceptRelations';
 import { PassageList } from '../../components/concepts/PassageList';
+import { evidenceByBook, KIND_NAMES } from '../../components/concepts/concept-stats';
 import RememberVisit from '../../components/concepts/RememberVisit';
 import { Problem } from '../../components/common/Problem';
 import { graphHref } from '../../components/graph/refs';
-import { conceptHref } from '../../components/search/links';
+import { conceptHref, documentHref } from '../../components/search/links';
 import type { ConceptDetail } from '../../lib/api/types/graph';
 import { load } from '../../lib/documents/server';
 import { serverApi } from '../../lib/api/server';
@@ -22,11 +23,10 @@ const loaded = await load(() => serverApi().get<ConceptDetail>(`concepts/${encod
 if (!loaded.ok && loaded.notFound) Astro.response.status = 404;
 const detail = loaded.ok ? loaded.value : null;
 const concept = detail?.concept;
-const KIND: Record<string, string> = { concept: 'Concept', framework: 'Framework', person: 'Person', work: 'Work', term: 'Term' };
 const edgeCount = detail?.relations.reduce((n, g) => n + g.edges.length, 0) ?? 0;
-const books = new Set(
-  detail?.relations.flatMap((g) => g.edges.flatMap((e) => e.evidence.map((p) => p.document?.id))).filter(Boolean) ?? [],
-);
+const books = detail ? evidenceByBook(detail) : [];
+const mostPassages = Math.max(1, ...books.map((b) => b.passages));
+const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 ---
 
 <BaseLayout title={concept?.canonical ?? 'Concept'} width="reading" description={concept?.blurb ?? 'A concept and its evidence.'}>
@@ -34,13 +34,16 @@ const books = new Set(
     concept && detail ? (
       <article class="concept">
         <RememberVisit client:idle label={concept.canonical} href={conceptHref(concept.id)} />
+        <nav class="back" aria-label="Breadcrumb">
+          <a href="/graph">Concepts</a>
+        </nav>
         <header class="head">
-          <p class="kind">
-            {KIND[concept.kind] ?? concept.kind}
-            {concept.origin === 'human' ? ', curated by you' : ''}
+          <h1 class="book-title">{concept.canonical}</h1>
+          <p class="meta">
+            <span class="kind">{KIND_NAMES[concept.kind] ?? concept.kind}</span>
+            {concept.origin === 'human' ? <span>Curated by you</span> : null}
+            {concept.aliases.length > 0 && <span class="aliases">Also called {concept.aliases.join(', ')}</span>}
           </p>
-          <h1>{concept.canonical}</h1>
-          {concept.aliases.length > 0 && <p class="aliases">Also called {concept.aliases.join(', ')}</p>}
         </header>
 
         {concept.merged_into ? (
@@ -52,16 +55,42 @@ const books = new Set(
         {concept.blurb ? <p class="blurb">{concept.blurb}</p> : <p class="none">No gloss written yet.</p>}
         {detail.blurb_passages.length > 0 && (
           <section class="grounds" aria-label="Where the gloss comes from">
-            <PassageList passages={detail.blurb_passages} />
+            <PassageList passages={detail.blurb_passages} showBook={new Set(detail.blurb_passages.map((p) => p.document?.id)).size > 1} />
           </section>
         )}
 
-        <p class="summary">
-          {edgeCount === 0
-            ? 'Nothing is linked to it yet.'
-            : `${edgeCount} ${edgeCount === 1 ? 'connection' : 'connections'}${books.size ? `, drawn from ${books.size} ${books.size === 1 ? 'book' : 'books'}` : ''}.`}
-          {!concept.merged_into && <a href={graphHref(`concept:${concept.id}`, { proposed: true })}>See it in the graph</a>}
-        </p>
+        <div class="summary">
+          <p>
+            {edgeCount === 0
+              ? 'Nothing is linked to it yet.'
+              : `${plural(edgeCount, 'connection')}${books.length ? `, drawn from ${plural(books.length, 'book')}` : ''}.`}
+          </p>
+          {!concept.merged_into && (
+            <a class="btn" href={graphHref(`concept:${concept.id}`, { proposed: true })}>
+              Open in graph
+            </a>
+          )}
+        </div>
+
+        {books.length > 0 && (
+          <section class="books" aria-labelledby="books-title">
+            <h2 id="books-title">Across your books</h2>
+            <ul>
+              {books.map((b) => (
+                <li>
+                  <a class="book-title" href={documentHref(b.document.slug)}>{b.document.title}</a>
+                  <span class="bar" aria-hidden="true">
+                    <span style={`inline-size: ${(b.passages / mostPassages) * 100}%`} />
+                  </span>
+                  <span class="figures">
+                    {plural(b.passages, 'passage')}
+                    {b.connections > 0 ? `, ${plural(b.connections, 'link')}` : ''}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         {detail.relations.length > 0 && <ConceptRelations groups={detail.relations} />}
       </article>
@@ -85,36 +114,68 @@ const books = new Set(
     gap: var(--space-5);
   }
 
-  .head {
-    display: grid;
-    gap: var(--space-2);
+  .back a {
+    color: var(--ink-3);
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+    text-decoration: none;
   }
 
-  .kind,
-  .aliases,
-  .summary,
+  .back a::before {
+    content: '‹ ';
+  }
+
+  .back a:hover {
+    color: var(--accent);
+  }
+
+  .head {
+    display: grid;
+    gap: var(--space-3);
+  }
+
+  h1 {
+    font-size: var(--text-2xl);
+    font-style: italic;
+    line-height: var(--leading-tight);
+    overflow-wrap: anywhere;
+  }
+
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--space-1) var(--space-3);
+    color: var(--ink-3);
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+  }
+
+  .kind {
+    padding: 0 var(--space-2);
+    border: 1px solid var(--rule-strong);
+    border-radius: var(--radius-s);
+    color: var(--ink-2);
+    font-size: var(--text-xs);
+    line-height: 1.6;
+  }
+
+  .aliases {
+    color: var(--ink-2);
+    font-family: var(--font-read);
+    font-size: var(--text-ui);
+    font-style: italic;
+  }
+
   .none {
     color: var(--ink-3);
     font-family: var(--font-ui);
     font-size: var(--text-sm);
   }
 
-  h1 {
-    font-size: var(--text-2xl);
-    font-style: italic;
-    font-weight: 500;
-    line-height: var(--leading-tight);
-  }
-
-  .aliases {
-    font-family: var(--font-read);
-    font-size: var(--text-ui);
-    font-style: italic;
-  }
-
   .blurb {
     font-size: var(--text-md);
-    line-height: var(--leading-read);
+    line-height: 1.5;
   }
 
   .grounds {
@@ -125,21 +186,91 @@ const books = new Set(
   .summary {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--space-2) var(--space-4);
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3) var(--space-4);
     padding-block: var(--space-3);
     border-block: 1px solid var(--rule);
+    color: var(--ink-2);
+    font-family: var(--font-ui);
+    font-size: var(--text-ui);
   }
 
-  .summary a {
+  .books {
+    display: grid;
+    gap: var(--space-3);
+  }
+
+  .books h2 {
+    font-size: var(--text-ui);
+  }
+
+  .books ul {
+    display: grid;
+    gap: var(--space-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .books {
+    padding-block-end: var(--space-3);
+  }
+
+  .books li {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--space-1) var(--space-3);
+  }
+
+  .books li a {
+    grid-column: 1 / -1;
+    color: var(--ink);
+    font-size: var(--text-ui);
+    text-decoration: none;
+  }
+
+  .books li a:hover {
     color: var(--accent);
-    font-weight: 600;
+    text-decoration: underline;
+  }
+
+  .bar {
+    display: block;
+    block-size: 6px;
+    overflow: hidden;
+    border-radius: var(--radius-pill);
+    background: var(--chart-grid);
+  }
+
+  .bar span {
+    display: block;
+    block-size: 100%;
+    border-radius: inherit;
+    background: var(--series-1);
+    transform-origin: left;
+    animation: fill var(--dur-4) var(--ease-out) both;
+  }
+
+  @keyframes fill {
+    from {
+      transform: scaleX(0);
+    }
+  }
+
+  .figures {
+    color: var(--ink-3);
+    font-family: var(--font-ui);
+    font-size: var(--text-xs);
+    font-variant-numeric: tabular-nums;
   }
 
   .merged {
     padding: var(--space-3) var(--space-4);
     border-inline-start: 3px solid var(--tone-caution);
-    background: var(--paper-raised);
     font-family: var(--font-ui);
     font-size: var(--text-ui);
   }
+
 </style>

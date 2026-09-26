@@ -22,4 +22,12 @@ describe('<ConceptBrowser>', () => {
     expect(await screen.findByText('7 links')).toBeTruthy();
     expect(screen.getByText('2 concepts, most connected first')).toBeTruthy();
   });
+
+  it('offers each concept in the graph, with its kind as a tag', () => {
+    const { api } = fakeApi({});
+    render(<ConceptBrowser initial={page([concept('a', 'archetype', 1)])} api={api} debounceMs={0} />);
+    const open = screen.getByRole('link', { name: 'Open archetype in the graph' });
+    expect(open.getAttribute('href')).toBe('/graph/concept/a');
+    expect(screen.getByText('Concept')).toBeTruthy();
+  });
 });

@@ -64,7 +64,7 @@ function alpha(color: string, a: number): string {
 function drawRings(ctx: CanvasRenderingContext2D, s: Scene) {
   const rings = Math.max(...s.model.nodes.map((n) => n.depth), 0);
   ctx.save();
-  ctx.strokeStyle = alpha(s.palette.rule, 0.8);
+  ctx.strokeStyle = s.palette.grid;
   ctx.lineWidth = 1 / s.cam.k;
   ctx.setLineDash([2 / s.cam.k, 6 / s.cam.k]);
   for (let d = 1; d <= rings; d += 1) {
@@ -193,13 +193,13 @@ function drawNodes(ctx: CanvasRenderingContext2D, s: Scene) {
     const hollow = KIND_STYLES[sim.kind].shape === 'ring' || KIND_STYLES[sim.kind].shape === 'diamond';
     ctx.save();
     nodePath(ctx, sim);
-    ctx.fillStyle = hollow && !isFocus ? s.palette.raised : color;
+    ctx.fillStyle = hollow && !isFocus ? s.palette.paper : color;
     ctx.fill();
     ctx.lineWidth = (isFocus ? 2.5 : 2) / k;
-    ctx.strokeStyle = hollow ? color : alpha(s.palette.raised, 0.9);
+    ctx.strokeStyle = hollow ? color : alpha(s.palette.paper, 0.9);
     ctx.stroke();
     if (sim.kind === 'document') {
-      ctx.fillStyle = s.palette.raised;
+      ctx.fillStyle = s.palette.paper;
       ctx.fillRect(sim.x - sim.r * 0.55, sim.y - sim.r * 0.55, sim.r * 1.1, 1.5 / k);
     }
     if (s.selected?.kind === 'node' && s.selected.id === sim.id) {
@@ -238,8 +238,10 @@ function priority(node: ModelNode, s: Scene): number {
 const widths = new WeakMap<Layout, Map<string, number>>();
 
 function drawLabels(ctx: CanvasRenderingContext2D, s: Scene) {
-  const cache = widths.get(s.layout) ?? new Map<string, number>();
-  widths.set(s.layout, cache);
+  // Widths measured before the web fonts arrive are the fallback's; keep them only after.
+  const fontsReady = typeof document === 'undefined' || !document.fonts || document.fonts.status === 'loaded';
+  const cache = (fontsReady && widths.get(s.layout)) || new Map<string, number>();
+  if (fontsReady) widths.set(s.layout, cache);
   const candidates: (LabelCandidate & { node: ModelNode; text: string; font: string })[] = [];
   for (const node of s.model.nodes) {
     const sim = s.layout.byId.get(node.id);
@@ -266,10 +268,20 @@ function drawLabels(ctx: CanvasRenderingContext2D, s: Scene) {
     if (!c) continue;
     const dim = s.lit !== null && !s.lit.has(p.id);
     ctx.font = c.font;
+    const y = p.y + p.height / 2;
+    if (c.node.id === s.model.focus) {
+      // The focus is where you are: its name is run over with the highlighter.
+      ctx.fillStyle = s.palette.marker;
+      ctx.beginPath();
+      ctx.roundRect(p.x - 4, y - p.height / 2, c.width + 8, p.height + 1, 2);
+      ctx.fill();
+      ctx.fillStyle = s.palette.markerInk;
+      ctx.fillText(c.text, p.x, y);
+      continue;
+    }
     ctx.lineWidth = 4;
     ctx.strokeStyle = alpha(s.palette.paper, 0.9);
     ctx.fillStyle = dim ? s.palette.ink3 : c.node.kind === 'node' ? s.palette.ink2 : s.palette.ink;
-    const y = p.y + p.height / 2;
     ctx.strokeText(c.text, p.x, y);
     ctx.fillText(c.text, p.x, y);
   }

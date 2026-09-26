@@ -1,8 +1,9 @@
 /**
  * The concept index: find a concept by name or alias (typeahead over `GET /concepts`),
  * narrow by kind, order A to Z, by most connected (a good place to start a walk) or
- * newest, and open its page or its neighbourhood. Recently visited concepts (kept in
- * this browser) come first when nothing is typed.
+ * newest, and open its page or its neighbourhood. Each row carries a small meter of how
+ * connected the concept is next to the others in view. Recently visited concepts (kept
+ * in this browser) come first when nothing is typed.
  */
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { Problem, problemOf, type ProblemInfo } from '../common/Problem';
@@ -12,6 +13,7 @@ import { CONCEPT_KINDS, CONCEPT_SORTS, type ConceptKind, type ConceptSort, type 
 import { graphHref } from '../graph/refs';
 import { conceptHref } from '../search/links';
 import { loadRecent, RECENT_CONCEPTS_KEY, type RecentEntry } from '../search/recent';
+import { connectionShare, KIND_NAMES, strongestOf } from './concept-stats';
 import styles from './Browser.module.css';
 
 const KIND_LABELS: Record<ConceptKind, string> = { concept: 'Concepts', framework: 'Frameworks', person: 'People', work: 'Works', term: 'Terms' };
@@ -79,6 +81,7 @@ export function ConceptBrowser({ initial, api = browserApi, debounceMs = 180 }: 
   };
 
   const items = page?.items ?? [];
+  const strongest = strongestOf(items);
   return (
     <div className={styles.browser}>
       <div className={styles.search}>
@@ -139,16 +142,31 @@ export function ConceptBrowser({ initial, api = browserApi, debounceMs = 180 }: 
         <ul ref={list} className={styles.list} onKeyDown={onListKey}>
           {items.map((c) => (
             <li key={c.id} className={styles.item}>
-              <a className={styles.name} href={conceptHref(c.id)} data-concept="">
-                {c.canonical}
+              <p className={styles.head}>
+                <a className={styles.name} href={conceptHref(c.id)} data-concept="">
+                  {c.canonical}
+                </a>
+                <span className={styles.kind}>{KIND_NAMES[c.kind]}</span>
+              </p>
+              {c.edge_count !== undefined ? (
+                <span className={styles.links}>
+                  <span className={styles.meter} aria-hidden="true">
+                    <span style={{ inlineSize: `${connectionShare(c.edge_count, strongest) * 100}%` }} />
+                  </span>
+                  {links(c.edge_count)}
+                </span>
+              ) : null}
+              <a className={styles.graph} href={graphHref(`concept:${c.id}`)} aria-label={`Open ${c.canonical} in the graph`}>
+                <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+                  <circle cx="4" cy="11" r="2.2" />
+                  <circle cx="12" cy="4.5" r="2.2" />
+                  <circle cx="12.5" cy="12.5" r="1.6" />
+                  <path d="M5.8 9.9 10.2 5.6M6.1 11.4h4.8" />
+                </svg>
+                Open in graph
               </a>
-              <span className={styles.kind}>{c.kind}</span>
-              {c.edge_count !== undefined ? <span className={styles.links}>{links(c.edge_count)}</span> : null}
-              {c.aliases.length ? <span className={styles.aliases}>{c.aliases.join(', ')}</span> : null}
               {c.blurb ? <p className={styles.blurb}>{c.blurb}</p> : null}
-              <a className={styles.graph} href={graphHref(`concept:${c.id}`)} aria-label={`${c.canonical} in the graph`}>
-                Graph
-              </a>
+              {c.aliases.length ? <p className={styles.aliases}>Also called {c.aliases.join(', ')}</p> : null}
             </li>
           ))}
         </ul>

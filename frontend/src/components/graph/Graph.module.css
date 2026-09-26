@@ -1,5 +1,5 @@
 /*
- * The graph as marginalia: a sheet of raised paper with faint ring guides, concepts in
+ * The graph as marginalia: a flat panel on the desk with faint ring guides, concepts in
  * italic like glosses, passages as small marks with their place in the book, and the
  * selected thing's evidence set in the margin beside it.
  */
@@ -29,16 +29,44 @@
   gap: var(--space-1);
 }
 
+.back {
+  inline-size: fit-content;
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  text-decoration: none;
+}
+
+.back::before {
+  content: '‹ ';
+}
+
+.back:hover {
+  color: var(--accent);
+}
+
 .focusKind {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
   color: var(--ink-3);
   font-family: var(--font-ui);
   font-size: var(--text-sm);
 }
 
+.tag {
+  padding: 0 var(--space-2);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-s);
+  color: var(--ink-2);
+  font-size: var(--text-xs);
+  line-height: 1.6;
+}
+
 .focusTitle {
   font-size: var(--text-xl);
   font-style: italic;
-  font-weight: 500;
   line-height: var(--leading-tight);
   overflow-wrap: anywhere;
 }
@@ -81,7 +109,7 @@
   display: block;
   padding: var(--space-1) var(--space-3);
   border: 1px solid var(--rule-strong);
-  background: var(--paper-raised);
+  background: transparent;
   color: var(--ink-2);
 }
 
@@ -153,8 +181,8 @@
   block-size: clamp(24rem, 66vh, 44rem);
   overflow: hidden;
   border: 1px solid var(--rule);
-  border-radius: var(--radius-l);
-  background: var(--paper-raised);
+  border-radius: var(--radius-m);
+  background: var(--paper);
 }
 
 .canvas {
@@ -182,10 +210,11 @@
 }
 
 .zoom button {
-  min-inline-size: 2.1rem;
+  min-inline-size: 2.25rem;
+  min-block-size: 2.25rem;
   padding: var(--space-1) var(--space-2);
   border: none;
-  background: var(--paper-raised);
+  background: var(--paper);
   color: var(--ink-2);
   font-family: var(--font-ui);
   font-size: var(--text-sm);
@@ -250,8 +279,9 @@
 }
 
 .panelTitle {
+  font-family: var(--font-read);
   font-size: var(--text-md);
-  font-weight: 500;
+  font-weight: 560;
   line-height: var(--leading-tight);
   overflow-wrap: anywhere;
 }
@@ -301,14 +331,19 @@
 }
 
 .action {
-  border: 1px solid var(--ink);
-  background: var(--ink);
-  color: var(--paper);
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.action:hover:not(:disabled) {
+  border-color: var(--accent-strong);
+  background: var(--accent-strong);
 }
 
 .actionQuiet {
   border: 1px solid var(--rule-strong);
-  background: var(--paper-raised);
+  background: transparent;
   color: var(--ink-2);
 }
 

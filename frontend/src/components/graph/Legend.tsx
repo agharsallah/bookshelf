@@ -11,10 +11,10 @@ export function KindMark({ kind }: { kind: EntityKind }) {
   const color = `var(${style.color})`;
   return (
     <svg className={styles.mark} viewBox="0 0 14 14" width="14" height="14" aria-hidden="true">
-      {style.shape === 'ring' ? <circle cx="7" cy="7" r="5" fill="var(--paper-raised)" stroke={color} strokeWidth="2" /> : null}
+      {style.shape === 'ring' ? <circle cx="7" cy="7" r="5" fill="var(--paper)" stroke={color} strokeWidth="2" /> : null}
       {style.shape === 'square' ? <rect x="3" y="3" width="8" height="8" fill={color} /> : null}
       {style.shape === 'spine' ? <rect x="4.5" y="1" width="5" height="12" rx="1" fill={color} /> : null}
-      {style.shape === 'diamond' ? <path d="M7 1.5 12.5 7 7 12.5 1.5 7Z" fill="var(--paper-raised)" stroke={color} strokeWidth="1.8" /> : null}
+      {style.shape === 'diamond' ? <path d="M7 1.5 12.5 7 7 12.5 1.5 7Z" fill="var(--paper)" stroke={color} strokeWidth="1.8" /> : null}
     </svg>
   );
 }

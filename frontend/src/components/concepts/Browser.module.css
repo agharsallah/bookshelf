@@ -1,4 +1,8 @@
-/* The concept index reads like a book's index: names in italic, a short gloss after. */
+/*
+ * The concept index reads like a book's index: each name in the book's serif, a quiet
+ * kind tag, a short gloss beneath, and in the margin a small meter of how connected it
+ * is next to the others in view, with the way into the graph beside it.
+ */
 .browser {
   display: grid;
   gap: var(--space-4);
@@ -11,24 +15,24 @@
 
 .input {
   inline-size: 100%;
-  padding: var(--space-2) 0;
-  border: none;
-  border-block-end: 1px solid var(--rule-strong);
-  background: transparent;
+  min-block-size: 2.75rem;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-m);
+  background: var(--paper);
   color: var(--ink);
-  font-family: var(--font-read);
-  font-size: var(--text-md);
+  font-family: var(--font-ui);
+  font-size: var(--text-base);
 }
 
 .input::placeholder {
   color: var(--ink-3);
-  font-style: italic;
 }
 
 .input:focus-visible {
-  outline: none;
-  border-block-end-color: var(--accent);
-  box-shadow: 0 1px 0 var(--accent);
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+  border-color: var(--accent);
 }
 
 .kinds {
@@ -38,43 +42,59 @@
 }
 
 .kinds button {
-  padding: 0.15rem var(--space-3);
+  min-block-size: 2rem;
+  padding: 0 var(--space-3);
   border: 1px solid var(--rule-strong);
-  border-radius: 999px;
-  background: var(--paper-raised);
+  border-radius: var(--radius-pill);
+  background: transparent;
   color: var(--ink-2);
   font-family: var(--font-ui);
   font-size: var(--text-sm);
   cursor: pointer;
+  transition:
+    background var(--dur-1) var(--ease-out),
+    border-color var(--dur-1) var(--ease-out);
+}
+
+.kinds button:hover {
+  border-color: var(--ink-2);
 }
 
 .kinds button[aria-pressed='true'] {
   border-color: var(--accent);
   background: var(--accent-wash);
-  color: var(--ink);
+  color: var(--accent-strong);
   font-weight: 600;
 }
 
+.recent {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-3);
+}
+
 .recent h3 {
-  margin-block-end: var(--space-2);
   color: var(--ink-3);
-  font-family: var(--font-ui);
   font-size: var(--text-sm);
   font-weight: 600;
 }
 
 .recent ul {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1) var(--space-4);
-  margin: 0;
-  padding: 0;
+  display: contents;
   list-style: none;
 }
 
 .recent a {
   color: var(--ink);
-  font-style: italic;
+  font-family: var(--font-read);
+  font-size: var(--text-ui);
+  text-decoration-color: var(--rule-strong);
+}
+
+.recent a:hover {
+  color: var(--accent);
+  text-decoration-color: currentcolor;
 }
 
 .count,
@@ -86,31 +106,46 @@
 
 .empty {
   color: var(--ink-2);
-  font-family: var(--font-read);
-  font-size: var(--text-base);
-  font-style: italic;
+  font-size: var(--text-ui);
 }
 
 .list {
   display: grid;
   margin: 0;
   padding: 0;
+  border-block-start: 1px solid var(--rule);
   list-style: none;
 }
 
 .item {
   display: grid;
-  grid-template-columns: auto auto auto minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-areas:
+    'head links graph'
+    'blurb blurb blurb'
+    'aliases aliases aliases';
   align-items: baseline;
-  gap: 0 var(--space-3);
-  padding-block: var(--space-2);
+  gap: var(--space-1) var(--space-4);
+  padding-block: var(--space-3);
   border-block-end: 1px solid var(--rule);
+}
+
+.head {
+  grid-area: head;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-2);
+  min-inline-size: 0;
 }
 
 .name {
   color: var(--ink);
-  font-size: var(--text-base);
-  font-style: italic;
+  font-family: var(--font-read);
+  font-size: var(--text-md);
+  font-weight: 560;
+  letter-spacing: -0.01em;
+  line-height: var(--leading-tight);
   text-decoration: none;
 }
 
@@ -118,40 +153,104 @@
 .name:focus-visible {
   color: var(--accent);
   text-decoration: underline;
+  text-decoration-thickness: 1px;
 }
 
-.kind,
-.links,
+.kind {
+  padding: 0 var(--space-2);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-s);
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+}
+
+.links {
+  grid-area: links;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* The link meter: a short track in chart grid, filled in the first series colour. */
+.meter {
+  display: block;
+  inline-size: 3rem;
+  block-size: 4px;
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  background: var(--chart-grid);
+}
+
+.meter span {
+  display: block;
+  block-size: 100%;
+  border-radius: inherit;
+  background: var(--series-1);
+}
+
+.graph {
+  grid-area: graph;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-m);
+  color: var(--accent);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.graph:hover {
+  background: var(--accent-wash);
+}
+
+.graph svg {
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 1.4;
+}
+
+.blurb {
+  grid-area: blurb;
+  display: -webkit-box;
+  max-inline-size: 68ch;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  color: var(--ink-2);
+  font-family: var(--font-read);
+  font-size: var(--text-ui);
+  line-height: 1.5;
+}
+
 .aliases {
+  grid-area: aliases;
   color: var(--ink-3);
   font-family: var(--font-ui);
   font-size: var(--text-xs);
 }
 
-.aliases {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
+@media (max-width: 36rem) {
+  .item {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'head head'
+      'blurb blurb'
+      'aliases aliases'
+      'links graph';
+  }
 
-.links {
-  font-variant-numeric: tabular-nums;
-}
-
-.graph {
-  grid-column: 5;
-  grid-row: 1;
-  color: var(--accent);
-  font-family: var(--font-ui);
-  font-size: var(--text-xs);
-}
-
-.blurb {
-  grid-column: 1 / -1;
-  display: -webkit-box;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  color: var(--ink-2);
-  font-size: var(--text-ui);
+  .graph {
+    margin-inline-end: calc(-1 * var(--space-2));
+  }
 }

@@ -1,8 +1,9 @@
 ---
 /**
- * The idea graph's front door (§11). There is no global view: you pick a concept and
- * see its neighbourhood. Beside the index sits the merge queue, where proposed
- * `same_as` merges wait for a human decision.
+ * Concepts (§11): the index of every concept across your books. The graph is one way
+ * to look at them: there is no global view, you open a concept in the graph and see
+ * its neighbourhood. In workshop mode the merge queue sits beside the index, where
+ * proposed `same_as` merges wait for a human decision.
  */
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import ConceptBrowser from '../../components/concepts/ConceptBrowser';
@@ -25,23 +26,22 @@ const queue = proposals.status === 'fulfilled' ? proposals.value : null;
 const queueProblem: ProblemInfo | null = proposals.status === 'rejected' ? problemOf(proposals.reason) : null;
 ---
 
-<BaseLayout title="Graph" description="Concepts across your books, and the merges waiting for you.">
+<BaseLayout title="Concepts" description="The ideas, people and terms your books share, and how they connect.">
   <div class="page">
     <header class="head">
-      <h1>Graph</h1>
+      <h1>Concepts</h1>
       <p class="lede">
-        Every concept links out to the passages that ground it, across books. Pick one to see its neighbourhood; nothing
-        here is ever shown all at once.
+        The ideas, frameworks, people and terms your books name, each grounded in the passages that use it. Open one to
+        read its gloss and evidence, or open it in the graph to see what it connects to, one neighbourhood at a time.
       </p>
     </header>
 
     <div class="columns">
-      <section aria-labelledby="index-title">
-        <h2 id="index-title">Concepts</h2>
+      <section aria-label="All concepts">
         {conceptsProblem ? <Problem title="Concepts could not be loaded." problem={conceptsProblem} /> : <ConceptBrowser client:load initial={initial} />}
       </section>
 
-      <section aria-labelledby="merge-title">
+      <section class="merges workshop-only" aria-labelledby="merge-title">
         <h2 id="merge-title">
           Merges to confirm{queue && queue.length > 0 ? <span class="count">{queue.length}</span> : null}
         </h2>
@@ -60,53 +60,77 @@ const queueProblem: ProblemInfo | null = proposals.status === 'rejected' ? probl
 
   .head {
     display: grid;
-    gap: var(--space-2);
+    gap: var(--space-3);
     max-inline-size: var(--measure);
   }
 
   h1 {
-    font-size: var(--text-xl);
+    font-size: var(--text-2xl);
   }
 
-  .lede,
-  .note {
+  .lede {
     color: var(--ink-2);
+    font-family: var(--font-ui);
+    font-size: var(--text-base);
+    line-height: 1.5;
   }
 
   .note {
     margin-block-end: var(--space-4);
-    font-size: var(--text-ui);
+    color: var(--ink-2);
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
   }
 
+  /* Reading mode: the index alone, at a readable width. */
   .columns {
     display: grid;
-    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+    grid-template-columns: minmax(0, 52rem);
     align-items: start;
     gap: var(--space-7);
+  }
+
+  /* Workshop mode: the merge queue sits beside the index. */
+  :global(html[data-workshop]) .columns {
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  }
+
+  .merges {
+    padding-inline-start: var(--space-6);
+    border-inline-start: 1px solid var(--rule);
   }
 
   h2 {
     display: flex;
     align-items: baseline;
     gap: var(--space-2);
-    margin-block-end: var(--space-3);
-    font-size: var(--text-lg);
+    margin-block-end: var(--space-2);
+    font-size: var(--text-md);
   }
 
   .count {
     padding: 0 var(--space-2);
     border-radius: var(--radius-m);
-    background: var(--accent-wash);
-    color: var(--accent);
+    background: var(--marker);
+    color: var(--marker-ink);
     font-family: var(--font-ui);
     font-size: var(--text-sm);
-    font-weight: 600;
+    font-weight: 650;
+    font-variant-numeric: tabular-nums;
   }
 
   @media (max-width: 60rem) {
-    .columns {
+    .columns,
+    :global(html[data-workshop]) .columns {
       grid-template-columns: minmax(0, 1fr);
       gap: var(--space-6);
+    }
+
+    .merges {
+      padding-inline-start: 0;
+      padding-block-start: var(--space-5);
+      border-inline-start: none;
+      border-block-start: 1px solid var(--rule);
     }
   }
 </style>
