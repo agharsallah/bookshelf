@@ -14,6 +14,7 @@ next process starts them again at once instead of after `queue.STALE_AFTER`.
 
 import logging
 import threading
+from collections.abc import Sequence
 
 from app.jobs.worker import Worker
 
@@ -49,6 +50,14 @@ class BackgroundWorker:
         except Exception:  # never take the API down; each job's outcome is already recorded
             logger.exception("Background worker stopped unexpectedly", extra={"worker": self._name})
 
+    def release(self) -> None:
+        """Hand running jobs back without killing anything (the first step of a shutdown of
+        several workers: every one releases before any subprocess is killed)."""
+        try:
+            self.worker.release_held()
+        except Exception:  # the jobs will go stale and be reclaimed instead
+            logger.exception("Could not hand jobs back", extra={"worker": self._name})
+
     def stop(self, timeout: float = JOIN_SECONDS, *, abandon: bool = False) -> bool:
         """Stop the loop; with `abandon`, hand running jobs back instead of finishing them.
         True when the thread has stopped within `timeout`."""
@@ -65,3 +74,17 @@ class BackgroundWorker:
         if not stopped:
             logger.warning("%s still busy after %.0fs; leaving it to exit", self._name, timeout)
         return stopped
+
+
+def stop_all(workers: Sequence[BackgroundWorker | None]) -> None:
+    """Stop several workers of one process, handing their running jobs back.
+
+    Every worker releases its jobs before any is abandoned: abandoning kills every tracked
+    subprocess of the process (`claude` runs, the speech model), and one still held by
+    another worker would be recorded as a failed attempt instead of going back untouched.
+    """
+    live = [worker for worker in workers if worker is not None]
+    for worker in live:
+        worker.release()
+    for worker in live:
+        worker.stop(abandon=True)

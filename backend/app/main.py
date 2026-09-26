@@ -22,7 +22,7 @@ from app.core.logging import configure_logging
 from app.core.middleware import MaxBodySizeMiddleware, RequestContextMiddleware
 from app.core.ratelimit import RateLimitMiddleware
 from app.core.security import API_KEY_HEADER
-from app.jobs.background import BackgroundWorker
+from app.jobs.background import BackgroundWorker, stop_all
 from app.jobs.embedded import EmbedRunner
 from app.jobs.narration import NarrateRunner
 from app.jobs.worker import Worker, autodiscover
@@ -83,10 +83,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         yield
     finally:
         restore_signals()
-        if job_worker is not None:
-            job_worker.stop(abandon=True)
-        if narrator is not None:
-            narrator.stop(abandon=True)  # back to the queue; the speech model is killed
+        stop_all([job_worker, narrator])  # jobs back to the queue; `claude` and speech killed
         if runner is not None:
             runner.stop()
         close_client()  # release the embedded store's lock before a reload reopens it

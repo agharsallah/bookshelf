@@ -87,3 +87,54 @@ def test_abandon_hands_a_running_job_back_without_recording_a_failure(session: S
     back = session.get(Job, job.id)
     assert back is not None
     assert (back.state, back.attempts, back.error) == (JobState.QUEUED, 0, None)
+
+
+def test_stopping_two_workers_hands_both_jobs_back_even_when_one_run_is_killed(
+    session: Session,
+):
+    """A reload stops the pipeline worker and the narrate runner together. Killing runs is
+    process-wide, so a job whose subprocess dies before its own worker released it would
+    be recorded as a failed attempt; `stop_all` releases every worker's jobs first."""
+    import subprocess
+
+    from app.jobs.background import BackgroundWorker, stop_all
+    from app.pipeline.runner import communicate_tracked
+
+    jobs = [enqueue(session, "one"), enqueue(session, "two")]
+    started = [threading.Event(), threading.Event()]
+
+    def running(index: int):
+        def handler(ctx: JobContext) -> HandlerResult:
+            # A tracked run that abandoning kills.
+            proc = subprocess.Popen(
+                ["/bin/sleep", "30"], stdin=subprocess.PIPE, text=True, start_new_session=True
+            )
+            started[index].set()
+            communicate_tracked(proc, "", timeout=30)
+            raise RuntimeError(f"run killed with {proc.returncode}")
+
+        return handler
+
+    workers = [
+        BackgroundWorker(
+            Worker(
+                poll_seconds=0.01,
+                handlers={JobKind.EXPORT: running(i)},
+                on_done=lambda db, j: None,
+                concurrency=1,
+            ),
+            name=f"w{i}",
+        )
+        for i in range(2)
+    ]
+    for worker in workers:
+        worker.start()
+    assert all(event.wait(5) for event in started)
+
+    stop_all(workers)
+
+    session.expire_all()
+    for job in jobs:
+        back = session.get(Job, job.id)
+        assert back is not None
+        assert (back.state, back.attempts, back.error) == (JobState.QUEUED, 0, None)

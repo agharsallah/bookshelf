@@ -143,20 +143,28 @@ class Worker:
                     self._held.add(job.id)
             return job
 
-    def abandon(self) -> int:
-        """Stop now: claim nothing more, put every held job back in the queue, and kill the
-        `claude` runs working on them. Returns how many jobs went back."""
-        from app.pipeline.runner import terminate_all
-
+    def release_held(self) -> int:
+        """Claim nothing more and put every held job back in the queue, marked released so
+        its handler's outcome is not recorded. Kills nothing: when several workers share
+        the process, all of them release first (`app.main` lifespan), so killing one's
+        subprocesses never lands as a failure on another's job. Returns how many went back."""
         self.stop.set()
         with self._lock:
             held = list(self._held)
             self._released.update(held)
         with self._session_factory() as session:
             released = queue.release(session, held)
-        terminate_all()
         if released:
             logger.info("Handed running jobs back to the queue", extra={"jobs": released})
+        return released
+
+    def abandon(self) -> int:
+        """Stop now: `release_held`, then kill the `claude` (and speech model) runs working
+        on the jobs. Returns how many jobs went back."""
+        from app.pipeline.runner import terminate_all
+
+        released = self.release_held()
+        terminate_all()
         return released
 
     def _is_released(self, job_id: uuid.UUID) -> bool:
