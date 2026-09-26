@@ -1,0 +1,227 @@
+---
+/**
+ * The book you are in: its title large in the book's voice, the chapter you are in and
+ * how far, the whole book as a strip of chapters with yours marked (its read part inks
+ * in once on load), one button back into the reader, and the study material it has.
+ * Falls back to the newest book to start, or an invitation to add one.
+ */
+import ChapterStrip from '../document/ChapterStrip';
+import { plural } from '../library/spine';
+import { readShare, unitName, whereYouAre, type Hero } from './desk';
+import StudyLinks from './StudyLinks.astro';
+
+interface Props {
+  hero: Hero;
+}
+
+const { hero } = Astro.props;
+const book = 'book' in hero ? hero.book : null;
+const slug = book?.doc.slug ?? '';
+const current = hero.kind === 'continue' ? hero.target.unit.anchor : null;
+const action =
+  hero.kind === 'continue'
+    ? { label: hero.target.kind === 'continue' ? 'Continue reading' : 'Read the next chapter', href: `/documents/${slug}/read/${hero.target.anchor}` }
+    : hero.kind === 'start'
+      ? { label: 'Start reading', href: `/documents/${slug}/read/${hero.unit.anchor}` }
+      : hero.kind === 'finished' && book?.units[0]
+        ? { label: 'Read again', href: `/documents/${slug}/read/${book.units[0].anchor}` }
+        : null;
+const where =
+  hero.kind === 'continue'
+    ? whereYouAre(hero.target)
+    : hero.kind === 'start'
+      ? `Not started yet. It opens at ${unitName(hero.unit)}.`
+      : hero.kind === 'finished'
+        ? 'You have read it all.'
+        : '';
+const progress = book?.progress;
+---
+
+{
+  book ? (
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="top">
+      <div class="head">
+        <h2 id="hero-title" class="book-title title">
+          <a href={`/documents/${slug}`}>{book.doc.title}</a>
+        </h2>
+        {book.doc.authors.length > 0 && <p class="authors">{book.doc.authors.join(', ')}</p>}
+      </div>
+
+      <p class="where">
+        {hero.kind === 'continue' && <span class="where-label">You are in</span>}
+        <span class="where-text">{where}</span>
+      </p>
+      </div>
+
+      <div class="strip">
+        <ChapterStrip slug={slug} units={book.units} positions={book.positions} current={current} size="lg" label="The book, chapter by chapter, and how far you have read" />
+        {progress && progress.total > 0 && hero.kind !== 'start' && (
+          <p class="progress">
+            <strong>{readShare(progress.progress)}</strong>, {progress.finished} of {plural(progress.total, 'chapter')} finished
+          </p>
+        )}
+      </div>
+
+      <div class="actions">
+        {action && (
+          <a class="btn btn-primary go" href={action.href}>
+            {action.label}
+          </a>
+        )}
+        <StudyLinks materials={book.materials} label={`Study material for ${book.doc.title}`} />
+      </div>
+    </section>
+  ) : (
+    <section class="hero hero-empty" aria-labelledby="hero-title">
+      <h2 id="hero-title" class="empty-title">
+        {hero.kind === 'empty' ? 'Your desk is clear' : 'Your books are still being prepared'}
+      </h2>
+      <p class="empty-text">
+        {hero.kind === 'empty'
+          ? 'Add a book or an article in the library. Once its chapters are split, it opens here, ready to read.'
+          : 'None of your books has its chapters yet. They appear here as soon as parsing finishes.'}
+      </p>
+      <a class="btn btn-primary" href="/library">
+        {hero.kind === 'empty' ? 'Add a book' : 'Open the library'}
+      </a>
+    </section>
+  )
+}
+
+<style>
+  .hero {
+    display: grid;
+    gap: var(--space-5);
+    padding-block: var(--space-5) var(--space-6);
+    border-block-end: 1px solid var(--rule);
+  }
+
+  .top {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 22rem);
+    gap: var(--space-5) var(--space-7);
+    align-items: end;
+  }
+
+  .head {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .title {
+    max-inline-size: 24ch;
+    font-size: var(--text-2xl);
+    line-height: 1.05;
+    overflow-wrap: anywhere;
+  }
+
+  .title a {
+    color: var(--ink);
+    text-decoration: none;
+  }
+
+  .title a:hover {
+    color: var(--accent);
+  }
+
+  .authors {
+    color: var(--ink-2);
+    font-family: var(--font-read);
+    font-size: var(--text-md);
+    font-style: italic;
+  }
+
+  .where {
+    display: grid;
+    gap: var(--space-1);
+    font-family: var(--font-ui);
+  }
+
+  .where-label {
+    color: var(--ink-3);
+    font-size: var(--text-sm);
+  }
+
+  .where-text {
+    color: var(--ink);
+    font-size: var(--text-md);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .strip {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .progress {
+    color: var(--ink-3);
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .progress strong {
+    color: var(--ink-2);
+    font-weight: 600;
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3) var(--space-5);
+  }
+
+  .go {
+    min-block-size: 3rem;
+    padding-inline: var(--space-6);
+    font-size: var(--text-base);
+  }
+
+  /* The one moment on load: what you have read inks in along the strip. */
+  @media (prefers-reduced-motion: no-preference) {
+    .strip :global(li a > span[aria-hidden='true']) {
+      transform-origin: left center;
+      animation: ink-in calc(var(--dur-4) * 2) var(--ease-stroke) 160ms both;
+    }
+  }
+
+  @keyframes ink-in {
+    from {
+      scale: 0 1;
+    }
+  }
+
+  .hero-empty {
+    justify-items: start;
+    gap: var(--space-3);
+  }
+
+  .empty-title {
+    font-size: var(--text-xl);
+  }
+
+  .empty-text {
+    max-inline-size: 52ch;
+    color: var(--ink-2);
+    font-size: var(--text-base);
+  }
+
+  @media (max-width: 56rem) {
+    .top {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  @media (max-width: 40rem) {
+    .title {
+      font-size: var(--text-xl);
+    }
+
+    .go {
+      flex: 1 1 100%;
+    }
+  }
+</style>

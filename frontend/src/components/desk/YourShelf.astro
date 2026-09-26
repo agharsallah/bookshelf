@@ -1,0 +1,140 @@
+---
+/**
+ * Every book as one row: title and author, its chapters as a small strip filled by what
+ * you read, and how much that is. Books never opened, or not split into chapters yet,
+ * say so plainly. Each title opens the book's page.
+ */
+import ChapterStrip from '../document/ChapterStrip';
+import { isReadable, readShare, type DeskBook } from './desk';
+
+interface Props {
+  books: DeskBook[];
+}
+
+const { books } = Astro.props;
+const standing = (book: DeskBook) =>
+  !isReadable(book.doc) || book.units.length === 0
+    ? { text: 'Chapters not ready yet', read: false }
+    : book.lastRead
+      ? { text: readShare(book.progress.progress, 'read'), read: true }
+      : { text: 'Not opened yet', read: false };
+---
+
+<section class="shelf" aria-labelledby="shelf-title">
+  <h2 id="shelf-title" class="section-title">Your shelf</h2>
+  <ul class="rows">
+    {
+      books.map((book) => {
+        const state = standing(book);
+        return (
+          <li class="row">
+            <div class="name">
+              <a class="book-title title" href={`/documents/${book.doc.slug}`}>
+                {book.doc.title}
+              </a>
+              {book.doc.authors.length > 0 && <span class="authors">{book.doc.authors.join(', ')}</span>}
+            </div>
+            <div class="strip">
+              {book.units.length > 0 && (
+                <ChapterStrip slug={book.doc.slug} units={book.units} positions={book.positions} label={`Chapters of ${book.doc.title} and how far you have read them`} />
+              )}
+            </div>
+            <span class="state" data-read={state.read ? '' : undefined}>
+              {state.text}
+            </span>
+          </li>
+        );
+      })
+    }
+  </ul>
+</section>
+
+<style>
+  .shelf {
+    display: grid;
+    gap: var(--space-3);
+  }
+
+  .section-title {
+    font-size: var(--text-lg);
+  }
+
+  .rows {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    border-block-start: 1px solid var(--rule);
+  }
+
+  .row {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr) 9rem;
+    gap: var(--space-2) var(--space-5);
+    align-items: center;
+    padding-block: var(--space-4);
+    border-block-end: 1px solid var(--rule);
+  }
+
+  .name {
+    display: grid;
+    gap: 0.125rem;
+    min-inline-size: 0;
+  }
+
+  .title {
+    color: var(--ink);
+    font-size: var(--text-md);
+    line-height: 1.2;
+    text-decoration: none;
+    overflow-wrap: anywhere;
+  }
+
+  .title:hover {
+    color: var(--accent);
+  }
+
+  .authors {
+    color: var(--ink-3);
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+  }
+
+  .state {
+    color: var(--ink-3);
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+    font-variant-numeric: tabular-nums;
+    text-align: end;
+  }
+
+  .state[data-read] {
+    color: var(--ink);
+    font-weight: 650;
+  }
+
+  @media (max-width: 40rem) {
+    .row {
+      grid-template-columns: minmax(0, 1fr) auto;
+      grid-template-areas:
+        'name state'
+        'strip strip';
+      align-items: baseline;
+    }
+
+    .name {
+      grid-area: name;
+    }
+
+    .strip {
+      grid-area: strip;
+    }
+
+    .state {
+      grid-area: state;
+    }
+
+    .strip:empty {
+      display: none;
+    }
+  }
+</style>
