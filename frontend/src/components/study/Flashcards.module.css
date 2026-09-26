@@ -1,0 +1,300 @@
+/* The flashcard deck: a sheet of card stock that turns over, and the tools around it. */
+
+.deck {
+  display: grid;
+  gap: var(--space-4);
+  max-inline-size: 50rem;
+  margin-inline: auto;
+}
+
+.topic {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--ink-2);
+}
+
+.topic select {
+  min-block-size: 2.5rem;
+  max-inline-size: 16rem;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-m);
+  background: var(--paper-raised);
+  font-family: var(--font-ui);
+  font-size: var(--text-ui);
+}
+
+/* ── Progress across the pass ─────────────────────────────── */
+
+.progress {
+  display: flex;
+  gap: 3px;
+  padding: 0;
+  list-style: none;
+}
+
+.progress[data-dense] {
+  gap: 1px;
+}
+
+.progress li {
+  flex: 1;
+  min-inline-size: 0;
+  block-size: 6px;
+  border-radius: 2px;
+  background: var(--rule);
+  transition: background var(--dur-3) var(--ease-out);
+}
+
+.progress li[data-seen] {
+  background: var(--rule-strong);
+}
+
+.progress li[data-mark='learning'] {
+  background: var(--tone-caution);
+}
+
+.progress li[data-mark='knew'] {
+  background: var(--marker);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--marker-ink) 18%, transparent);
+}
+
+.progress li[data-current] {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* ── The card ─────────────────────────────────────────────── */
+
+.scene {
+  perspective: 1600px;
+  animation: deal var(--dur-3) var(--ease-out);
+}
+
+@keyframes deal {
+  from {
+    opacity: 0;
+    translate: 0 8px;
+  }
+}
+
+.card {
+  display: grid;
+  min-block-size: 20rem;
+  transform-style: preserve-3d;
+  transition: transform var(--dur-4) var(--ease-turn);
+}
+
+.card[data-turned] {
+  transform: rotateY(180deg);
+}
+
+.face {
+  grid-area: 1 / 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-6) var(--space-7);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-l);
+  background: var(--paper-raised);
+  box-shadow: var(--shadow-lift);
+  backface-visibility: hidden;
+}
+
+.front {
+  justify-content: center;
+  cursor: pointer;
+}
+
+.back {
+  transform: rotateY(180deg);
+}
+
+.cardTop {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-block-size: 1.5rem;
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.badge {
+  padding: 0.1em 0.5em;
+  border-radius: var(--radius-s);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.badge[data-mark='knew'] {
+  background: var(--marker);
+  color: var(--marker-ink);
+}
+
+.badge[data-mark='learning'] {
+  color: var(--tone-caution);
+  box-shadow: inset 0 0 0 1px currentColor;
+}
+
+.prompt {
+  max-inline-size: 34ch;
+  margin: auto;
+  font-family: var(--font-read);
+  font-size: var(--text-lg);
+  font-weight: 500;
+  line-height: 1.3;
+  text-align: center;
+  text-wrap: balance;
+}
+
+.hint {
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  text-align: center;
+}
+
+.asked {
+  padding-block-end: var(--space-3);
+  border-block-end: 1px solid var(--rule);
+  color: var(--ink-2);
+  font-family: var(--font-read);
+  font-size: var(--text-ui);
+  font-style: italic;
+}
+
+.answer {
+  font-family: var(--font-read);
+  font-size: var(--text-md);
+  line-height: 1.5;
+}
+
+/* ── Controls ─────────────────────────────────────────────── */
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.primary {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-2);
+}
+
+/* ── End of the deck ──────────────────────────────────────── */
+
+.summary {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-3);
+  padding: var(--space-7) var(--space-5);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-l);
+  background: var(--paper-raised);
+  box-shadow: var(--shadow-lift);
+  text-align: center;
+}
+
+.summaryTitle {
+  font-size: var(--text-md);
+}
+
+.summaryTitle:focus {
+  outline: none;
+}
+
+.result {
+  font-family: var(--font-ui);
+  font-size: var(--text-xl);
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+/* The highlighter drawn across the result, left to right. */
+.stroke {
+  padding-inline: 0.2em;
+  border-radius: var(--radius-s);
+  background: linear-gradient(var(--marker), var(--marker)) no-repeat;
+  background-size: 100% 100%;
+  color: var(--marker-ink);
+  font-variant-numeric: tabular-nums;
+  animation: stroke var(--dur-4) var(--ease-stroke) var(--dur-2) backwards;
+}
+
+@keyframes stroke {
+  from {
+    background-size: 0% 100%;
+  }
+}
+
+.rest {
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+}
+
+.summaryActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-2);
+  margin-block-start: var(--space-3);
+}
+
+@media (max-width: 40rem) {
+  .face {
+    padding: var(--space-5);
+  }
+
+  .card {
+    min-block-size: 17rem;
+  }
+
+  .prompt {
+    font-size: var(--text-md);
+  }
+
+  .answer {
+    font-size: var(--text-base);
+  }
+
+  .controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .primary {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
+  .primary > * {
+    flex: 1;
+  }
+}
+
+/* Without motion the card does not turn in space: the faces simply swap. */
+@media (prefers-reduced-motion: reduce) {
+  .card,
+  .card[data-turned],
+  .back {
+    transform: none;
+  }
+
+  .face {
+    backface-visibility: visible;
+  }
+
+  .card[data-turned] .front,
+  .card:not([data-turned]) .back {
+    visibility: hidden;
+  }
+}

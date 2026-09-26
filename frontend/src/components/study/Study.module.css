@@ -1,0 +1,89 @@
+/* Pieces the study islands share: key hints, the tool bar, the filter field. */
+
+.kbd {
+  display: inline-grid;
+  place-items: center;
+  min-inline-size: 1.5em;
+  padding: 0.1em 0.35em;
+  border: 1px solid var(--rule-strong);
+  border-block-end-width: 2px;
+  border-radius: var(--radius-s);
+  background: var(--paper);
+  color: var(--ink-3);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+/* On a filled button the hint takes the button's own colours. */
+:global(.btn-primary) .kbd {
+  border-color: color-mix(in oklab, var(--on-accent) 45%, transparent);
+  background: transparent;
+  color: var(--on-accent);
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.spacer {
+  flex: 1;
+}
+
+.search {
+  position: relative;
+  flex: 1 1 16rem;
+  max-inline-size: 26rem;
+}
+
+.search input {
+  inline-size: 100%;
+  min-block-size: 2.5rem;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-m);
+  background: var(--paper-raised);
+  font-family: var(--font-ui);
+  font-size: var(--text-ui);
+}
+
+.search input::placeholder {
+  color: var(--ink-3);
+}
+
+.search input:focus-visible {
+  outline-offset: 0;
+  border-color: var(--accent);
+}
+
+.count {
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.none {
+  padding: var(--space-6) 0;
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+}
+
+/* A sentence that only names keys. */
+.keyHint {
+  display: contents;
+}
+
+/* Key hints only help with a keyboard: gone on touch screens and narrow ones. */
+@media (hover: none), (max-width: 40rem) {
+  .kbd,
+  .keyHint {
+    display: none;
+  }
+}

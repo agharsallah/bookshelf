@@ -1,0 +1,115 @@
+/* The FAQ: topic headings over sheets of questions that open in place. */
+
+.faq {
+  display: grid;
+  gap: var(--space-5);
+  max-inline-size: 50rem;
+  margin-inline: auto;
+}
+
+.topic {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.topicTitle {
+  font-size: var(--text-md);
+}
+
+.sheet {
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-l);
+  background: var(--paper-raised);
+  box-shadow: var(--shadow-lift);
+}
+
+.item + .item {
+  border-block-start: 1px solid var(--rule);
+}
+
+.question {
+  font: inherit;
+  text-wrap: pretty;
+}
+
+.question button {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+  inline-size: 100%;
+  padding: var(--space-4) var(--space-5);
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font-family: var(--font-read);
+  font-size: var(--text-base);
+  font-weight: 560;
+  line-height: 1.4;
+  text-align: start;
+  cursor: pointer;
+}
+
+.question button:hover {
+  color: var(--accent);
+}
+
+.question button:focus-visible {
+  outline-offset: -2px;
+  border-radius: var(--radius-l);
+}
+
+.chevron {
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  color: var(--ink-3);
+  translate: 0 0.15em;
+  transition: rotate var(--dur-3) var(--ease-turn);
+}
+
+.item[data-open] .chevron {
+  rotate: 180deg;
+}
+
+/* Height animates by grid rows (0fr → 1fr), so the answer opens to its own size. */
+.panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--dur-3) var(--ease-out);
+}
+
+.item[data-open] .panel {
+  grid-template-rows: 1fr;
+}
+
+.panelInner {
+  min-block-size: 0;
+  overflow: hidden;
+}
+
+.answer {
+  max-inline-size: 70ch;
+  padding: 0 var(--space-5) var(--space-4);
+  color: var(--ink);
+  font-family: var(--font-read);
+  line-height: var(--leading-read);
+}
+
+.detail {
+  padding: 0 var(--space-5) var(--space-5);
+}
+
+@media (max-width: 40rem) {
+  .question button {
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .answer,
+  .detail {
+    padding-inline: var(--space-4);
+  }
+}

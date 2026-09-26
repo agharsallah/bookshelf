@@ -1,0 +1,92 @@
+/* Quotes: large serif pull quotes, one per sheet, the opening mark hung in the margin. */
+
+.quotes {
+  display: grid;
+  gap: var(--space-5);
+  max-inline-size: 50rem;
+  margin-inline: auto;
+  padding: 0;
+  list-style: none;
+}
+
+.quote {
+  position: relative;
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-6) var(--space-7) var(--space-5);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-l);
+  background: var(--paper-raised);
+  box-shadow: var(--shadow-lift);
+}
+
+.quote::before {
+  content: '“';
+  position: absolute;
+  inset-block-start: 0.05em;
+  inset-inline-start: 0.2em;
+  color: var(--rule-strong);
+  font-family: var(--font-read);
+  font-size: 4.5rem;
+  line-height: 1;
+}
+
+.text {
+  font-family: var(--font-read);
+  font-size: var(--text-md);
+  font-weight: 450;
+  line-height: 1.45;
+  text-wrap: pretty;
+}
+
+.caption {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.who {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.who::before {
+  content: '— ';
+  color: var(--ink-3);
+  font-weight: 400;
+}
+
+.page {
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.caption :global(a) {
+  font-size: var(--text-xs);
+}
+
+.spacer {
+  flex: 1;
+}
+
+.copy {
+  min-block-size: 2.25rem;
+}
+
+.copy[data-copied='yes'] {
+  color: var(--tone-insight);
+}
+
+@media (max-width: 40rem) {
+  .quote {
+    padding: var(--space-6) var(--space-5) var(--space-4);
+  }
+
+  .text {
+    font-size: var(--text-base);
+  }
+}

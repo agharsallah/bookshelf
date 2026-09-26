@@ -1,0 +1,171 @@
+---
+/**
+ * Study page header: back to the document, the book's title, a switcher between the
+ * study material of this scope (the current one highlighted), and, when chapters have
+ * their own sets, a scope switch between the whole book and one chapter. The switch is a
+ * plain GET form; with scripts it navigates as soon as you pick.
+ */
+import type { SwitchItem } from './study-page';
+
+interface Scope {
+  anchor: string;
+  label: string;
+}
+
+interface Props {
+  slug: string;
+  title: string;
+  /** Where the scope form submits: this kind's study page. */
+  action: string;
+  items: SwitchItem[];
+  chapter: string | null;
+  /** Chapters with their own set; empty hides the scope switch. */
+  scopes: Scope[];
+}
+
+const { slug, title, action, items, chapter, scopes } = Astro.props;
+const current = items.find((i) => i.current);
+---
+
+<header class="head">
+  <a class="back" href={`/documents/${slug}`}>Back to the document</a>
+  <h1 class="book-title title">
+    {title}<span class="visually-hidden">: {current?.label}</span>
+  </h1>
+  <div class="bar">
+    <nav aria-label="Study material">
+      <ul class="switch">
+        {
+          items.map((item) => (
+            <li>
+              <a href={item.href} aria-current={item.current ? 'page' : undefined} data-missing={item.missing ? '' : undefined}>
+                <span class={item.current ? 'marker' : undefined}>{item.label}</span>
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </nav>
+    {
+      scopes.length > 0 && (
+        <form class="scope" method="get" action={action} data-scope>
+          <label for="study-scope">Scope</label>
+          <select id="study-scope" name="chapter">
+            <option value="" selected={chapter === null} data-href={action}>
+              Whole book
+            </option>
+            {scopes.map((s) => (
+              <option value={s.anchor} selected={s.anchor === chapter} data-href={`${action}?chapter=${encodeURIComponent(s.anchor)}`}>
+                {s.label}
+              </option>
+            ))}
+          </select>
+          <noscript>
+            <button class="btn" type="submit">
+              Show
+            </button>
+          </noscript>
+        </form>
+      )
+    }
+  </div>
+</header>
+
+<script>
+  for (const form of document.querySelectorAll<HTMLFormElement>('[data-scope]')) {
+    const select = form.querySelector('select');
+    select?.addEventListener('change', () => {
+      const href = select.selectedOptions[0]?.dataset.href;
+      if (href) window.location.assign(href);
+    });
+  }
+</script>
+
+<style>
+  .head {
+    display: grid;
+    gap: var(--space-3);
+    max-inline-size: 50rem;
+    margin: 0 auto var(--space-6);
+  }
+
+  .back {
+    justify-self: start;
+    color: var(--ink-3);
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+  }
+
+  .title {
+    font-size: var(--text-xl);
+    line-height: var(--leading-tight);
+    text-wrap: balance;
+  }
+
+  .bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3) var(--space-5);
+    padding-block: var(--space-2);
+    border-block: 1px solid var(--rule);
+    font-family: var(--font-ui);
+    font-size: var(--text-ui);
+  }
+
+  .switch {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-4);
+    padding: 0;
+    list-style: none;
+  }
+
+  .switch a {
+    display: inline-block;
+    padding-block: var(--space-1);
+    color: var(--ink-2);
+    font-weight: 560;
+    text-decoration: none;
+  }
+
+  .switch a:hover {
+    color: var(--accent);
+  }
+
+  .switch a[aria-current='page'] {
+    color: var(--ink);
+    font-weight: 650;
+  }
+
+  .switch a[data-missing]:not([aria-current]) {
+    color: var(--ink-3);
+  }
+
+  .scope {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    color: var(--ink-3);
+    font-size: var(--text-sm);
+  }
+
+  .scope select {
+    min-block-size: 2.25rem;
+    max-inline-size: min(20rem, 60vw);
+    padding: 0 var(--space-2);
+    border: 1px solid var(--rule-strong);
+    border-radius: var(--radius-m);
+    background: var(--paper-raised);
+    color: var(--ink);
+    font-family: var(--font-ui);
+    font-size: var(--text-ui);
+  }
+
+  @media (max-width: 40rem) {
+    .title {
+      font-size: var(--text-lg);
+    }
+  }
+</style>

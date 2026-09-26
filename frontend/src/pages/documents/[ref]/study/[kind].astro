@@ -1,0 +1,188 @@
+---
+/**
+ * A study page: one kind of study material (flashcards, quiz, FAQ, quotes, glossary) for
+ * the whole book, or for one chapter with `?chapter=ch03`, drawn by its own island. Shows
+ * the approved version, else the newest draft, badged as one. Without any, says so and,
+ * in workshop mode, where to make it.
+ */
+import BaseLayout from '../../../../layouts/BaseLayout.astro';
+import { Problem } from '../../../../components/common/Problem';
+import Faq from '../../../../components/study/Faq';
+import Flashcards from '../../../../components/study/Flashcards';
+import Glossary from '../../../../components/study/Glossary';
+import Quiz from '../../../../components/study/Quiz';
+import Quotes from '../../../../components/study/Quotes';
+import StudyHeader from '../../../../components/study/StudyHeader.astro';
+import { parseFaq, parseFlashcards, parseGlossary, parseQuiz, parseQuotes } from '../../../../components/study/study-body';
+import { chapterParam, chapterScopes, emptyMessage, switcherItems } from '../../../../components/study/study-page';
+import { pickBest } from '../../../../lib/documents/artifacts';
+import { getArtifacts, getDocument, getOutline, load } from '../../../../lib/documents/server';
+import { availableMaterials, isStudyKind, MATERIALS, materialOf, studyHref } from '../../../../lib/documents/study';
+import { readingUnits } from '../../../../lib/documents/tree';
+
+export const prerender = false;
+
+const ref = Astro.params.ref ?? '';
+const kindParam = Astro.params.kind;
+const known = isStudyKind(kindParam);
+const kind = known ? kindParam : 'flashcards';
+const material = materialOf(kind);
+const chapter = material.bookOnly ? null : chapterParam(Astro.url.searchParams.get('chapter'));
+
+const loaded = await load(async () => {
+  const doc = await getDocument(ref);
+  const artifacts = (await Promise.all(MATERIALS.map((m) => getArtifacts(doc.id, { type: m.type })))).flat();
+  const best = pickBest(artifacts, material.type, chapter);
+  const anchors = material.bookOnly ? [] : chapterScopes(artifacts, material.type);
+  const units = anchors.length > 0 ? readingUnits((await getOutline(doc.slug)).nodes) : [];
+  const scopes = anchors.map((anchor) => {
+    const unit = units.find((u) => u.anchor === anchor);
+    return { anchor, label: unit?.heading ? unit.heading : anchor };
+  });
+  const body = best?.artifact.body;
+  const content =
+    kind === 'flashcards'
+      ? { kind, cards: parseFlashcards(body) }
+      : kind === 'quiz'
+        ? { kind, questions: parseQuiz(body) }
+        : kind === 'faq'
+          ? { kind, items: parseFaq(body) }
+          : kind === 'quotes'
+            ? { kind, quotes: parseQuotes(body) }
+            : { kind, terms: parseGlossary(body) };
+  const count = Object.values(content).find(Array.isArray)?.length ?? 0;
+  return {
+    doc,
+    best: best && count > 0 ? best : null,
+    content,
+    scopes,
+    items: switcherItems(doc.slug, availableMaterials(doc.slug, artifacts, chapter), kind, chapter),
+  };
+});
+if (!known || (!loaded.ok && loaded.notFound)) Astro.response.status = 404;
+const data = known && loaded.ok ? loaded.value : null;
+const draft = data?.best && data.best.standing !== 'approved';
+const artifact = data?.best?.artifact;
+---
+
+<BaseLayout title={data ? `${material.label}: ${data.doc.title}` : 'Study'} width="wide">
+  {
+    !data ? (
+      !known || (!loaded.ok && loaded.notFound) ? (
+        <div class="empty">
+          <h1>Not on the shelf</h1>
+          <p>
+            {known ? `No document is called “${ref}”.` : `There is no “${kindParam}” to study.`} <a href="/library">Back to the library</a>
+          </p>
+        </div>
+      ) : (
+        !loaded.ok && <Problem title="The study material could not be loaded." problem={loaded.problem} />
+      )
+    ) : (
+      <>
+        <StudyHeader
+          slug={data.doc.slug}
+          title={data.doc.title}
+          action={studyHref(data.doc.slug, kind)}
+          items={data.items}
+          chapter={chapter}
+          scopes={data.scopes}
+        />
+        {artifact ? (
+          <>
+            <p class="standing">
+              {draft && <span class="draft">Draft, not reviewed yet</span>}
+              <span class="workshop-only meta">
+                Version {artifact.version}
+                {artifact.skill && `, ${artifact.skill}${artifact.skill_version ? ` ${artifact.skill_version}` : ''}`}.{' '}
+                <a href={`/review/${artifact.id}`}>Open in review</a>
+              </span>
+            </p>
+            {data.content.kind === 'flashcards' && <Flashcards client:load slug={data.doc.slug} artifactId={artifact.id} cards={data.content.cards} />}
+            {data.content.kind === 'quiz' && <Quiz client:load slug={data.doc.slug} questions={data.content.questions} />}
+            {data.content.kind === 'faq' && <Faq client:load slug={data.doc.slug} items={data.content.items} />}
+            {data.content.kind === 'quotes' && <Quotes client:load slug={data.doc.slug} bookTitle={data.doc.title} quotes={data.content.quotes} />}
+            {data.content.kind === 'glossary' && <Glossary client:load slug={data.doc.slug} terms={data.content.terms} />}
+          </>
+        ) : (
+          <div class="empty">
+            <h2>{emptyMessage(kind, chapter)}</h2>
+            <p>
+              {data.items.some((i) => !i.current) ? 'Pick other study material above, or keep reading.' : 'Keep reading in the meantime.'}
+            </p>
+            <p class="links">
+              <a class="btn btn-primary" href={`/documents/${data.doc.slug}/read`}>
+                Continue reading
+              </a>
+            </p>
+            <p class="workshop-only hint">
+              It can be made from the study material on the <a href={`/documents/${data.doc.slug}`}>document page</a>.
+            </p>
+          </div>
+        )}
+      </>
+    )
+  }
+</BaseLayout>
+
+<style>
+  .standing {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-4);
+    align-items: baseline;
+    max-inline-size: 50rem;
+    margin: calc(-1 * var(--space-3)) auto var(--space-4);
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+  }
+
+  .standing:not(:has(> :not(.workshop-only))) {
+    display: none;
+  }
+
+  :global(html[data-workshop]) .standing {
+    display: flex;
+  }
+
+  .draft {
+    padding: 0.1em 0.5em;
+    border-radius: var(--radius-s);
+    color: var(--tone-caution);
+    font-weight: 600;
+    box-shadow: inset 0 0 0 1px currentColor;
+  }
+
+  .meta {
+    color: var(--ink-3);
+  }
+
+  .empty {
+    display: grid;
+    gap: var(--space-3);
+    max-inline-size: 50rem;
+    margin-inline: auto;
+    padding: var(--space-6) 0;
+  }
+
+  .empty h1,
+  .empty h2 {
+    font-size: var(--text-lg);
+  }
+
+  .empty p {
+    max-inline-size: 60ch;
+    color: var(--ink-2);
+    font-family: var(--font-ui);
+  }
+
+  .links {
+    margin-block-start: var(--space-2);
+  }
+
+  .hint {
+    padding: var(--space-3) var(--space-4);
+    border: 1px dashed var(--rule-strong);
+    border-radius: var(--radius-m);
+  }
+</style>

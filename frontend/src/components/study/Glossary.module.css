@@ -1,0 +1,105 @@
+/* The glossary: a filter and an A–Z index over one sheet of terms, filed by letter. */
+
+.glossary {
+  display: grid;
+  gap: var(--space-5);
+  max-inline-size: 50rem;
+  margin-inline: auto;
+}
+
+.head {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.letters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 0;
+  list-style: none;
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.letters a,
+.letters span {
+  display: grid;
+  place-items: center;
+  min-inline-size: 1.75rem;
+  min-block-size: 2rem;
+  border-radius: var(--radius-s);
+}
+
+.letters a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.letters a:hover {
+  background: var(--accent-wash);
+}
+
+.letters span {
+  color: var(--ink-3);
+  opacity: 0.45;
+  cursor: default;
+}
+
+.sheet {
+  display: grid;
+  gap: var(--space-5);
+  padding: var(--space-5) var(--space-7) var(--space-6);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-l);
+  background: var(--paper-raised);
+  box-shadow: var(--shadow-lift);
+}
+
+.section {
+  display: grid;
+  grid-template-columns: 3rem 1fr;
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.letter {
+  position: sticky;
+  inset-block-start: 5rem;
+  padding-block-start: var(--space-2);
+  color: var(--ink-3);
+  font-family: var(--font-read);
+  font-size: var(--text-xl);
+  font-weight: 500;
+  line-height: 1;
+  scroll-margin-top: 6rem;
+}
+
+.letter:focus {
+  outline: none;
+}
+
+.letter:target {
+  color: var(--ink);
+}
+
+.terms {
+  min-inline-size: 0;
+}
+
+@media (max-width: 40rem) {
+  .sheet {
+    padding: var(--space-4) var(--space-4) var(--space-5);
+  }
+
+  .section {
+    grid-template-columns: 1fr;
+    gap: var(--space-1);
+  }
+
+  .letter {
+    position: static;
+    font-size: var(--text-lg);
+  }
+}
