@@ -24,11 +24,14 @@ scope: chapter                  # document | chapter | section | block | note
 selector: chapter_section_notes # named input selector (table below)
 document_selector: null         # optional, chapter-scope skills: the selector a run with no
                                 # anchor reads, so the same skill also works book-wide
+document_tier: null             # optional: the tier for those book-wide runs (else `tier`)
 vision: false                   # true: prompt carries image paths the CLI must read
 gates:
   grounding_min: 0.9            # share of leaf spans with >=1 valid cite; 0 disables
   compression: [0.10, 0.25]     # output words / source words; omit to disable
   max_words: null               # hard cap on output words (summaries: 150)
+  coverage_min: null            # book-wide runs: share of the input's chapters the output
+                                # must cite; below it → needs_review, `gates.uncovered` lists them
 ```
 
 ### Utility skills
@@ -139,7 +142,7 @@ Gates walk the whole output: any object with `text` + `cites` is a leaf span, an
 | structure-note | `{blocks, tags: [str], concepts: [str]}` |
 | link-concepts | `{concepts: [{canonical, aliases, kind, blurb: spans}], edges: [{src, dst, relation, weight, evidence: [anchor]}]}` where an endpoint is `{kind: concept, ref: <canonical>}` or `{kind: node, ref: <anchor>}` |
 | extract-quotes | `{blocks}` (quote blocks only) |
-| make-faq | `{items: [{question, answer: spans}]}` |
+| make-faq | `{items: [{question, answer: spans, group?, detail?: [bullets\|steps\|table\|callout]}]}` — `group` (a topic) and `detail` book-wide only |
 | make-quiz | `{items: [{question, choices: [str], answer: int, explanation: spans}]}` |
-| make-flashcards | `{items: [{front, back: spans}]}` |
+| make-flashcards | `{items: [{front, back: spans, group?}]}` — `group` book-wide only |
 | make-glossary | `{blocks}` (definition blocks only) |

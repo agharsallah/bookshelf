@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://bookshelf.local/skills/make-faq/schema.json",
   "title": "make-faq output",
-  "description": "Questions a colleague would ask, each answered with cited spans drawn from the distillation(s).",
+  "description": "Questions a colleague would ask, each answered with cited spans drawn from the distillation(s); book-wide items may carry a topic group and structured detail.",
   "type": "object",
   "required": [
     "items"
@@ -32,9 +32,36 @@
                 "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/spans"
               },
               {
-                "maxItems": 8
+                "maxItems": 6
               }
             ]
+          },
+          "group": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 60,
+            "description": "Book-wide: the topic this item belongs to; items of one topic are contiguous, topics in book order."
+          },
+          "detail": {
+            "type": "array",
+            "maxItems": 3,
+            "description": "Structure a reader will use beneath the direct answer: steps, criteria, a comparison, the trap to avoid.",
+            "items": {
+              "anyOf": [
+                {
+                  "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/bullets"
+                },
+                {
+                  "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/steps"
+                },
+                {
+                  "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/table"
+                },
+                {
+                  "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/callout"
+                }
+              ]
+            }
           }
         }
       }

@@ -1,5 +1,5 @@
 name: extract-quotes
-version: 2
+version: 3
 description: Pick the most citable passages of a chapter, or the book's defining lines, as verbatim, paged quote blocks.
 tier: distil
 job_kind: derive
@@ -10,3 +10,4 @@ document_selector: document_quotes  # no anchor: the whole book (skills/README.m
 vision: false
 gates:
   grounding_min: 0.9    # each quote is a leaf (text + cites); reads source blocks, since quotes must be verbatim
+  coverage_min: 0.7  # book-wide: share of chapters the output must cite

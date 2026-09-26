@@ -55,22 +55,37 @@ themes, each citing every chapter it appears in). Either may be empty.
 
 ### Book-wide quiz
 
-A book quiz tells a reader whether they understood *the book*, not whether they read every
-chapter. Instead of step 2:
+A book quiz tells a reader whether they understood *the book* — its argument, its
+frameworks and how to use them — not whether they read every chapter or remember its
+wording. It should leave no major idea untested. Instead of step 2:
 
-- **Write 15–25 questions**, weighted towards the book's argument: the `book_brief` thesis
-  and ideas and the `book_themes` first, then each chapter's central mechanism.
-- **At least a third are *connect* questions** that need two or more chapters: how a later
-  mechanism depends on an earlier one, which chapter's warning a scenario violates, how a
-  theme develops ("introduced as X, later extended to Y"). Their explanations cite an
-  anchor in each chapter they draw on.
-- **Cover the book:** every chapter with testable content contributes at least one question
-  or is part of a *connect* question; no chapter supplies more than a fifth of them.
-- **Order** questions by the chapter they rest on (a *connect* question sits at the latest
-  chapter it needs), so the quiz follows the book.
-- `book_brief` and `book_themes` guide what to ask; the answer and its explanation still
-  cite the anchors that state it — the block anchors inside the distillations, which the
-  brief's and themes' own cites reuse.
+1. **Map the book before writing** (the map is not output): for each chapter, its central
+   idea, the framework or method it teaches, its key numbers, and the mistakes it warns
+   against. Mark chapters that add nothing new.
+2. **Write 20–30 questions** that together cover the map:
+   - **the argument** (from `book_brief`): at least two questions on the central claim and
+     why it holds — asked as *apply* or *distinguish*, never "What is the book's thesis?";
+   - **every framework or method** the book teaches: at least one question that makes the
+     reader *use* it on a short scenario (which step comes next, which option the criteria
+     pick, what the model predicts);
+   - **connections**: at least a third are *connect* questions that need two or more
+     chapters — how a later method depends on an earlier idea, which chapter's warning a
+     scenario violates, how a `book_themes` entry develops. Their explanations cite an
+     anchor in each chapter they draw on;
+   - **the traps**: the `antipattern` and `caution` callouts the book stresses most, as
+     *diagnose* questions whose distractors are the very mistakes it rebuts.
+3. **Spread the difficulty:** about a quarter straightforward (one idea, stated plainly), half
+   that need applying an idea to a new case, a quarter that need combining ideas.
+4. **Cover the book:** every chapter with testable content is cited by at least one
+   explanation; no chapter supplies more than a fifth of the questions. The output is checked
+   for this (`coverage_min`): an uncited chapter sends the quiz back to review.
+5. **Explain at depth:** 2–3 spans — why the answer is right (the mechanism or rule, with its
+   number if it has one), and why the most tempting distractor is wrong.
+6. **Order** questions by the chapter they rest on (a *connect* question sits at the latest
+   chapter it needs), so the quiz follows the book.
+7. `book_brief` and `book_themes` guide what to ask; answers and explanations still cite the
+   anchors that state them — the block anchors inside the distillations, which the brief's
+   and themes' own cites reuse.
 
 ## Hard rules
 

@@ -53,17 +53,28 @@ themes, each citing every chapter it appears in). Either may be empty.
 
 ### Book-wide deck
 
-One deck for the whole book, which a reader can review in a few sessions. Instead of step 5:
+One deck that holds what the whole book wants remembered, reviewable in a few sessions, and
+organised so a reader can study it topic by topic. Instead of step 5:
 
-- **30–60 cards.** Keep the book's core first: a card for each `book_brief` idea and each
-  `book_themes` entry (what it is, in one fact), then every `remember` callout, then each
-  term the book defines, then key rules and numbers.
-- **One card per fact across the book.** A term or rule stated in several chapters gets one
-  card, its back citing each chapter that states it (most specific anchors, up to four); a
-  term the author refines later is carded in its final sense.
-- **Cover the book:** every chapter with something worth remembering has at least one card;
-  cut the least central cards of the busiest chapters first when over 60.
-- **Order** cards by the chapter that first states their fact.
+1. **Map the book before writing** (the map is not output): for each chapter, what it marks
+   as worth remembering — `remember` callouts, definitions, rules, numbers, the parts and
+   steps of its frameworks. Group the chapters into **4–7 topics that follow the book's own
+   structure**.
+2. **40–70 cards, grouped by topic.** `group` is the topic's name (2–5 words, the same string
+   on every card of that topic); topics in book order, their cards contiguous. Per topic, in
+   this order:
+   - its core: a card for each `book_brief` idea and `book_themes` entry that belongs to it
+     (what it is, as one fact);
+   - its frameworks, **split into their parts**: one card per step, component or criterion
+     ("What is the second step of …?", "Which criterion …?"), plus one card for what the
+     framework is for;
+   - its `remember` callouts, defined terms, key rules and numbers.
+3. **One card per fact across the book.** A term or rule stated in several chapters gets one
+   card, its back citing each chapter that states it (most specific anchors, up to four); a
+   term the author refines later is carded in its final sense.
+4. **Cover the book:** every chapter with something worth remembering has at least one card.
+   The output is checked for this (`coverage_min`): an uncited chapter sends the deck back to
+   review. Over 70, cut the least central cards of the busiest topics first.
 
 ## Hard rules
 
@@ -79,7 +90,8 @@ One deck for the whole book, which a reader can review in a few sessions. Instea
 
 ## Output
 
-One JSON object: `{"items": [{"front": "…", "back": [spans]}]}`.
+One JSON object: `{"items": [{"front": "…", "back": [spans]}]}`; book-wide cards add
+`"group": "<topic>"`, which a chapter deck leaves out.
 
 ## Example
 

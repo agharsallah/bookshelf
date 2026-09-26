@@ -56,18 +56,42 @@ themes, each citing every chapter it appears in). Either may be empty.
 
 ### Book-wide FAQ
 
-The questions someone asks about *the book* before or after reading it — not a stack of
-chapter FAQs. Instead of step 6:
+A reader who reads only this FAQ should come away with a well-rounded grasp of the whole
+book: its argument, every framework and method it teaches at working depth, how to apply
+them, and where they stop. Not a stack of chapter FAQs, and not a list of one-liners.
+Instead of steps 4 and 6:
 
-- **12–25 items.** Open with the big ones the `book_brief` answers: what the book's central
-  claim is and why it holds, what it asks a reader to do differently, where its argument
-  stops (limits and preconditions the author states).
-- **Then the cross-chapter ones**, from `book_themes` and ideas several chapters develop:
-  "How does X relate to Y?", "Does Z still hold when …?". Their answers draw on every chapter
-  that states the idea and cite an anchor in each.
-- **Chapter-specific questions** only for a chapter's central mechanism or advice, at most
-  two per chapter, and only when the answer stands without the rest of the chapter.
-- **Order** by value, big-picture first, not by chapter.
+1. **Map the book before writing** (the map is not output). For each chapter: its central
+   idea, the framework, procedure or advice it contributes, and its key numbers and warnings.
+   Mark chapters that add nothing new (thin front or back matter). Then group the chapters
+   into **4–7 topics that follow the book's own structure** — its parts or movements, e.g.
+   "The approach", "Choosing stories", "Telling them", "In the room", "Special situations".
+2. **Write 20–30 items, grouped by topic.** `group` is the topic's name (2–5 words, the same
+   string on every item of that topic); topics appear in book order and their items are
+   contiguous. Within the FAQ as a whole, cover:
+   - **the book as a whole** (first topic, from `book_brief`): its central claim and why it
+     holds, what it asks a reader to do differently, where its advice stops applying;
+   - **every framework, model or method the book teaches** — one *how* question each,
+     answered with its actual parts, steps or criteria, not just its name;
+   - **the connections** (`book_themes`, ideas several chapters develop): "How does X relate
+     to Y?", "Does Z still hold when …?", citing an anchor in each chapter that states it;
+   - **the situations the book addresses**: "What should I do when …?", from its
+     prescriptions, `antipattern` and `caution` callouts.
+   Each topic opens with its biggest question, then the specifics.
+3. **Answer at working depth.** `answer`: 2–5 spans, about 50–120 words — the direct answer
+   first, then the reason or mechanism, then the condition, caveat or number that makes it
+   usable. Add `detail` (at most 3 blocks) when the answer has structure a reader will act
+   on: `steps` for a procedure, `bullets` for criteria, parts or options, a `table` for a
+   comparison ("X vs Y"), one `callout` (`antipattern`, `caution` or `remember`) for the trap
+   the author warns about. Roughly a third to a half of the items carry detail; never repeat
+   the answer's sentences in it.
+4. **Cover the book.** Every chapter with substantive content is cited by at least one
+   answer or detail; a chapter that matters only together with others is cited inside the
+   answer that connects them. The output is checked for this (`coverage_min`): a chapter left
+   uncited sends the FAQ back to review.
+5. **Self-check before output:** every chapter on your map is cited somewhere; topics are in
+   book order with contiguous items; no two items answer the same thing; every question
+   stands alone; about 2,500–4,500 words in all.
 
 ## Hard rules
 
@@ -80,12 +104,18 @@ chapter FAQs. Instead of step 6:
    chapter-wide claim. Never construct, guess or shorten an anchor.
 3. **Verbatim material stays verbatim**: numbers, formulas and quoted phrases are copied
    exactly from the distillation.
-4. **Thin input** (a distillation with little content): fewer items; if none can be answered,
+4. **Detail blocks** follow the render contract, and every span inside them is cited like
+   the answer's. `group` and `detail` are for book-wide FAQs; a chapter FAQ leaves them out.
+5. **Thin input** (a distillation with little content): fewer items; if none can be answered,
    `{"items": []}`. Never pad.
 
 ## Output
 
-One JSON object: `{"items": [{"question": "…?", "answer": [spans]}]}`.
+One JSON object: `{"items": [{"question": "…?", "answer": [spans]}]}`; book-wide items add
+`"group": "<topic>"` and, where useful, `"detail": [bullets | steps | table | callout blocks]`:
+`{"type": "steps", "items": [[{"text": "…", "cites": ["<anchor>"]}], …]}` ·
+`{"type": "table", "header": ["…", "…"], "rows": [[{"text": "…", "cites": ["<anchor>"]}, …]]}` ·
+`{"type": "callout", "tone": "antipattern", "spans": [{"text": "…", "cites": ["<anchor>"]}]}`.
 
 ## Example
 
@@ -100,6 +130,20 @@ Input (excerpt): `chapter_distillations[0]` = `{"anchor": "ch04", "heading": "Li
       {"text": "It waits upstream, where nobody measures it, so a limit hides a queue unless you track what it turns away.", "cites": ["ch04/s03/p003"]}]}
   ]
 }
+```
+
+A book-wide item (excerpt of a 24-item FAQ; its topic's other items follow it):
+
+```json
+{"group": "Limiting work in progress", "question": "How do I set a WIP limit for my team?", "answer": [
+  {"text": "Start from the work the team actually has in flight, set the limit a little below it, and lower it until work starts to wait for people rather than people for work.", "cites": ["ch04/s01/p002", "ch04/s01/p004"]},
+  {"text": "The limit works because, at a steady throughput, less work in progress means proportionally shorter waits.", "cites": ["ch02/s01/p001"]}],
+ "detail": [
+  {"type": "steps", "items": [
+    [{"text": "Count the items started but not finished.", "cites": ["ch04/s01/p002"]}],
+    [{"text": "Set the limit just below that count and make it visible on the board.", "cites": ["ch04/s01/p003"]}],
+    [{"text": "Track what the limit turns away, so the queue upstream stays visible.", "cites": ["ch04/s03/p003"]}]]},
+  {"type": "callout", "tone": "antipattern", "spans": [{"text": "Raising the limit whenever it blocks someone, which quietly removes it.", "cites": ["ch04/s03/p005"]}]}]}
 ```
 
 Output only the JSON object. No prose, no code fences.

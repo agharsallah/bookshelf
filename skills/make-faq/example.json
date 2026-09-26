@@ -5,7 +5,10 @@
       "answer": [
         {
           "text": "At the same throughput, Little's law makes time in the system grow in proportion to work in progress, so every extra item started lengthens the wait for all of them.",
-          "cites": ["ch02/s01/p005", "ch04/s01/p003"]
+          "cites": [
+            "ch02/s01/p005",
+            "ch04/s01/p003"
+          ]
         }
       ]
     },
@@ -14,7 +17,10 @@
       "answer": [
         {
           "text": "Not in the author's data: with limits, average cycle time fell from 31 to about 10 days while throughput stayed flat.",
-          "cites": ["ch04/s02/t001", "ch04/s02/p005"]
+          "cites": [
+            "ch04/s02/t001",
+            "ch04/s02/p005"
+          ]
         }
       ]
     },
@@ -23,11 +29,15 @@
       "answer": [
         {
           "text": "In the twelve-week comparison the per-person limit of 2 gave the shortest cycle time, 8.5 days against 10 for a team limit of 15; ",
-          "cites": ["ch04/s02/t001"]
+          "cites": [
+            "ch04/s02/t001"
+          ]
         },
         {
           "text": "the author cautions that it also makes swarming on a blocked item harder.",
-          "cites": ["ch04/s02/p007"]
+          "cites": [
+            "ch04/s02/p007"
+          ]
         }
       ]
     },
@@ -36,7 +46,9 @@
       "answer": [
         {
           "text": "It waits upstream, where nobody measures it, so a limit hides a queue unless you also track what it turns away.",
-          "cites": ["ch04/s03/p003"]
+          "cites": [
+            "ch04/s03/p003"
+          ]
         }
       ]
     },
@@ -45,7 +57,56 @@
       "answer": [
         {
           "text": "Start from the work currently in progress and lower the limit step by step until items start waiting for people rather than people for items.",
-          "cites": ["ch04/s01/p006"]
+          "cites": [
+            "ch04/s01/p006"
+          ]
+        }
+      ]
+    },
+    {
+      "group": "Limiting work in progress",
+      "question": "How do I set a WIP limit for my team?",
+      "answer": [
+        {
+          "text": "Start from the work the team actually has in flight, set the limit a little below it, and lower it until work waits for people rather than people for work.",
+          "cites": [
+            "ch04/s01/p002"
+          ]
+        }
+      ],
+      "detail": [
+        {
+          "type": "steps",
+          "items": [
+            [
+              {
+                "text": "Count the items started but not finished.",
+                "cites": [
+                  "ch04/s01/p002"
+                ]
+              }
+            ],
+            [
+              {
+                "text": "Track what the limit turns away, so the queue upstream stays visible.",
+                "cites": [
+                  "ch04/s03/p003"
+                ]
+              }
+            ]
+          ]
+        },
+        {
+          "type": "callout",
+          "tone": "antipattern",
+          "spans": [
+            {
+              "text": "Raising the limit whenever it blocks someone.",
+              "cites": [
+                "ch04/s03/p003"
+              ]
+            }
+          ]
         }
       ]
     }

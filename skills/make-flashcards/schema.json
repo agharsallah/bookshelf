@@ -34,6 +34,12 @@
                 "maxItems": 4
               }
             ]
+          },
+          "group": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 60,
+            "description": "Book-wide: the topic this item belongs to; items of one topic are contiguous, topics in book order."
           }
         }
       }

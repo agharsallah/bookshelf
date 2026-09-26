@@ -59,17 +59,24 @@ what the book is about; they are never quotable themselves.
 
 ### Book-wide quotes
 
-The lines that stand for the book: the ones a reviewer would quote to say what it argues.
-Instead of steps 1 and 5:
+The lines that stand for the book: read in order, they should retell its argument in the
+author's own words, from the problem it opens with to where it lands. Instead of steps 1
+and 5:
 
-- **Candidates** are the chapters' `quotes` — reuse a quote block exactly as given, its
-  `text`, `cites`, `page` and `attribution` unchanged — and new cuts from `passages`,
-  made by steps 2–4 as if the passage were a chapter block.
-- **Choose 12–25 quotes**, preferring lines that state the `book_brief` thesis or ideas or a
-  `book_themes` entry in the author's own words, then each chapter's central claim. Most
-  chapters contribute one or two; none more than four. No two quotes make the same point,
-  even from different chapters — keep the sharper one.
-- **Order** by the quote's position in the book (chapter order, then reading order).
+1. **Map the argument first** (not output): the `book_brief` thesis and ideas and the
+   `book_themes`, and for each chapter the claim it contributes. That is what the set must
+   carry.
+2. **Candidates** are the chapters' `quotes` — reuse a quote block exactly as given, its
+   `text`, `cites`, `page` and `attribution` unchanged — and new cuts from `passages`, made
+   by steps 2–4 as if the passage were a chapter block.
+3. **Choose 15–25 quotes** that together cover the map: the thesis in the author's words;
+   each big idea and theme; each framework's defining line; the warnings the book stresses;
+   and its closing claim. Prefer the sharper of two quotes making the same point, even from
+   different chapters. Most chapters contribute one or two, none more than four.
+4. **Cover the book:** every chapter with a quotable candidate contributes at least one
+   quote unless it only repeats an idea already quoted. The output is checked for this
+   (`coverage_min`).
+5. **Order** by the quote's position in the book (chapter order, then reading order).
 
 ## Hard rules
 
