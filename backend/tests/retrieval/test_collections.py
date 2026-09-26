@@ -35,6 +35,7 @@ def test_declares_the_payload_indexes_of_each_collection(qdrant: QdrantClient) -
 
     assert set(report.indexes["blocks"]) == {
         "document_id", "anchor", "chapter_no", "section_path", "kind", "tags", "model_id",
+        "char_len",
     }  # fmt: skip
     assert set(report.indexes["distillations"]) == {
         "document_id", "anchor", "type", "level", "tags", "review", "model_id",

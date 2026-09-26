@@ -134,6 +134,7 @@ class Relation(StrEnum):
     EXTENDS = "extends"
     EXAMPLE_OF = "example_of"
     SAME_AS = "same_as"
+    ECHOES = "echoes"  # chapters whose passages say similar things (app.graph.semantic)
 
 
 class EdgeStatus(StrEnum):

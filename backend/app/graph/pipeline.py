@@ -4,6 +4,7 @@
       → refresh_document: sync the document's effective concept_links (`apply`),
         re-seed its diagram edges and its mention edges (every other document's too
         when concepts came or went), and hand back a dedup job for the concepts it created
+        and, when concepts came or went, an embed that re-runs the semantic pass
 
 Dedup is a job, not inline work: it embeds concepts and calls the model once per
 candidate pair, which must never run inside an HTTP request (an approval) or hold up the
@@ -32,6 +33,7 @@ from app.pipeline.runner import ModelRunner
 
 DEDUP_MODE = "dedup"
 DEDUP_PRIORITY = 125  # after link_concepts (120): propose merges once the links are in
+SEMANTIC_PRIORITY = 128  # after dedup: paraphrases read the concepts the links left
 
 
 def is_dedup_job(job: Job) -> bool:
@@ -56,10 +58,23 @@ def refresh_document(session: Session, document_id: uuid.UUID) -> list[JobSpec]:
     applied = apply.sync_document(session, document_id)
     diagram_seeds.seed_document(session, document_id)
     mentions.seed_document(session, document_id)
+    specs = [spec] if (spec := dedup_spec(document_id, applied.created)) is not None else []
     if applied.created or applied.removed:  # other books may name the new concepts
         mentions.seed_all(session, exclude=document_id)
-    spec = dedup_spec(document_id, applied.created)
-    return [spec] if spec is not None else []
+        if session.get(Document, document_id) is not None:
+            specs.append(semantic_spec(document_id))
+    return specs
+
+
+def semantic_spec(document_id: uuid.UUID) -> JobSpec:
+    """An embed whose points are (usually) unchanged: it re-runs the semantic pass, which
+    reads concepts. Keyed like any embed of the document, so the queue folds the two."""
+    return JobSpec(
+        kind=JobKind.EMBED,
+        document_id=document_id,
+        payload={"reason": "concepts"},
+        priority=SEMANTIC_PRIORITY,
+    )
 
 
 def _concept_ids(job: Job) -> list[uuid.UUID]:

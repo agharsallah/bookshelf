@@ -8,6 +8,7 @@ apart (§11):
     human:concept_links#<artifact>        from a human-authored/edited `concept_links`
     seed:diagram@<v>#<artifact>           from a diagram in a `figure_description`
     seed:mentions@<v>                     a section naming a known concept (`mentions`)
+    seed:semantic@<v>                     Qdrant: echoing chapters, paraphrasing passages
     skill:confirm-merge@<v>               a dedup verdict on a `same_as` pair
 
 An edge is unique per `(src, dst, relation)`, so two books asserting "little's law supports
@@ -34,8 +35,9 @@ HUMAN = "human"
 LINK_ORIGINS = ("skill:link-concepts@%", "human:concept_links#%")
 DIAGRAM_ORIGINS = ("seed:diagram@%",)
 MENTION_ORIGINS = ("seed:mentions@%",)
+SEMANTIC_ORIGINS = ("seed:semantic@%",)
 # Seeds are candidates: a skill edge adopts one, and seeds alone never keep a concept alive.
-SEED_ORIGINS = DIAGRAM_ORIGINS + MENTION_ORIGINS
+SEED_ORIGINS = DIAGRAM_ORIGINS + MENTION_ORIGINS + SEMANTIC_ORIGINS
 DEDUP_ORIGIN_PREFIX = "skill:confirm-merge@"
 
 EdgeKey = tuple[EntityKind, str, EntityKind, str, Relation]

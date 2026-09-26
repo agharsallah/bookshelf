@@ -42,6 +42,7 @@ PAYLOAD_INDEXES: dict[Collection, dict[str, models.PayloadSchemaType]] = {
         "kind": K,
         "tags": K,
         "model_id": K,
+        "char_len": INT,  # the graph's semantic pass skips short blocks (app.graph.semantic)
     },
     Collection.DISTILLATIONS: {
         "document_id": K,
