@@ -25,9 +25,10 @@ cd backend
 uv sync
 cp .env.example .env
 uv run python -m app.db.migrate        # apply supabase/migrations/*.sql
-uv run fastapi dev app/main.py         # http://127.0.0.1:8000/docs
+uv run fastapi dev app/main.py         # http://127.0.0.1:8000/docs — also runs the job worker
 
-# 3. Worker (another terminal): parse, skills, exports; embed too if Qdrant is a server
+# 3. Optional: a standalone worker (another terminal), e.g. with BOOKSHELF_API_WORKER=false.
+#    It shares the queue with the API's own worker; `GET /jobs/queue` lists live workers.
 cd backend && uv run python -m app.jobs.worker
 
 # 4. Frontend (another terminal)
