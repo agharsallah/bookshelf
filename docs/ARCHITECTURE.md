@@ -1004,6 +1004,29 @@ that grows with how often it is named. Blocks the skill already linked are not c
 Mention edges are seeds: re-run on every graph refresh (for every book when concepts come or go,
 and after a human renames or merges one), and they never keep a concept alive on their own.
 
+**Semantic links** read what the text *means*, from the vectors already in Qdrant (bge-small,
+§10), with no model calls (`app.graph.semantic`, run at the end of every `embed` job):
+
+- `chapter —echoes→ chapter`: one Distance Matrix call (`search_matrix_pairs`) over every block
+  gives the shelf's nearest-neighbour graph. A pair *echoes* when it joins two chapters above a
+  bar calibrated on the shelf itself, `max(0.84, p95 of cross-chapter pairs)`: bge-small's cosines
+  sit in a narrow 0.7 to 0.9 band, and one author's style alone keeps a book's chapters close, so
+  a fixed threshold links everything or nothing. Two echoing pairs link two chapters; the
+  echoing passages are the evidence. Verbatim repeats and short blocks are ignored.
+- `passage —mentions→ concept` for a passage that explains a concept without naming it: each
+  concept's name and gloss is one query in a batch (`query_batch_points`); a passage counts above
+  0.79 and within 0.07 of the concept's best match.
+
+Measured on the first shelf (1,867 blocks): cross-book passage pairs topped out at 0.77, below
+the median of pairs within one book, so the two books rightly got no echo between them.
+
+**Bridges** are the one model-judged link across books (`app.graph.bridges`, skill
+`relate-concepts`): concept pairs in no common book whose embeddings are close (0.62 up to the
+dedup threshold) are shown to the model with passages from each book, and a relation (supports,
+contradicts, extends, example of) comes back citing at least one passage from each. It lands
+**proposed**, to accept or reject on the map; `none` is kept as a rejected edge so no pair is
+asked twice. New concepts queue a bridge job; `POST /graph/bridges` queues one per book.
+
 **Concept deduplication** — the failure mode that turns a graph into noise: candidate merges come
 from embedding similarity above a threshold plus an LLM confirmation, and then land in the review
 queue as a proposed `same_as` edge. Merges are applied by a human, never automatically.
@@ -1040,7 +1063,7 @@ Keep Astro as the shell and routing layer; add React islands only where interact
 | **Guide** | Astro + one React island | The book guide with its charts (arc strip, chapter rows, theme heatmap, stat tiles), server-rendered then hydrated: a cite, chapter title or heatmap cell opens the passage in place (a drawer with the whole chapter, the cited block marked, previous / next chapter, "Open in reader"; its left edge drags wider with the reader's own width grip, and its width and typography are the reader's saved preferences); diagrams and charts magnify in the reader's lightbox. ⌘/Ctrl/middle click still opens the reader |
 | **Search** | React island | Query box, intent badge, grouped results, cited answer with click-through |
 | **Graph** | React island | Canvas force layout over a neighborhood endpoint, node cap enforced client-side |
-| **Map** | React island | The atlas as a live force layout: books, chapters and concepts; select to read, double-click to open. A lens mode filters and highlights by connection type, kind and book, dims or hides the rest, and can group by book |
+| **Map** | React island | The atlas as a live force layout: books, chapters and concepts; select to read, double-click to open. A lens mode filters and highlights by connection type, kind and book, dims or hides the rest, groups by book, and shows proposed bridges to accept or reject. A path finder traces the strongest chain between two marks, hop by hop, each hop opening its evidence |
 | **Listen** | Astro + one React island | Audio summaries: pick an episode and cast, a player (skip, speed, parts, download, resume where you stopped, Media Session and keys), a transcript that follows the audio and links each line to its passage, and the form that makes an episode |
 | **Review queue** | React island | Draft artifacts, diff against the previous version, approve / edit / reject / re-run |
 
@@ -1090,6 +1113,7 @@ POST   /search/answer                  SSE: cited answer
 GET    /concepts?q=&sort=              typeahead, edge_count
 GET    /graph/neighborhood?node=&depth=
 GET    /graph/atlas?include_proposed=  the whole shelf at chapter grain (map)
+POST   /graph/bridges                  queue relate-concepts bridge jobs {document_id?}
 GET    /audio/voices                   voices to cast, speakers per format, default casts
 GET    /audio/voices/{id}/sample       hear a voice (its reference clip)
 GET    /documents/{ref}/audio          episodes: per variant, the script and its renders
