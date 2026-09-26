@@ -493,11 +493,19 @@ Consequences:
 | `write-guide` | `book_guide` | document | reason | the in-depth, visual guide (§9): four block sections + `journey`, `themes`, `numbers` |
 | `structure-note` | `structured_note` | note | explore | render blocks + `concepts[]`, cites the highlighted anchor |
 | `link-concepts` | concepts + edges | document | reason | `{concepts: [...], edges: [{src, dst, relation, evidence[]}]}` |
-| `extract-quotes` | `quote_set` | chapter | distil | `quote` blocks with `page` |
+| `extract-quotes` | `quote_set` | chapter · document | distil | `quote` blocks with `page` |
 | `make-faq` | `faq` | chapter · document | distil | `[{question, answer_spans[]}]` |
-| `make-quiz` | `quiz` | chapter | distil | `[{question, choices[], answer, cites[]}]` |
-| `make-flashcards` | `flashcards` | chapter | distil | `[{front, back, cites[]}]` |
+| `make-quiz` | `quiz` | chapter · document | distil | `[{question, choices[], answer, cites[]}]` |
+| `make-flashcards` | `flashcards` | chapter · document | distil | `[{front, back, cites[]}]` |
 | `make-glossary` | `glossary` | document | distil | `definition` blocks |
+
+The four study skills marked *chapter · document* are one package each: a job with an anchor
+reads that chapter's input (`selector`), a job without one reads the whole book through
+`document_selector`. Book-wide quizzes, FAQs and flashcards read every chapter distillation
+plus the brief's thesis and ideas and the guide's themes (`document_distillations`), so they
+test the book's argument and its cross-chapter links; book-wide quotes read each chapter's
+quote set and the source passages its distillation's callouts cite (`document_quotes`),
+because the whole source is too long for one prompt and quotes must stay verbatim.
 
 Tier → model mapping lives in one place (`backend/app/pipeline/models.py`) and is the only file
 that names CLI model aliases:
