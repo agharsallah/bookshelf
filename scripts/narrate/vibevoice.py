@@ -177,6 +177,7 @@ class Voicer:
                 max_new_tokens=token_budget(section),
                 guidance_scale=float(self.request.get("guidance_scale", 1.3)),
                 num_diffusion_steps=int(self.request.get("diffusion_steps", 10)),
+                monitor_progress=True,  # a token progress bar in the log: the pace, live
             )
         if self.device == "mps":
             torch.mps.empty_cache()
