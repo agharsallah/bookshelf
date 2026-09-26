@@ -24,6 +24,17 @@ worker keeps a row in `workers` fresh, and `GET /jobs/queue` (and the `queue` ev
 `/jobs/stream`) reports the live ones and any job kind with queued work that no worker
 runs — the UI shows that as "no worker is running" instead of an endless "queued".
 
+Audio summaries are recorded by `narrate` jobs, which the API runs one at a time on a slot
+of their own (VibeVoice through `uv run --script scripts/narrate/vibevoice.py`; the first
+run downloads about 5.4 GB of model). A recording keeps each finished section, so a reload
+only costs the section in progress, but under `fastapi dev` every save still restarts it.
+While you edit the backend, record from a worker that does not reload:
+
+```bash
+BOOKSHELF_API_NARRATE_RUNNER=false uv run fastapi dev app/main.py
+uv run python -m app.jobs.worker --kinds narrate --concurrency 1   # in a second terminal
+```
+
 - Swagger UI: http://127.0.0.1:8000/docs · ReDoc: `/redoc` · schema: `/openapi.json`
 - Liveness `GET /health` · readiness `GET /health/ready` (database; Qdrant reported
   separately — `degraded` without it, never down)

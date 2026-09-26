@@ -35,12 +35,20 @@ result is one JSON line on stdout:
 
 Turn times are estimates (each turn's share of its section's characters); section times
 are exact.
+
+Each finished section is kept in `<out>.parts/` until the MP3 is written, so a run that is
+killed part way (the API reloading, a restart) picks up at the section it was on instead
+of starting over. A part is keyed by its words, voices and engine settings, so a changed
+request never reuses a stale one.
 """
 
+import hashlib
 import json
 import math
+import shutil
 import sys
 import time
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -126,31 +134,66 @@ def turn_marks(section: dict[str, Any], index: int, start: float, length: float)
     return marks
 
 
+def part_path(parts_dir: Path, request: dict[str, Any], section: dict[str, Any], dtype: torch.dtype) -> Path:
+    """Where a finished section is kept: named by everything that shapes its sound."""
+    engine = {k: request.get(k) for k in ("model", "diffusion_steps", "guidance_scale", "seed")}
+    key = json.dumps({"section": section, "voices": request["voices"], "engine": engine, "dtype": str(dtype)}, sort_keys=True)
+    return parts_dir / f"{hashlib.sha256(key.encode()).hexdigest()[:20]}.wav"
+
+
+class Voicer:
+    """The model, loaded only when a section is not already on disk."""
+
+    def __init__(self, request: dict[str, Any], device: str, dtype: torch.dtype) -> None:
+        self.request, self.device, self.dtype = request, device, dtype
+        self._model: Any = None
+        self._processor: Any = None
+
+    def voice(self, section: dict[str, Any]) -> np.ndarray:
+        if self._model is None:
+            log(event="loading", model=self.request["model"], device=self.device, dtype=str(self.dtype))
+            self._processor = AutoProcessor.from_pretrained(self.request["model"])
+            model = AutoModelForTextToWaveform.from_pretrained(self.request["model"], dtype=self.dtype)
+            self._model = model.to(self.device).eval()
+        set_seed(int(self.request.get("seed", 42)))
+        inputs = self._processor.apply_chat_template(
+            conversation(section, self.request["voices"]), tokenize=True, return_dict=True, add_generation_prompt=True
+        ).to(self.device, self.dtype)
+        with torch.inference_mode():
+            audio = self._model.generate(
+                **inputs,
+                max_new_tokens=token_budget(section),
+                guidance_scale=float(self.request.get("guidance_scale", 1.3)),
+                num_diffusion_steps=int(self.request.get("diffusion_steps", 10)),
+            )
+        if self.device == "mps":
+            torch.mps.empty_cache()
+        return fade(level(as_array(audio)))
+
+
 def main() -> int:
     request = json.load(sys.stdin)
     device, dtype = pick_device(request.get("device", "auto"))
     started = time.monotonic()
-    log(event="loading", model=request["model"], device=device, dtype=str(dtype))
-    processor = AutoProcessor.from_pretrained(request["model"])
-    model = AutoModelForTextToWaveform.from_pretrained(request["model"], dtype=dtype).to(device).eval()
+    voicer = Voicer(request, device, dtype)
+    parts_dir = Path(request["out"] + ".parts")
+    parts_dir.mkdir(parents=True, exist_ok=True)
 
     sections = request["sections"]
     parts, section_marks, turns = [silence(LEAD_IN)], [], []
     clock = LEAD_IN
     for index, section in enumerate(sections):
-        log(event="section", index=index, total=len(sections), title=section["title"])
-        set_seed(int(request.get("seed", 42)))
-        inputs = processor.apply_chat_template(
-            conversation(section, request["voices"]), tokenize=True, return_dict=True, add_generation_prompt=True
-        ).to(device, dtype)
-        with torch.inference_mode():
-            audio = model.generate(
-                **inputs,
-                max_new_tokens=token_budget(section),
-                guidance_scale=float(request.get("guidance_scale", 1.3)),
-                num_diffusion_steps=int(request.get("diffusion_steps", 10)),
-            )
-        voiced = fade(level(as_array(audio)))
+        cached = part_path(parts_dir, request, section, dtype)
+        if cached.is_file():
+            log(event="section", index=index, total=len(sections), title=section["title"], cached=True)
+            voiced = sf.read(cached, dtype="float32")[0]
+        else:
+            log(event="section", index=index, total=len(sections), title=section["title"])
+            voiced = voicer.voice(section)
+            if voiced.size and math.isfinite(float(voiced.sum())):
+                partial = cached.with_suffix(".tmp")
+                sf.write(partial, voiced, SAMPLE_RATE, format="WAV", subtype="FLOAT")
+                partial.replace(cached)  # atomic: a killed write never passes for a part
         if not voiced.size or not math.isfinite(float(voiced.sum())):
             raise RuntimeError(f"section {index} produced no usable audio")
         length = voiced.size / SAMPLE_RATE
@@ -161,12 +204,13 @@ def main() -> int:
         if index < len(sections) - 1:
             parts.append(silence(GAP))
             clock += GAP
-        if device == "mps":
-            torch.mps.empty_cache()
     parts.append(silence(TAIL))
     track = np.concatenate(parts)
 
-    sf.write(request["out"], track, SAMPLE_RATE, format="MP3", subtype="MPEG_LAYER_III")
+    partial = request["out"] + ".tmp"
+    sf.write(partial, track, SAMPLE_RATE, format="MP3", subtype="MPEG_LAYER_III")
+    Path(partial).replace(request["out"])
+    shutil.rmtree(parts_dir, ignore_errors=True)
     print(
         json.dumps(
             {
