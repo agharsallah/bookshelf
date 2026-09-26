@@ -90,7 +90,7 @@ def prepare(
 ) -> Prepared:
     selection = select_inputs(
         session,
-        skill.meta.selector,
+        skill.meta.selector_for(anchor, note_id),
         document,
         anchor,
         note_id=note_id,

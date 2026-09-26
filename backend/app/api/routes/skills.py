@@ -30,6 +30,7 @@ def _public(skill: Skill) -> SkillPublic:
         artifact_type=meta.artifact_type,
         scope=meta.scope,
         selector=meta.selector,
+        document_selector=meta.document_selector,
         vision=meta.vision,
         gates=SkillGates.model_validate(meta.gates.model_dump()),
     )

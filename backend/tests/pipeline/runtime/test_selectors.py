@@ -123,3 +123,67 @@ def test_same_state_gives_the_same_hash_and_new_input_changes_it(session, book):
 
     assert input_hash("s", "1", first) == input_hash("s", "1", again)
     assert input_hash("s", "1", first) != input_hash("s", "1", enriched)
+
+
+def put(session: Session, doc: Document, kind: ArtifactType, anchor: str | None, value) -> None:
+    """Store an artifact with exactly `value` as its body."""
+    artifact = Artifact(document_id=doc.id, anchor=anchor, type=kind, version=1,
+                        origin=Origin.HUMAN, input_hash=f"{kind}-{anchor}", body=value)  # fmt: skip
+    session.add(artifact)
+    session.commit()
+
+
+def test_document_distillations_add_the_books_own_synthesis_but_not_the_shelf(session, book):
+    store(session, book, ArtifactType.CHAPTER_DISTILLATION, "ch01")
+    store(session, book, ArtifactType.CHAPTER_DISTILLATION, "ch02")
+    thesis = {"key": "thesis", "title": "Thesis", "blocks": [paragraph("Buffer.", "ch01/s01/p001")]}
+    weaknesses = {"key": "weaknesses", "title": "Weaknesses", "blocks": []}
+    themes = [{"name": "Delays", "spans": [span("Delays.", "ch01/s02/p001", "ch02/p001")]}]
+    put(session, book, ArtifactType.BOOK_BRIEF, None, {"sections": [thesis, weaknesses]})
+    put(session, book, ArtifactType.BOOK_GUIDE, None, {"sections": [], "themes": themes})
+
+    inputs = select(session, "document_distillations", book, None).inputs
+
+    assert [c["anchor"] for c in inputs["chapter_distillations"]] == ["ch01", "ch02"]
+    assert inputs["book_brief"] == [thesis]
+    assert inputs["book_themes"] == themes
+    assert "shelf" not in inputs
+    assert "existing_concepts" not in inputs
+
+
+def test_document_distillations_run_before_the_brief_and_guide_exist(session, book):
+    store(session, book, ArtifactType.CHAPTER_DISTILLATION, "ch02")
+
+    inputs = select(session, "document_distillations", book, None).inputs
+
+    assert (inputs["book_brief"], inputs["book_themes"]) == ([], [])
+
+
+def test_document_quotes_offer_chapter_quotes_and_the_passages_distillations_single_out(
+    session, book
+):
+    distil = ArtifactType.CHAPTER_DISTILLATION
+    quote = {"type": "quote", "text": "A stock is the memory", "cites": ["ch01/s01/p001"],
+             "page": 1, "attribution": "Donella Meadows"}  # fmt: skip
+    put(session, book, ArtifactType.QUOTE_SET, "ch01", {"blocks": [quote]})
+    callout = {"type": "callout", "tone": "important", "spans": [
+        span("Stocks remember.", "ch01/s01/p001"), span("Flows change them.", "ch01/s02/p001"),
+        span("See the bathtub.", "ch01/s01/f001")]}  # fmt: skip
+    put(session, book, distil, "ch01", body(callout))
+    # ch02: a paragraph cited only in plain prose, and code in a callout: neither is a candidate.
+    code = {"type": "callout", "tone": "remember", "spans": [span("Loop.", "ch02/c001")]}
+    put(session, book, distil, "ch02", body(paragraph("Goals.", "ch02/p001"), code))
+
+    inputs = select(session, "document_quotes", book, None).inputs
+
+    (chapter,) = inputs["chapters"]
+    assert (chapter["anchor"], chapter["quotes"]) == ("ch01", [quote])
+    # Already quoted (p001) and the figure are left out; the other cited paragraph stays.
+    assert [p["anchor"] for p in chapter["passages"]] == ["ch01/s02/p001"]
+    assert chapter["passages"][0]["text"] == "Flows change stocks over time at some rate."
+    assert inputs["book_brief"] == []
+
+
+def test_document_quotes_need_something_to_choose_from(session, book):
+    with pytest.raises(SelectorError, match="no chapter quotes or distillations yet"):
+        select(session, "document_quotes", book, None)

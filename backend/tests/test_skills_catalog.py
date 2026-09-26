@@ -33,6 +33,8 @@ SELECTORS = {
     "scope_blocks",
     "chapter_section_notes",
     "document_chapters",
+    "document_distillations",
+    "document_quotes",
     "chapter_distillation",
     "note_context",
 }
@@ -137,6 +139,9 @@ def test_meta_follows_the_contract(name: str) -> None:
     assert meta["scope"] in SCOPES
     assert isinstance(meta["selector"], str)
     assert isinstance(meta["vision"], bool)
+    if (book_wide := meta.get("document_selector")) is not None:  # chapter skill, also book-wide
+        assert meta["scope"] == "chapter"
+        assert book_wide in SELECTORS
 
     gates = meta["gates"]
     assert 0 <= gates["grounding_min"] <= 1

@@ -23,6 +23,7 @@ class SkillPublic(BaseModel):
     artifact_type: ArtifactType | None
     scope: str
     selector: str
+    document_selector: str | None
     vision: bool
     gates: SkillGates
 

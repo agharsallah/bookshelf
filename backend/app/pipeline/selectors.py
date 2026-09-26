@@ -19,6 +19,7 @@ from app.models import Artifact, Concept, Document, Node, Note
 from app.models.enums import ArtifactType, NodeKind, Review
 from app.pipeline import artifacts
 from app.pipeline.bodies import count_words, plain_text
+from app.pipeline.book_inputs import book_synthesis, key_passages, quote_blocks
 from app.pipeline.tree import Tree, block, document_envelope, scope_envelope
 
 _OUTLINE_PAGES, _OUTLINE_LINES = 30, 25
@@ -182,7 +183,7 @@ def _distillation_item(node: Node, artifact: Artifact) -> dict[str, Any]:
     return {"anchor": node.anchor, "heading": node.heading, "body": artifact.body}
 
 
-# --- The seven selectors -------------------------------------------------------------
+# --- The selectors -------------------------------------------------------------------
 
 
 def outline_pages(ctx: Context) -> Selection:
@@ -258,7 +259,7 @@ def chapter_section_notes(ctx: Context) -> Selection:
     return ctx.selection({"section_notes": items, "figures": _figures(ctx, chapter)})
 
 
-def document_chapters(ctx: Context) -> Selection:
+def _distilled_chapters(ctx: Context) -> list[dict[str, Any]]:
     kind = ArtifactType.CHAPTER_DISTILLATION
     found = artifacts.preferred(ctx.session, ctx.tree.document.id, [kind])
     items = [
@@ -268,13 +269,60 @@ def document_chapters(ctx: Context) -> Selection:
     ]
     if not items:
         raise SelectorError("no chapter distillations yet")
+    return items
+
+
+def document_chapters(ctx: Context) -> Selection:
     return ctx.selection(
         {
-            "chapter_distillations": items,
+            "chapter_distillations": _distilled_chapters(ctx),
             "shelf": _shelf(ctx.session, ctx.tree.document.id),
             "existing_concepts": _concepts(ctx.session),
         }
     )
+
+
+def document_distillations(ctx: Context) -> Selection:
+    """Book-wide quiz, FAQ and flashcards: every chapter distillation plus the book's own
+    synthesis (`book_inputs.book_synthesis`). No shelf or concepts: they would not change
+    the output, but would change its hash whenever the shelf grows."""
+    return ctx.selection(
+        {
+            "chapter_distillations": _distilled_chapters(ctx),
+            **book_synthesis(ctx.session, ctx.tree.document),
+        }
+    )
+
+
+def document_quotes(ctx: Context) -> Selection:
+    """Book-wide quotes. The whole source is too long for one prompt, so each chapter offers
+    verbatim candidates: its quote set, and the source passages its distillation singles out
+    (`book_inputs.key_passages`) that the quote set does not already cover."""
+    quotes_kind, distil_kind = ArtifactType.QUOTE_SET, ArtifactType.CHAPTER_DISTILLATION
+    found = artifacts.preferred(ctx.session, ctx.tree.document.id, [quotes_kind, distil_kind])
+    chapters = []
+    for chapter in ctx.tree.chapters():
+        quotes = quote_blocks(found.get((quotes_kind, chapter.anchor)))
+        quoted = {anchor for q in quotes for anchor in q.get("cites", [])}
+        distillation = found.get((distil_kind, chapter.anchor))
+        passages = (
+            [block(n) for n in key_passages(ctx.tree, chapter, distillation.body)]
+            if distillation is not None
+            else []
+        )
+        passages = [p for p in passages if p["anchor"] not in quoted]
+        if quotes or passages:
+            chapters.append(
+                {
+                    "anchor": chapter.anchor,
+                    "heading": chapter.heading,
+                    "quotes": quotes,
+                    "passages": passages,
+                }
+            )
+    if not chapters:
+        raise SelectorError("no chapter quotes or distillations yet")
+    return ctx.selection({"chapters": chapters, **book_synthesis(ctx.session, ctx.tree.document)})
 
 
 def chapter_distillation(ctx: Context) -> Selection:
@@ -333,6 +381,8 @@ SELECTORS: dict[str, Callable[[Context], Selection]] = {
     "scope_blocks": scope_blocks,
     "chapter_section_notes": chapter_section_notes,
     "document_chapters": document_chapters,
+    "document_distillations": document_distillations,
+    "document_quotes": document_quotes,
     "chapter_distillation": chapter_distillation,
     "note_context": note_context,
 }

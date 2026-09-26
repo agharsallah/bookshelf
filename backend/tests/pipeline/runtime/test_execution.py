@@ -21,7 +21,7 @@ from app.models.enums import (
 from app.pipeline.execution import execute_skill_job, prepare
 from app.pipeline.runner import FakeRunner
 from app.pipeline.skills import load_catalogue
-from tests.pipeline.runtime.conftest import body, paragraph, reply
+from tests.pipeline.runtime.conftest import body, paragraph, reply, write_skill
 
 GROUNDED = reply(body(paragraph("A stock remembers its flows.", "ch01/s01/p001")))
 
@@ -207,6 +207,29 @@ def test_derive_runs_the_skill_named_in_the_payload(session, book, make_job, ski
 
     (artifact,) = artifacts_of(session, book)
     assert (artifact.type, artifact.skill) == (ArtifactType.QUIZ, "make-quiz")
+
+
+def test_a_derive_with_no_anchor_runs_book_wide_on_the_document_selector(
+    session, book, make_job, skills_dir
+):
+    write_skill(skills_dir, "make-quiz", job_kind="derive", artifact_type="quiz", tier="distil",
+                scope="chapter", selector="chapter_distillation",
+                document_selector="document_distillations")  # fmt: skip
+    for anchor, cite in (("ch01", "ch01/s01/p001"), ("ch02", "ch02/p001")):
+        session.add(Artifact(document_id=book.id, anchor=anchor, version=1, origin=Origin.HUMAN,
+                             type=ArtifactType.CHAPTER_DISTILLATION, input_hash=f"d-{anchor}",
+                             body=body(paragraph(anchor, cite))))  # fmt: skip
+    session.commit()
+    runner = FakeRunner(reply(body(paragraph("Q across the book", "ch01/s01/p001", "ch02/p001"))))
+
+    run(session, make_job(JobKind.DERIVE, book, None, skill="make-quiz"), runner, skills_dir)
+
+    quiz = next(a for a in artifacts_of(session, book) if a.type is ArtifactType.QUIZ)
+    assert quiz.anchor is None
+    prompt = runner.calls[0]["prompt"]
+    assert '"book_themes": []' in prompt
+    assert '"anchor": "ch01"' in prompt
+    assert '"anchor": "ch02"' in prompt
 
 
 def test_interactive_only_skills_are_skipped_gracefully(session, book, make_job, skills_dir):

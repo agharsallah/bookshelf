@@ -8,6 +8,7 @@ reads it as an interactive skill; the batch runner strips the frontmatter and th
 import json
 import logging
 import re
+import uuid
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Annotated, Any, Literal
@@ -56,8 +57,17 @@ class SkillMeta(BaseModel):
     artifact_type: ArtifactType | None = None
     scope: Scope
     selector: str
+    # A chapter-scope skill that can also run on the whole book: the selector it reads
+    # when a job names no anchor (and no note). None: the skill has one scope only.
+    document_selector: str | None = None
     vision: bool = False
     gates: GateConfig = Field(default_factory=GateConfig)
+
+    def selector_for(self, anchor: str | None, note_id: uuid.UUID | None = None) -> str:
+        """The selector for one run: book-wide when there is no anchor to scope it."""
+        if anchor is None and note_id is None and self.document_selector is not None:
+            return self.document_selector
+        return self.selector
 
     @field_validator("version", mode="before")
     @classmethod
