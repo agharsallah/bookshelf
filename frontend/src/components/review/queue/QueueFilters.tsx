@@ -1,4 +1,7 @@
-/** Narrow the queue by type, skill, tier or document. Options come from what is queued. */
+/**
+ * Narrow the queue by type, skill, tier or document. Options come from what is queued;
+ * each select names itself by its "All …" option, and a set filter is inked.
+ */
 import { TIERS, type ArtifactListItem, type ArtifactType, type Tier } from '../../../lib/api/types/artifacts';
 import { TYPE_LABELS } from '../labels';
 import { facet, type QueueFilters as Filters } from '../queue';
@@ -19,8 +22,8 @@ export function QueueFilters({ items, titles, value, onChange }: QueueFiltersPro
   return (
     <form className={styles.filters} role="search" aria-label="Filter the queue" onSubmit={(e) => e.preventDefault()}>
       <label>
-        <span>Type</span>
-        <select value={value.type ?? ''} onChange={(e) => onChange({ ...value, type: e.target.value as ArtifactType | '' })}>
+        <span className="visually-hidden">Type</span>
+        <select data-set={value.type ? '' : undefined} value={value.type ?? ''} onChange={(e) => onChange({ ...value, type: e.target.value as ArtifactType | '' })}>
           <option value="">All types</option>
           {types.map((t) => (
             <option key={t} value={t}>
@@ -30,8 +33,8 @@ export function QueueFilters({ items, titles, value, onChange }: QueueFiltersPro
         </select>
       </label>
       <label>
-        <span>Skill</span>
-        <select value={value.skill ?? ''} onChange={(e) => onChange({ ...value, skill: e.target.value })}>
+        <span className="visually-hidden">Skill</span>
+        <select data-set={value.skill ? '' : undefined} value={value.skill ?? ''} onChange={(e) => onChange({ ...value, skill: e.target.value })}>
           <option value="">All skills</option>
           {skills.map((s) => (
             <option key={s} value={s}>
@@ -41,8 +44,8 @@ export function QueueFilters({ items, titles, value, onChange }: QueueFiltersPro
         </select>
       </label>
       <label>
-        <span>Tier</span>
-        <select value={value.tier ?? ''} onChange={(e) => onChange({ ...value, tier: e.target.value as Tier | '' })}>
+        <span className="visually-hidden">Tier</span>
+        <select data-set={value.tier ? '' : undefined} value={value.tier ?? ''} onChange={(e) => onChange({ ...value, tier: e.target.value as Tier | '' })}>
           <option value="">All tiers</option>
           {TIERS.map((t) => (
             <option key={t} value={t}>
@@ -52,8 +55,8 @@ export function QueueFilters({ items, titles, value, onChange }: QueueFiltersPro
         </select>
       </label>
       <label>
-        <span>Document</span>
-        <select value={value.document ?? ''} onChange={(e) => onChange({ ...value, document: e.target.value })}>
+        <span className="visually-hidden">Document</span>
+        <select data-set={value.document ? '' : undefined} value={value.document ?? ''} onChange={(e) => onChange({ ...value, document: e.target.value })}>
           <option value="">All documents</option>
           {documents.map((d) => (
             <option key={d} value={d}>
@@ -63,7 +66,7 @@ export function QueueFilters({ items, titles, value, onChange }: QueueFiltersPro
         </select>
       </label>
       {active ? (
-        <button type="button" className={styles.clear} onClick={() => onChange({})}>
+        <button type="button" className={`btn btn-quiet ${styles.small}`} onClick={() => onChange({})}>
           Clear filters
         </button>
       ) : null}

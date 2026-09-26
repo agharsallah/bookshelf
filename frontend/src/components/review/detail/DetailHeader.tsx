@@ -1,4 +1,7 @@
-/** Who made this artifact, from what, and how it scored. */
+/**
+ * Who made this artifact, from what, and how it scored. The type and verbs are the
+ * tool's voice; the book and chapter titles are the book's; the facts sit quietly below.
+ */
 import { anchorLabel } from '../../../lib/anchors';
 import type { ArtifactPublic } from '../../../lib/api/types/artifacts';
 import type { SkillGates } from '../../../lib/api/types/skills';
@@ -29,7 +32,7 @@ export function DetailHeader({ artifact, documentTitle, heading, thresholds, sup
       <nav aria-label="Breadcrumb" className={styles.crumbs}>
         <a href="/review">Review</a>
         <span aria-hidden="true">/</span>
-        <span>{documentTitle}</span>
+        <span className="book-title">{documentTitle}</span>
       </nav>
       <div className={styles.titleRow}>
         <h1 className={styles.title}>

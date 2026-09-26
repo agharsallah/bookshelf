@@ -34,13 +34,15 @@
   font-weight: 600;
 }
 
+/* The view you are in wears the highlighter, as the current nav item does. */
 .tab[aria-selected='true']::after {
   content: '';
   position: absolute;
   inset-inline: 0;
-  inset-block-end: -1px;
-  block-size: 2px;
-  background: var(--ink);
+  inset-block-end: -2px;
+  block-size: 4px;
+  border-radius: 2px;
+  background: var(--marker);
 }
 
 .hint {

@@ -25,31 +25,31 @@ export function DetailActions({ artifact, rerun, busy, editing, status, problem,
   return (
     <div className={styles.actionsWrap}>
       <div className={styles.actions} role="group" aria-label="Review actions">
-        <button type="button" className={styles.approve} onClick={onApprove} disabled={busy || editing || artifact.review === 'approved'}>
+        <button type="button" className="btn btn-primary" onClick={onApprove} disabled={busy || editing || artifact.review === 'approved'}>
           Approve
         </button>
-        <button type="button" className={styles.action} onClick={onReject} disabled={busy || editing || artifact.review === 'rejected'}>
+        <button type="button" className="btn" onClick={onReject} disabled={busy || editing || artifact.review === 'rejected'}>
           Reject
         </button>
-        <button type="button" className={styles.action} onClick={onEdit} disabled={busy || editing}>
+        <button type="button" className="btn" onClick={onEdit} disabled={busy || editing}>
           Edit
         </button>
         {settled ? (
-          <button type="button" className={styles.action} onClick={onReopen} disabled={busy || editing} title="Undo the verdict: back to the queue as a draft">
+          <button type="button" className="btn" onClick={onReopen} disabled={busy || editing} title="Undo the verdict: back to the queue as a draft">
             Back to draft
           </button>
         ) : null}
         <span className={styles.spacer} />
         <button
           type="button"
-          className={styles.quiet}
+          className="btn btn-quiet"
           onClick={onRerun}
           disabled={busy || !rerun}
           title={rerun ? `Enqueue ${rerun} for this scope, even though its inputs have not changed` : 'This artifact type cannot be re-run from here'}
         >
           Re-run
         </button>
-        <button type="button" className={styles.quiet} onClick={onWrite} disabled={busy || editing}>
+        <button type="button" className="btn btn-quiet" onClick={onWrite} disabled={busy || editing}>
           Write by hand
         </button>
       </div>

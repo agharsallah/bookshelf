@@ -171,27 +171,34 @@ export function ReviewQueue({ items: initial, documents, headings, skills, api =
 
   return (
     <div className={styles.queue}>
-      <div className={styles.summaryRow}>
-        <p className={styles.summary}>
-          {visible.length === 0
-            ? 'Nothing is waiting for review.'
-            : `${needs} need${needs === 1 ? 's' : ''} review, ${drafts} draft${drafts === 1 ? '' : 's'}, across ${groups.length} document${groups.length === 1 ? '' : 's'}.`}
-        </p>
-        <button type="button" className={styles.helpButton} onClick={() => dispatch({ type: 'help' })} aria-keyshortcuts="?">
-          Shortcuts <kbd className={styles.kbd}>?</kbd>
-        </button>
+      <p className={styles.summary} aria-live="polite">
+        {visible.length === 0 ? (
+          'Nothing is waiting for review.'
+        ) : (
+          <>
+            <strong className={needs ? styles.urgent : undefined}>{needs}</strong> need{needs === 1 ? 's' : ''} review,{' '}
+            <strong>{drafts}</strong> draft{drafts === 1 ? '' : 's'}, across <strong>{groups.length}</strong> document{groups.length === 1 ? '' : 's'}.
+          </>
+        )}
+      </p>
+      <div className={styles.toolbar}>
+        <QueueFilters items={items} titles={titles} value={filters} onChange={setFilters} />
+        <div className={styles.tools}>
+          <button type="button" className={`btn ${styles.small}`} onClick={() => dispatch({ type: 'help' })} aria-keyshortcuts="?">
+            Shortcuts <kbd className={styles.kbd}>?</kbd>
+          </button>
+        </div>
       </div>
-      <QueueFilters items={items} titles={titles} value={filters} onChange={setFilters} />
 
       {triage.selected.length > 0 ? (
         <div className={styles.bulk} role="region" aria-label="Bulk approval">
           <p>
             {triage.selected.length} selected; {approvable.length} {approvable.length === 1 ? 'is a draft that passes' : 'are drafts that pass'} every gate.
           </p>
-          <button type="button" className={styles.approve} disabled={approvable.length === 0} onClick={() => act('approve', approvable)}>
+          <button type="button" className={`btn btn-primary ${styles.small}`} disabled={approvable.length === 0} onClick={() => act('approve', approvable)}>
             Approve {approvable.length}
           </button>
-          <button type="button" className={styles.action} onClick={() => dispatch({ type: 'clearSelection' })}>
+          <button type="button" className={`btn btn-quiet ${styles.small}`} onClick={() => dispatch({ type: 'clearSelection' })}>
             Clear selection
           </button>
         </div>
@@ -208,7 +215,7 @@ export function ReviewQueue({ items: initial, documents, headings, skills, api =
             {groups.map((group) => (
               <section key={group.documentId} className={styles.group} aria-labelledby={`group-${group.documentId}`}>
                 <h2 id={`group-${group.documentId}`} className={styles.groupTitle}>
-                  {group.title}
+                  <span className="book-title">{group.title}</span>
                   <span className={styles.groupCount}>{group.items.length}</span>
                 </h2>
                 <ul className={styles.rows}>

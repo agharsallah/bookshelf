@@ -1,12 +1,15 @@
-/* The source, set like the book it came from: serif, a quiet address line above. */
+/*
+ * The source a cite points at: a flat, ruled tool panel with a quiet address line,
+ * the passage itself set in the book's serif.
+ */
 .panel {
   display: grid;
   gap: var(--space-3);
   align-content: start;
   padding: var(--space-4) var(--space-5);
   border: 1px solid var(--rule);
-  border-radius: var(--radius-l);
-  background: var(--paper-sunken);
+  border-radius: var(--radius-m);
+  font-family: var(--font-ui);
 }
 
 .head {
@@ -17,9 +20,7 @@
 }
 
 .title {
-  font-size: var(--text-md);
-  font-style: italic;
-  font-weight: 500;
+  font-size: var(--text-ui);
 }
 
 .title:focus {
@@ -77,11 +78,13 @@
 
 .caption {
   color: var(--ink-2);
+  font-family: var(--font-read);
   font-size: var(--text-sm);
   font-style: italic;
 }
 
 .text {
+  font-family: var(--font-read);
   font-size: var(--text-ui);
   line-height: var(--leading-read);
   white-space: pre-line;

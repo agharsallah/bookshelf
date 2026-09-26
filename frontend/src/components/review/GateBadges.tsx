@@ -25,7 +25,7 @@ export function GroundingMeter({ gate, compact = false }: { gate: GroundingGate;
       </span>
       <span className={styles.value}>
         {percent(gate.score)}
-        {compact ? null : <span className={styles.unit}> grounded</span>}
+        {compact ? null : <span className={styles.unit}> grounded, needs {percent(gate.min)}</span>}
       </span>
     </span>
   );

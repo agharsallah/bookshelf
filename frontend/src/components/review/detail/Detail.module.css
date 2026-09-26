@@ -1,28 +1,38 @@
-/* One artifact under review: the proof on the left, the source it cites on the right. */
+/*
+ * One artifact under review. The header and verbs are the tool's voice, set flat on the
+ * desk; the artifact itself lies on a sheet (the book's voice), and the source it cites
+ * sits beside it in a flat, ruled panel.
+ */
 .detail {
   display: grid;
   gap: var(--space-5);
+  font-family: var(--font-ui);
 }
 
 .header {
   display: grid;
-  gap: var(--space-3);
+  gap: var(--space-2);
 }
 
 .crumbs {
   display: flex;
   flex-wrap: wrap;
+  align-items: baseline;
   gap: var(--space-2);
   color: var(--ink-3);
-  font-family: var(--font-ui);
   font-size: var(--text-sm);
+}
+
+.crumbs a {
+  font-weight: 600;
 }
 
 .titleRow {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: var(--space-2) var(--space-4);
+  gap: var(--space-2) var(--space-3);
+  margin-block-start: var(--space-2);
 }
 
 .title {
@@ -30,62 +40,70 @@
 }
 
 .anchor {
-  color: var(--ink-3);
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: var(--text-md);
   font-weight: 400;
 }
 
 .state {
-  padding: 0.1em 0.55em;
-  border: 1px solid var(--rule-strong);
-  border-radius: var(--radius-s);
-  color: var(--ink-2);
-  font-family: var(--font-ui);
+  align-self: center;
+  padding: 0.15em 0.6em;
+  border-radius: var(--radius-pill);
+  background: color-mix(in oklab, var(--tone-caution) 12%, transparent);
+  color: var(--tone-caution);
   font-size: var(--text-sm);
+  font-weight: 600;
 }
 
 .state[data-review='needs_review'] {
-  border-color: color-mix(in oklab, var(--tone-important) 50%, transparent);
+  background: color-mix(in oklab, var(--tone-important) 12%, transparent);
   color: var(--tone-important);
-  font-weight: 600;
 }
 
 .state[data-review='approved'] {
-  border-color: color-mix(in oklab, var(--tone-insight) 50%, transparent);
+  background: color-mix(in oklab, var(--tone-insight) 14%, transparent);
   color: var(--tone-insight);
-  font-weight: 600;
+}
+
+.state[data-review='rejected'] {
+  background: var(--paper-sunken);
+  color: var(--ink-2);
 }
 
 .state[data-review='superseded'] {
-  border-style: dashed;
+  background: none;
+  box-shadow: inset 0 0 0 1px var(--rule-strong);
   color: var(--ink-3);
+  font-weight: 500;
 }
 
+/* The chapter's own title: the book's words. */
 .heading {
   color: var(--ink-2);
+  font-family: var(--font-read);
   font-size: var(--text-md);
-  font-style: italic;
+  line-height: var(--leading-tight);
 }
 
 .facts {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-2) var(--space-5);
-  font-family: var(--font-ui);
+  gap: var(--space-1) var(--space-5);
+  margin-block: var(--space-2) var(--space-1);
+  color: var(--ink-3);
   font-size: var(--text-sm);
 }
 
 .facts div {
-  display: grid;
-}
-
-.facts dt {
-  color: var(--ink-3);
-  font-size: var(--text-xs);
+  display: flex;
+  gap: var(--space-2);
 }
 
 .facts dd {
   margin: 0;
-  color: var(--ink);
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
 }
 
 .actionsWrap {
@@ -106,43 +124,10 @@
   flex: 1;
 }
 
-.approve,
-.action,
-.quiet {
-  padding: var(--space-2) var(--space-4);
-  border: 1px solid var(--rule-strong);
-  border-radius: var(--radius-m);
-  background: var(--paper-raised);
-  color: var(--ink);
-  font-family: var(--font-ui);
-  font-size: var(--text-sm);
-  cursor: pointer;
-}
-
-.approve {
-  border-color: var(--accent);
-  background: var(--accent);
-  color: var(--paper-raised);
-  font-weight: 600;
-}
-
-.quiet {
-  border-color: transparent;
-  background: none;
-  color: var(--accent);
-}
-
-.approve:disabled,
-.action:disabled,
-.quiet:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
 .status {
   color: var(--ink-2);
-  font-family: var(--font-ui);
   font-size: var(--text-sm);
+  line-height: var(--leading-ui);
 }
 
 .status:empty {
@@ -158,7 +143,18 @@
 
 .main {
   min-inline-size: 0;
-  max-inline-size: calc(var(--measure) + 8rem);
+  max-inline-size: calc(var(--measure) + 10rem);
+}
+
+/* The artifact itself, on a sheet: the book's voice. */
+.sheet {
+  min-inline-size: 0;
+  padding: var(--space-6) var(--space-7) var(--space-7);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-l);
+  background: var(--paper-raised);
+  box-shadow: var(--shadow-lift);
+  font-family: var(--font-read);
 }
 
 .side {
@@ -175,8 +171,6 @@
 
 .sectionTitle {
   font-size: var(--text-md);
-  font-style: italic;
-  font-weight: 500;
 }
 
 @media (max-width: 60rem) {
@@ -187,5 +181,15 @@
   .side {
     position: static;
     max-block-size: none;
+  }
+}
+
+@media (max-width: 40rem) {
+  .sheet {
+    padding: var(--space-5) var(--space-4) var(--space-6);
+  }
+
+  .spacer {
+    flex-basis: 100%;
   }
 }

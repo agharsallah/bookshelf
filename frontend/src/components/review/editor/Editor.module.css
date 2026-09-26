@@ -99,8 +99,9 @@
 
 .slipType {
   color: var(--ink);
-  font-family: var(--font-read);
-  font-style: italic;
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: 600;
   text-transform: capitalize;
 }
 

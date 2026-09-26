@@ -94,4 +94,16 @@ describe('<ReviewQueue>', () => {
     await user.click(screen.getByRole('button', { name: 'Approve 1' }));
     await waitFor(() => expect(calls.map((c) => c.path)).toEqual(['artifacts/third/review']));
   });
+
+  it('filters by a named select, marks the filter as set, and clears back to the whole queue', async () => {
+    const { user } = setup();
+    expect(screen.getByText(/need.? review/).textContent).toBe('1 needs review, 2 drafts, across 1 document.');
+    const tier = screen.getByRole('combobox', { name: 'Tier' });
+    await user.selectOptions(tier, 'reason');
+    expect(tier.hasAttribute('data-set')).toBe(true);
+    expect(screen.getByText('No queued artifact matches these filters.')).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: 'Clear filters' }));
+    expect(screen.getByRole('navigation', { name: 'Queue' })).toBeTruthy();
+    expect(tier.hasAttribute('data-set')).toBe(false);
+  });
 });

@@ -1,4 +1,7 @@
-/** The focused queue item, read in place: gates, what approval triggers, and the body. */
+/**
+ * The focused queue item, read in place: gates and verbs in the tool's voice above,
+ * what approval triggers, and the body on a sheet below.
+ */
 import { anchorLabel } from '../../../lib/anchors';
 import type { ArtifactListItem } from '../../../lib/api/types/artifacts';
 import type { SkillGates } from '../../../lib/api/types/skills';
@@ -28,7 +31,7 @@ export function ArtifactPreview({ item, heading, documentTitle, thresholds, busy
   return (
     <article className={styles.preview} aria-labelledby="preview-title">
       <header className={styles.previewHead}>
-        <p className={styles.previewDoc}>{documentTitle}</p>
+        <p className={`book-title ${styles.previewDoc}`}>{documentTitle}</p>
         <h2 id="preview-title" className={styles.previewTitle}>
           {TYPE_LABELS[item.type]}
           {item.anchor ? <span className={styles.previewAnchor}> {anchorLabel(item.anchor)}</span> : null}
@@ -38,13 +41,13 @@ export function ArtifactPreview({ item, heading, documentTitle, thresholds, busy
       </header>
 
       <div className={styles.actions}>
-        <button type="button" className={styles.approve} onClick={onApprove} disabled={busy}>
+        <button type="button" className="btn btn-primary" onClick={onApprove} disabled={busy}>
           Approve <kbd className={styles.kbd}>a</kbd>
         </button>
-        <button type="button" className={styles.action} onClick={onReject} disabled={busy}>
+        <button type="button" className="btn" onClick={onReject} disabled={busy}>
           Reject <kbd className={styles.kbd}>r</kbd>
         </button>
-        <button type="button" className={styles.action} onClick={onEdit}>
+        <button type="button" className="btn" onClick={onEdit}>
           Edit <kbd className={styles.kbd}>e</kbd>
         </button>
         <a className={styles.open} href={reviewHref(item.id)}>
@@ -53,7 +56,7 @@ export function ArtifactPreview({ item, heading, documentTitle, thresholds, busy
       </div>
       {note ? <p className={styles.propagation}>After approval: {note}</p> : null}
 
-      <div className={styles.previewBody}>
+      <div className={styles.sheet}>
         <ArtifactBody type={item.type} body={item.body} onCite={(anchor) => window.location.assign(reviewHref(item.id, { cite: anchor }))} />
       </div>
     </article>

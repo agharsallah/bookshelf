@@ -1,10 +1,13 @@
-/** One item in the queue: what it is, where it sits, who wrote it, and its gate marks. */
+/**
+ * One item in the queue: what it is (tool voice), the chapter it covers (the book's
+ * words), its status, who wrote it, and its gate marks.
+ */
 import { forwardRef } from 'react';
 import { anchorLabel } from '../../../lib/anchors';
 import type { ArtifactListItem } from '../../../lib/api/types/artifacts';
 import type { SkillGates } from '../../../lib/api/types/skills';
 import { GateBadges } from '../GateBadges';
-import { authorship, relativeTime, TYPE_LABELS } from '../labels';
+import { authorship, relativeTime, REVIEW_LABELS, TYPE_LABELS } from '../labels';
 import styles from './Queue.module.css';
 
 export interface QueueRowProps {
@@ -55,13 +58,17 @@ export const QueueRow = forwardRef<HTMLButtonElement, QueueRowProps>(function Qu
           {heading ? <span className={styles.rowHeading}>{heading}</span> : null}
         </span>
         <span className={styles.rowMeta}>
-          {item.review === 'needs_review' ? <span className={styles.needs}>Needs review</span> : <span>Draft</span>}
+          <span className={styles.status} data-review={item.review}>
+            {REVIEW_LABELS[item.review]}
+          </span>
           <span>{authorship(item)}</span>
           {item.model ? <span>{item.model}</span> : null}
           <span>v{item.version}</span>
           <time dateTime={item.created_at}>{relativeTime(item.created_at)}</time>
         </span>
-        <GateBadges artifact={item} thresholds={thresholds} compact />
+        <span className={styles.rowGates}>
+          <GateBadges artifact={item} thresholds={thresholds} compact />
+        </span>
       </button>
     </li>
   );

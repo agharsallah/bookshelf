@@ -185,9 +185,11 @@ export function ArtifactDetail({
             </section>
           ) : (
             <Tabs tabs={tabs} active={mode as View} onChange={setMode} label="View">
-              {mode === 'read' ? <ArtifactBody type={artifact.type} body={artifact.body} onCite={setCite} /> : null}
-              {mode === 'proof' ? <ProofView blocks={adapted.blocks} onCite={setCite} /> : null}
-              {mode === 'changes' ? <VersionDiff key={artifact.id} current={artifact} versions={versions} /> : null}
+              <div className={styles.sheet}>
+                {mode === 'read' ? <ArtifactBody type={artifact.type} body={artifact.body} onCite={setCite} /> : null}
+                {mode === 'proof' ? <ProofView blocks={adapted.blocks} onCite={setCite} /> : null}
+                {mode === 'changes' ? <VersionDiff key={artifact.id} current={artifact} versions={versions} /> : null}
+              </div>
             </Tabs>
           )}
         </div>

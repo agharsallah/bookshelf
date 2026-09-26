@@ -1,7 +1,7 @@
 /*
- * Gate marks. The grounding meter is the one loud element of the review surface:
- * a hairline track, ink filling it, and the 0.9 threshold drawn as a load line
- * that the fill either clears or doesn't.
+ * Gate marks, in the tool's voice. The grounding meter is a rounded track filled in
+ * the pass or fail tone, the skill's threshold drawn as a load line that the fill
+ * either clears or doesn't; the number beside it says the same in words.
  */
 .gates {
   --pass: var(--tone-insight);
@@ -36,32 +36,34 @@
 .meter {
   position: relative;
   display: inline-block;
-  inline-size: 4.5rem;
-  block-size: 0.375rem;
-  border-radius: 1px;
-  background: var(--paper-sunken);
-  box-shadow: inset 0 0 0 1px var(--rule);
+  inline-size: 6rem;
+  block-size: 0.5rem;
+  border-radius: var(--radius-pill);
+  background: var(--chart-grid);
 }
 
 .compact .meter {
-  inline-size: 3rem;
+  inline-size: 3.5rem;
+  block-size: 0.375rem;
 }
 
 .fill {
   position: absolute;
   inset-block: 0;
   inset-inline-start: 0;
-  border-radius: 1px;
+  border-radius: inherit;
   background: var(--state);
 }
 
-/* The load line: taller than the track, so it reads even when the fill covers it. */
+/* The load line: taller than the track and ringed in paper, so it reads over the fill. */
 .line {
   position: absolute;
-  inset-block: -0.2rem;
-  inline-size: 1.5px;
+  inset-block: -0.25rem;
+  inline-size: 2px;
   translate: -50% 0;
+  border-radius: 1px;
   background: var(--ink);
+  box-shadow: 0 0 0 1px var(--paper);
 }
 
 .value {
