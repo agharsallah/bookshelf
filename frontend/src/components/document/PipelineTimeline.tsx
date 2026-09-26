@@ -4,12 +4,13 @@
  * document is re-read so the milestone moves; a finished parse offers a reload,
  * since the outline below was rendered from the old tree. Each job says where it is —
  * its place in line, a retry backoff, elapsed time — and a banner warns when nothing is
- * running to pick queued jobs up.
+ * running to pick queued jobs up. Jobs in progress and failures stay in view; finished
+ * ones fold away under a count.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { browserApi } from '../../lib/api/client';
 import type { DocumentPublic, DocumentStatus } from '../../lib/api/types/documents';
-import type { JobPublic } from '../../lib/api/types/jobs';
+import type { JobPublic, QueueStatus } from '../../lib/api/types/jobs';
 import { PIPELINE_STEPS, pipelineProgress, stepState } from '../../lib/documents/pipeline';
 import { useJobStream } from '../../lib/hooks/useJobStream';
 import { describeJob } from '../../lib/jobs/progress';
@@ -48,6 +49,8 @@ export function PipelineTimeline({ documentId, slug, initialStatus, initialJobs 
   const live = list.filter((j) => !isFinished(j.state));
   const recent = list.filter((j) => isFinished(j.state)).slice(0, 5);
   const now = useNow(live.length > 0);
+  const failed = recent.filter((j) => j.state === 'failed');
+  const done = recent.filter((j) => j.state !== 'failed');
 
   return (
     <section className={styles.timeline} aria-labelledby="pipeline-title">
@@ -86,26 +89,46 @@ export function PipelineTimeline({ documentId, slug, initialStatus, initialJobs 
       ) : null}
 
       {live.length + recent.length > 0 ? (
-        <ul className={styles.jobs} aria-label="Recent jobs">
-          {[...live, ...recent].map((job) => {
-            const progress = describeJob(job, now, queue);
-            return (
-              <li key={job.id} className={styles.job} data-state={job.state} data-phase={progress.phase}>
-                <span className={styles.jobKind}>
-                  {jobTitle(job)}
-                  {job.anchor ? <span className={styles.jobAnchor}> {job.anchor}</span> : null}
-                </span>
-                <span className={styles.jobState}>{progress.text}</span>
-                {job.state === 'failed' && job.error ? <span className={styles.jobError}>{job.error}</span> : null}
-              </li>
-            );
-          })}
-        </ul>
+        <>
+          {live.length + failed.length > 0 ? (
+            <JobList jobs={[...live, ...failed]} now={now} queue={queue} label="Jobs in progress and failed" />
+          ) : null}
+          {done.length > 0 ? (
+            <details className={styles.history}>
+              <summary>{done.length === 1 ? '1 recent job finished' : `${done.length} recent jobs finished`}</summary>
+              <JobList jobs={done} now={now} queue={queue} label="Finished jobs" />
+            </details>
+          ) : null}
+        </>
       ) : (
         <p className={styles.quiet}>No jobs yet.</p>
       )}
       {stream === 'reconnecting' ? <p className={styles.quiet}>Reconnecting to live updates…</p> : null}
     </section>
+  );
+}
+
+function JobList({ jobs, now, queue, label }: { jobs: JobPublic[]; now: number; queue: QueueStatus | null; label: string }) {
+  return (
+    <ul className={styles.jobs} aria-label={label}>
+      {jobs.map((job) => {
+        const progress = describeJob(job, now, queue);
+        return (
+          <li key={job.id} className={styles.job} data-state={job.state} data-phase={progress.phase}>
+            <span className={styles.jobKind}>
+              {jobTitle(job)}
+              {job.anchor ? <span className={styles.jobAnchor}> {job.anchor}</span> : null}
+            </span>
+            <span className={styles.jobState}>{progress.text}</span>
+            {job.state === 'failed' && job.error ? (
+              <span className={styles.jobError} title={job.error}>
+                {job.error}
+              </span>
+            ) : null}
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 

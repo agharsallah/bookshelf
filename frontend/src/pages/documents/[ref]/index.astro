@@ -110,7 +110,9 @@ const exportsBase = data ? `/api/exports/${data.doc.slug}` : '';
       <article class="document">
         <header class="title-page">
           <nav class="crumbs" aria-label="Breadcrumb">
-            <a href="/library">Library</a>
+            <a href="/library">
+              <span aria-hidden="true">←</span> Library
+            </a>
           </nav>
           <DocumentHeader
             client:visible
@@ -118,51 +120,55 @@ const exportsBase = data ? `/api/exports/${data.doc.slug}` : '';
             initial={{ title: data.doc.title, authors: data.doc.authors, year: data.doc.year, tags: data.doc.tags }}
             facts={facts}
           />
-          <div class="primary-actions">
-            {parsed && resume ? (
-              <a class="read" href={`/documents/${data.doc.slug}/read/${resume.anchor}`}>
-                <span>{resume.kind === 'continue' ? 'Continue reading' : 'Read the next chapter'}</span>
-                <span class="read-where">
-                  {unitName(resume.unit)}
-                  {resume.progress > 0 ? `, ${percent(resume.progress)}%` : ''}
-                </span>
-              </a>
-            ) : (
-              first &&
-              parsed && (
-                <a class="read" href={`/documents/${data.doc.slug}/read/${first.anchor}`}>
-                  {started ? 'Read again' : 'Start reading'}
+          <div class="reading">
+            <div class="primary-actions">
+              {parsed && resume ? (
+                <a class="read" href={`/documents/${data.doc.slug}/read/${resume.anchor}`}>
+                  <span>{resume.kind === 'continue' ? 'Continue reading' : 'Read the next chapter'}</span>
+                  <span class="read-where">
+                    {unitName(resume.unit)}
+                    {resume.progress > 0 ? `, ${percent(resume.progress)}%` : ''}
+                  </span>
                 </a>
-              )
-            )}
-            {brief ? (
-              <a class="brief" href={`/documents/${data.doc.slug}/brief`}>
-                {brief.standing === 'approved' ? 'Read the brief' : 'Brief (draft, waiting for review)'}
-              </a>
-            ) : null}
-            {guide ? (
-              <a class="brief" href={`/documents/${data.doc.slug}/guide`}>
-                {guide.standing === 'approved' ? 'Open the book guide' : 'Book guide (draft)'}
-              </a>
-            ) : null}
-          </div>
-          {parsed && started && (
-            <div class="book-progress">
-              <div
-                class="book-meter"
-                role="progressbar"
-                aria-label="Progress through the book"
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-valuenow={percent(book.progress)}
-              >
-                <span style={`inline-size: ${percent(book.progress)}%`} />
-              </div>
-              <p>
-                {percent(book.progress)}% read · {book.finished} of {plural(book.total, 'chapter')} finished
-              </p>
+              ) : (
+                first &&
+                parsed && (
+                  <a class="read" href={`/documents/${data.doc.slug}/read/${first.anchor}`}>
+                    {started ? 'Read again' : 'Start reading'}
+                  </a>
+                )
+              )}
+              {brief ? (
+                <a class="secondary" href={`/documents/${data.doc.slug}/brief`}>
+                  Brief
+                  {brief.standing !== 'approved' && <span class="pill">draft</span>}
+                </a>
+              ) : null}
+              {guide ? (
+                <a class="secondary" href={`/documents/${data.doc.slug}/guide`}>
+                  Book guide
+                  {guide.standing !== 'approved' && <span class="pill">draft</span>}
+                </a>
+              ) : null}
             </div>
-          )}
+            {parsed && started && (
+              <div class="book-progress">
+                <div
+                  class="book-meter"
+                  role="progressbar"
+                  aria-label="Progress through the book"
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={percent(book.progress)}
+                >
+                  <span style={`inline-size: ${percent(book.progress)}%`} />
+                </div>
+                <p>
+                  <strong>{percent(book.progress)}% read</strong> · {book.finished} of {plural(book.total, 'chapter')} finished
+                </p>
+              </div>
+            )}
+          </div>
         </header>
 
         <div class="columns">
@@ -212,24 +218,11 @@ const exportsBase = data ? `/api/exports/${data.doc.slug}` : '';
             )}
           </div>
 
-          <aside class="side-col" aria-label="Pipeline and exports">
-            <PipelineTimeline
-              client:load
-              documentId={data.doc.id}
-              slug={data.doc.slug}
-              initialStatus={data.doc.status}
-              initialJobs={data.jobs}
-            />
-
-            <section aria-labelledby="run-title" class="side-block">
-              <h2 id="run-title" class="side-title">Run again</h2>
-              <DocumentActions client:visible documentId={data.doc.id} kinds={parsed ? ['parse', 'brief'] : ['parse']} />
-            </section>
-
-            {parsed && documentDerive.length > 0 && (
-              <section aria-labelledby="study-title" class="side-block">
+          {parsed && documentDerive.length > 0 && (
+            <aside class="side side-material" aria-labelledby="study-title">
+              <section class="card">
                 <h2 id="study-title" class="side-title">Study material</h2>
-                <p class="side-hint">For the whole book. Per-chapter quizzes, FAQs, quotes and flashcards are under each chapter.</p>
+                <p class="side-hint">For the whole book. Each chapter’s own quiz, FAQ, quotes and flashcards are in its details.</p>
                 <DocumentActions
                   client:visible
                   documentId={data.doc.id}
@@ -239,20 +232,37 @@ const exportsBase = data ? `/api/exports/${data.doc.slug}` : '';
                   made={made}
                 />
               </section>
-            )}
+            </aside>
+          )}
 
-            <section aria-labelledby="export-title" class="side-block">
-              <h2 id="export-title" class="side-title">Export</h2>
-              <ul class="exports">
-                <li><a href={`${exportsBase}.md`}>Markdown</a> with anchors and approved artifacts</li>
-                <li><a href={`${exportsBase}.json`}>JSON</a> in the render contract</li>
-                <li><a href={`${exportsBase}/tables.csv`}>Tables</a> as CSV</li>
-              </ul>
+          <aside class="side side-ops" aria-label="Pipeline and exports">
+            <div class="card">
+              <PipelineTimeline
+                client:load
+                documentId={data.doc.id}
+                slug={data.doc.slug}
+                initialStatus={data.doc.status}
+                initialJobs={data.jobs}
+              />
+            </div>
+
+            <section aria-labelledby="run-title" class="card">
+              <h2 id="run-title" class="side-title">Run again</h2>
+              <p class="side-hint">Re-parsing rebuilds the outline from the file.</p>
+              <DocumentActions client:visible documentId={data.doc.id} kinds={parsed ? ['parse', 'brief'] : ['parse']} />
             </section>
 
-            <p class="source">
-              {data.doc.source_uri ? <a href={data.doc.source_uri}>Original article</a> : data.doc.source_path}
-            </p>
+            <section aria-labelledby="export-title" class="card">
+              <h2 id="export-title" class="side-title">Export</h2>
+              <ul class="exports">
+                <li><a href={`${exportsBase}.md`}>Markdown</a><span>with anchors and approved artifacts</span></li>
+                <li><a href={`${exportsBase}.json`}>JSON</a><span>in the render contract</span></li>
+                <li><a href={`${exportsBase}/tables.csv`}>Tables</a><span>as CSV</span></li>
+              </ul>
+              <p class="source">
+                {data.doc.source_uri ? <a href={data.doc.source_uri}>Original article</a> : data.doc.source_path}
+              </p>
+            </section>
           </aside>
         </div>
       </article>
@@ -280,28 +290,73 @@ const exportsBase = data ? `/api/exports/${data.doc.slug}` : '';
 
   .crumbs a {
     color: var(--ink-3);
+    text-decoration: none;
+  }
+
+  .crumbs a:hover {
+    color: var(--accent);
+  }
+
+  /* Reading first: the one filled button, then what the book became, then how far you are. */
+  .reading {
+    display: grid;
+    gap: var(--space-4);
   }
 
   .primary-actions {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--space-4);
-    align-items: center;
+    gap: var(--space-3);
+    align-items: stretch;
     font-family: var(--font-ui);
     font-size: var(--text-ui);
   }
 
-  .read {
+  .read,
+  .secondary {
+    display: inline-flex;
+    flex-direction: column;
+    justify-content: center;
+    min-block-size: 2.75rem;
     padding: var(--space-2) var(--space-5);
     border-radius: var(--radius-m);
-    background: var(--ink);
-    color: var(--paper);
     font-weight: 600;
     text-decoration: none;
+    transition:
+      background var(--dur-1) var(--ease-out),
+      border-color var(--dur-1) var(--ease-out);
+  }
+
+  .read {
+    background: var(--ink);
+    color: var(--paper);
   }
 
   .read:hover {
     background: var(--accent);
+  }
+
+  .secondary {
+    flex-direction: row;
+    align-items: center;
+    gap: var(--space-2);
+    border: 1px solid var(--rule-strong);
+    background: var(--paper-raised);
+    color: var(--ink);
+  }
+
+  .secondary:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .pill {
+    padding: 0 var(--space-2);
+    border: 1px dashed var(--tone-caution);
+    border-radius: 999px;
+    color: var(--tone-caution);
+    font-size: var(--text-xs);
+    font-weight: 500;
   }
 
   .read-where {
@@ -310,7 +365,7 @@ const exportsBase = data ? `/api/exports/${data.doc.slug}` : '';
     overflow: hidden;
     font-size: var(--text-xs);
     font-weight: 400;
-    opacity: 0.8;
+    opacity: 0.85;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
@@ -325,9 +380,14 @@ const exportsBase = data ? `/api/exports/${data.doc.slug}` : '';
     font-variant-numeric: tabular-nums;
   }
 
+  .book-progress strong {
+    color: var(--ink-2);
+    font-weight: 600;
+  }
+
   .book-meter {
-    block-size: 4px;
-    border-radius: 2px;
+    block-size: 6px;
+    border-radius: 3px;
     background: var(--rule);
     overflow: hidden;
   }
@@ -338,20 +398,26 @@ const exportsBase = data ? `/api/exports/${data.doc.slug}` : '';
     background: var(--accent);
   }
 
+  /* The contents on the left; the book-wide study material, then the pipeline, on the right. */
   .columns {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 18rem;
-    gap: var(--space-7);
+    grid-template-columns: minmax(0, 1fr) 19rem;
+    grid-template-rows: auto 1fr;
+    grid-template-areas:
+      'main material'
+      'main ops';
+    column-gap: var(--space-7);
     align-items: start;
   }
 
   .main-col {
+    grid-area: main;
     display: grid;
     gap: var(--space-6);
   }
 
   .section-title {
-    margin-block-end: var(--space-3);
+    margin-block-end: var(--space-2);
     font-size: var(--text-lg);
     font-weight: 500;
   }
@@ -402,16 +468,27 @@ const exportsBase = data ? `/api/exports/${data.doc.slug}` : '';
     font-size: var(--text-sm);
   }
 
-  .side-col {
-    position: sticky;
-    inset-block-start: calc(3.5rem + var(--space-5));
+  .side {
     display: grid;
-    gap: var(--space-6);
+    gap: var(--space-4);
   }
 
-  .side-block {
+  .side-material {
+    grid-area: material;
+    margin-block-end: var(--space-4);
+  }
+
+  .side-ops {
+    grid-area: ops;
+  }
+
+  .card {
     display: grid;
-    gap: var(--space-2);
+    gap: var(--space-3);
+    padding: var(--space-4) var(--space-5);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-l);
+    background: var(--paper-raised);
   }
 
   .side-title {
@@ -420,6 +497,7 @@ const exportsBase = data ? `/api/exports/${data.doc.slug}` : '';
   }
 
   .side-hint {
+    margin-block-start: calc(-1 * var(--space-2));
     color: var(--ink-3);
     font-family: var(--font-ui);
     font-size: var(--text-sm);
@@ -427,16 +505,33 @@ const exportsBase = data ? `/api/exports/${data.doc.slug}` : '';
 
   .exports {
     display: grid;
-    gap: var(--space-1);
+    gap: var(--space-2);
     margin: 0;
     padding: 0;
     list-style: none;
-    color: var(--ink-3);
     font-family: var(--font-ui);
     font-size: var(--text-sm);
   }
 
+  .exports li {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 var(--space-2);
+    align-items: baseline;
+  }
+
+  .exports a {
+    font-weight: 600;
+  }
+
+  .exports span {
+    color: var(--ink-3);
+    font-size: var(--text-xs);
+  }
+
   .source {
+    padding-block-start: var(--space-3);
+    border-block-start: 1px solid var(--rule);
     overflow-wrap: anywhere;
     color: var(--ink-3);
     font-family: var(--font-mono);
@@ -450,11 +545,31 @@ const exportsBase = data ? `/api/exports/${data.doc.slug}` : '';
 
   @media (max-width: 56rem) {
     .columns {
-      grid-template-columns: 1fr;
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-rows: none;
+      grid-template-areas:
+        'main'
+        'material'
+        'ops';
+      row-gap: var(--space-6);
     }
 
-    .side-col {
-      position: static;
+    .side-material {
+      margin-block-end: 0;
+    }
+  }
+
+  @media (max-width: 40rem) {
+    .primary-actions > * {
+      flex: 1 1 auto;
+    }
+
+    .read {
+      flex-basis: 100%;
+    }
+
+    .card {
+      padding: var(--space-4);
     }
   }
 </style>

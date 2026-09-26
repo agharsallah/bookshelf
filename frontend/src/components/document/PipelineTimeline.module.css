@@ -170,9 +170,31 @@
 }
 
 .jobError {
+  display: -webkit-box;
   flex-basis: 100%;
+  overflow: hidden;
   overflow-wrap: anywhere;
   font-size: var(--text-xs);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.history > summary {
+  color: var(--ink-3);
+  cursor: pointer;
+}
+
+.history > summary:hover {
+  color: var(--ink);
+}
+
+.history[open] > summary {
+  margin-block-end: var(--space-2);
+}
+
+.history .jobs {
+  padding-block-start: var(--space-2);
 }
 
 .quiet {

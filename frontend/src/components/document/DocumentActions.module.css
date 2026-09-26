@@ -24,9 +24,13 @@
   opacity: 0.6;
 }
 
+/* One line per skill: the action on the left, its state and "View" on the right. */
 .study {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
+  display: grid;
   gap: var(--space-2);
+}
+
+.study > * {
+  display: flex;
+  justify-content: space-between;
 }
