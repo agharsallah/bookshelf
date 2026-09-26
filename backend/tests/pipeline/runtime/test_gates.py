@@ -150,6 +150,33 @@ def test_code_citing_the_listing_must_be_verbatim():
     assert clean.flags == []
 
 
+def test_quoting_skills_must_copy_the_block_they_cite():
+    sources = {"ch01/p001": "Slack is not waste. It is capacity \u201cheld\u201d  in reserve."}
+    config = GateConfig(grounding_min=0, verbatim=True)
+    copied = body({"text": 'It is capacity "held" in\nreserve.', "cites": ["ch01/p001"]})
+    invented = body({"text": "Slack is reserve capacity.", "cites": ["ch01/p001"]})
+
+    def flags(output: dict, cfg: GateConfig = config) -> list[str]:
+        return gates.evaluate(
+            output, config=cfg, valid_anchors=VALID, source_words=0, sources=sources
+        ).flags
+
+    # Whitespace and typographic quotes aside, the text must be in the cited block.
+    assert flags(copied) == []
+    assert flags(invented) == ["not_verbatim"]
+    assert gates.unquoted(invented, sources) == ["ch01/p001: Slack is reserve capacity."]
+    # Only skills that quote are held to it.
+    assert flags(invented, GateConfig(grounding_min=0)) == []
+
+
+def test_block_texts_reads_the_input_blocks():
+    inputs = {
+        "blocks": [{"anchor": "ch01/p001", "text": "A."}, {"anchor": "ch01/f001", "text": None}]
+    }
+    assert gates.block_texts(inputs) == {"ch01/p001": "A."}
+    assert gates.block_texts({"chapter_distillations": []}) == {}
+
+
 def test_duplication_flags_siblings_that_repeat_the_same_text():
     text = "a stock is the memory of the history of changing flows within the system"
     siblings = {

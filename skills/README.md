@@ -34,6 +34,8 @@ gates:
                                 # must cite; below it → needs_review, `gates.uncovered` lists them
   words_per_minute: null        # spoken output: [low, high] words a minute of the run's
                                 # `minutes` param; outside → too_short_to_fill / too_long_to_fit
+  verbatim: false               # quoting output: each leaf span's text must be found in the
+                                # block it cites (whitespace, curly quotes aside) → not_verbatim
 params: {}                      # optional run parameters, chosen per job (below)
 variant: null                   # with params: the episode key they name, e.g. "{minutes}m-{format}"
 narrate: false                  # the artifact is a script to speak: storing one queues `narrate`

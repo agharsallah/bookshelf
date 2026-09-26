@@ -5,8 +5,8 @@ Two kinds of gate:
 * **Hard** (`output_problems`): schema and anchor validity. A failure rejects the output;
   the batch runner retries once with the problems appended, then fails the job.
 * **Soft** (`evaluate`): grounding, compression band, max words, non-prose confidence,
-  verbatim code, duplication between sibling section notes, and chapter coverage of
-  book-wide study material. A failure stores the artifact
+  verbatim code, verbatim quotes, duplication between sibling section notes, and chapter
+  coverage of book-wide study material. A failure stores the artifact
   as `needs_review` with the reasons in `gates.flags`.
 
 Human-authored artifacts (D15) pass the hard gates only: `origin = human` bypasses the rest.
@@ -184,6 +184,40 @@ def _code_rewritten(output: Any, element: Mapping[str, Any]) -> bool:
     )
 
 
+# Typography a model tends to straighten when it copies text; counted as the same character.
+_SAME_CHARS = str.maketrans(
+    {"\u2018": "'", "\u2019": "'", "\u201c": '"', "\u201d": '"', "\u2013": "-", "\u2014": "-"}
+)
+
+
+def _normalised(text: str) -> str:
+    return " ".join(text.translate(_SAME_CHARS).split())
+
+
+def block_texts(inputs: Mapping[str, Any]) -> dict[str, str]:
+    """`inputs.blocks` as anchor → text, the sources a quoting skill copies from."""
+    blocks = inputs.get("blocks")
+    if not isinstance(blocks, list):
+        return {}
+    return {
+        b["anchor"]: b["text"]
+        for b in blocks
+        if isinstance(b, dict)
+        and isinstance(b.get("anchor"), str)
+        and isinstance(b.get("text"), str)
+    }
+
+
+def unquoted(output: Any, sources: Mapping[str, str]) -> list[str]:
+    """Leaf spans whose text is not in the block they cite (as `anchor: text`), in order."""
+    found: list[str] = []
+    for span in leaf_spans(output):
+        cites = [c for c in span["cites"] if isinstance(c, str)]
+        if not any(_normalised(span["text"]) in _normalised(sources.get(c, "")) for c in cites):
+            found.append(f"{cites[0] if cites else '?'}: {span['text'][:80]}")
+    return found
+
+
 def evaluate(
     output: dict[str, Any],
     *,
@@ -198,6 +232,7 @@ def evaluate(
     repairs: Sequence[str] = (),
     chapters: Sequence[str] = (),
     minutes: float | None = None,
+    sources: Mapping[str, str] | None = None,
 ) -> GateReport:
     """Score an output that already passed the hard gates.
 
@@ -206,7 +241,9 @@ def evaluate(
     `chapters`: the chapters a book-wide input offered; with `coverage_min` set, citing too
     few of them flags `coverage_below_min` and lists the rest in `uncovered`.
     `minutes`: how long a spoken output should last; with `words_per_minute` set, a pace
-    outside the band flags `too_short_to_fill` / `too_long_to_fit` (`pace` = words/min)."""
+    outside the band flags `too_short_to_fill` / `too_long_to_fit` (`pace` = words/min).
+    `sources`: the blocks a quoting skill copied from (anchor → text); with `verbatim` set,
+    a span not found in the block it cites flags `not_verbatim`."""
     words = count_words(plain_text(output))
     report = GateReport(words=words, schema_retry=schema_retry, repairs=list(repairs))
     if origin is Origin.HUMAN:  # D15 human bypass: schema + anchors only
@@ -235,6 +272,8 @@ def evaluate(
         report.flags.append("low_confidence")
     if element is not None and element.get("kind") == "code" and _code_rewritten(output, element):
         report.flags.append("code_not_verbatim")
+    if config.verbatim and sources is not None and unquoted(output, sources):
+        report.flags.append("not_verbatim")
     if visible_anchors is not None and cited_anchors(output) - set(visible_anchors):
         report.flags.append("out_of_scope_cites")
     if chapters and config.coverage_min is not None:

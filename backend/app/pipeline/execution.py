@@ -178,6 +178,7 @@ def build_artifact(
         repairs=repairs,
         chapters=prepared.selection.chapters,
         minutes=_minutes(prepared.params),
+        sources=gates.block_texts(prepared.selection.inputs),
     )
     return Artifact(
         document_id=prepared.document.id,

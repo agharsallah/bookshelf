@@ -76,6 +76,9 @@ class GateConfig(BaseModel):
     # Spoken output (a run with a `minutes` param): spoken words per minute the output must
     # land between, so a "15 minute" script lasts about 15 minutes. Outside → a flag.
     words_per_minute: tuple[float, float] | None = None
+    # Quoting output (leaf spans copied from the source): each span's text must be found in
+    # the block it cites, whitespace and typographic quotes aside. Missing → a flag.
+    verbatim: bool = False
 
 
 class SkillMeta(BaseModel):
