@@ -233,6 +233,17 @@ create table notes (
   created_at    timestamptz not null default now()
 );
 
+-- Your place in each chapter opened in the reader. Anchors are not foreign keys: a
+-- re-parse keeps your place, and a vanished anchor falls back to its chapter.
+create table reading_positions (
+  document_id   uuid not null references documents on delete cascade,
+  unit          text not null,               -- the chapter
+  anchor        text not null,               -- the block last read: where to continue
+  progress      real not null,               -- furthest point reached, 0–1, only grows
+  updated_at    timestamptz not null default now(),
+  primary key (document_id, unit)
+);
+
 -- DISTILLATION ---------------------------------------------------------
 -- Every AI output lands here. Immutable and versioned: a re-run inserts a new
 -- version, the old one stays for diffing.
@@ -968,7 +979,7 @@ Keep Astro as the shell and routing layer; add React islands only where interact
 | Surface | Tech | Why |
 |---|---|---|
 | **Library** | Astro, static | Shelf grid, filters, ingest status. No client state worth shipping JS for |
-| **Reader** | React island | Two panes — source blocks left, distillation right — anchor-synced scrolling, highlight/note creation. Reading settings (font, size, spacing, width), panes you can put away, focus mode and full screen, passages colour-coded by role (quote, example, exercise…), all kept per browser. Genuinely interactive |
+| **Reader** | React island | Two panes — source blocks left, distillation right — anchor-synced scrolling, highlight/note creation. Reading settings (font, size, spacing, width), panes you can put away, focus mode and full screen, passages colour-coded by role (quote, example, exercise…), all kept per browser. Saves your place in the chapter as you read (server-side, so it follows you across devices); the document page offers "Continue reading" and shows progress per chapter and for the book. Genuinely interactive |
 | **Brief** | Astro, static | Renders one approved artifact. Server-rendered, instant, printable |
 | **Guide** | Astro + one React island | The book guide with its charts (arc strip, chapter rows, theme heatmap, stat tiles), server-rendered then hydrated: a cite, chapter title or heatmap cell opens the passage in place (a drawer with the whole chapter, the cited block marked, previous / next chapter, "Open in reader"; its left edge drags wider with the reader's own width grip, and its width and typography are the reader's saved preferences); diagrams and charts magnify in the reader's lightbox. ⌘/Ctrl/middle click still opens the reader |
 | **Search** | React island | Query box, intent badge, grouped results, cited answer with click-through |
@@ -996,6 +1007,9 @@ PATCH  /documents/{id}/outline         manual chapter/section fix-up
 POST   /documents/{id}/outline/confirm accept a guessed outline as is (needs_review → parsed)
 POST   /documents/{id}/resume          lift a run-ceiling pause {max_runs?}
 GET    /documents/{id}/blocks          paginated, ?anchor_prefix=
+
+GET    /documents/{id}/reading         reading positions, most recently read first
+PUT    /documents/{id}/reading         save a chapter's position {unit, anchor, progress}
 
 GET    /nodes/{document_id}/{anchor}   one block or subtree
 
