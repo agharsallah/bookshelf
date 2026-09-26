@@ -509,6 +509,7 @@ Consequences:
 | `make-quiz` | `quiz` | chapter · document | distil | `[{question, choices[], answer, cites[]}]` |
 | `make-flashcards` | `flashcards` | chapter · document | distil | `[{front, back, cites[]}]` |
 | `make-glossary` | `glossary` | document | distil | `definition` blocks |
+| `mark-salience` | `salience_marks` | chapter | distil | `{marks: [{tier: core · key · term, text, cites: [one anchor], why}]}`, `text` verbatim from the cited block (`verbatim` gate); read by the reader's "Mark what matters" mode |
 | `write-audio-summary` | `audio_summary` | document | reason | a spoken script: `{title, speakers[1–4], sections: [{title, turns: [{speaker, text, cites}]}]}`, per run `params` minutes · format · language (§9 "Audio summaries") |
 
 The four study skills marked *chapter · document* are one package each: a job with an anchor
@@ -1058,7 +1059,7 @@ Keep Astro as the shell and routing layer; add React islands only where interact
 | Surface | Tech | Why |
 |---|---|---|
 | **Library** | Astro, static | Shelf grid, filters, ingest status. No client state worth shipping JS for |
-| **Reader** | React island | Two panes — source blocks left, distillation right — anchor-synced scrolling, highlight/note creation. Reading settings (font, size, spacing, width), panes you can put away, focus mode and full screen, passages colour-coded by role (quote, example, exercise…), all kept per browser. Saves your place in the chapter as you read (server-side, so it follows you across devices); the document page offers "Continue reading" and shows progress per chapter and for the book. Genuinely interactive |
+| **Reader** | React island | Two panes — source blocks left, distillation right — anchor-synced scrolling, highlight/note creation. Reading settings (font, size, spacing, width), panes you can put away, focus mode and full screen, passages colour-coded by role (quote, example, exercise…), all kept per browser. "Mark what matters" (`h`) colours the source itself: core ideas, key points and defined terms, drawn in as each block scrolls into view, each opening a card with why it was marked, and a meter of the key ideas reached. The marks are `mark-salience`'s when that chapter has run it (a manual `derive` per chapter), otherwise inferred from what the distillation, notes and summary cite and from the book's concepts and glossary. Saves your place in the chapter as you read (server-side, so it follows you across devices); the document page offers "Continue reading" and shows progress per chapter and for the book. Genuinely interactive |
 | **Brief** | Astro, static | Renders one approved artifact. Server-rendered, instant, printable |
 | **Guide** | Astro + one React island | The book guide with its charts (arc strip, chapter rows, theme heatmap, stat tiles), server-rendered then hydrated: a cite, chapter title or heatmap cell opens the passage in place (a drawer with the whole chapter, the cited block marked, previous / next chapter, "Open in reader"; its left edge drags wider with the reader's own width grip, and its width and typography are the reader's saved preferences); diagrams and charts magnify in the reader's lightbox. ⌘/Ctrl/middle click still opens the reader |
 | **Search** | React island | Query box, intent badge, grouped results, cited answer with click-through |
