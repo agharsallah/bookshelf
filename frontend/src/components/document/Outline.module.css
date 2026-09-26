@@ -16,7 +16,7 @@
 
 .summary {
   display: grid;
-  grid-template-columns: 3rem minmax(0, 1fr) auto;
+  grid-template-columns: 3rem minmax(0, 1fr) auto auto;
   align-items: baseline;
   gap: var(--space-3);
   padding: var(--space-3) 0;
@@ -56,6 +56,35 @@
   font-size: var(--text-xs);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+}
+
+.readState {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.readState[data-finished] {
+  color: var(--accent);
+}
+
+.meter {
+  inline-size: 2.5rem;
+  block-size: 3px;
+  border-radius: 2px;
+  background: var(--rule);
+  overflow: hidden;
+}
+
+.meter span {
+  display: block;
+  block-size: 100%;
+  background: var(--accent);
 }
 
 .body {

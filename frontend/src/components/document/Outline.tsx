@@ -2,14 +2,16 @@
  * The outline: chapters (collapsible) with their sections and page ranges, chips for
  * what exists (summary, distillation, drafts waiting) and actions that queue work,
  * including the chapter's study material (derive skills from `GET /skills`), each with
- * its job's live progress. Server-rendered, hydrated for the actions.
+ * its job's live progress, and how far you have read each chapter (continue where you
+ * left off). Server-rendered, hydrated for the actions.
  */
 import { anchorLabel } from '../../lib/anchors';
 import { browserApi } from '../../lib/api/client';
-import type { TreeNode } from '../../lib/api/types/documents';
+import type { ReadingPosition, TreeNode } from '../../lib/api/types/documents';
 import type { JobKind, JobPublic } from '../../lib/api/types/jobs';
 import type { SkillPublic } from '../../lib/api/types/skills';
 import type { ChapterStatus, Standing } from '../../lib/documents/artifacts';
+import { isFinished, percent } from '../../lib/documents/reading';
 import { pageSpan, sectionsOf } from '../../lib/documents/tree';
 import { DeriveButton } from './DeriveButton';
 import { enqueue, madeKey, needsDistillation } from './jobs';
@@ -29,6 +31,8 @@ export interface OutlineProps {
   initialJobs?: JobPublic[];
   /** Study material already made, by `madeKey(skill, anchor)` → artifact id. */
   made?: Record<string, string>;
+  /** Your place in each chapter read so far, by chapter anchor. */
+  positions?: Record<string, ReadingPosition>;
 }
 
 const STANDING_WORDS: Record<Standing, string> = {
@@ -36,6 +40,27 @@ const STANDING_WORDS: Record<Standing, string> = {
   draft: 'draft',
   needs_review: 'needs review',
 };
+
+/** How far through a chapter you are, beside its pages: a check once finished. */
+function ReadState({ position }: { position: ReadingPosition | undefined }) {
+  if (!position) return <span className={styles.readState} />;
+  const finished = isFinished(position.progress);
+  return (
+    <span className={styles.readState} data-finished={finished ? '' : undefined}>
+      <span className={styles.meter} aria-hidden="true">
+        <span style={{ inlineSize: `${percent(position.progress)}%` }} />
+      </span>
+      {finished ? 'Read' : `${percent(position.progress)}%`}
+    </span>
+  );
+}
+
+/** Continue where you left off, read a finished chapter again, or start it. */
+function readLink(position: ReadingPosition | undefined, unit: TreeNode): { anchor: string; label: string } {
+  if (!position || position.progress === 0) return { anchor: unit.anchor, label: 'Read' };
+  if (isFinished(position.progress)) return { anchor: unit.anchor, label: 'Read again' };
+  return { anchor: position.anchor, label: 'Continue reading' };
+}
 
 function Chip({ label, standing }: { label: string; standing: Standing | null }) {
   return (
@@ -46,7 +71,7 @@ function Chip({ label, standing }: { label: string; standing: Standing | null })
   );
 }
 
-export function Outline({ documentId, slug, units, statuses, actionable, derive = [], initialJobs = [], made = {} }: OutlineProps) {
+export function Outline({ documentId, slug, units, statuses, actionable, derive = [], initialJobs = [], made = {}, positions = {} }: OutlineProps) {
   const read = (anchor: string) => `/documents/${slug}/read/${anchor}`;
   const run = (kind: JobKind, anchor: string) => void enqueue(browserApi, { kind, documentId, anchor });
   const { jobFor, queue, now, track } = useDeriveJobs(documentId, initialJobs);
@@ -61,6 +86,8 @@ export function Outline({ documentId, slug, units, statuses, actionable, derive 
         const status = statuses[unit.anchor];
         const sections = sectionsOf(unit);
         const title = unit.heading ?? `Chapter ${index + 1}`;
+        const position = positions[unit.anchor];
+        const link = readLink(position, unit);
         return (
           <li key={unit.anchor} className={styles.chapter} data-front={unit.meta.front_matter ? '' : undefined}>
             <details open={index < 12 && !unit.meta.front_matter}>
@@ -69,6 +96,7 @@ export function Outline({ documentId, slug, units, statuses, actionable, derive 
                   {unit.meta.front_matter ? '' : anchorLabel(unit.anchor)}
                 </span>
                 <span className={styles.title}>{title}</span>
+                <ReadState position={position} />
                 <span className={styles.pages}>{pageSpan(unit)}</span>
               </summary>
               <div className={styles.body}>
@@ -82,8 +110,8 @@ export function Outline({ documentId, slug, units, statuses, actionable, derive 
                   ) : null}
                 </div>
                 <div className={styles.actions}>
-                  <a className={styles.read} href={read(unit.anchor)}>
-                    Read
+                  <a className={styles.read} href={read(link.anchor)}>
+                    {link.label}
                   </a>
                   {actionable ? (
                     <>
