@@ -14,7 +14,7 @@ from app.api.pipeline import SkillsDirDep, pipeline_errors
 from app.core.errors import NotFoundError
 from app.pipeline import execution
 from app.pipeline.skills import Skill, load_catalogue
-from app.schemas.skill import SkillGates, SkillInputs, SkillPublic
+from app.schemas.skill import SkillGates, SkillInputs, SkillParam, SkillPublic
 
 router = APIRouter(prefix="/skills", tags=["skills"])
 
@@ -34,7 +34,19 @@ def _public(skill: Skill) -> SkillPublic:
         document_tier=meta.document_tier,
         vision=meta.vision,
         gates=SkillGates.model_validate(meta.gates.model_dump()),
+        params={
+            name: SkillParam(
+                choices=list(spec.choices), default=spec.default, description=spec.description
+            )
+            for name, spec in meta.params.items()
+        },
+        narrate=meta.narrate,
     )
+
+
+def _params(pairs: list[str]) -> dict[str, str]:
+    """`["minutes:15", "format:panel"]` → `{"minutes": "15", "format": "panel"}`."""
+    return dict(pair.partition(":")[::2] for pair in pairs)
 
 
 @router.get("", response_model=list[SkillPublic], summary="List skill packages")
@@ -54,6 +66,11 @@ def skill_inputs(
     document: str = Query(max_length=200, description="Document slug or id."),
     anchor: str | None = Query(default=None, max_length=200),
     note_id: uuid.UUID | None = Query(default=None),
+    params: list[str] = Query(
+        default=[],
+        max_length=10,
+        description="Run parameters as `name:value`, e.g. `?params=minutes:15`.",
+    ),
 ) -> SkillInputs:
     skill = load_catalogue(skills_dir).get(name)
     if skill is None:
@@ -62,7 +79,9 @@ def skill_inputs(
     if doc is None:
         raise NotFoundError(f"Document {document} does not exist.")
     with pipeline_errors():
-        prepared = execution.prepare(session, skill, doc, anchor, note_id=note_id)
+        prepared = execution.prepare(
+            session, skill, doc, anchor, note_id=note_id, params=_params(params)
+        )
     return SkillInputs(
         skill=skill.name,
         skill_version=skill.version,

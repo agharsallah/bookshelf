@@ -4,7 +4,7 @@ verbatim code, duplication), plus the human bypass."""
 import pytest
 
 from app.models.enums import Origin, Review
-from app.pipeline import gates
+from app.pipeline import bodies, gates
 from app.pipeline.skills import GateConfig
 from tests.pipeline.runtime.conftest import body, paragraph, span
 
@@ -197,3 +197,48 @@ def test_human_origin_bypasses_the_soft_gates():
         "coverage": None,
         "uncovered": [],
     }
+
+
+# --- Spoken length: `words_per_minute` against the run's `minutes` ------------------------
+
+PACE = GateConfig(grounding_min=0, words_per_minute=(115, 185))
+
+
+def spoken(words: int, minutes: float | None, config: GateConfig = PACE) -> gates.GateReport:
+    output = body(paragraph(" ".join(["w"] * words), "ch01/p001"))
+    return gates.evaluate(
+        output, config=config, valid_anchors=VALID, source_words=0, minutes=minutes
+    )
+
+
+@pytest.mark.parametrize(
+    ("words", "flags"),
+    [
+        (229, ["too_short_to_fill"]),
+        (230, []),
+        (370, []),
+        (371, ["too_long_to_fit"]),
+    ],
+)
+def test_words_per_minute_band_is_inclusive(words, flags):
+    report = spoken(words, minutes=2)
+
+    assert report.pace == words / 2
+    assert report.flags == flags
+    assert report.as_json()["pace"] == words / 2
+
+
+@pytest.mark.parametrize(
+    ("minutes", "config"), [(None, PACE), (5, NO_GATES)], ids=["no-minutes", "no-band"]
+)
+def test_a_run_without_minutes_or_a_skill_without_a_band_has_no_pace(minutes, config):
+    report = spoken(10, minutes=minutes, config=config)
+
+    assert (report.pace, report.flags) == (None, [])
+    assert "pace" not in report.as_json()
+
+
+def test_chinese_characters_count_as_a_share_of_a_spoken_word():
+    assert bodies.spoken_words("hello 世界你好") == pytest.approx(1 + 4 * 0.6)
+    assert bodies.spoken_words("AI很好") == pytest.approx(1 + 2 * 0.6)  # not one \w+ run
+    assert bodies.spoken_words("Stocks and flows.") == 3

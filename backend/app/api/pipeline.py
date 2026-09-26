@@ -14,6 +14,8 @@ from app.pipeline.artifacts import ArtifactExistsError
 from app.pipeline.authoring import ReviewStateError
 from app.pipeline.runner import OutputError
 from app.pipeline.selectors import SelectorError
+from app.pipeline.skills import ParamError
+from app.services.errors import InvalidInputError
 
 
 def get_skills_dir() -> Path:
@@ -53,3 +55,6 @@ def pipeline_errors() -> Iterator[None]:
         raise NotFoundError(str(exc)) from exc
     except SelectorError as exc:
         raise GateRejectedError(str(exc)) from exc
+    except ParamError as exc:
+        field = f"params.{exc.param}" if exc.param else "params"
+        raise InvalidInputError(str(exc), field=field) from exc

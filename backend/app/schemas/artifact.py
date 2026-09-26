@@ -21,6 +21,10 @@ class ArtifactPublic(BaseModel):
     document_id: uuid.UUID
     anchor: str | None
     note_id: uuid.UUID | None
+    variant: Annotated[
+        str | None,
+        Field(description="The episode a parameterised run made (`15m-conversation-en`)."),
+    ] = None
     type: ArtifactType
     version: int
     origin: Origin
@@ -108,6 +112,10 @@ class ArtifactImport(BaseModel):
     input_hash: Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
     output: dict[str, Any]
     note_id: uuid.UUID | None = None
+    params: Annotated[
+        dict[str, str | int] | None,
+        Field(description="The run parameters the inputs were fetched with, if any."),
+    ] = None
     model: Annotated[str | None, Field(max_length=100)] = None
     force: Annotated[
         bool, Field(description="Supersede an existing artifact for the same input.")

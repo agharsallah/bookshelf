@@ -8,9 +8,10 @@ Interactive imports reuse `prepare` and `build_artifact`, so both run modes prod
 same rows through the same gates.
 """
 
+import dataclasses
 import logging
 import uuid
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -28,7 +29,14 @@ from app.pipeline.hashing import input_hash
 from app.pipeline.repair import repair_blocks
 from app.pipeline.runner import ModelRunner, OutputError, run_structured
 from app.pipeline.selectors import Selection, SelectorError, select_inputs
-from app.pipeline.skills import Skill, load_catalogue, render_prompt, skill_for_job_kind
+from app.pipeline.skills import (
+    ParamError,
+    ParamValue,
+    Skill,
+    load_catalogue,
+    render_prompt,
+    skill_for_job_kind,
+)
 from app.pipeline.tree import Tree
 
 logger = logging.getLogger(__name__)
@@ -61,6 +69,9 @@ class Prepared:
     note_id: uuid.UUID | None
     selection: Selection
     input_hash: str
+    # Resolved run parameters (every declared one), and the episode they name.
+    params: Mapping[str, ParamValue] = dataclasses.field(default_factory=dict)
+    variant: str | None = None
 
     @property
     def tier(self) -> Tier:
@@ -91,7 +102,12 @@ def prepare(
     *,
     note_id: uuid.UUID | None = None,
     media_dir: Path | None = None,
+    params: Mapping[str, object] | None = None,
 ) -> Prepared:
+    """Bind `skill` to one scope. `params` are the run's parameters (defaults filled in;
+    `ParamError` for unknown ones or values outside their choices): they join the inputs
+    as `params`, so each set has its own `input_hash` and its own `variant`."""
+    resolved = skill.meta.resolve_params(params)
     selection = select_inputs(
         session,
         skill.meta.selector_for(anchor, note_id),
@@ -103,6 +119,8 @@ def prepare(
     )
     if anchor is None and note_id is not None:  # a note's scope is the passage it annotates
         anchor = selection.inputs.get("scope", {}).get("anchor")
+    if resolved:
+        selection = dataclasses.replace(selection, inputs={**selection.inputs, "params": resolved})
     return Prepared(
         skill=skill,
         document=document,
@@ -110,6 +128,8 @@ def prepare(
         note_id=note_id,
         selection=selection,
         input_hash=input_hash(skill.name, skill.version, selection.inputs),
+        params=resolved,
+        variant=skill.meta.variant_of(resolved),
     )
 
 
@@ -157,11 +177,13 @@ def build_artifact(
         visible_anchors=prepared.selection.visible_anchors,
         repairs=repairs,
         chapters=prepared.selection.chapters,
+        minutes=_minutes(prepared.params),
     )
     return Artifact(
         document_id=prepared.document.id,
         anchor=prepared.anchor,
         note_id=prepared.note_id,
+        variant=prepared.variant,
         type=prepared.artifact_type,
         version=0,  # assigned on insert
         origin=Origin.SKILL,
@@ -176,6 +198,12 @@ def build_artifact(
         gates=report.as_json(),
         review=report.review,
     )
+
+
+def _minutes(params: Mapping[str, ParamValue]) -> float | None:
+    """How long a spoken output should last, for the `words_per_minute` gate."""
+    minutes = params.get("minutes")
+    return float(minutes) if isinstance(minutes, int) else None
 
 
 # --- The batch handler body ---------------------------------------------------------
@@ -224,12 +252,21 @@ def execute_skill_job(
         raise PermanentJobError("skill jobs need an existing document_id")
     job.skill, job.skill_version = skill.name, skill.version
 
+    params = job.payload.get("params")
     try:
         prepared = prepare(
-            session, skill, document, job.anchor, note_id=_note_id(job), media_dir=media_dir
+            session,
+            skill,
+            document,
+            job.anchor,
+            note_id=_note_id(job),
+            media_dir=media_dir,
+            params=params if isinstance(params, dict) else None,
         )
     except SelectorError as exc:
         raise PermanentJobError(f"cannot select inputs: {exc}") from exc
+    except ParamError as exc:
+        raise PermanentJobError(f"bad params: {exc}") from exc
 
     force = bool(job.payload.get("force"))
     existing = artifacts.find_live(
@@ -283,6 +320,7 @@ def execute_skill_job(
             "version": artifact.version,
             "review": artifact.review.value,
             "input_hash": prepared.input_hash,
+            "variant": artifact.variant,
             "gates": artifact.gates,
             "model": run.model,
         },

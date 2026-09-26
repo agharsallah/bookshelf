@@ -40,12 +40,14 @@ _TONE_PATH = 'strict $.** ? (@.type == "callout" && @.tone == $tone)'
 
 _Newer = aliased(Artifact)
 # A newer live (non-rejected) version of the same scope exists: e.g. a human edit, or a
-# re-run. Scope = (document, anchor, type, note), so two notes on one anchor stay apart.
+# re-run. Scope = (document, anchor, type, note, variant), so two notes on one anchor, or
+# two episodes of one book's audio summary, stay apart.
 SUPERSEDED = exists().where(
     col(_Newer.document_id) == col(Artifact.document_id),
     col(_Newer.type) == col(Artifact.type),
     col(_Newer.anchor).is_not_distinct_from(Artifact.anchor),
     col(_Newer.note_id).is_not_distinct_from(Artifact.note_id),
+    col(_Newer.variant).is_not_distinct_from(Artifact.variant),
     col(_Newer.version) > col(Artifact.version),
     col(_Newer.review) != Review.REJECTED,
 )
@@ -141,6 +143,7 @@ def list_versions(artifact_id: uuid.UUID, session: SessionDep) -> list[ArtifactP
             col(Artifact.note_id).is_(None)
             if artifact.note_id is None
             else Artifact.note_id == artifact.note_id,
+            col(Artifact.variant).is_not_distinct_from(artifact.variant),
         )
         .order_by(col(Artifact.version))
     ).all()
@@ -192,6 +195,7 @@ def import_artifact(
             input_hash=body.input_hash,
             output=body.output,
             note_id=body.note_id,
+            params=body.params,
             model=body.model,
             force=body.force,
             skills_dir=skills_dir,

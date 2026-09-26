@@ -81,6 +81,7 @@ class ArtifactType(StrEnum):
     QUIZ = "quiz"
     FLASHCARDS = "flashcards"
     GLOSSARY = "glossary"
+    AUDIO_SUMMARY = "audio_summary"
 
 
 class Origin(StrEnum):
@@ -156,6 +157,7 @@ class JobKind(StrEnum):
     LINK_CONCEPTS = "link_concepts"
     DERIVE = "derive"
     EXPORT = "export"
+    NARRATE = "narrate"
 
 
 class JobState(StrEnum):

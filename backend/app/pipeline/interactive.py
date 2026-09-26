@@ -5,6 +5,9 @@ their `input_hash`), does the work with you, and writes
 
     {"skill": "...", "document": "<slug|id>", "anchor": "...", "input_hash": "...", "output": {...}}
 
+plus `"params": {...}` for a skill with run parameters (the same ones the inputs were
+fetched with).
+
 to `skills/.outbox/`. Importing re-selects the inputs, refuses a stale `input_hash`, and runs
 the same gates as batch mode; the artifact is stored with `run_mode = interactive`.
 
@@ -27,7 +30,7 @@ from app.models.enums import RunMode
 from app.pipeline import artifacts, execution
 from app.pipeline.runner import OutputError
 from app.pipeline.selectors import SelectorError
-from app.pipeline.skills import load_catalogue
+from app.pipeline.skills import ParamError, load_catalogue
 
 
 class UnknownSkillError(LookupError):
@@ -51,6 +54,7 @@ def import_output(
     input_hash: str,
     output: dict[str, Any],
     note_id: uuid.UUID | None = None,
+    params: dict[str, Any] | None = None,
     model: str | None = None,
     force: bool = False,
     skills_dir: Path | None = None,
@@ -63,7 +67,7 @@ def import_output(
     doc = execution.find_document(session, document)
     if doc is None:
         raise UnknownDocumentError(f"no document {document!r}")
-    prepared = execution.prepare(session, package, doc, anchor, note_id=note_id)
+    prepared = execution.prepare(session, package, doc, anchor, note_id=note_id, params=params)
     if prepared.input_hash != input_hash:
         raise InputsChangedError(
             "input_hash does not match the current inputs; re-fetch "
@@ -92,6 +96,7 @@ def import_file(session: Session, path: Path, *, skills_dir: Path | None = None)
         input_hash=str(envelope.get("input_hash")),
         output=envelope["output"],
         note_id=uuid.UUID(str(note_id)) if note_id else None,
+        params=envelope.get("params") if isinstance(envelope.get("params"), dict) else None,
         model=envelope.get("model"),
         force=bool(envelope.get("force")),
         skills_dir=skills_dir,
@@ -105,6 +110,7 @@ IMPORT_ERRORS = (
     OutputError,
     SelectorError,
     artifacts.ArtifactExistsError,
+    ParamError,
     json.JSONDecodeError,
     OSError,
     ValueError,

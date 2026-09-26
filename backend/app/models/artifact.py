@@ -17,6 +17,8 @@ class Artifact(SQLModel, table=True):
     document_id: uuid.UUID = Field(foreign_key="documents.id", ondelete="CASCADE")
     anchor: str | None = None  # scope; None = whole document
     note_id: uuid.UUID | None = Field(default=None, foreign_key="notes.id", ondelete="CASCADE")
+    # A skill run with parameters (skills/README.md `params`): one scope, many episodes.
+    variant: str | None = None
     type: ArtifactType = Field(sa_type=enum_type(ArtifactType))
     version: int
     origin: Origin = Field(sa_type=enum_type(Origin))

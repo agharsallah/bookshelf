@@ -13,6 +13,15 @@ class SkillGates(BaseModel):
     compression: tuple[float, float] | None
     max_words: int | None
     coverage_min: float | None = None
+    words_per_minute: tuple[float, float] | None = None
+
+
+class SkillParam(BaseModel):
+    """A run parameter: pick one of `choices` per job (`POST /jobs` `params`)."""
+
+    choices: list[str | int]
+    default: str | int
+    description: str
 
 
 class SkillPublic(BaseModel):
@@ -28,6 +37,8 @@ class SkillPublic(BaseModel):
     document_tier: Tier | None
     vision: bool
     gates: SkillGates
+    params: dict[str, SkillParam] = {}
+    narrate: bool = False
 
 
 class SkillInputs(BaseModel):

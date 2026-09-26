@@ -10,6 +10,9 @@ from collections.abc import Iterator
 from typing import Any
 
 _WORD = re.compile(r"\w+", re.UNICODE)
+_CJK = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]")
+# Speech rate: ~250 Chinese characters take as long to say as ~150 English words.
+_WORDS_PER_CJK_CHAR = 0.6
 _ANCHOR_LISTS = ("cites", "evidence")
 
 
@@ -47,6 +50,13 @@ def cited_anchors(value: Any) -> set[str]:
 
 def count_words(text: str) -> int:
     return len(_WORD.findall(text))
+
+
+def spoken_words(text: str) -> float:
+    """How long `text` takes to say, in English-word equivalents: Chinese has no spaces,
+    so each character counts as the share of a word it takes to speak."""
+    cjk = len(_CJK.findall(text))
+    return count_words(_CJK.sub(" ", text)) + cjk * _WORDS_PER_CJK_CHAR
 
 
 def plain_text(value: Any) -> str:

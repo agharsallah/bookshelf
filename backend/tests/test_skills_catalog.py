@@ -51,7 +51,7 @@ REQUIRED_META = {
     "gates",
 }
 # Jobs Python runs itself; every other JobKind must be backed by at least one skill.
-PYTHON_JOBS = {JobKind.PARSE, JobKind.EMBED, JobKind.EXPORT}
+PYTHON_JOBS = {JobKind.PARSE, JobKind.EMBED, JobKind.EXPORT, JobKind.NARRATE}
 OUTPUT_LINE = "Output only the JSON object. No prose, no code fences."
 INTERACTIVE = re.compile(r"<!-- interactive:start -->.*?<!-- interactive:end -->\n?", re.S)
 FRONTMATTER = re.compile(r"\A---\n(.*?)\n---\n", re.S)

@@ -1,7 +1,7 @@
 """Artifact persistence: append-only versions, idempotent inserts, review transitions.
 
 Rows are never rewritten. A re-run or a human edit inserts a new `version` for the same
-`(document, anchor, type)`; only `review` / `reviewed_at` change in place. The database
+`(document, anchor, type, variant)`; only `review` / `reviewed_at` change in place. The database
 guards both invariants: unique versions per scope, and at most one live (non-rejected) row
 per `(type, input_hash, skill_version)` — "never pay twice".
 """
@@ -52,13 +52,18 @@ def document_anchors(session: Session, document_id: uuid.UUID) -> set[str]:
 
 
 def next_version(
-    session: Session, document_id: uuid.UUID, anchor: str | None, kind: ArtifactType
+    session: Session,
+    document_id: uuid.UUID,
+    anchor: str | None,
+    kind: ArtifactType,
+    variant: str | None = None,
 ) -> int:
     current = session.exec(
         select(func.max(Artifact.version)).where(
             Artifact.document_id == document_id,
             col(Artifact.anchor).is_(None) if anchor is None else Artifact.anchor == anchor,
             Artifact.type == kind,
+            col(Artifact.variant).is_not_distinct_from(variant),
         )
     ).one()
     return int(current or 0) + 1
@@ -92,7 +97,7 @@ def insert(session: Session, artifact: Artifact, *, supersede: bool = False) -> 
             existing.review, existing.reviewed_at = Review.REJECTED, _now()
             session.add(existing)
         artifact.version = next_version(
-            session, artifact.document_id, artifact.anchor, artifact.type
+            session, artifact.document_id, artifact.anchor, artifact.type, artifact.variant
         )
         session.add(artifact)
         try:
@@ -120,6 +125,7 @@ def human_version(
         document_id=document_id,
         anchor=anchor,
         note_id=source.note_id if source is not None else note_id,
+        variant=source.variant if source is not None else None,
         type=kind,
         version=0,  # assigned by `insert`
         origin=Origin.HUMAN,

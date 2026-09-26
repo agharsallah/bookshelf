@@ -25,7 +25,14 @@ from referencing import Registry, Resource
 
 from app.core.config import REPO_ROOT
 from app.models.enums import Origin, Review
-from app.pipeline.bodies import cited_anchors, count_words, iter_objects, leaf_spans, plain_text
+from app.pipeline.bodies import (
+    cited_anchors,
+    count_words,
+    iter_objects,
+    leaf_spans,
+    plain_text,
+    spoken_words,
+)
 from app.pipeline.skills import GateConfig
 
 CONTRACTS_DIR = REPO_ROOT / "contracts"
@@ -114,6 +121,7 @@ class GateReport:
     repairs: list[str] = field(default_factory=list)  # render-block shape fixes (repair.py)
     coverage: float | None = None  # book-wide: share of offered chapters cited
     uncovered: list[str] = field(default_factory=list)  # ...and the chapters never cited
+    pace: float | None = None  # spoken output: words per minute of its intended length
 
     @property
     def review(self) -> Review:
@@ -130,6 +138,7 @@ class GateReport:
             "repairs": self.repairs,
             "coverage": self.coverage,
             "uncovered": self.uncovered,
+            **({"pace": self.pace} if self.pace is not None else {}),
         }
 
 
@@ -188,13 +197,16 @@ def evaluate(
     visible_anchors: Collection[str] | None = None,
     repairs: Sequence[str] = (),
     chapters: Sequence[str] = (),
+    minutes: float | None = None,
 ) -> GateReport:
     """Score an output that already passed the hard gates.
 
     `visible_anchors`: what the skill was shown. A cite of an existing anchor outside it
     (grounded on paper, but on a passage the model never saw) flags `out_of_scope_cites`.
     `chapters`: the chapters a book-wide input offered; with `coverage_min` set, citing too
-    few of them flags `coverage_below_min` and lists the rest in `uncovered`."""
+    few of them flags `coverage_below_min` and lists the rest in `uncovered`.
+    `minutes`: how long a spoken output should last; with `words_per_minute` set, a pace
+    outside the band flags `too_short_to_fill` / `too_long_to_fit` (`pace` = words/min)."""
     words = count_words(plain_text(output))
     report = GateReport(words=words, schema_retry=schema_retry, repairs=list(repairs))
     if origin is Origin.HUMAN:  # D15 human bypass: schema + anchors only
@@ -212,6 +224,13 @@ def evaluate(
             report.flags.append("compression_high")
     if config.max_words is not None and words > config.max_words:
         report.flags.append("over_max_words")
+    if config.words_per_minute is not None and minutes:
+        low, high = config.words_per_minute
+        report.pace = round(spoken_words(plain_text(output)) / minutes, 1)
+        if report.pace < low:
+            report.flags.append("too_short_to_fill")
+        elif report.pace > high:
+            report.flags.append("too_long_to_fit")
     if output.get("confidence") == "low":
         report.flags.append("low_confidence")
     if element is not None and element.get("kind") == "code" and _code_rewritten(output, element):
