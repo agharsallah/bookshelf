@@ -134,6 +134,12 @@ def turn_marks(section: dict[str, Any], index: int, start: float, length: float)
     return marks
 
 
+def request_key(request: dict[str, Any]) -> str:
+    """The backend's key for this request (app/audio/detached.py `request_key`)."""
+    payload = {k: v for k, v in request.items() if k != "result"}
+    return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()[:24]
+
+
 def part_path(parts_dir: Path, request: dict[str, Any], section: dict[str, Any], dtype: torch.dtype) -> Path:
     """Where a finished section is kept: named by everything that shapes its sound."""
     engine = {k: request.get(k) for k in ("model", "diffusion_steps", "guidance_scale", "seed")}
@@ -146,6 +152,7 @@ class Voicer:
 
     def __init__(self, request: dict[str, Any], device: str, dtype: torch.dtype) -> None:
         self.request, self.device, self.dtype = request, device, dtype
+        self._created = time.monotonic()
         self._model: Any = None
         self._processor: Any = None
 
@@ -153,8 +160,13 @@ class Voicer:
         if self._model is None:
             log(event="loading", model=self.request["model"], device=self.device, dtype=str(self.dtype))
             self._processor = AutoProcessor.from_pretrained(self.request["model"])
-            model = AutoModelForTextToWaveform.from_pretrained(self.request["model"], dtype=self.dtype)
-            self._model = model.to(self.device).eval()
+            # Straight onto the device: loading on the CPU and then moving would hold two
+            # copies of the weights (about 11 GB) at once.
+            model = AutoModelForTextToWaveform.from_pretrained(
+                self.request["model"], dtype=self.dtype, device_map=self.device, low_cpu_mem_usage=True
+            )
+            self._model = model.eval()
+            log(event="loaded", seconds=round(time.monotonic() - self._created))
         set_seed(int(self.request.get("seed", 42)))
         inputs = self._processor.apply_chat_template(
             conversation(section, self.request["voices"]), tokenize=True, return_dict=True, add_generation_prompt=True
@@ -190,6 +202,7 @@ def main() -> int:
         else:
             log(event="section", index=index, total=len(sections), title=section["title"])
             voiced = voicer.voice(section)
+            log(event="voiced", index=index, seconds=round(voiced.size / SAMPLE_RATE, 1))
             if voiced.size and math.isfinite(float(voiced.sum())):
                 partial = cached.with_suffix(".tmp")
                 sf.write(partial, voiced, SAMPLE_RATE, format="WAV", subtype="FLOAT")
@@ -211,17 +224,17 @@ def main() -> int:
     sf.write(partial, track, SAMPLE_RATE, format="MP3", subtype="MPEG_LAYER_III")
     Path(partial).replace(request["out"])
     shutil.rmtree(parts_dir, ignore_errors=True)
-    print(
-        json.dumps(
-            {
-                "duration": round(track.size / SAMPLE_RATE, 2),
-                "sections": section_marks,
-                "turns": turns,
-                "engine": {"device": device, "dtype": str(dtype).removeprefix("torch."), "seconds": round(time.monotonic() - started)},
-            }
-        ),
-        flush=True,
-    )
+    result = {
+        "duration": round(track.size / SAMPLE_RATE, 2),
+        "sections": section_marks,
+        "turns": turns,
+        "engine": {"device": device, "dtype": str(dtype).removeprefix("torch."), "seconds": round(time.monotonic() - started)},
+    }
+    if request.get("result"):  # the backend's detached runner reads it from here
+        done = Path(request["result"])
+        done.with_suffix(".tmp").write_text(json.dumps({"key": request_key(request), "result": result}))
+        done.with_suffix(".tmp").replace(done)
+    print(json.dumps(result), flush=True)
     return 0
 
 

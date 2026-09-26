@@ -3,23 +3,22 @@
 `VibeVoiceRunner` runs `scripts/narrate/vibevoice.py` through `uv run --script`, in its own
 environment (torch, transformers, diffusers) on its own Python, so none of that enters the
 API's dependencies, the same way skills run through the `claude` CLI (D18). The request goes
-in as JSON on stdin; the script writes the MP3 to `out` and prints one JSON result line.
+in as JSON on stdin; the script writes the MP3 to `out` and its result beside it. It runs
+detached (`app.audio.detached`), so an API reload neither kills it nor starts a second one.
 `FakeSpeechRunner` stands in for tests.
 """
 
 import json
 import logging
-import subprocess
-import time
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Protocol
 
+from app.audio.detached import DetachedError, run_detached
 from app.audio.speech import SpeechRequest
 from app.audio.store import Mark
 from app.core.config import Settings, get_settings
-from app.pipeline.runner import communicate_tracked
 
 logger = logging.getLogger(__name__)
 
@@ -48,11 +47,9 @@ class SpeechRunner(Protocol):
     def synthesize(self, request: SpeechRequest, out: Path) -> SpeechResult: ...
 
 
-def parse_result(stdout: str, *, duration_ms: int = 0) -> SpeechResult:
-    """The script's last stdout line: `{duration, sections: [mark], turns: [mark], engine}`."""
-    lines = [line for line in stdout.splitlines() if line.strip()]
+def parse_result(raw: Mapping[str, Any], *, duration_ms: int = 0) -> SpeechResult:
+    """The script's result: `{duration, sections: [mark], turns: [mark], engine}`."""
     try:
-        raw = json.loads(lines[-1])
         return SpeechResult(
             duration=float(raw["duration"]),
             sections=tuple(Mark(**m) for m in raw["sections"]),
@@ -60,8 +57,8 @@ def parse_result(stdout: str, *, duration_ms: int = 0) -> SpeechResult:
             engine=raw.get("engine", {}),
             duration_ms=duration_ms,
         )
-    except (IndexError, ValueError, KeyError, TypeError) as exc:
-        raise SpeechError(f"unreadable speech result: {stdout[-_STDERR_TAIL:]!r}") from exc
+    except (ValueError, KeyError, TypeError) as exc:
+        raise SpeechError(f"unreadable speech result: {json.dumps(raw)[-_STDERR_TAIL:]}") from exc
 
 
 class VibeVoiceRunner:
@@ -96,32 +93,20 @@ class VibeVoiceRunner:
             "device": s.narrate_device,
             "out": str(out),
         }
-        out.parent.mkdir(parents=True, exist_ok=True)
-        started = time.monotonic()
         try:
-            proc = subprocess.Popen(  # noqa: S603  (argv comes from settings, never from input)
+            finished = run_detached(
                 self.argv(),
-                stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                start_new_session=True,
+                payload,
+                out=out,
+                lock_dir=s.audio_dir,
+                marker=s.narrate_script.name,
+                timeout=s.narrate_timeout_seconds,
             )
         except OSError as exc:
             raise SpeechError(f"cannot start {s.uv_bin!r}: {exc}") from exc
-        try:
-            stdout, stderr = communicate_tracked(
-                proc, json.dumps(payload), timeout=s.narrate_timeout_seconds
-            )
-        except subprocess.TimeoutExpired as exc:
-            raise SpeechError(f"narration timed out after {s.narrate_timeout_seconds}s") from exc
-        elapsed = int((time.monotonic() - started) * 1000)
-        if proc.returncode != 0:
-            tail = (stderr or stdout or "")[-_STDERR_TAIL:].strip()
-            raise SpeechError(f"narration exited with {proc.returncode}: {tail}")
-        if not out.is_file():
-            raise SpeechError("narration finished without writing its audio")
-        return parse_result(stdout, duration_ms=elapsed)
+        except DetachedError as exc:
+            raise SpeechError(str(exc)) from exc
+        return parse_result(finished.result, duration_ms=int(finished.seconds * 1000))
 
 
 class FakeSpeechRunner:
