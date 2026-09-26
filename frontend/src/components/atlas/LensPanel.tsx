@@ -18,6 +18,10 @@ export interface LensPanelProps {
   index: AtlasIndex;
   lens: LensState;
   onChange: (next: LensState) => void;
+  /** Workshop: queue the bridge jobs that propose cross-book relations. */
+  onFindBridges?: () => void;
+  /** What the last request for bridges said. */
+  bridges?: string | null;
 }
 
 const KIND_LABELS: Record<KindKey, string> = {
@@ -40,7 +44,7 @@ function counts<T extends string>(values: T[]): Map<T, number> {
   return out;
 }
 
-export function LensPanel({ index, lens, onChange }: LensPanelProps) {
+export function LensPanel({ index, lens, onChange, onFindBridges, bridges }: LensPanelProps) {
   const set = (patch: Partial<LensState>) => onChange({ ...lens, ...patch });
   const linkCounts = counts(index.atlas.edges.map((e) => e.relation));
   const links = LINK_KINDS.filter((l) => linkCounts.has(l));
@@ -86,7 +90,20 @@ export function LensPanel({ index, lens, onChange }: LensPanelProps) {
           <input type="checkbox" checked={lens.crossBook} onChange={(e) => set({ crossBook: e.target.checked })} />
           <span>Only ideas in more than one book</span>
         </label>
+        <label className={styles.check}>
+          <input type="checkbox" checked={lens.proposed} onChange={(e) => set({ proposed: e.target.checked })} />
+          <span>Proposed links, waiting for you</span>
+        </label>
       </fieldset>
+
+      {onFindBridges ? (
+        <div className={`${styles.group} workshop-only`}>
+          <button type="button" className={graph.actionQuiet} onClick={onFindBridges}>
+            Ask how the books relate
+          </button>
+          <p className={styles.only}>{bridges ?? 'A model reads pairs of ideas from different books and proposes how they relate.'}</p>
+        </div>
+      ) : null}
 
       {index.shelf.length > 1 ? (
         <fieldset className={styles.group}>

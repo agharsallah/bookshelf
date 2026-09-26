@@ -11,10 +11,10 @@
  * on its page). Picking something from the margin or the list glides the map to it.
  * The view lives in the URL, so a lens can be bookmarked.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Problem, problemOf, type ProblemInfo } from '../common/Problem';
 import { browserApi, type ApiClient } from '../../lib/api/client';
-import type { Atlas } from '../../lib/api/types/graph';
+import type { Atlas, BridgeQueued } from '../../lib/api/types/graph';
 import { conceptHref, documentHref, readerHref } from '../search/links';
 import type { Selection } from '../graph/controller';
 import { GraphCanvas } from '../graph/GraphCanvas';
@@ -72,15 +72,39 @@ export function AtlasExplorer({ initial, lens: initialLens, api = browserApi }: 
     history.replaceState(null, '', qs ? `/map?${qs}` : '/map');
   }, [lens]);
 
+  const proposed = lens.proposed;
   const reload = useCallback(() => {
     api
-      .get<Atlas>('graph/atlas')
+      .get<Atlas>('graph/atlas', { query: { include_proposed: proposed } })
       .then((next) => {
         setAtlas(next);
         setProblem(null);
       })
       .catch((error: unknown) => setProblem(problemOf(error)));
-  }, [api]);
+  }, [api, proposed]);
+
+  // Proposed links are a different atlas, not a filter: fetch it when the toggle flips.
+  const loadedWith = useRef(initialLens.proposed);
+  useEffect(() => {
+    if (loadedWith.current === proposed) return;
+    loadedWith.current = proposed;
+    reload();
+  }, [proposed, reload]);
+
+  const [bridges, setBridges] = useState<string | null>(null);
+  const findBridges = () => {
+    setBridges('Asking…');
+    api
+      .post<BridgeQueued>('graph/bridges', {})
+      .then(({ jobs }) =>
+        setBridges(
+          jobs.length
+            ? `Queued ${jobs.length === 1 ? 'one bridge job' : `${jobs.length} bridge jobs`}. Proposals appear here, dashed, once judged.`
+            : 'Already queued: proposals appear here once judged.',
+        ),
+      )
+      .catch((error: unknown) => setBridges(`The bridge jobs could not be queued: ${problemOf(error).message}`));
+  };
 
   const change = (next: LensState) => setLens(next);
   const pick = (id: string) => {
@@ -150,7 +174,7 @@ export function AtlasExplorer({ initial, lens: initialLens, api = browserApi }: 
         </div>
       ) : (
         <div className={mode === 'lens' ? styles.bodyLens : styles.body}>
-          {mode === 'lens' ? <LensPanel index={index} lens={lens} onChange={change} /> : null}
+          {mode === 'lens' ? <LensPanel index={index} lens={lens} onChange={change} onFindBridges={findBridges} bridges={bridges} /> : null}
           <div className={graph.stage}>
             {view.model.nodes.length === 0 ? (
               <div className={graph.lonely}>

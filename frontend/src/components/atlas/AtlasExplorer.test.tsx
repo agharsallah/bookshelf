@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { fakeApi } from '../review/testing/fakeApi';
@@ -57,6 +57,25 @@ describe('<AtlasExplorer>', () => {
     expect(list.getAllByRole('button').map((b) => b.textContent)).toEqual([expect.stringMatching(/^wip limit/), expect.stringMatching(/^big batch/)]);
     await userEvent.click(lens.getByRole('button', { name: 'Clear the lens' }));
     expect(screen.getByText('8 marks, 9 connections')).toBeTruthy();
+  });
+
+  it('proposed links are another atlas: the toggle fetches it, and bridges can be asked for', async () => {
+    const proposed = shelf();
+    proposed.edges.push({ ...proposed.edges[6]!, id: 'p1', relation: 'contradicts', status: 'proposed', src: ids.law, dst: ids.batch });
+    const { api, calls } = fakeApi({ 'GET graph/atlas': () => proposed, 'POST graph/bridges': () => ({ jobs: ['j1', 'j2'] }) });
+    render(<AtlasExplorer initial={shelf()} lens={{ ...DEFAULT_LENS, mode: 'lens' }} api={api} />);
+    const lens = within(screen.getByRole('complementary', { name: 'Lens' }));
+
+    await userEvent.click(lens.getByRole('checkbox', { name: 'Proposed links, waiting for you' }));
+
+    await waitFor(() => expect(screen.getByText('8 marks, 10 connections')).toBeTruthy());
+    expect(calls.find((c) => c.path === 'graph/atlas')?.query).toEqual({ include_proposed: true });
+    expect(location.search).toContain('proposed=1');
+
+    await userEvent.click(lens.getByRole('button', { name: 'Ask how the books relate' }));
+
+    expect(await lens.findByText(/Queued 2 bridge jobs/)).toBeTruthy();
+    expect(calls.at(-1)).toMatchObject({ method: 'POST', path: 'graph/bridges' });
   });
 
   it('opens a mark where it lives', () => {

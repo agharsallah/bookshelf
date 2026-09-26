@@ -17,7 +17,7 @@ const lens = lensFromParams(Astro.url.searchParams);
 let atlas: Atlas | null = null;
 let problem: ProblemInfo | null = null;
 try {
-  atlas = await serverApi().get<Atlas>('graph/atlas');
+  atlas = await serverApi().get<Atlas>('graph/atlas', { query: { include_proposed: lens.proposed } });
 } catch (error) {
   problem = problemOf(error);
 }

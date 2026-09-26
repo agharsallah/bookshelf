@@ -78,6 +78,12 @@ export function EdgeEvidence({ api, edge, onChanged }: EdgeEvidenceProps) {
           {ids.length > 1 ? `, folded from ${edge.data.edge_ids.length} passage links` : ''}
         </p>
       ) : null}
+      {first?.rationale ? (
+        <p className={styles.panelBlurb}>
+          {first.rationale}
+          {first.confidence ? <span className={styles.panelPlace}> {first.confidence} confidence</span> : null}
+        </p>
+      ) : null}
       {edge.status === 'proposed' ? (
         <div className={styles.panelActions}>
           <button type="button" className={styles.action} disabled={saving} onClick={() => setStatus('accepted')}>

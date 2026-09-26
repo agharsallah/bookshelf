@@ -10,6 +10,7 @@ describe('lens URL', () => {
       kinds: ['framework' as const],
       books: ['00000000-0000-4000-8000-00000000000f'],
       crossBook: true,
+      proposed: true,
       others: 'hide' as const,
       group: 'book' as const,
       query: 'loop',

@@ -10,7 +10,7 @@
  * and the URL stays short. Unknown values in a URL are dropped, never trusted.
  *
  *   /map?mode=lens&links=supports,contradicts&kinds=framework&books=<id>&cross=1
- *        &others=hide&group=book&q=loop&sel=concept:<id>
+ *        &proposed=1&others=hide&group=book&q=loop&sel=concept:<id>
  */
 import { CONCEPT_KINDS, type ConceptKind } from '../../lib/api/types/graph';
 import { LINK_KINDS, type LinkKind } from '../graph/styles';
@@ -34,6 +34,8 @@ export interface LensState {
   crossBook: boolean;
   /** What the lens does to everything it leaves out. */
   others: 'dim' | 'hide';
+  /** Also draw links a skill proposed and nobody has judged yet (dashed). */
+  proposed: boolean;
   /** Pull each book's chapters and concepts together. */
   group: 'free' | 'book';
   /** Highlight names containing this. */
@@ -51,6 +53,7 @@ export const DEFAULT_LENS: LensState = {
   kinds: null,
   books: null,
   crossBook: false,
+  proposed: false,
   others: 'dim',
   group: 'free',
   query: '',
@@ -71,6 +74,7 @@ export function lensFromParams(params: URLSearchParams): LensState {
     kinds: list(params.get('kinds'), KIND_KEYS as readonly KindKey[]),
     books: books === null ? null : books.split(',').filter((b) => /^[0-9a-f-]{36}$/i.test(b)),
     crossBook: params.get('cross') === '1',
+    proposed: params.get('proposed') === '1',
     others: params.get('others') === 'hide' ? 'hide' : 'dim',
     group: params.get('group') === 'book' ? 'book' : 'free',
     query: (params.get('q') ?? '').slice(0, 120),
@@ -85,6 +89,7 @@ export function lensToParams(lens: LensState): URLSearchParams {
   if (lens.kinds) params.set('kinds', lens.kinds.join(','));
   if (lens.books) params.set('books', lens.books.join(','));
   if (lens.crossBook) params.set('cross', '1');
+  if (lens.proposed) params.set('proposed', '1');
   if (lens.others === 'hide') params.set('others', 'hide');
   if (lens.group === 'book') params.set('group', 'book');
   if (lens.query.trim()) params.set('q', lens.query.trim());

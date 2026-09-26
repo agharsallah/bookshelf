@@ -165,6 +165,14 @@ export interface EdgeDetail {
   origin: string;
   evidence: Passage[];
   created_at: string;
+  /** Why a skill proposed it (bridges, dedup). */
+  rationale?: string | null;
+  confidence?: string | null;
+}
+
+/** `POST /graph/bridges`: bridge jobs queued, one per book. */
+export interface BridgeQueued {
+  jobs: string[];
 }
 
 /** A proposed `same_as`, waiting for a human to merge one side into the other. */
