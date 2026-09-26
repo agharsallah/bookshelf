@@ -1,8 +1,11 @@
 // @vitest-environment happy-dom
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { SkillPublic } from '../../lib/api/types/skills';
 import { fakeApi } from '../review/testing/fakeApi';
-import { deriveLabel, deriveSkills, enqueue } from './jobs';
+import { deriveLabel, deriveSkills, enqueue, needsDistillation } from './jobs';
+import { toast } from './toast';
+
+vi.mock('./toast', () => ({ toast: vi.fn() }));
 
 const skill = (name: string, over: Partial<SkillPublic> = {}): SkillPublic => ({
   name,
@@ -13,22 +16,35 @@ const skill = (name: string, over: Partial<SkillPublic> = {}): SkillPublic => ({
   artifact_type: null,
   scope: 'chapter',
   selector: 'chapter_distillation',
+  document_selector: null,
   vision: false,
   gates: { grounding_min: 0.9, compression: null, max_words: null },
   ...over,
 });
 
 const catalogue = [
-  skill('make-quiz', { artifact_type: 'quiz' }),
+  skill('make-quiz', { artifact_type: 'quiz', document_selector: 'document_distillations' }),
   skill('make-glossary', { artifact_type: 'glossary', scope: 'document', selector: 'document_chapters' }),
-  skill('extract-quotes', { artifact_type: 'quote_set', selector: 'scope_blocks' }),
+  skill('extract-quotes', { artifact_type: 'quote_set', selector: 'scope_blocks', document_selector: 'document_quotes' }),
+  skill('make-mindmap', { artifact_type: null, selector: 'scope_blocks' }),
   skill('distil-chapter', { job_kind: 'distil_chapter', artifact_type: 'chapter_distillation' }),
 ];
 
 describe('derive skills', () => {
   it('keeps only derive skills of the scope, ordered by what they make', () => {
-    expect(deriveSkills(catalogue, 'chapter').map(deriveLabel)).toEqual(['Make a quiz', 'Pick quotes']);
-    expect(deriveSkills(catalogue, 'document').map((s) => s.name)).toEqual(['make-glossary']);
+    expect(deriveSkills(catalogue, 'chapter').map(deriveLabel)).toEqual(['Make a quiz', 'make-mindmap', 'Pick quotes']);
+  });
+
+  it('offers chapter skills with a document selector book-wide too', () => {
+    expect(deriveSkills(catalogue, 'document').map((s) => s.name)).toEqual(['make-glossary', 'make-quiz', 'extract-quotes']);
+  });
+
+  it('checks the distillation prerequisite against the input of the scope that runs', () => {
+    const quotes = catalogue[2]!;
+    expect(needsDistillation(quotes, 'chapter')).toBe(false);
+    expect(needsDistillation(quotes, 'document')).toBe(true);
+    expect(needsDistillation(catalogue[0]!, 'document')).toBe(true);
+    expect(needsDistillation(catalogue[3]!, 'document')).toBe(false);
   });
 
   it('names an unknown artifact type by its skill', () => {
@@ -41,6 +57,12 @@ describe('enqueue', () => {
     const { api, calls } = fakeApi({ 'POST jobs': () => ({ job: {}, deduplicated: false }) });
     await enqueue(api, { kind: 'derive', documentId: 'd1', anchor: 'ch02', skill: catalogue[0] });
     expect(calls).toEqual([{ method: 'POST', path: 'jobs', body: { kind: 'derive', document_id: 'd1', anchor: 'ch02', force: false, skill: 'make-quiz' } }]);
+  });
+
+  it('says a derive with no anchor is for the whole book', async () => {
+    const { api } = fakeApi({ 'POST jobs': () => ({ job: {}, deduplicated: false }) });
+    await enqueue(api, { kind: 'derive', documentId: 'd1', skill: catalogue[0] });
+    expect(toast).toHaveBeenLastCalledWith('Queued: make a quiz for the whole book.', 'good');
   });
 
   it('forces a plain re-run', async () => {

@@ -1,6 +1,7 @@
 /**
- * Document-wide jobs: re-parse, write the brief, and document-scope study material
- * (a glossary). Each queues one job and says so in a toast.
+ * Document-wide jobs: re-parse, write the brief, and book-wide study material (glossary,
+ * guide, and the quiz, FAQ, quotes and flashcards over the whole book). Each queues one
+ * job and says so in a toast.
  */
 import { useState } from 'react';
 import { browserApi } from '../../lib/api/client';
@@ -33,7 +34,7 @@ export function DocumentActions({ documentId, kinds = [], derive = [], distilled
         </button>
       ))}
       {derive.map((skill) => {
-        const blocked = needsDistillation(skill) && !distilled;
+        const blocked = needsDistillation(skill, 'document') && !distilled;
         return (
           <button
             key={skill.name}

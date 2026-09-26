@@ -182,7 +182,7 @@ const exportsBase = data ? `/api/exports/${data.doc.slug}` : '';
             {parsed && documentDerive.length > 0 && (
               <section aria-labelledby="study-title" class="side-block">
                 <h2 id="study-title" class="side-title">Study material</h2>
-                <p class="side-hint">Per-chapter quizzes, FAQs, quotes and flashcards are under each chapter.</p>
+                <p class="side-hint">For the whole book. Per-chapter quizzes, FAQs, quotes and flashcards are under each chapter.</p>
                 <DocumentActions client:visible documentId={data.doc.id} derive={documentDerive} distilled={distilled} />
               </section>
             )}

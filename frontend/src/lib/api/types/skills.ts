@@ -18,6 +18,8 @@ export interface SkillPublic {
   artifact_type: ArtifactType | null;
   scope: string;
   selector: string;
+  /** A chapter-scope skill that also runs on the whole book: the selector it reads with no anchor. */
+  document_selector: string | null;
   vision: boolean;
   gates: SkillGates;
 }

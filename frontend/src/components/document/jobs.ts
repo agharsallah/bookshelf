@@ -49,14 +49,25 @@ export function deriveLabel(skill: Pick<SkillPublic, 'name' | 'artifact_type'>):
   return (skill.artifact_type && DERIVE_LABELS[skill.artifact_type]) || skill.name;
 }
 
-/** The catalogue's derive skills for one scope (`chapter` or `document`), in a stable order. */
-export function deriveSkills(skills: readonly SkillPublic[], scope: 'chapter' | 'document'): SkillPublic[] {
-  return skills.filter((s) => s.job_kind === 'derive' && s.scope === scope).sort((a, b) => deriveLabel(a).localeCompare(deriveLabel(b)));
+export type DeriveScope = 'chapter' | 'document';
+
+/** Whether a skill runs at `scope`: its own, or book-wide through its `document_selector`. */
+function runsAt(skill: SkillPublic, scope: DeriveScope): boolean {
+  return skill.scope === scope || (scope === 'document' && skill.document_selector !== null);
 }
 
-/** Skills whose input is the chapter distillation, which must exist (approved) first. */
-export function needsDistillation(skill: Pick<SkillPublic, 'selector'>): boolean {
-  return skill.selector === 'chapter_distillation' || skill.selector === 'document_chapters';
+/** The catalogue's derive skills for one scope, in a stable order. Book-wide, that includes
+ * chapter skills (quiz, FAQ, quotes, flashcards) that can also run on the whole book. */
+export function deriveSkills(skills: readonly SkillPublic[], scope: DeriveScope): SkillPublic[] {
+  return skills.filter((s) => s.job_kind === 'derive' && runsAt(s, scope)).sort((a, b) => deriveLabel(a).localeCompare(deriveLabel(b)));
+}
+
+const DISTILLATION_SELECTORS = new Set(['chapter_distillation', 'document_chapters', 'document_distillations', 'document_quotes']);
+
+/** Whether the skill's input at `scope` is built from chapter distillations, which must exist (approved) first. */
+export function needsDistillation(skill: Pick<SkillPublic, 'selector' | 'document_selector'>, scope: DeriveScope = 'chapter'): boolean {
+  const selector = scope === 'document' ? (skill.document_selector ?? skill.selector) : skill.selector;
+  return DISTILLATION_SELECTORS.has(selector);
 }
 
 export interface EnqueueRequest {
@@ -70,7 +81,8 @@ export interface EnqueueRequest {
 
 /** Queue a job and say so; resolves to the job, or null when the request failed. */
 export async function enqueue(api: Pick<ApiClient, 'post' | 'delete'>, request: EnqueueRequest): Promise<JobAccepted | null> {
-  const where = request.anchor ? ` for ${request.anchor}` : '';
+  // A derive with no anchor is book-wide study material; say so, as the chapter ones name theirs.
+  const where = request.anchor ? ` for ${request.anchor}` : request.skill ? ' for the whole book' : '';
   const label = request.skill ? deriveLabel(request.skill) : jobLabel(request.kind);
   try {
     const accepted = await enqueueJob(api, {
