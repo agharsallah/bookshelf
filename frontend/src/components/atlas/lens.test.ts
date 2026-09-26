@@ -15,6 +15,8 @@ describe('lens URL', () => {
       group: 'book' as const,
       query: 'loop',
       selected: 'concept:law',
+      pathFrom: 'concept:law',
+      pathTo: 'concept:wip',
     };
     expect(lensFromParams(lensToParams(lens))).toEqual(lens);
   });

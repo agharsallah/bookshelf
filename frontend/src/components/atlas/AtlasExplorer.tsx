@@ -28,6 +28,8 @@ import { atlasKit } from './layout';
 import { lensToParams, MODES, type LensState } from './lens';
 import { LensPanel } from './LensPanel';
 import { buildAtlasModel, indexAtlas } from './model';
+import { PathPanel } from './PathPanel';
+import { pathIds, shortestPath } from './paths';
 import graph from '../graph/Graph.module.css';
 import styles from './Atlas.module.css';
 
@@ -61,11 +63,21 @@ export function AtlasExplorer({ initial, lens: initialLens, api = browserApi }: 
   const reducedMotion = usePrefersReducedMotion();
 
   const index = useMemo(() => indexAtlas(atlas), [atlas]);
-  const { mode, links, kinds, books, crossBook, others, query } = lens;
+  const { mode, links, kinds, books, crossBook, others, query, pathFrom, pathTo } = lens;
+  // A path is traced over the whole picture: while one shows, nothing is hidden.
+  const tracing = pathFrom !== null && pathTo !== null;
+  const shown = tracing ? 'dim' : others;
   // Selection is not a filter: picking a node must not rebuild (and so reflow) the map.
-  const filters = useMemo(() => ({ mode, links, kinds, books, crossBook, others, query }), [mode, links, kinds, books, crossBook, others, query]);
+  const filters = useMemo(
+    () => ({ mode, links, kinds, books, crossBook, others: shown, query }),
+    [mode, links, kinds, books, crossBook, shown, query],
+  );
   const view = useMemo(() => buildAtlasModel(index, filters), [index, filters]);
   const kit = atlasKit(mode === 'lens' ? lens.group : 'free');
+
+  const hops = useMemo(() => (pathFrom && pathTo ? shortestPath(index, pathFrom, pathTo) : undefined), [index, pathFrom, pathTo]);
+  const trail = useMemo(() => hops?.map((h) => ({ id: h.edge.id, from: h.from.id, to: h.to.id })) ?? null, [hops]);
+  const pathLens = useMemo(() => (hops ? pathIds(hops) : null), [hops]);
 
   useEffect(() => {
     const qs = lensToParams(lens).toString();
@@ -112,7 +124,16 @@ export function AtlasExplorer({ initial, lens: initialLens, api = browserApi }: 
     setLens((l) => ({ ...l, selected: id }));
     setGlide({ id });
   };
+  const startPath = (id: string) => setLens((l) => ({ ...l, pathFrom: id, pathTo: null }));
+  const endPath = (id: string) => setLens((l) => ({ ...l, pathTo: id }));
+  const clearPath = () => setLens((l) => ({ ...l, pathFrom: null, pathTo: null }));
+  const swapPath = () => setLens((l) => ({ ...l, pathFrom: l.pathTo, pathTo: l.pathFrom }));
   const onCanvasSelect = (s: Selection) => {
+    // Picking the other end of a path: a click on a mark finishes it.
+    if (pathFrom && !pathTo && s?.kind === 'node' && s.id !== pathFrom) {
+      endPath(s.id);
+      return;
+    }
     if (s?.kind === 'edge') {
       setEdgeSelected(s.id);
       setLens((l) => ({ ...l, selected: null }));
@@ -189,14 +210,34 @@ export function AtlasExplorer({ initial, lens: initialLens, api = browserApi }: 
                 onSelect={onCanvasSelect}
                 onFocusRequest={open}
                 kit={kit}
-                lens={view.lens}
+                lens={pathLens ?? view.lens}
                 glide={glide}
+                trail={trail}
                 label={`Map of the shelf: ${view.model.nodes.length} marks and ${view.model.edges.length} connections. The list below holds the same.`}
               />
             )}
             <aside className={graph.panel} aria-label="Selection" aria-live="polite">
-              {selectedNode || selectedEdge ? (
-                <AtlasDetail api={api} index={index} node={selectedNode} edge={selectedEdge} onSelect={pick} onChanged={reload} />
+              {pathFrom && index.byId.get(pathFrom) ? (
+                <PathPanel
+                  index={index}
+                  from={index.byId.get(pathFrom) as Atlas['nodes'][number]}
+                  to={pathTo ? (index.byId.get(pathTo) ?? null) : null}
+                  hops={hops}
+                  onPickTo={endPath}
+                  onSelect={pick}
+                  onSwap={swapPath}
+                  onClear={clearPath}
+                />
+              ) : selectedNode || selectedEdge ? (
+                <AtlasDetail
+                  api={api}
+                  index={index}
+                  node={selectedNode}
+                  edge={selectedEdge}
+                  onSelect={pick}
+                  onChanged={reload}
+                  onPathFrom={startPath}
+                />
               ) : (
                 <div className={graph.panelBody}>
                   <p className={graph.hint}>

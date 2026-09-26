@@ -7,7 +7,7 @@
  */
 import { useEffect, useRef } from 'react';
 import { GraphController, NEIGHBOURHOOD_KIT, type LayoutKit, type Selection } from './controller';
-import type { Lens } from './draw';
+import type { Lens, Trail } from './draw';
 import type { GraphModel } from './model';
 import { useGraphPalette } from './palette';
 import styles from './Graph.module.css';
@@ -26,6 +26,8 @@ export interface GraphCanvasProps {
   lens?: Lens | null;
   /** Glide to this node; a new object glides again, even to the same node. */
   glide?: { id: string } | null;
+  /** A path to trace hop by hop and frame; a new array traces it again. */
+  trail?: Trail['hops'] | null;
 }
 
 export function GraphCanvas({
@@ -39,6 +41,7 @@ export function GraphCanvas({
   kit = NEIGHBOURHOOD_KIT,
   lens = null,
   glide = null,
+  trail = null,
 }: GraphCanvasProps) {
   const box = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -83,6 +86,10 @@ export function GraphCanvas({
   useEffect(() => {
     if (glide) controller.current?.glideTo(glide.id);
   }, [glide]);
+  useEffect(() => {
+    controller.current?.setTrail(trail);
+    if (trail?.length) controller.current?.frameNodes(trail.flatMap((h) => [h.from, h.to]));
+  }, [trail]);
 
   return (
     <div ref={box} className={styles.canvasBox}>

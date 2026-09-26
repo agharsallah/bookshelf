@@ -78,6 +78,34 @@ describe('<AtlasExplorer>', () => {
     expect(calls.at(-1)).toMatchObject({ method: 'POST', path: 'graph/bridges' });
   });
 
+  it('traces a path between two marks, each step readable, the ends in the URL', async () => {
+    const atlas = shelf();
+    const limits = atlas.edges.find((e) => e.id === 'm2')!;
+    limits.evidence = [`${atlas.nodes[3]?.document?.id}#ch02/p004`];
+    const { api } = fakeApi({});
+    render(<AtlasExplorer initial={atlas} lens={DEFAULT_LENS} api={api} />);
+    const list = within(screen.getByText('The map as a list').closest('details') as HTMLElement);
+    await userEvent.click(list.getByRole('button', { name: /^Limits/ }));
+    const panel = within(screen.getByRole('complementary', { name: 'Selection' }));
+
+    await userEvent.click(panel.getByRole('button', { name: 'Find a path from here' }));
+    await userEvent.type(panel.getByRole('combobox', { name: 'The other end' }), 'Stories (Talks)');
+
+    expect(panel.getByText('3 steps, the strongest chain the shelf holds.')).toBeTruthy();
+    const steps = panel.getAllByRole('listitem').map((li) => li.textContent);
+    expect(steps[1]).toContain("wip limit supports little's law");
+    expect(steps[2]).toContain("Stories mentions little's law");
+    expect(panel.getByRole('link', { name: 'Read step 1' }).getAttribute('href')).toBe('/documents/flow/read/ch02/p004');
+    expect(location.search).toBe(
+      `?sel=${encodeURIComponent(ids.limits)}&from=${encodeURIComponent(ids.limits)}&to=${encodeURIComponent(ids.stories)}`,
+    );
+
+    await userEvent.click(panel.getByRole('button', { name: 'Swap ends' }));
+    expect(panel.getByRole('heading', { name: 'Stories to Limits' })).toBeTruthy();
+    await userEvent.click(panel.getByRole('button', { name: 'Done' }));
+    expect(location.search).not.toContain('from=');
+  });
+
   it('opens a mark where it lives', () => {
     const [flow, , queues, , , law] = shelf().nodes;
     expect([flow, queues, law].map((n) => (n ? openHref(n) : null))).toEqual(['/documents/flow', '/documents/flow/read/ch01', '/concepts/law']);

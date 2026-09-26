@@ -20,7 +20,7 @@ import { centerOn, edgeAt, nodeAt, toWorld, zoomAt, type Camera, type Point } fr
 import { createLayout, positionsOf, recentre, RING, seedPositions, settle, type Layout, type Positions } from './layout';
 import { neighbours, type GraphModel } from './model';
 import type { GraphPalette } from './palette';
-import { drawScene, type Lens } from './draw';
+import { drawScene, type Lens, type Trail } from './draw';
 
 export type Selection = { kind: 'node' | 'edge'; id: string } | null;
 
@@ -58,6 +58,7 @@ export interface ControllerEvents {
 const TWEEN_MS = 520;
 const BLOOM_MS = 900;
 const LENS_MS = 280;
+const HOP_MS = 420;
 const CLICK_SLOP = 4;
 
 const easeOut = (t: number) => 1 - (1 - t) ** 3;
@@ -81,6 +82,9 @@ export class GraphController {
   private bloom: { start: number; to: Map<string, Point> } | null = null;
   private lens: Lens | null = null;
   private lensFade: { from: Lens | null; start: number } | null = null;
+  private trail: { hops: Trail['hops']; start: number } | null = null;
+  /** A frame asked for before the canvas had a size: applied on the first resize. */
+  private pendingFrame: string[] | null = null;
   /** Frame the picture again once the simulation cools (cleared by a pan or zoom). */
   private refit = false;
   private readonly ctx: CanvasRenderingContext2D | null;
@@ -138,6 +142,29 @@ export class GraphController {
     this.reflow();
   }
 
+  /** Trace a path over the picture, one hop after another; null clears it. */
+  setTrail(hops: Trail['hops'] | null): void {
+    this.trail = hops && hops.length ? { hops, start: this.reduced ? -Infinity : performance.now() } : null;
+    this.request();
+  }
+
+  /** Glide the camera until every one of `ids` is in view (once the canvas has a size). */
+  frameNodes(ids: readonly string[]): void {
+    if (!this.model || !this.layout || this.width === 0) {
+      this.pendingFrame = [...ids];
+      return;
+    }
+    this.pendingFrame = null;
+    const wanted = new Set(ids);
+    const nodes = this.placed().nodes.filter((n) => wanted.has(n.id));
+    if (nodes.length === 0) return;
+    this.refit = false;
+    const to = this.kit.fit(this.model, { ...this.layout, nodes }, this.width, this.height);
+    this.tween = this.reduced ? null : { from: this.cam, to, start: performance.now() };
+    if (this.reduced) this.cam = to;
+    this.request();
+  }
+
   /** Glide the camera until `id` sits in the middle, zooming in a little if far out. */
   glideTo(id: string): void {
     const node = this.layout?.byId.get(id);
@@ -157,6 +184,7 @@ export class GraphController {
     this.canvas.width = Math.round(width * dpr);
     this.canvas.height = Math.round(height * dpr);
     if (first) this.cam = this.fit();
+    if (first && this.pendingFrame) this.frameNodes(this.pendingFrame);
     this.request();
   }
 
@@ -231,10 +259,14 @@ export class GraphController {
 
   private fit(): Camera {
     if (!this.model || !this.layout) return centerOn({ x: 0, y: 0 }, this.width || 1, this.height || 1, 1);
-    // Mid-bloom, frame where the marks are going, not where they are.
+    return this.kit.fit(this.model, this.placed(), this.width || 1, this.height || 1);
+  }
+
+  /** The layout as it will stand: mid-bloom, where the marks are going, not where they are. */
+  private placed(): Layout {
+    const layout = this.layout as Layout;
     const to = this.bloom?.to;
-    const layout = to ? { ...this.layout, nodes: this.layout.nodes.map((n) => ({ ...n, ...to.get(n.id) })) } : this.layout;
-    return this.kit.fit(this.model, layout, this.width || 1, this.height || 1);
+    return to ? { ...layout, nodes: layout.nodes.map((n) => ({ ...n, ...to.get(n.id) })) } : layout;
   }
 
   private request(): void {
@@ -272,6 +304,7 @@ export class GraphController {
     }
     if (this.lensFade && now - this.lensFade.start >= LENS_MS) this.lensFade = null;
     if (this.lensFade) busy = true;
+    if (this.trail && now - this.trail.start < HOP_MS * this.trail.hops.length) busy = true;
     if (this.tween) {
       const t = Math.min(1, (now - this.tween.start) / TWEEN_MS);
       const e = 1 - (1 - t) ** 3;
@@ -302,6 +335,9 @@ export class GraphController {
       lens: this.lens,
       lensFrom: this.lensFade?.from ?? null,
       lensT: this.lensFade ? Math.min(1, (performance.now() - this.lensFade.start) / LENS_MS) : 1,
+      trail: this.trail
+        ? { hops: this.trail.hops, t: Math.min(1, (performance.now() - this.trail.start) / (HOP_MS * this.trail.hops.length)) }
+        : null,
     });
   }
 

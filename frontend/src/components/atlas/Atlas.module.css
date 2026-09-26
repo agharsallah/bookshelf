@@ -253,6 +253,41 @@
   font-size: var(--text-xs);
 }
 
+/* ── Paths ─────────────────────────────────────────────────── */
+.pathButton {
+  justify-self: start;
+}
+
+.hops {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: hop;
+}
+
+.hop {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.hopLine {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin-inline-start: 0.4rem;
+  padding: var(--space-1) 0 var(--space-1) var(--space-3);
+  border-inline-start: 2px solid var(--accent);
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+}
+
+.hopLine > span {
+  flex: 1;
+}
+
 /* ── List ──────────────────────────────────────────────────── */
 .dimmed {
   opacity: 0.5;

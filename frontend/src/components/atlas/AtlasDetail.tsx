@@ -32,6 +32,8 @@ export interface AtlasDetailProps {
   edge: ModelEdge<AtlasEdge> | null;
   onSelect: (id: string) => void;
   onChanged: () => void;
+  /** Start tracing a path from this node. */
+  onPathFrom?: (id: string) => void;
 }
 
 const LIST_MAX = 12;
@@ -288,7 +290,7 @@ function SharesDetail({ index, edge, onSelect }: { index: AtlasIndex; edge: Atla
   );
 }
 
-export function AtlasDetail({ api, index, node, edge, onSelect, onChanged }: AtlasDetailProps) {
+export function AtlasDetail({ api, index, node, edge, onSelect, onChanged, onPathFrom }: AtlasDetailProps) {
   if (edge) {
     if (edge.relation === 'shares') return <SharesDetail index={index} edge={edge.data} onSelect={onSelect} />;
     if (edge.relation === 'contains') {
@@ -317,6 +319,11 @@ export function AtlasDetail({ api, index, node, edge, onSelect, onChanged }: Atl
       {node.kind === 'concept' ? <ConceptDetail index={index} node={node} onSelect={onSelect} /> : null}
       {node.kind === 'chapter' ? <ChapterDetail index={index} node={node} onSelect={onSelect} /> : null}
       {node.kind === 'document' ? <BookDetail index={index} node={node} onSelect={onSelect} /> : null}
+      {onPathFrom ? (
+        <button type="button" className={`${graph.actionQuiet} ${styles.pathButton}`} onClick={() => onPathFrom(node.id)}>
+          Find a path from here
+        </button>
+      ) : null}
       <p className={styles.hint}>Double-click a mark on the map to open it: a chapter in the reader, a concept on its page.</p>
     </div>
   );

@@ -10,7 +10,7 @@
  * and the URL stays short. Unknown values in a URL are dropped, never trusted.
  *
  *   /map?mode=lens&links=supports,contradicts&kinds=framework&books=<id>&cross=1
- *        &proposed=1&others=hide&group=book&q=loop&sel=concept:<id>
+ *        &proposed=1&others=hide&group=book&q=loop&sel=concept:<id>&from=<ref>&to=<ref>
  */
 import { CONCEPT_KINDS, type ConceptKind } from '../../lib/api/types/graph';
 import { LINK_KINDS, type LinkKind } from '../graph/styles';
@@ -42,6 +42,9 @@ export interface LensState {
   query: string;
   /** The selected node or line. */
   selected: string | null;
+  /** A path being traced: its start, and its other end once picked. */
+  pathFrom: string | null;
+  pathTo: string | null;
 }
 
 /** The part of the lens that decides what is in play (not the selection, not the layout). */
@@ -58,6 +61,8 @@ export const DEFAULT_LENS: LensState = {
   group: 'free',
   query: '',
   selected: null,
+  pathFrom: null,
+  pathTo: null,
 };
 
 function list<T extends string>(raw: string | null, allowed: readonly T[]): T[] | null {
@@ -79,6 +84,8 @@ export function lensFromParams(params: URLSearchParams): LensState {
     group: params.get('group') === 'book' ? 'book' : 'free',
     query: (params.get('q') ?? '').slice(0, 120),
     selected: params.get('sel'),
+    pathFrom: params.get('from'),
+    pathTo: params.get('from') ? params.get('to') : null,
   };
 }
 
@@ -94,6 +101,8 @@ export function lensToParams(lens: LensState): URLSearchParams {
   if (lens.group === 'book') params.set('group', 'book');
   if (lens.query.trim()) params.set('q', lens.query.trim());
   if (lens.selected) params.set('sel', lens.selected);
+  if (lens.pathFrom) params.set('from', lens.pathFrom);
+  if (lens.pathFrom && lens.pathTo) params.set('to', lens.pathTo);
   return params;
 }
 

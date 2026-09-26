@@ -20,6 +20,13 @@ type AnyModel = GraphModel<unknown, unknown>;
 type AnyNode = ModelNode<unknown>;
 type AnyEdge = ModelEdge<unknown>;
 
+/** A path drawn over the picture, hop by hop from `from` to `to`. */
+export interface Trail {
+  hops: readonly { id: string; from: string; to: string }[];
+  /** How far it has been drawn: 0 nothing, 1 every hop. */
+  t: number;
+}
+
 /** What a lens keeps lit; everything else is drawn faint. */
 export interface Lens {
   nodes: ReadonlySet<string>;
@@ -45,6 +52,8 @@ export interface Scene {
   /** The lens being faded out, and how far the fade has run (0–1). */
   lensFrom?: Lens | null;
   lensT?: number;
+  /** A path to trace in the accent colour, over the edges. */
+  trail?: Trail | null;
 }
 
 const DIM_NODE = 0.3;
@@ -208,6 +217,49 @@ function drawEdges(ctx: CanvasRenderingContext2D, s: Scene) {
   }
 }
 
+/** The path in the highlighter's hand: each hop drawn in turn, a dot at its head. */
+function drawTrail(ctx: CanvasRenderingContext2D, s: Scene) {
+  const trail = s.trail;
+  if (!trail || trail.hops.length === 0) return;
+  const k = s.cam.k;
+  const lanes = new Map(s.model.edges.map((e) => [e.id, e]));
+  const reach = trail.t * trail.hops.length;
+  ctx.save();
+  ctx.strokeStyle = alpha(s.palette.accent, 0.9);
+  ctx.fillStyle = s.palette.accent;
+  ctx.lineWidth = 4 / k;
+  ctx.lineCap = 'round';
+  trail.hops.forEach((hop, i) => {
+    const p = Math.max(0, Math.min(1, reach - i));
+    const a = s.layout.byId.get(hop.from);
+    const b = s.layout.byId.get(hop.to);
+    const edge = lanes.get(hop.id);
+    if (p === 0 || !a || !b || !edge) return;
+    // The curve is defined source → target; walk it the way the path goes.
+    const forward = edge.source === hop.from;
+    const [src, dst] = forward ? [a, b] : [b, a];
+    const c = controlPoint(src, dst, edge.lane);
+    const at = (u: number) => quadAt(src, c, dst, forward ? u : 1 - u);
+    ctx.beginPath();
+    const start = at(0);
+    ctx.moveTo(start.x, start.y);
+    const steps = 24;
+    for (let j = 1; j <= steps * p; j += 1) {
+      const q = at(j / steps);
+      ctx.lineTo(q.x, q.y);
+    }
+    const head = at(p);
+    ctx.lineTo(head.x, head.y);
+    ctx.stroke();
+    if (p < 1) {
+      ctx.beginPath();
+      ctx.arc(head.x, head.y, 4.5 / k, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  });
+  ctx.restore();
+}
+
 function nodePath(ctx: CanvasRenderingContext2D, n: SimNode) {
   const r = n.r;
   ctx.beginPath();
@@ -309,7 +361,18 @@ function drawLabels(ctx: CanvasRenderingContext2D, s: Scene) {
       cache.set(key, width);
     }
     const p = toScreen(sim, s.cam);
-    candidates.push({ id: node.id, x: p.x, y: p.y, r: sim.r * s.cam.k + 2, width, height: focus ? 18 : 15, priority: priority(node, s), node, text, font });
+    candidates.push({
+      id: node.id,
+      x: p.x,
+      y: p.y,
+      r: sim.r * s.cam.k + 2,
+      width,
+      height: focus ? 18 : 15,
+      priority: priority(node, s),
+      node,
+      text,
+      font,
+    });
   }
   const placed = placeLabels(candidates, { width: s.width, height: s.height });
   const byId = new Map(candidates.map((c) => [c.id, c]));
@@ -345,6 +408,7 @@ export function drawScene(ctx: CanvasRenderingContext2D, s: Scene): void {
   ctx.setTransform(s.dpr * s.cam.k, 0, 0, s.dpr * s.cam.k, s.dpr * s.cam.x, s.dpr * s.cam.y);
   drawRings(ctx, s);
   drawEdges(ctx, s);
+  drawTrail(ctx, s);
   drawNodes(ctx, s);
   ctx.setTransform(s.dpr, 0, 0, s.dpr, 0, 0);
   drawLabels(ctx, s);
