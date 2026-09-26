@@ -16,17 +16,13 @@ const FORWARDED_REQUEST_HEADERS = [
   'last-event-id',
   'if-none-match',
   'if-modified-since',
+  // Seeking in audio: the player asks for byte ranges, and resumes them only if unchanged.
+  'range',
+  'if-range',
 ];
 
 /** Response headers that describe the upstream hop, not the payload we re-send. */
-const HOP_BY_HOP_RESPONSE_HEADERS = new Set([
-  'connection',
-  'keep-alive',
-  'transfer-encoding',
-  'content-encoding',
-  'content-length',
-  'upgrade',
-]);
+const HOP_BY_HOP_RESPONSE_HEADERS = new Set(['connection', 'keep-alive', 'transfer-encoding', 'content-encoding', 'upgrade']);
 
 /** Probes the backend serves at its root rather than under the API prefix. */
 const ROOT_PATHS = new Set(['health', 'health/ready']);
@@ -145,6 +141,9 @@ export function proxyResponseHeaders(upstream: Headers, context?: LocationContex
   upstream.forEach((value, key) => {
     const name = key.toLowerCase();
     if (HOP_BY_HOP_RESPONSE_HEADERS.has(name)) return;
+    // fetch decodes a compressed body, so its length no longer holds; an uncompressed one
+    // (audio, which players need the size of to seek) keeps it.
+    if (name === 'content-length' && upstream.has('content-encoding')) return;
     if (name === 'location') {
       const mapped = context ? proxyLocation(value, context) : null;
       if (mapped) headers.set(key, mapped);

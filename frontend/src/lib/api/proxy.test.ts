@@ -98,4 +98,27 @@ describe('proxyResponseHeaders', () => {
     );
     expect(Object.fromEntries(headers)).toEqual({ 'content-type': 'application/json', 'x-request-id': 'r' });
   });
+
+  it('keeps the length and range of an uncompressed body, so audio can seek', () => {
+    const headers = proxyResponseHeaders(
+      new Headers({ 'content-type': 'audio/mpeg', 'content-length': '4', 'content-range': 'bytes 0-3/9', 'accept-ranges': 'bytes' }),
+    );
+    expect(Object.fromEntries(headers)).toEqual({
+      'content-type': 'audio/mpeg',
+      'content-length': '4',
+      'content-range': 'bytes 0-3/9',
+      'accept-ranges': 'bytes',
+    });
+  });
+});
+
+describe('buildProxyRequest ranges', () => {
+  it('forwards Range and If-Range, which seeking in audio needs', () => {
+    const upstream = buildProxyRequest(
+      { method: 'GET', path: 'audio/files/a.mp3', search: '', headers: new Headers({ range: 'bytes=100-', 'if-range': '"e1"' }) },
+      { backendUrl: 'http://backend:8000/api/v1' },
+    );
+    expect(upstream.headers.get('range')).toBe('bytes=100-');
+    expect(upstream.headers.get('if-range')).toBe('"e1"');
+  });
 });
