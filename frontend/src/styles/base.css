@@ -130,6 +130,11 @@ html[data-workshop] .reading-only {
   -webkit-box-decoration-break: clone;
 }
 
+/* At night light ink cannot sit on the marker, so the stroke runs under the letters. */
+:root[data-theme='dark'] .marker {
+  background: linear-gradient(to top, transparent 0 4%, var(--marker) 4% 20%, transparent 20%) no-repeat;
+}
+
 /* Shared buttons for pages and islands without their own. */
 .btn {
   display: inline-flex;

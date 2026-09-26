@@ -269,6 +269,12 @@ const workshop = NAV.filter((item) => item.workshop);
       opacity var(--dur-2) var(--ease-out);
   }
 
+  /* At night the stroke runs under the letters, since light ink cannot sit on the marker. */
+  :global(:root[data-theme='dark']) .nav-label::before {
+    inset-block-end: -0.22em;
+    block-size: 0.2em;
+  }
+
   .primary-nav a:hover .nav-label::before {
     opacity: 0.45;
     transform: scaleX(1);
