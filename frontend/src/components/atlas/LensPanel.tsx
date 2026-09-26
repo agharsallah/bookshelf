@@ -62,7 +62,7 @@ export function LensPanel({ index, lens, onChange }: LensPanelProps) {
         ))}
         <p className={styles.only}>
           Only:{' '}
-          {(['supports', 'contradicts', 'shares'] as const)
+          {(['supports', 'contradicts', 'shares', 'echoes'] as const)
             .filter((l) => linkCounts.has(l))
             .map((l) => (
               <button key={l} type="button" className={styles.linkish} onClick={() => set({ links: [l] })}>

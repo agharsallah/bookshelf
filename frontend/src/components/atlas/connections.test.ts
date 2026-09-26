@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { appearances, bookIdeas, chaptersOf, relatedIdeas, sharedWith } from './connections';
+import { appearances, bookIdeas, chaptersOf, echoesOf, relatedIdeas, sharedWith } from './connections';
 import { ids, shelf } from './fixtures';
 import { indexAtlas } from './model';
 
@@ -39,5 +39,22 @@ describe('appearances', () => {
     expect(queues?.node.label).toBe('Queues');
     expect(queues?.relations).toEqual(['mentions', 'defines']);
     expect(queues?.passages).toBe(5);
+  });
+});
+
+describe('echoesOf', () => {
+  it('names the echoing chapter and opens its own echoing passage, not ours', () => {
+    const atlas = shelf();
+    const [, , queues, , stories] = atlas.nodes;
+    atlas.edges.push({
+      ...atlas.edges[8]!,
+      id: 'e1',
+      relation: 'echoes',
+      concepts: [],
+      evidence: [`${queues?.document?.id}#ch01/p003`, `${stories?.document?.id}#ch01/p007`],
+    });
+    const [echo] = echoesOf(indexAtlas(atlas), ids.queues);
+    expect(echo?.chapter.label).toBe('Stories');
+    expect(echo?.passage).toBe('ch01/p007');
   });
 });

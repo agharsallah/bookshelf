@@ -22,6 +22,8 @@ export const RELATIONS = [
   'defines',
   'mentions',
   'same_as',
+  /** Two chapters whose passages say similar things (embedding similarity). */
+  'echoes',
 ] as const;
 export type Relation = (typeof RELATIONS)[number];
 

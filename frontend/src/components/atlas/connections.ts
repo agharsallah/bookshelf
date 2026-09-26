@@ -90,6 +90,25 @@ export function sharedWith(index: AtlasIndex, chapterId: string): Shared[] {
     }));
 }
 
+/** A chapter whose passages say what this one says, and where it says it. */
+export interface Echo {
+  chapter: AtlasNode;
+  /** The partner's echoing passage to open first (a qualified anchor's anchor). */
+  passage: string | null;
+  edge: AtlasEdge;
+}
+
+/** The chapters that echo this one, strongest first, each with its echoing passage. */
+export function echoesOf(index: AtlasIndex, chapterId: string): Echo[] {
+  return links(index, chapterId, (n, e) => e.relation === 'echoes' && n.kind === 'chapter')
+    .sort(byStrength)
+    .map((l) => {
+      const prefix = `${l.node.document?.id ?? ''}#${l.node.anchor ?? ''}`;
+      const hit = l.edge.evidence.find((ref) => ref === prefix || ref.startsWith(`${prefix}/`));
+      return { chapter: l.node, passage: hit ? (hit.split('#')[1] ?? null) : null, edge: l.edge };
+    });
+}
+
 /** The ideas a book leans on most, over all its chapters. */
 export function bookIdeas(index: AtlasIndex, bookId: string, limit = 8): AtlasNode[] {
   const score = new Map<string, number>();

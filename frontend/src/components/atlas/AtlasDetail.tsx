@@ -20,7 +20,7 @@ import { KindMark, RelationMark } from '../graph/Legend';
 import type { ModelEdge } from '../graph/model';
 import { graphHref, parseRef } from '../graph/refs';
 import { LINK_STYLES } from '../graph/styles';
-import { appearances, bookIdeas, chaptersOf, relatedIdeas, sharedWith, type Appearance } from './connections';
+import { appearances, bookIdeas, chaptersOf, echoesOf, relatedIdeas, sharedWith, type Appearance } from './connections';
 import type { AtlasIndex } from './model';
 import graph from '../graph/Graph.module.css';
 import styles from './Atlas.module.css';
@@ -133,6 +133,7 @@ function ConceptDetail({ index, node, onSelect }: { index: AtlasIndex; node: Atl
 function ChapterDetail({ index, node, onSelect }: { index: AtlasIndex; node: AtlasNode; onSelect: (id: string) => void }) {
   const ideas = relatedIdeas(index, node.id);
   const shared = sharedWith(index, node.id);
+  const echoes = echoesOf(index, node.id);
   const href = readHref(node);
   const book = node.document ? index.byId.get(`document:${node.document.id}`) : undefined;
   return (
@@ -157,6 +158,28 @@ function ChapterDetail({ index, node, onSelect }: { index: AtlasIndex; node: Atl
           {ideas.slice(0, LIST_MAX * 2).map((l) => (
             <li key={l.edge.id}>
               <Pick node={l.node} onSelect={onSelect} />
+            </li>
+          ))}
+        </ul>
+      </Section>
+      <Section title="Chapters that echo it" count={echoes.length}>
+        <ul className={styles.rows}>
+          {echoes.map((e) => (
+            <li key={e.edge.id} className={styles.row}>
+              <Pick
+                node={e.chapter}
+                onSelect={onSelect}
+                note={e.chapter.document?.id === node.document?.id ? `${e.edge.evidence_count} passages` : (e.chapter.sublabel ?? undefined)}
+              />
+              {e.chapter.document ? (
+                <a
+                  className={styles.read}
+                  href={readerHref(e.chapter.document.slug, e.passage ?? e.chapter.anchor)}
+                  aria-label={`Read the echo in ${e.chapter.label}`}
+                >
+                  Read the echo
+                </a>
+              ) : null}
             </li>
           ))}
         </ul>

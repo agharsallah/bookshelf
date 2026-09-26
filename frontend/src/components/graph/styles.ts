@@ -47,6 +47,7 @@ export const RELATION_STYLES: Record<Relation, RelationStyle> = {
   defines: { label: 'Defines', verb: 'defines', color: '--tone-caution', dash: [], terminal: 'tick' },
   mentions: { label: 'Mentions', verb: 'mentions', color: '--ink-3', dash: [], terminal: 'none' },
   same_as: { label: 'Same as', verb: 'is the same as', color: '--ink-2', dash: [], terminal: 'equals' },
+  echoes: { label: 'Echoes', verb: 'echoes', color: '--series-5', dash: [4, 3], terminal: 'none' },
 };
 
 /** Every line the canvas can draw: the stored relations and the atlas's derived ones. */
