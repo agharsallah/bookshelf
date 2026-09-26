@@ -24,7 +24,7 @@ Named so they stop showing up in scope discussions:
 
 | Not building | Why |
 |---|---|
-| Generated videos, narration, scripts | Highest cost, lowest knowledge value per hour of work |
+| Generated videos | Highest cost, lowest knowledge value per hour of work. Narration was on this list; audio summaries (§9) are now in, as derived study material |
 | Multi-user accounts, sharing, permissions | Single-user system; auth is one API key (already built) |
 | Mobile app | Responsive web is enough |
 | Real-time collaborative editing | No second user |
@@ -509,6 +509,7 @@ Consequences:
 | `make-quiz` | `quiz` | chapter · document | distil | `[{question, choices[], answer, cites[]}]` |
 | `make-flashcards` | `flashcards` | chapter · document | distil | `[{front, back, cites[]}]` |
 | `make-glossary` | `glossary` | document | distil | `definition` blocks |
+| `write-audio-summary` | `audio_summary` | document | reason | a spoken script: `{title, speakers[1–4], sections: [{title, turns: [{speaker, text, cites}]}]}`, per run `params` minutes · format · language (§9 "Audio summaries") |
 
 The four study skills marked *chapter · document* are one package each: a job with an anchor
 reads that chapter's input (`selector`), a job without one reads the whole book through
@@ -841,6 +842,45 @@ front matter and `skip` containers appear only if the guide describes them. A le
 whose longest chain exceeds five nodes is drawn top-down on the page so its labels stay legible. Roles take the
 validated `--series-*` colours in a fixed order; the heatmap uses one hue, light to dark.
 
+### Audio summaries
+
+A book, spoken: `write-audio-summary` writes a script from the same input as the book-wide
+study sets (`document_distillations`), and a `narrate` job voices it. The reader chooses
+before anything runs:
+
+| Choice | Options | What it changes |
+|---|---|---|
+| `minutes` | 5 · 15 · 30 | the word budget (~150 spoken words a minute), how many ideas and how deep |
+| `format` | narrator (1) · conversation (2) · panel (3) · roundtable (4) | the cast and its roles: explainer and curious co-host, a champion, a practitioner, a skeptic |
+| `language` | en · zh | the script's language (VibeVoice speaks English and Mandarin) |
+| voices | one per speaker | built-in VibeVoice samples, ones over a music bed, or your own `.wav` in `.audio/voices/custom/` |
+
+`minutes`, `format` and `language` are **run parameters** (`meta.yaml` `params`): they join
+the inputs, so each combination has its own `input_hash`, and they name the artifact's
+`variant` (`15m-conversation-en`), which joins `(document, anchor, type)` in the version
+scope, so one book keeps several episodes, each with its own history. The voices are not
+part of the script (speakers are never named in it), so re-casting an episode re-records
+it without re-writing it: the same `derive` request with new `voices` is an idempotency
+hit whose job still queues a `narrate` with the new cast.
+
+Every turn cites its anchors like any other span (grounding ≥ 0.9); the
+`words_per_minute` gate flags a script too short to fill its length or too long to fit
+(`pace` in `gates`). Spoken energy lives in the writing, since the voice model takes its
+expression from the words: varied turn lengths, reactions, questions, deliberate
+punctuation, numbers spelt out.
+
+**Narration** is plain Python around an isolated model: `scripts/narrate/vibevoice.py`
+runs through `uv run --script` in its own environment (torch, transformers ≥ 5.17,
+diffusers), so the API never imports them, the way skills run through the `claude` CLI
+(D18). Each script section is one multi-speaker VibeVoice generation, conditioned on
+every speaker's reference clip and the same seed, so voices hold across sections and
+turn-taking follows the dialogue; sections are levelled, joined with pauses and written
+as MP3 with a manifest of where each section (exact) and turn (estimated) starts. The
+first turn opens with a spoken note that the audio is AI-generated. Renders are derived
+media on disk (`.audio/<document>/<script>/<render key>.{mp3,json}`, key = cast +
+engine settings), never in Postgres; deleting a book deletes them. One narration holds
+the whole model in memory, so the API runs `narrate` jobs on a single slot of their own.
+
 ### Derived artifacts
 
 Once approved distillations exist, everything below is a cheap, separate skill over them. None of
@@ -1001,6 +1041,7 @@ Keep Astro as the shell and routing layer; add React islands only where interact
 | **Search** | React island | Query box, intent badge, grouped results, cited answer with click-through |
 | **Graph** | React island | Canvas force layout over a neighborhood endpoint, node cap enforced client-side |
 | **Map** | React island | The atlas as a live force layout: books, chapters and concepts; select to read, double-click to open. A lens mode filters and highlights by connection type, kind and book, dims or hides the rest, and can group by book |
+| **Listen** | Astro + one React island | Audio summaries: pick an episode and cast, a player (skip, speed, parts, download, resume where you stopped, Media Session and keys), a transcript that follows the audio and links each line to its passage, and the form that makes an episode |
 | **Review queue** | React island | Draft artifacts, diff against the previous version, approve / edit / reject / re-run |
 
 The render contract (§9) is implemented once as a `<Blocks>` component and reused by reader,
@@ -1037,7 +1078,8 @@ GET    /notes?document_id=&anchor=
 GET    /artifacts?document_id=&type=&review=&tone=&latest=
 POST   /artifacts                      human-authored artifact (origin = human)
 POST   /artifacts/{id}/review          approve | reject | edit | reopen
-POST   /jobs                           enqueue {kind, document_id, anchor?, skill?, note_id?, force?}
+POST   /jobs                           enqueue {kind, document_id, anchor?, skill?, note_id?, force?,
+                                                params?, voices?, artifact_id?}
 GET    /jobs?state=&kind=              queue view for the review UI
 GET    /jobs/stream                    SSE: job state changes
 DELETE /jobs/{id}                      cancel a queued job
@@ -1048,6 +1090,10 @@ POST   /search/answer                  SSE: cited answer
 GET    /concepts?q=&sort=              typeahead, edge_count
 GET    /graph/neighborhood?node=&depth=
 GET    /graph/atlas?include_proposed=  the whole shelf at chapter grain (map)
+GET    /audio/voices                   voices to cast, speakers per format, default casts
+GET    /audio/voices/{id}/sample       hear a voice (its reference clip)
+GET    /documents/{ref}/audio          episodes: per variant, the script and its renders
+GET    /audio/files/{path}?download=   stream (byte ranges) or download a narration
 GET    /exports/{document_id}.md       Markdown bundle
 GET    /exports/{document_id}.json     tree + approved artifacts, render-contract JSON
 GET    /exports/{document_id}/tables.csv  every table/chart block flattened
