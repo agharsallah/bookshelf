@@ -89,3 +89,24 @@ export const EXPLANATION_TYPES = [
   'code_explanation',
   'math_description',
 ] as const satisfies readonly ArtifactType[];
+
+/**
+ * Study material already made, for the study buttons' "View" link: `key(skill, anchor)`
+ * → the best artifact's id, for each skill that makes an artifact type.
+ */
+export function madeIndex(
+  artifacts: readonly ArtifactPublic[],
+  skills: readonly { name: string; artifact_type: ArtifactType | null }[],
+  key: (skill: string, anchor: string | null) => string,
+): Record<string, string> {
+  const made: Record<string, string> = {};
+  for (const skill of skills) {
+    const type = skill.artifact_type;
+    if (!type) continue;
+    for (const anchor of new Set(artifacts.filter((a) => a.type === type).map((a) => a.anchor))) {
+      const best = pickBest(artifacts, type, anchor);
+      if (best) made[key(skill.name, anchor)] = best.artifact.id;
+    }
+  }
+  return made;
+}

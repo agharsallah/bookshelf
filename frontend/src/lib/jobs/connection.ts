@@ -10,9 +10,9 @@
  * connection opens. The server re-sends a snapshot of live jobs on every connect,
  * which the reducer in ./stream.ts merges idempotently.
  */
-import type { JobPublic } from '../api/types/jobs';
+import type { JobPublic, QueueStatus } from '../api/types/jobs';
 import { parseData } from '../sse';
-import { parseJobEvent } from './stream';
+import { parseJobEvent, parseQueueEvent } from './stream';
 
 /** The part of `EventSource` used here, so tests can drive a fake. */
 export interface EventSourceLike {
@@ -35,6 +35,7 @@ export type ConnectionEvent = 'open' | 'error' | 'end';
 export interface JobStreamConnection {
   url: string;
   onJob: (job: JobPublic) => void;
+  onQueue?: (queue: QueueStatus) => void;
   onStatus: (event: ConnectionEvent) => void;
   create?: (url: string) => EventSourceLike;
   timers?: Timers;
@@ -51,6 +52,7 @@ export function backoffDelay(attempt: number, baseMs = 1000, maxMs = 30_000): nu
 export function connectJobStream({
   url,
   onJob,
+  onQueue,
   onStatus,
   create = (target) => new EventSource(target),
   timers = realTimers,
@@ -83,6 +85,10 @@ export function connectJobStream({
     current.addEventListener('job', (event) => {
       const job = parseJobEvent(event.data);
       if (job) onJob(job);
+    });
+    current.addEventListener('queue', (event) => {
+      const queue = parseQueueEvent(event.data);
+      if (queue) onQueue?.(queue);
     });
     current.addEventListener('end', (event) => {
       if (source !== current) return;

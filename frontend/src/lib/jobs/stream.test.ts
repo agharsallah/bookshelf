@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { JobPublic } from '../api/types/jobs';
-import { initialJobStreamState, jobStreamReducer, parseJobEvent, sortedJobs } from './stream';
+import { initialJobStreamState, isNewer, jobStreamReducer, parseJobEvent, parseQueueEvent, sortedJobs } from './stream';
 
 function job(overrides: Partial<JobPublic> = {}): JobPublic {
   return {
@@ -86,5 +86,32 @@ describe('sortedJobs', () => {
     };
     expect(sortedJobs(jobs).map((j) => j.id)).toEqual(['b', 'c', 'a']);
     expect(sortedJobs(jobs, (j) => j.kind === 'parse').map((j) => j.id)).toEqual(['b', 'a']);
+  });
+});
+
+describe('run_after ordering', () => {
+  const running = job({ state: 'running', attempts: 1, started_at: '2026-09-23T10:00:05Z', run_after: '2026-09-23T10:00:00Z' });
+
+  it('takes a job going back to queued after a failed attempt as newer', () => {
+    const backingOff = job({ state: 'queued', attempts: 1, error: 'boom', run_after: '2026-09-23T10:01:00Z' });
+    expect(isNewer(backingOff, running)).toBe(true);
+  });
+
+  it('takes a job a stopping worker handed back as newer', () => {
+    const handedBack = job({ state: 'queued', attempts: 0, run_after: '2026-09-23T10:02:00Z' });
+    expect(apply({ type: 'job', job: running }, { type: 'job', job: handedBack }).jobs.j1?.state).toBe('queued');
+  });
+
+  it('still ignores a replay of the job as it was before it started', () => {
+    const original = job({ state: 'queued', attempts: 0, run_after: '2026-09-23T10:00:00Z' });
+    expect(isNewer(original, running)).toBe(false);
+  });
+});
+
+describe('queue events', () => {
+  it('keeps the latest queue status and parses only real ones', () => {
+    const status = { workers: [], queued: 2, running: 0, unclaimed_kinds: ['derive'] };
+    expect(apply({ type: 'queue', queue: parseQueueEvent(JSON.stringify(status))! }).queue).toEqual(status);
+    expect(parseQueueEvent('{"id": "j1"}')).toBeNull();
   });
 });

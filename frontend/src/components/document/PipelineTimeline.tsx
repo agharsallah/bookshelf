@@ -2,7 +2,9 @@
  * Pipeline timeline: the five milestones (registered → linked) with the document's
  * place on them, and its jobs live over `/jobs/stream`. When a job finishes the
  * document is re-read so the milestone moves; a finished parse offers a reload,
- * since the outline below was rendered from the old tree.
+ * since the outline below was rendered from the old tree. Each job says where it is —
+ * its place in line, a retry backoff, elapsed time — and a banner warns when nothing is
+ * running to pick queued jobs up.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { browserApi } from '../../lib/api/client';
@@ -10,8 +12,11 @@ import type { DocumentPublic, DocumentStatus } from '../../lib/api/types/documen
 import type { JobPublic } from '../../lib/api/types/jobs';
 import { PIPELINE_STEPS, pipelineProgress, stepState } from '../../lib/documents/pipeline';
 import { useJobStream } from '../../lib/hooks/useJobStream';
+import { describeJob } from '../../lib/jobs/progress';
 import { isFinished, sortedJobs } from '../../lib/jobs/stream';
-import { jobName } from './jobs';
+import { QueueBanner } from '../pipeline/QueueBanner';
+import { useNow } from '../pipeline/useNow';
+import { jobTitle } from './jobs';
 import styles from './PipelineTimeline.module.css';
 
 export interface PipelineTimelineProps {
@@ -21,18 +26,10 @@ export interface PipelineTimelineProps {
   initialJobs: JobPublic[];
 }
 
-const STATE_WORDS: Record<JobPublic['state'], string> = {
-  queued: 'queued',
-  running: 'running',
-  done: 'done',
-  failed: 'failed',
-  skipped: 'skipped, nothing changed',
-};
-
 export function PipelineTimeline({ documentId, slug, initialStatus, initialJobs }: PipelineTimelineProps) {
   const [status, setStatus] = useState<DocumentStatus>(initialStatus);
   const [reparsed, setReparsed] = useState(false);
-  const { jobs, status: stream } = useJobStream({ documentId, seed: initialJobs });
+  const { jobs, queue, status: stream } = useJobStream({ documentId, seed: initialJobs });
   const list = useMemo(() => sortedJobs(jobs), [jobs]);
   const finished = useRef(new Set(initialJobs.filter((j) => isFinished(j.state)).map((j) => j.id)));
 
@@ -50,6 +47,7 @@ export function PipelineTimeline({ documentId, slug, initialStatus, initialJobs 
   const progress = pipelineProgress(status);
   const live = list.filter((j) => !isFinished(j.state));
   const recent = list.filter((j) => isFinished(j.state)).slice(0, 5);
+  const now = useNow(live.length > 0);
 
   return (
     <section className={styles.timeline} aria-labelledby="pipeline-title">
@@ -76,6 +74,8 @@ export function PipelineTimeline({ documentId, slug, initialStatus, initialJobs 
         })}
       </ol>
 
+      {live.length > 0 ? <QueueBanner queue={queue} /> : null}
+
       {reparsed ? (
         <p className={styles.reload}>
           Parsing finished.{' '}
@@ -87,16 +87,19 @@ export function PipelineTimeline({ documentId, slug, initialStatus, initialJobs 
 
       {live.length + recent.length > 0 ? (
         <ul className={styles.jobs} aria-label="Recent jobs">
-          {[...live, ...recent].map((job) => (
-            <li key={job.id} className={styles.job} data-state={job.state}>
-              <span className={styles.jobKind}>
-                {jobName(job.kind)}
-                {job.anchor ? <span className={styles.jobAnchor}> {job.anchor}</span> : null}
-              </span>
-              <span className={styles.jobState}>{STATE_WORDS[job.state]}</span>
-              {job.state === 'failed' && job.error ? <span className={styles.jobError}>{job.error}</span> : null}
-            </li>
-          ))}
+          {[...live, ...recent].map((job) => {
+            const progress = describeJob(job, now, queue);
+            return (
+              <li key={job.id} className={styles.job} data-state={job.state} data-phase={progress.phase}>
+                <span className={styles.jobKind}>
+                  {jobTitle(job)}
+                  {job.anchor ? <span className={styles.jobAnchor}> {job.anchor}</span> : null}
+                </span>
+                <span className={styles.jobState}>{progress.text}</span>
+                {job.state === 'failed' && job.error ? <span className={styles.jobError}>{job.error}</span> : null}
+              </li>
+            );
+          })}
         </ul>
       ) : (
         <p className={styles.quiet}>No jobs yet.</p>

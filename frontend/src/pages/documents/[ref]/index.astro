@@ -12,13 +12,13 @@ import OutlineEditor from '../../../components/document/OutlineEditor';
 import PipelineTimeline from '../../../components/document/PipelineTimeline';
 import { Problem } from '../../../components/common/Problem';
 import PausedNotice from '../../../components/common/PausedNotice';
-import { deriveSkills } from '../../../components/document/jobs';
+import { deriveSkills, madeKey } from '../../../components/document/jobs';
 import { outlineFromTree } from '../../../components/document/outline-model';
 import { plural } from '../../../components/library/spine';
 import type { Page } from '../../../lib/api/types';
 import type { JobPublic } from '../../../lib/api/types/jobs';
 import type { SkillPublic } from '../../../lib/api/types/skills';
-import { chapterStatus, pickBest, type ChapterStatus } from '../../../lib/documents/artifacts';
+import { chapterStatus, madeIndex, pickBest, type ChapterStatus } from '../../../lib/documents/artifacts';
 import { getArtifacts, getDocument, getOutline, load } from '../../../lib/documents/server';
 import { defaultUnit, readingUnits } from '../../../lib/documents/tree';
 import { serverApi } from '../../../lib/api/server';
@@ -54,6 +54,7 @@ const deriving = data !== null && data.doc.status !== 'needs_review';
 const chapterDerive = data && deriving ? deriveSkills(data.skills, 'chapter') : [];
 const documentDerive = data && deriving ? deriveSkills(data.skills, 'document') : [];
 const distilled = Object.values(statuses).some((s) => s.distillation === 'approved');
+const made = data ? madeIndex(data.artifacts, [...chapterDerive, ...documentDerive], madeKey) : {};
 const parsed = data !== null && !['registered', 'parsing', 'parse_failed'].includes(data.doc.status);
 const needsReview = data?.doc.status === 'needs_review';
 const editable = data !== null && data.doc.kind === 'pdf' && parsed;
@@ -144,6 +145,8 @@ const exportsBase = data ? `/api/exports/${data.doc.slug}` : '';
                 statuses={statuses}
                 actionable={parsed}
                 derive={chapterDerive}
+                initialJobs={data.jobs}
+                made={made}
               />
             </section>
 
@@ -183,7 +186,14 @@ const exportsBase = data ? `/api/exports/${data.doc.slug}` : '';
               <section aria-labelledby="study-title" class="side-block">
                 <h2 id="study-title" class="side-title">Study material</h2>
                 <p class="side-hint">For the whole book. Per-chapter quizzes, FAQs, quotes and flashcards are under each chapter.</p>
-                <DocumentActions client:visible documentId={data.doc.id} derive={documentDerive} distilled={distilled} />
+                <DocumentActions
+                  client:visible
+                  documentId={data.doc.id}
+                  derive={documentDerive}
+                  distilled={distilled}
+                  initialJobs={data.jobs}
+                  made={made}
+                />
               </section>
             )}
 

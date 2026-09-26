@@ -1,0 +1,17 @@
+.banner {
+  margin-block: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--tone-important);
+  border-inline-start-width: 4px;
+  border-radius: var(--radius-m);
+  background: var(--paper-raised);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  line-height: 1.45;
+}
+
+.banner code {
+  font-size: 0.95em;
+  overflow-wrap: anywhere;
+}

@@ -1,0 +1,114 @@
+.item {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--space-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-m);
+  background: var(--paper-raised);
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+.button:hover:not(:disabled) {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.button[aria-busy='true'] {
+  border-color: var(--accent);
+  color: var(--ink);
+  opacity: 1;
+}
+
+.spinner {
+  width: 0.8em;
+  height: 0.8em;
+  border: 2px solid var(--rule-strong);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+
+.item[data-phase='waiting'] .spinner,
+.item[data-phase='backoff'] .spinner,
+.item[data-phase='stalled'] .spinner {
+  border-top-color: var(--ink-3);
+  animation-duration: 2.4s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: none;
+    border-top-color: var(--accent);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.status {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--space-2);
+  color: var(--ink-3);
+  font-size: var(--text-xs);
+}
+
+.status:empty {
+  display: none;
+}
+
+.item[data-phase='running'] .status {
+  color: var(--accent);
+}
+
+.item[data-phase='done'] .status {
+  color: var(--tone-insight);
+}
+
+.item[data-phase='failed'] .status,
+.item[data-phase='stalled'] .status {
+  color: var(--tone-important);
+}
+
+.detail {
+  font-variant-numeric: tabular-nums;
+}
+
+.link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+  cursor: pointer;
+}
+
+.error {
+  max-width: 32ch;
+  overflow: hidden;
+  color: var(--ink-3);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

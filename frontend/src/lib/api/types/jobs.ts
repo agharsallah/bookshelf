@@ -38,6 +38,32 @@ export interface JobPublic {
   created_at: string;
   started_at: string | null;
   finished_at: string | null;
+  /** When a queued job may start: now for fresh work, later while a retry backs off. */
+  run_after?: string;
+  /** A queued job's place in line (1 = next to start); null unless queued. */
+  queue_position?: number | null;
+}
+
+/** A worker process polling the queue (`GET /jobs/queue`). */
+export interface WorkerPublic {
+  name: string;
+  kinds: JobKind[];
+  concurrency: number;
+  running: number;
+  started_at: string;
+  seen_at: string;
+}
+
+/**
+ * Queue health (`GET /jobs/queue`, and the `queue` event of `/jobs/stream`).
+ * `unclaimed_kinds`: kinds with queued work that no live worker runs, so it will wait
+ * until one starts.
+ */
+export interface QueueStatus {
+  workers: WorkerPublic[];
+  queued: number;
+  running: number;
+  unclaimed_kinds: JobKind[];
 }
 
 /**

@@ -4,6 +4,9 @@
  */
 import type { JobKind, JobPublic, JobState } from '../../lib/api/types/jobs';
 
+// Moved to lib/jobs/progress (shared with the document page); re-exported for this view.
+export { elapsedMs, formatDuration } from '../../lib/jobs/progress';
+
 export interface Stage {
   key: string;
   label: string;
@@ -69,24 +72,6 @@ export function stageProgress(status: string, jobs: readonly JobPublic[]): Stage
     else if (stage.doneAt.includes(status) || finished > 0) state = 'done';
     return { stage, state, counts };
   });
-}
-
-/** Milliseconds a job has run: live for a running job, recorded for a finished one. */
-export function elapsedMs(job: JobPublic, now: number): number | null {
-  if (job.state === 'running' && job.started_at) return Math.max(0, now - Date.parse(job.started_at));
-  if (job.duration_ms !== null) return job.duration_ms;
-  if (job.started_at && job.finished_at) return Date.parse(job.finished_at) - Date.parse(job.started_at);
-  return null;
-}
-
-/** `850 ms`, `12 s`, `3 min 04 s`, `1 h 02 min`. */
-export function formatDuration(ms: number): string {
-  if (ms < 1000) return `${Math.round(ms)} ms`;
-  const s = Math.floor(ms / 1000);
-  if (s < 60) return `${s} s`;
-  const m = Math.floor(s / 60);
-  if (m < 60) return `${m} min ${String(s % 60).padStart(2, '0')} s`;
-  return `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')} min`;
 }
 
 export interface JobFilters {

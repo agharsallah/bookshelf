@@ -2,7 +2,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { SkillPublic } from '../../lib/api/types/skills';
 import { fakeApi } from '../review/testing/fakeApi';
-import { deriveLabel, deriveSkills, enqueue, needsDistillation } from './jobs';
+import { deriveLabel, deriveSkills, enqueue, jobTitle, needsDistillation } from './jobs';
 import { toast } from './toast';
 
 vi.mock('./toast', () => ({ toast: vi.fn() }));
@@ -47,8 +47,14 @@ describe('derive skills', () => {
     expect(needsDistillation(catalogue[3]!, 'document')).toBe(false);
   });
 
-  it('names an unknown artifact type by its skill', () => {
-    expect(deriveLabel({ name: 'make-mindmap', artifact_type: null })).toBe('make-mindmap');
+  it('titles a derive job by its skill and scope', () => {
+    expect(jobTitle({ kind: 'derive', skill: 'make-faq', anchor: 'ch02' })).toBe('Write an FAQ');
+    expect(jobTitle({ kind: 'derive', skill: 'make-faq', anchor: null })).toBe('Write an FAQ · whole book');
+    expect(jobTitle({ kind: 'distil_chapter', skill: 'distil-chapter', anchor: 'ch02' })).toBe('Distil chapter');
+  });
+
+  it('names an unknown skill by its package name', () => {
+    expect(deriveLabel({ name: 'make-mindmap' })).toBe('make-mindmap');
   });
 });
 

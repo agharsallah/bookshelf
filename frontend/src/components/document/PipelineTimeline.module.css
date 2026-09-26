@@ -156,6 +156,7 @@
 
 .jobState {
   color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
 }
 
 .job[data-state='running'] .jobState {
@@ -163,6 +164,7 @@
 }
 
 .job[data-state='failed'] .jobState,
+.job[data-phase='stalled'] .jobState,
 .jobError {
   color: var(--tone-important);
 }

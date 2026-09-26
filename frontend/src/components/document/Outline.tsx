@@ -1,17 +1,19 @@
 /**
  * The outline: chapters (collapsible) with their sections and page ranges, chips for
  * what exists (summary, distillation, drafts waiting) and actions that queue work,
- * including the chapter's study material (derive skills from `GET /skills`).
- * Server-rendered, hydrated only for the actions.
+ * including the chapter's study material (derive skills from `GET /skills`), each with
+ * its job's live progress. Server-rendered, hydrated for the actions.
  */
 import { anchorLabel } from '../../lib/anchors';
 import { browserApi } from '../../lib/api/client';
 import type { TreeNode } from '../../lib/api/types/documents';
-import type { JobKind } from '../../lib/api/types/jobs';
+import type { JobKind, JobPublic } from '../../lib/api/types/jobs';
 import type { SkillPublic } from '../../lib/api/types/skills';
 import type { ChapterStatus, Standing } from '../../lib/documents/artifacts';
 import { pageSpan, sectionsOf } from '../../lib/documents/tree';
-import { deriveLabel, enqueue, needsDistillation } from './jobs';
+import { DeriveButton } from './DeriveButton';
+import { enqueue, madeKey, needsDistillation } from './jobs';
+import { useDeriveJobs } from './useDeriveJobs';
 import styles from './Outline.module.css';
 
 export interface OutlineProps {
@@ -23,6 +25,10 @@ export interface OutlineProps {
   actionable: boolean;
   /** Chapter-scope derive skills (quiz, FAQ, quotes, flashcards). */
   derive?: SkillPublic[];
+  /** The document's recent jobs, so study buttons show their state before the stream opens. */
+  initialJobs?: JobPublic[];
+  /** Study material already made, by `madeKey(skill, anchor)` → artifact id. */
+  made?: Record<string, string>;
 }
 
 const STANDING_WORDS: Record<Standing, string> = {
@@ -40,10 +46,10 @@ function Chip({ label, standing }: { label: string; standing: Standing | null })
   );
 }
 
-export function Outline({ documentId, slug, units, statuses, actionable, derive = [] }: OutlineProps) {
+export function Outline({ documentId, slug, units, statuses, actionable, derive = [], initialJobs = [], made = {} }: OutlineProps) {
   const read = (anchor: string) => `/documents/${slug}/read/${anchor}`;
   const run = (kind: JobKind, anchor: string) => void enqueue(browserApi, { kind, documentId, anchor });
-  const make = (skill: SkillPublic, anchor: string) => void enqueue(browserApi, { kind: 'derive', documentId, anchor, skill });
+  const { jobFor, queue, now, track } = useDeriveJobs(documentId, initialJobs);
 
   if (units.length === 0) {
     return <p className={styles.empty}>No chapters yet. They appear once the document is parsed.</p>;
@@ -93,20 +99,20 @@ export function Outline({ documentId, slug, units, statuses, actionable, derive 
                 {actionable && derive.length > 0 && !unit.meta.front_matter && !unit.meta.skip ? (
                   <div className={styles.derive} role="group" aria-label={`Study material for ${title}`}>
                     <span className={styles.deriveLabel}>Study material</span>
-                    {derive.map((skill) => {
-                      const blocked = needsDistillation(skill) && status?.distillation !== 'approved';
-                      return (
-                        <button
-                          key={skill.name}
-                          type="button"
-                          disabled={blocked}
-                          title={blocked ? 'Needs an approved chapter distillation first' : skill.description}
-                          onClick={() => make(skill, unit.anchor)}
-                        >
-                          {deriveLabel(skill)}
-                        </button>
-                      );
-                    })}
+                    {derive.map((skill) => (
+                      <DeriveButton
+                        key={skill.name}
+                        skill={skill}
+                        documentId={documentId}
+                        anchor={unit.anchor}
+                        job={jobFor(skill.name, unit.anchor)}
+                        queue={queue}
+                        now={now}
+                        madeId={made[madeKey(skill.name, unit.anchor)] ?? null}
+                        blocked={needsDistillation(skill) && status?.distillation !== 'approved' ? 'Needs an approved chapter distillation first' : null}
+                        onJob={track}
+                      />
+                    ))}
                   </div>
                 ) : null}
                 {sections.length > 0 ? (

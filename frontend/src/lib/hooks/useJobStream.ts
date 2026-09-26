@@ -6,13 +6,15 @@
  *
  * `seed` pre-fills jobs the island already knows (e.g. the one `POST /documents` just
  * returned) so they render before the first event arrives. Pass `enabled: false` to
- * hold the connection until there is something to watch. The connection reconnects
- * with backoff when the stream ends or fails (../jobs/connection.ts).
+ * hold the connection until there is something to watch. Islands on one page share a
+ * single connection (../jobs/shared.ts), which reconnects with backoff when the stream
+ * ends or fails (../jobs/connection.ts). `queue` is the queue's health: whether any
+ * worker will pick the jobs up.
  */
 import { useCallback, useEffect, useReducer } from 'react';
 import { browserApi } from '../api/client';
 import type { JobPublic } from '../api/types/jobs';
-import { connectJobStream } from '../jobs/connection';
+import { subscribeJobStream } from '../jobs/shared';
 import { initialJobStreamState, jobStreamReducer, type JobStreamState } from '../jobs/stream';
 
 export interface UseJobStreamOptions {
@@ -36,9 +38,9 @@ export function useJobStream({ documentId, enabled = true, seed }: UseJobStreamO
 
   useEffect(() => {
     if (!enabled || typeof EventSource === 'undefined') return;
-    return connectJobStream({
-      url: browserApi.url(JOB_STREAM_PATH, documentId ? { document_id: documentId } : undefined),
+    return subscribeJobStream(browserApi.url(JOB_STREAM_PATH, documentId ? { document_id: documentId } : undefined), {
       onJob: (job) => dispatch({ type: 'job', job }),
+      onQueue: (queue) => dispatch({ type: 'queue', queue }),
       onStatus: (type) => dispatch({ type }),
     });
   }, [documentId, enabled]);
@@ -48,6 +50,7 @@ export function useJobStream({ documentId, enabled = true, seed }: UseJobStreamO
   return {
     status: state.status,
     jobs: state.jobs,
+    queue: state.queue,
     /** Feed a job learnt elsewhere (a `POST` response) into the same state. */
     track,
   };

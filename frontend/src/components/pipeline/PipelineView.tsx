@@ -12,6 +12,7 @@ import { sortedJobs } from '../../lib/jobs/stream';
 import { PausedNotice } from '../common/PausedNotice';
 import type { DocumentLabel } from '../review/api';
 import { FailedRow, RecentRow, RunningRow } from './JobRows';
+import { QueueBanner } from './QueueBanner';
 import { countKinds, countStates, filterJobs, KIND_LABELS, stageProgress, type JobFilters } from './model';
 import { StageTrack } from './StageTrack';
 import { useNow } from './useNow';
@@ -30,7 +31,7 @@ const STREAM_WORDS = { connecting: 'Connecting…', live: 'Live', reconnecting: 
 const RECENT = 25;
 
 export function PipelineView({ jobs: seed, documents: initialDocuments, initialFilters = {}, api = browserApi, live = true }: PipelineViewProps) {
-  const { jobs: byId, status, track } = useJobStream({ seed, enabled: live });
+  const { jobs: byId, status, queue, track } = useJobStream({ seed, enabled: live });
   const [documents, setDocuments] = useState(initialDocuments);
   const [filters, setFilters] = useState<JobFilters>(initialFilters);
   const all = useMemo(() => sortedJobs(byId), [byId]);
@@ -44,7 +45,7 @@ export function PipelineView({ jobs: seed, documents: initialDocuments, initialF
   const running = shown.filter((j) => j.state === 'running' || j.state === 'queued');
   const failed = shown.filter((j) => j.state === 'failed');
   const recent = shown.filter((j) => j.state === 'done' || j.state === 'skipped').slice(0, RECENT);
-  const now = useNow(running.some((j) => j.state === 'running'));
+  const now = useNow(running.length > 0);
 
   const paused = documents.filter((d) => d.paused);
   const pausedIds = new Set(paused.map((d) => d.id));
@@ -76,6 +77,8 @@ export function PipelineView({ jobs: seed, documents: initialDocuments, initialF
           ))}
         </ul>
       </div>
+
+      <QueueBanner queue={queue} />
 
       {paused.map((doc) =>
         doc.paused ? (
@@ -164,7 +167,7 @@ export function PipelineView({ jobs: seed, documents: initialDocuments, initialF
         {running.length === 0 ? <p className={styles.muted}>Nothing is running. The worker picks up queued jobs as they arrive.</p> : null}
         <ul className={styles.jobs}>
           {running.map((job) => (
-            <RunningRow key={job.id} job={job} title={title(job)} now={now} api={api} onChanged={track} />
+            <RunningRow key={job.id} job={job} title={title(job)} now={now} queue={queue} api={api} onChanged={track} />
           ))}
         </ul>
       </section>

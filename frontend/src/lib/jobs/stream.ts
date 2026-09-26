@@ -2,16 +2,18 @@
  * Pure state for `GET /jobs/stream` (backend/app/api/routes/job_events.py).
  *
  * The server emits `event: job` with a `JobPublic` as data whenever a job's state,
- * attempts or finish time change (the first poll is a snapshot of live and recent
- * jobs), and `event: end {reason}` when the stream hits `max_seconds` or the server
- * shuts down. ./connection.ts reconnects, so the reducer must tolerate replays: an
+ * attempts, finish time or place in line change (the first poll is a snapshot of live
+ * and recent jobs), `event: queue` with a `QueueStatus` whenever the queue's health
+ * changes (who is polling, what nobody runs), and `event: end {reason}` when the stream
+ * hits `max_seconds` or the server shuts down. ./connection.ts reconnects, so the reducer must tolerate replays: an
  * event only replaces what we hold when it is not older than it.
  */
-import type { JobPublic } from '../api/types/jobs';
+import type { JobPublic, QueueStatus } from '../api/types/jobs';
 import { parseData } from '../sse';
 
 export type JobStreamEvent =
   | { type: 'job'; job: JobPublic }
+  | { type: 'queue'; queue: QueueStatus }
   | { type: 'open' }
   | { type: 'error' }
   | { type: 'end' };
@@ -22,9 +24,11 @@ export interface JobStreamState {
   status: StreamStatus;
   /** Latest known version of each job, by id. */
   jobs: Readonly<Record<string, JobPublic>>;
+  /** The latest queue health, or null before the first `queue` event. */
+  queue: QueueStatus | null;
 }
 
-export const initialJobStreamState: JobStreamState = { status: 'connecting', jobs: {} };
+export const initialJobStreamState: JobStreamState = { status: 'connecting', jobs: {}, queue: null };
 
 const STATE_RANK: Record<JobPublic['state'], number> = {
   queued: 0,
@@ -36,10 +40,15 @@ const STATE_RANK: Record<JobPublic['state'], number> = {
 
 /**
  * True when `next` describes the same job at a later (or equal) point in its life.
- * Retries go back to `queued` with more attempts, so attempts dominate state.
+ * `run_after` only moves forward — a failed attempt backs off, a stopping worker hands
+ * its job back — and each time the job returns to `queued` from `running`, so a later
+ * `run_after` wins first. Otherwise attempts dominate state (a claim adds one).
  */
 export function isNewer(next: JobPublic, current: JobPublic | undefined): boolean {
   if (!current) return true;
+  const nextAfter = Date.parse(next.run_after ?? '');
+  const currentAfter = Date.parse(current.run_after ?? '');
+  if (!Number.isNaN(nextAfter) && !Number.isNaN(currentAfter) && nextAfter !== currentAfter) return nextAfter > currentAfter;
   if (next.attempts !== current.attempts) return next.attempts > current.attempts;
   return STATE_RANK[next.state] >= STATE_RANK[current.state];
 }
@@ -52,6 +61,8 @@ export function jobStreamReducer(state: JobStreamState, event: JobStreamEvent): 
       return { ...state, status: state.status === 'closed' ? 'closed' : 'reconnecting' };
     case 'end':
       return { ...state, status: 'reconnecting' };
+    case 'queue':
+      return { ...state, queue: event.queue };
     case 'job': {
       const current = state.jobs[event.job.id];
       if (!isNewer(event.job, current)) return state;
@@ -67,6 +78,13 @@ export function parseJobEvent(data: string): JobPublic | null {
   if (value && typeof value.id === 'string' && typeof value.state === 'string' && typeof value.kind === 'string') {
     return value as JobPublic;
   }
+  return null;
+}
+
+/** Parse one `queue` payload; `null` for anything that is not a queue status. */
+export function parseQueueEvent(data: string): QueueStatus | null {
+  const value = parseData<Partial<QueueStatus>>(data);
+  if (value && Array.isArray(value.workers) && Array.isArray(value.unclaimed_kinds)) return value as QueueStatus;
   return null;
 }
 

@@ -28,7 +28,7 @@ describe('<PipelineView>', () => {
 
     await waitFor(() => expect(calls).toEqual([{ method: 'POST', path: 'jobs/f1/retry', body: undefined }]));
     expect(within(failures).getByText('Queued again.')).toBeTruthy();
-    expect(within(screen.getByRole('region', { name: /Running and queued/ })).getByText('Derive')).toBeTruthy();
+    expect(within(screen.getByRole('region', { name: /Running and queued/ })).getByText('Make a quiz')).toBeTruthy();
   });
 
   it('cancels a queued job, which then leaves the running list', async () => {

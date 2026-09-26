@@ -5,8 +5,7 @@
  * `GET /skills`) does not, so asking twice for the same input costs nothing.
  */
 import type { ApiClient } from '../../lib/api/client';
-import type { ArtifactType } from '../../lib/api/types/artifacts';
-import type { JobAccepted, JobKind } from '../../lib/api/types/jobs';
+import type { JobAccepted, JobKind, JobPublic } from '../../lib/api/types/jobs';
 import type { SkillPublic } from '../../lib/api/types/skills';
 import { enqueueJob } from '../../lib/jobs/api';
 import { problemOf } from '../common/Problem';
@@ -35,18 +34,25 @@ export function jobName(kind: JobKind): string {
   return name.charAt(0).toUpperCase() + name.slice(1);
 }
 
-/** What each derive skill makes, as a command. */
-const DERIVE_LABELS: Partial<Record<ArtifactType, string>> = {
-  quiz: 'Make a quiz',
-  faq: 'Write an FAQ',
-  quote_set: 'Pick quotes',
-  flashcards: 'Make flashcards',
-  glossary: 'Make a glossary',
-  book_guide: 'Write the book guide',
+/** What each derive skill makes, as a command, by skill name (what a job records). */
+const DERIVE_LABELS: Readonly<Record<string, string>> = {
+  'make-quiz': 'Make a quiz',
+  'make-faq': 'Write an FAQ',
+  'extract-quotes': 'Pick quotes',
+  'make-flashcards': 'Make flashcards',
+  'make-glossary': 'Make a glossary',
+  'write-guide': 'Write the book guide',
 };
 
-export function deriveLabel(skill: Pick<SkillPublic, 'name' | 'artifact_type'>): string {
-  return (skill.artifact_type && DERIVE_LABELS[skill.artifact_type]) || skill.name;
+export function deriveLabel(skill: Pick<SkillPublic, 'name'>): string {
+  return DERIVE_LABELS[skill.name] ?? skill.name;
+}
+
+/** What a job does, for lists: a derive job by its skill and where it runs, any other
+ * by `name` (this module's `jobName` unless the surface has its own labels). */
+export function jobTitle(job: Pick<JobPublic, 'kind' | 'skill' | 'anchor'>, name: (kind: JobKind) => string = jobName): string {
+  if (job.kind !== 'derive' || !job.skill) return name(job.kind);
+  return job.anchor ? deriveLabel({ name: job.skill }) : `${deriveLabel({ name: job.skill })} · whole book`;
 }
 
 export type DeriveScope = 'chapter' | 'document';
@@ -70,6 +76,11 @@ export function needsDistillation(skill: Pick<SkillPublic, 'selector' | 'documen
   return DISTILLATION_SELECTORS.has(selector);
 }
 
+/** Key of the `made` maps (study material already made): skill and scope, `''` for the book. */
+export function madeKey(skill: string, anchor: string | null): string {
+  return `${skill}:${anchor ?? ''}`;
+}
+
 export interface EnqueueRequest {
   kind: JobKind;
   documentId: string;
@@ -79,8 +90,13 @@ export interface EnqueueRequest {
   skill?: SkillPublic;
 }
 
-/** Queue a job and say so; resolves to the job, or null when the request failed. */
-export async function enqueue(api: Pick<ApiClient, 'post' | 'delete'>, request: EnqueueRequest): Promise<JobAccepted | null> {
+/** Queue a job and say so; resolves to the job, or null when the request failed.
+ * `quiet` skips the success toast, for callers that show the job's progress in place. */
+export async function enqueue(
+  api: Pick<ApiClient, 'post' | 'delete'>,
+  request: EnqueueRequest,
+  { quiet = false }: { quiet?: boolean } = {},
+): Promise<JobAccepted | null> {
   // A derive with no anchor is book-wide study material; say so, as the chapter ones name theirs.
   const where = request.anchor ? ` for ${request.anchor}` : request.skill ? ' for the whole book' : '';
   const label = request.skill ? deriveLabel(request.skill) : jobLabel(request.kind);
@@ -92,7 +108,7 @@ export async function enqueue(api: Pick<ApiClient, 'post' | 'delete'>, request: 
       force: request.force ?? request.kind !== 'derive',
       ...(request.skill ? { skill: request.skill.name } : {}),
     });
-    toast(accepted.deduplicated ? `${label}${where}: already queued.` : `Queued: ${label.toLowerCase()}${where}.`, 'good');
+    if (!quiet) toast(accepted.deduplicated ? `${label}${where}: already queued.` : `Queued: ${label.toLowerCase()}${where}.`, 'good');
     return accepted;
   } catch (error) {
     const problem = problemOf(error);
