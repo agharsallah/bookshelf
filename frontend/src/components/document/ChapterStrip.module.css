@@ -1,0 +1,65 @@
+.strip {
+  --strip-h: 0.625rem;
+  display: flex;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.strip[data-size='lg'] {
+  --strip-h: 1.25rem;
+  gap: 3px;
+}
+
+.segment {
+  flex-basis: 0;
+  min-inline-size: 3px;
+}
+
+.segment a {
+  position: relative;
+  display: block;
+  block-size: var(--strip-h);
+  overflow: hidden;
+  border-radius: 2px;
+  background: var(--rule);
+  transition:
+    translate var(--dur-2) var(--ease-turn),
+    background var(--dur-1) var(--ease-out);
+}
+
+.segment[data-front] a {
+  background: color-mix(in oklab, var(--rule) 55%, transparent);
+}
+
+.fill {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  background: var(--ink-2);
+}
+
+.segment[data-finished] .fill {
+  background: var(--ink);
+}
+
+/* Where you are: the highlighter over the whole chapter, the read part inked on top. */
+.segment[data-current] a {
+  background: var(--marker);
+  box-shadow: 0 0 0 1.5px var(--ink);
+}
+
+.segment a:hover,
+.segment a:focus-visible {
+  translate: 0 -2px;
+  background: var(--accent-wash);
+}
+
+.segment[data-current] a:hover {
+  background: var(--marker);
+}
+
+.strip[data-size='lg'] .segment a {
+  border-radius: 3px;
+}

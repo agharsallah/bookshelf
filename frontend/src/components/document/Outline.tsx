@@ -1,10 +1,11 @@
 /**
  * The outline: one row per chapter, as a book's contents page, with its title opening
  * the reader where you left off, the one status worth flagging and how far you have read.
- * Each chapter's details open on request (or all at once): what exists (summary,
- * distillation), re-runs that queue work, its study material (derive skills from
- * `GET /skills`, each with its job's live progress) and its sections.
- * Server-rendered, hydrated for the toggles and actions.
+ * Each chapter's details open on request (or all at once): the chapter's own study
+ * material and its sections; in workshop mode also what exists (summary, distillation),
+ * re-runs that queue work and the study material to make (derive skills from
+ * `GET /skills`, each with its job's live progress). Server-rendered, hydrated for the
+ * toggles and actions.
  */
 import { useState } from 'react';
 import { browserApi } from '../../lib/api/client';
@@ -12,6 +13,7 @@ import type { ReadingPosition, TreeNode } from '../../lib/api/types/documents';
 import type { JobKind, JobPublic } from '../../lib/api/types/jobs';
 import type { SkillPublic } from '../../lib/api/types/skills';
 import type { ChapterStatus } from '../../lib/documents/artifacts';
+import type { AvailableMaterial } from '../../lib/documents/study';
 import { contentsSummary } from './contents';
 import { ContentsRow } from './ContentsRow';
 import { DeriveButton } from './DeriveButton';
@@ -34,9 +36,13 @@ export interface OutlineProps {
   made?: Record<string, string>;
   /** Your place in each chapter read so far, by chapter anchor. */
   positions?: Record<string, ReadingPosition>;
+  /** Each chapter's own study material that exists, by chapter anchor. */
+  study?: Record<string, AvailableMaterial[]>;
+  /** The chapter you are in, marked in the list. */
+  current?: string | null;
 }
 
-export function Outline({ documentId, slug, units, statuses, actionable, derive = [], initialJobs = [], made = {}, positions = {} }: OutlineProps) {
+export function Outline({ documentId, slug, units, statuses, actionable, derive = [], initialJobs = [], made = {}, positions = {}, study = {}, current = null }: OutlineProps) {
   const [open, setOpen] = useState<ReadonlySet<string>>(() => new Set());
   const run = (kind: JobKind, anchor: string) => void enqueue(browserApi, { kind, documentId, anchor });
   const { jobFor, queue, now, track } = useDeriveJobs(documentId, initialJobs);
@@ -46,6 +52,7 @@ export function Outline({ documentId, slug, units, statuses, actionable, derive 
   }
 
   const allOpen = open.size === units.length;
+  const summary = contentsSummary(units, statuses);
   const toggle = (anchor: string) =>
     setOpen((current) => {
       const next = new Set(current);
@@ -58,10 +65,10 @@ export function Outline({ documentId, slug, units, statuses, actionable, derive 
     const status = statuses[unit.anchor];
     const studies = derive.length > 0 && !unit.meta.front_matter && !unit.meta.skip;
     return (
-      <>
+      <div className={`${styles.workshopTools} workshop-only`}>
         {studies ? (
-          <div className={styles.group} role="group" aria-label={`Study material for ${title}`}>
-            <span className={styles.groupLabel}>Study material</span>
+          <div className={styles.group} role="group" aria-label={`Make study material for ${title}`}>
+            <span className={styles.groupLabel}>Make study material</span>
             <div className={styles.derive}>
               {derive.map((skill) => (
                 <DeriveButton
@@ -91,14 +98,17 @@ export function Outline({ documentId, slug, units, statuses, actionable, derive 
             </button>
           </div>
         </div>
-      </>
+      </div>
     );
   };
 
   return (
     <div className={styles.contents}>
       <div className={styles.bar}>
-        <p className={styles.summaryLine}>{contentsSummary(units, statuses)}</p>
+        <p className={styles.summaryLine}>
+          {summary.chapters}
+          {summary.work ? <span className="workshop-only"> · {summary.work}</span> : null}
+        </p>
         <button type="button" className={styles.expandAll} onClick={() => setOpen(allOpen ? new Set() : new Set(units.map((u) => u.anchor)))}>
           {allOpen ? 'Collapse all' : 'Expand all'}
         </button>
@@ -115,6 +125,8 @@ export function Outline({ documentId, slug, units, statuses, actionable, derive 
             open={open.has(unit.anchor)}
             onToggle={() => toggle(unit.anchor)}
             tools={toolsFor(unit, unit.heading ?? `Chapter ${index + 1}`)}
+            study={study[unit.anchor] ?? []}
+            current={unit.anchor === current}
             onDistilSection={actionable ? (anchor) => run('distil_section', anchor) : undefined}
           />
         ))}

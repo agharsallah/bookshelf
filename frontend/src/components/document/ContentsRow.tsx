@@ -1,12 +1,14 @@
 /**
  * One chapter of the contents: a single scannable row (number, title that opens the
- * reader where you left off, the one status worth flagging, how far you have read, pages)
- * and, on request, its details: what exists, the re-runs, its study material and sections.
+ * reader where you left off, how far you have read, pages and, in workshop mode, the one
+ * status worth flagging) and, on request, its details: its study material and sections,
+ * and in workshop mode what exists and the tools.
  */
 import type { ReactNode } from 'react';
 import { anchorLabel } from '../../lib/anchors';
 import type { ReadingPosition, TreeNode } from '../../lib/api/types/documents';
 import type { ChapterStatus, Standing } from '../../lib/documents/artifacts';
+import type { AvailableMaterial } from '../../lib/documents/study';
 import { isFinished, percent } from '../../lib/documents/reading';
 import { pageSpan, sectionsOf } from '../../lib/documents/tree';
 import { chapterBadge, readLink } from './contents';
@@ -24,6 +26,10 @@ export interface ContentsRowProps {
   tools?: ReactNode;
   /** Queue a section's distillation, when jobs can be queued. */
   onDistilSection?: (anchor: string) => void;
+  /** The chapter's own study material that exists. */
+  study?: AvailableMaterial[];
+  /** The chapter you are in (where "Continue reading" goes). */
+  current?: boolean;
 }
 
 const STANDING_WORDS: Record<Standing, string> = {
@@ -55,7 +61,7 @@ function Chip({ label, standing }: { label: string; standing: Standing | null })
   );
 }
 
-export function ContentsRow({ unit, index, slug, status, position, open, onToggle, tools, onDistilSection }: ContentsRowProps) {
+export function ContentsRow({ unit, index, slug, status, position, open, onToggle, tools, onDistilSection, study = [], current = false }: ContentsRowProps) {
   const read = (anchor: string) => `/documents/${slug}/read/${anchor}`;
   const title = unit.heading ?? `Chapter ${index + 1}`;
   const link = readLink(position, unit);
@@ -64,23 +70,24 @@ export function ContentsRow({ unit, index, slug, status, position, open, onToggl
   const panelId = `chapter-panel-${unit.anchor.replaceAll('/', '-')}`;
 
   return (
-    <li className={styles.chapter} data-front={unit.meta.front_matter ? '' : undefined} data-open={open ? '' : undefined}>
+    <li className={styles.chapter} data-front={unit.meta.front_matter ? '' : undefined} data-open={open ? '' : undefined} data-current={current ? '' : undefined}>
       <div className={styles.row}>
         <span className={styles.number} aria-hidden="true">
-          {unit.meta.front_matter ? '' : anchorLabel(unit.anchor)}
+          {unit.meta.front_matter ? '' : <span>{anchorLabel(unit.anchor)}</span>}
         </span>
         <a className={styles.title} href={read(link.anchor)}>
           {title}
           {link.label !== 'Read' ? <span className="visually-hidden">, {link.label.toLowerCase()}</span> : null}
+          {current ? <span className="visually-hidden">, you are here</span> : null}
         </a>
         <span className={styles.meta}>
           {badge ? (
             badge.href ? (
-              <a className={styles.badge} data-tone={badge.tone} href={badge.href}>
+              <a className={`${styles.badge} workshop-only`} data-tone={badge.tone} href={badge.href}>
                 {badge.text}
               </a>
             ) : (
-              <span className={styles.badge} data-tone={badge.tone}>
+              <span className={`${styles.badge} workshop-only`} data-tone={badge.tone}>
                 {badge.text}
               </span>
             )
@@ -109,8 +116,16 @@ export function ContentsRow({ unit, index, slug, status, position, open, onToggl
             <a className={styles.read} href={read(link.anchor)}>
               {link.label}
             </a>
-            <Chip label="Summary" standing={status?.summary ?? null} />
-            <Chip label="Distillation" standing={status?.distillation ?? null} />
+            {study.map((material) => (
+              <a key={material.kind} className={styles.studyLink} href={material.href}>
+                {material.label}
+                {material.standing !== 'approved' ? <span className={styles.draft}>draft</span> : null}
+              </a>
+            ))}
+            <span className={`${styles.chips} workshop-only`}>
+              <Chip label="Summary" standing={status?.summary ?? null} />
+              <Chip label="Distillation" standing={status?.distillation ?? null} />
+            </span>
           </div>
           {tools}
           {sections.length > 0 ? (
@@ -124,7 +139,7 @@ export function ContentsRow({ unit, index, slug, status, position, open, onToggl
                     {onDistilSection ? (
                       <button
                         type="button"
-                        className={styles.sectionAction}
+                        className={`${styles.sectionAction} workshop-only`}
                         onClick={() => onDistilSection(section.anchor)}
                         aria-label={`Distil section ${section.heading ?? section.anchor} again`}
                       >

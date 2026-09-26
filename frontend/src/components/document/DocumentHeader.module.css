@@ -10,16 +10,21 @@
 }
 
 .title {
-  max-width: 22em;
-  font-size: clamp(2rem, 5vw, var(--text-2xl));
-  font-weight: 450;
-  letter-spacing: -0.02em;
+  max-width: 20em;
+  font-size: var(--text-3xl);
+  font-weight: 560;
+  line-height: 1.04;
+  letter-spacing: -0.025em;
 }
 
 .authors {
   color: var(--ink-2);
   font-size: var(--text-md);
   font-style: italic;
+}
+
+.facts + .title {
+  margin-block-start: calc(-1 * var(--space-1));
 }
 
 .row {

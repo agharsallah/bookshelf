@@ -1,0 +1,191 @@
+---
+/**
+ * "Study this book": what the book became, each opening where it is read or practised
+ * (the brief and guide on their pages, flashcards, quiz, FAQ, quotes and the glossary
+ * on the study page). The brief and guide lead, larger; drafts say so. Without any,
+ * says where it comes from, and in workshop mode where to make it.
+ */
+import type { AvailableMaterial } from '../../lib/documents/study';
+
+interface Props {
+  materials: AvailableMaterial[];
+}
+
+const { materials } = Astro.props;
+const lead = materials.filter((m) => m.kind === 'brief' || m.kind === 'guide');
+const practice = materials.filter((m) => m.kind !== 'brief' && m.kind !== 'guide');
+
+/** One line drawing per kind, 24×24, stroked in the current colour. */
+const ICONS: Record<AvailableMaterial['kind'], string> = {
+  brief: 'M6 3h9l4 4v14H6z M15 3v4h4 M9 11h7 M9 14h7 M9 17h4',
+  guide: 'M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z M9 4v14 M15 6v14',
+  flashcards: 'M4 7h12v12H4z M8 3h12v12',
+  quiz: 'M4 5h16v14H4z M8 12l3 3 5-6',
+  faq: 'M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14 M12 17.5v.5 M4 4h16v13h-9l-4 3v-3H4z',
+  quotes: 'M5 17c2-1 3-3 3-6H5V6h5v5c0 4-2 6-5 7z M14 17c2-1 3-3 3-6h-3V6h5v5c0 4-2 6-5 7z',
+  glossary: 'M4 18L8.5 6h1L14 18 M5.5 14h7 M15 12h5 M15 16h5',
+};
+---
+
+{
+  materials.length > 0 ? (
+    <div class="shelf">
+      {lead.length > 0 && (
+        <ul class="lead" role="list">
+          {lead.map((m) => (
+            <li>
+              <a class="tile tile--lead" href={m.href}>
+                <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true">
+                  <path d={ICONS[m.kind]} />
+                </svg>
+                <span class="text">
+                  <span class="label">
+                    {m.label}
+                    {m.standing !== 'approved' && <span class="draft">Draft</span>}
+                  </span>
+                  <span class="hint">{m.hint}</span>
+                </span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
+      {practice.length > 0 && (
+        <ul class="practice" role="list">
+          {practice.map((m) => (
+            <li>
+              <a class="tile" href={m.href}>
+                <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+                  <path d={ICONS[m.kind]} />
+                </svg>
+                <span class="text">
+                  <span class="label">
+                    {m.label}
+                    {m.standing !== 'approved' && <span class="draft">Draft</span>}
+                  </span>
+                  <span class="hint">{m.hint}</span>
+                </span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  ) : (
+    <p class="none">
+      Nothing to study yet. The brief, guide and study sets are written from the chapter distillations once they are reviewed.
+      <span class="workshop-only"> Make them under “Make study material”.</span>
+    </p>
+  )
+}
+
+<style>
+  .shelf {
+    display: grid;
+    gap: var(--space-3);
+  }
+
+  .lead,
+  .practice {
+    display: grid;
+    gap: var(--space-3);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .lead {
+    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  }
+
+  .practice {
+    grid-template-columns: repeat(auto-fill, minmax(12.5rem, 1fr));
+  }
+
+  .tile {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+    block-size: 100%;
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-l);
+    background: var(--paper-raised);
+    color: var(--ink);
+    font-family: var(--font-ui);
+    text-decoration: none;
+    transition:
+      border-color var(--dur-1) var(--ease-out),
+      translate var(--dur-2) var(--ease-turn),
+      box-shadow var(--dur-2) var(--ease-out);
+  }
+
+  .tile--lead {
+    padding: var(--space-4) var(--space-5);
+    box-shadow: var(--shadow-lift);
+  }
+
+  .tile:hover,
+  .tile:focus-visible {
+    border-color: var(--ink);
+    translate: 0 -2px;
+    text-decoration: none;
+  }
+
+  svg {
+    flex: none;
+    margin-block-start: 0.1rem;
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .text {
+    display: grid;
+    gap: 0.1rem;
+  }
+
+  /* The label takes the highlighter stroke while you point at it. */
+  .label {
+    display: inline-flex;
+    align-items: baseline;
+    gap: var(--space-2);
+    inline-size: fit-content;
+    font-size: var(--text-ui);
+    font-weight: 700;
+    background: linear-gradient(to top, var(--marker) 0 40%, transparent 40%) no-repeat 0 0 / 0% 100%;
+    transition: background-size var(--dur-3) var(--ease-stroke);
+  }
+
+  .tile--lead .label {
+    font-size: var(--text-md);
+  }
+
+  .tile:hover .label,
+  .tile:focus-visible .label {
+    background-size: 100% 100%;
+  }
+
+  .hint {
+    color: var(--ink-3);
+    font-size: var(--text-sm);
+  }
+
+  .draft {
+    padding: 0 var(--space-2);
+    border: 1px dashed var(--tone-caution);
+    border-radius: var(--radius-pill);
+    color: var(--tone-caution);
+    font-size: var(--text-xs);
+    font-weight: 600;
+  }
+
+  .none {
+    max-inline-size: 60ch;
+    color: var(--ink-3);
+    font-family: var(--font-ui);
+    font-size: var(--text-ui);
+  }
+</style>

@@ -1,12 +1,15 @@
 ---
 /**
- * Document overview: the title page (editable details), the outline with what each
- * chapter has produced, the pipeline with live job progress, exports and actions, and
- * how far you have read, with a way to continue where you left off.
- * When the outline was guessed (`needs_review`) the fix-up editor opens first.
+ * Document overview: the title page with where you are in the book (continue reading,
+ * the chapter strip), what the book became to study (brief, guide, flashcards…), and the
+ * contents. Workshop mode adds the machinery: what each chapter has produced, re-runs,
+ * the pipeline with live job progress, making study material, editing the details and,
+ * when the outline was guessed (`needs_review`), the fix-up editor, opened first.
  */
 import BaseLayout from '../../../layouts/BaseLayout.astro';
+import ChapterStrip from '../../../components/document/ChapterStrip';
 import DocumentActions from '../../../components/document/DocumentActions';
+import StudyShelf from '../../../components/document/StudyShelf.astro';
 import DocumentHeader from '../../../components/document/DocumentHeader';
 import Outline from '../../../components/document/Outline';
 import OutlineEditor from '../../../components/document/OutlineEditor';
@@ -20,10 +23,11 @@ import type { Page } from '../../../lib/api/types';
 import type { ReadingPosition } from '../../../lib/api/types/documents';
 import type { JobPublic } from '../../../lib/api/types/jobs';
 import type { SkillPublic } from '../../../lib/api/types/skills';
-import { chapterStatus, madeIndex, pickBest, type ChapterStatus } from '../../../lib/documents/artifacts';
+import { chapterStatus, madeIndex, type ChapterStatus } from '../../../lib/documents/artifacts';
 import { getArtifacts, getDocument, getOutline, load } from '../../../lib/documents/server';
 import { bookProgress, continueTarget, percent, positionsByUnit } from '../../../lib/documents/reading';
 import { anchorLabel } from '../../../lib/anchors';
+import { availableMaterials, type AvailableMaterial } from '../../../lib/documents/study';
 import { defaultUnit, readingUnits } from '../../../lib/documents/tree';
 import { serverApi } from '../../../lib/api/server';
 
@@ -54,8 +58,6 @@ const units = data ? readingUnits(data.tree.nodes) : [];
 const statuses: Record<string, ChapterStatus> = Object.fromEntries(
   units.map((u) => [u.anchor, chapterStatus(data?.artifacts ?? [], u.anchor)]),
 );
-const brief = data ? pickBest(data.artifacts, 'book_brief', null) : null;
-const guide = data ? pickBest(data.artifacts, 'book_guide', null) : null;
 const first = defaultUnit(units);
 const reading = data?.reading ?? [];
 const positions = positionsByUnit(reading, units);
@@ -89,6 +91,13 @@ const facts = data
       .join(', ')
   : '';
 const exportsBase = data ? `/api/exports/${data.doc.slug}` : '';
+const study = data ? availableMaterials(data.doc.slug, data.artifacts) : [];
+const chapterStudy: Record<string, AvailableMaterial[]> = data
+  ? Object.fromEntries(
+      units.map((u) => [u.anchor, availableMaterials(data.doc.slug, data.artifacts, u.anchor)]).filter(([, found]) => found.length > 0),
+    )
+  : {};
+const added = data ? new Date(data.doc.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
 ---
 
 <BaseLayout title={data?.doc.title ?? 'Document'}>
@@ -138,44 +147,50 @@ const exportsBase = data ? `/api/exports/${data.doc.slug}` : '';
                   </a>
                 )
               )}
-              {brief ? (
-                <a class="secondary" href={`/documents/${data.doc.slug}/brief`}>
-                  Brief
-                  {brief.standing !== 'approved' && <span class="pill">draft</span>}
-                </a>
-              ) : null}
-              {guide ? (
-                <a class="secondary" href={`/documents/${data.doc.slug}/guide`}>
-                  Book guide
-                  {guide.standing !== 'approved' && <span class="pill">draft</span>}
-                </a>
-              ) : null}
-            </div>
-            {parsed && started && (
-              <div class="book-progress">
-                <div
-                  class="book-meter"
-                  role="progressbar"
-                  aria-label="Progress through the book"
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                  aria-valuenow={percent(book.progress)}
-                >
-                  <span style={`inline-size: ${percent(book.progress)}%`} />
-                </div>
-                <p>
-                  <strong>{percent(book.progress)}% read</strong> · {book.finished} of {plural(book.total, 'chapter')} finished
+              {parsed && (
+                <p class="book-progress">
+                  {started ? (
+                    <>
+                      <strong>{percent(book.progress)}% read</strong>
+                      <span>
+                        {book.finished} of {plural(book.total, 'chapter')} finished
+                      </span>
+                    </>
+                  ) : (
+                    <span>Not started yet</span>
+                  )}
                 </p>
+              )}
+            </div>
+            {parsed && units.length > 0 && (
+              <div
+                class="strip"
+                role="group"
+                aria-label="Progress through the book"
+                data-progress={percent(book.progress)}
+              >
+                <ChapterStrip slug={data.doc.slug} units={units} positions={positions} current={resume?.unit.anchor ?? null} size="lg" />
               </div>
             )}
           </div>
         </header>
 
+        {parsed && (
+          <section class="study" aria-labelledby="study-this-title">
+            <h2 id="study-this-title" class="section-title">Study this book</h2>
+            <StudyShelf materials={study} />
+          </section>
+        )}
+
         <div class="columns">
           <div class="main-col">
-            {data.doc.paused && <PausedNotice client:load documentRef={data.doc.slug} paused={data.doc.paused} />}
+            {data.doc.paused && (
+              <div class="workshop-only">
+                <PausedNotice client:load documentRef={data.doc.slug} paused={data.doc.paused} />
+              </div>
+            )}
             {needsReview && (
-              <section class="review-banner" aria-labelledby="fix-title">
+              <section class="review-banner workshop-only" aria-labelledby="fix-title">
                 <h2 id="fix-title">Check the chapters before distillation</h2>
                 <p>
                   This document had no usable table of contents, so its chapters were guessed from headings. Fix the
@@ -197,11 +212,13 @@ const exportsBase = data ? `/api/exports/${data.doc.slug}` : '';
                 initialJobs={data.jobs}
                 made={made}
                 positions={positions}
+                study={chapterStudy}
+                current={resume?.unit.anchor ?? null}
               />
             </section>
 
             {editable && (
-              <details class="fixup" open={needsReview}>
+              <details class="fixup workshop-only" open={needsReview}>
                 <summary>
                   <span class="fixup-title">Fix the outline</span>
                   <span class="fixup-hint">Rename, merge or split chapters and adjust their pages.</span>
@@ -219,10 +236,10 @@ const exportsBase = data ? `/api/exports/${data.doc.slug}` : '';
           </div>
 
           {parsed && documentDerive.length > 0 && (
-            <aside class="side side-material" aria-labelledby="study-title">
+            <aside class="side side-material workshop-only" aria-labelledby="study-title">
               <section class="card">
-                <h2 id="study-title" class="side-title">Study material</h2>
-                <p class="side-hint">For the whole book. Each chapter’s own quiz, FAQ, quotes and flashcards are in its details.</p>
+                <h2 id="study-title" class="side-title">Make study material</h2>
+                <p class="side-hint">For the whole book. Each chapter’s own sets are made from its details.</p>
                 <DocumentActions
                   client:visible
                   documentId={data.doc.id}
@@ -235,8 +252,19 @@ const exportsBase = data ? `/api/exports/${data.doc.slug}` : '';
             </aside>
           )}
 
-          <aside class="side side-ops" aria-label="Pipeline and exports">
-            <div class="card">
+          <aside class="side side-ops" aria-label="About this book">
+            <section class="card reading-only" aria-labelledby="about-title">
+              <h2 id="about-title" class="side-title">About this book</h2>
+              <dl class="facts">
+                <div><dt>Chapters</dt><dd>{units.filter((u) => !u.meta.front_matter).length}</dd></div>
+                {data.doc.page_count ? <div><dt>Pages</dt><dd>{data.doc.page_count}</dd></div> : null}
+                {data.doc.counts.figures ? <div><dt>Figures</dt><dd>{data.doc.counts.figures}</dd></div> : null}
+                {data.doc.counts.notes ? <div><dt>Your notes</dt><dd>{data.doc.counts.notes}</dd></div> : null}
+                <div><dt>Added</dt><dd>{added}</dd></div>
+              </dl>
+            </section>
+
+            <div class="card workshop-only">
               <PipelineTimeline
                 client:load
                 documentId={data.doc.id}
@@ -246,7 +274,7 @@ const exportsBase = data ? `/api/exports/${data.doc.slug}` : '';
               />
             </div>
 
-            <section aria-labelledby="run-title" class="card">
+            <section aria-labelledby="run-title" class="card workshop-only">
               <h2 id="run-title" class="side-title">Run again</h2>
               <p class="side-hint">Re-parsing rebuilds the outline from the file.</p>
               <DocumentActions client:visible documentId={data.doc.id} kinds={parsed ? ['parse', 'brief'] : ['parse']} />
@@ -259,7 +287,7 @@ const exportsBase = data ? `/api/exports/${data.doc.slug}` : '';
                 <li><a href={`${exportsBase}.json`}>JSON</a><span>in the render contract</span></li>
                 <li><a href={`${exportsBase}/tables.csv`}>Tables</a><span>as CSV</span></li>
               </ul>
-              <p class="source">
+              <p class="source workshop-only">
                 {data.doc.source_uri ? <a href={data.doc.source_uri}>Original article</a> : data.doc.source_path}
               </p>
             </section>
@@ -306,57 +334,29 @@ const exportsBase = data ? `/api/exports/${data.doc.slug}` : '';
   .primary-actions {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--space-3);
-    align-items: stretch;
+    gap: var(--space-3) var(--space-5);
+    align-items: center;
     font-family: var(--font-ui);
     font-size: var(--text-ui);
   }
 
-  .read,
-  .secondary {
+  .read {
     display: inline-flex;
     flex-direction: column;
     justify-content: center;
-    min-block-size: 2.75rem;
+    min-block-size: 3rem;
     padding: var(--space-2) var(--space-5);
     border-radius: var(--radius-m);
-    font-weight: 600;
+    background: var(--accent);
+    color: var(--on-accent);
+    font-weight: 700;
     text-decoration: none;
-    transition:
-      background var(--dur-1) var(--ease-out),
-      border-color var(--dur-1) var(--ease-out);
-  }
-
-  .read {
-    background: var(--ink);
-    color: var(--paper);
+    transition: background var(--dur-1) var(--ease-out);
   }
 
   .read:hover {
-    background: var(--accent);
-  }
-
-  .secondary {
-    flex-direction: row;
-    align-items: center;
-    gap: var(--space-2);
-    border: 1px solid var(--rule-strong);
-    background: var(--paper-raised);
-    color: var(--ink);
-  }
-
-  .secondary:hover {
-    border-color: var(--accent);
-    color: var(--accent);
-  }
-
-  .pill {
-    padding: 0 var(--space-2);
-    border: 1px dashed var(--tone-caution);
-    border-radius: 999px;
-    color: var(--tone-caution);
-    font-size: var(--text-xs);
-    font-weight: 500;
+    background: var(--accent-strong);
+    text-decoration: none;
   }
 
   .read-where {
@@ -372,8 +372,6 @@ const exportsBase = data ? `/api/exports/${data.doc.slug}` : '';
 
   .book-progress {
     display: grid;
-    gap: var(--space-2);
-    max-inline-size: 28rem;
     color: var(--ink-3);
     font-family: var(--font-ui);
     font-size: var(--text-sm);
@@ -381,21 +379,55 @@ const exportsBase = data ? `/api/exports/${data.doc.slug}` : '';
   }
 
   .book-progress strong {
-    color: var(--ink-2);
+    color: var(--ink);
+    font-size: var(--text-lg);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+  }
+
+  /* The one moment on arrival: what you have read inks itself into the strip. */
+  .strip :global(li span[aria-hidden='true']) {
+    animation: ink-in var(--dur-4) var(--ease-stroke) 200ms both;
+    transform-origin: left center;
+  }
+
+  @keyframes ink-in {
+    from {
+      transform: scaleX(0);
+    }
+  }
+
+  .study {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .facts {
+    display: grid;
+    gap: var(--space-2);
+    margin: 0;
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+  }
+
+  .facts div {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding-block-end: var(--space-2);
+    border-block-end: 1px dotted var(--rule);
+  }
+
+  .facts dt {
+    color: var(--ink-3);
+  }
+
+  .facts dd {
+    margin: 0;
+    color: var(--ink);
     font-weight: 600;
-  }
-
-  .book-meter {
-    block-size: 6px;
-    border-radius: 3px;
-    background: var(--rule);
-    overflow: hidden;
-  }
-
-  .book-meter span {
-    display: block;
-    block-size: 100%;
-    background: var(--accent);
+    font-variant-numeric: tabular-nums;
   }
 
   /* The contents on the left; the book-wide study material, then the pipeline, on the right. */

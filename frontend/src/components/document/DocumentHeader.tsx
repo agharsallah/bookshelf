@@ -1,6 +1,6 @@
 /**
- * The document's title page: title, authors, year and tags, editable in place.
- * Saving sends only what changed (`PATCH /documents/{ref}`).
+ * The document's title page: title, authors, year and tags, editable in place in
+ * workshop mode. Saving sends only what changed (`PATCH /documents/{ref}`).
  */
 import { useState, type SubmitEvent } from 'react';
 import { browserApi } from '../../lib/api/client';
@@ -127,7 +127,7 @@ export function DocumentHeader({ slug, initial, facts }: DocumentHeaderProps) {
   return (
     <div className={styles.header}>
       <p className={styles.facts}>{facts}</p>
-      <h1 className={styles.title}>{meta.title}</h1>
+      <h1 className={`${styles.title} book-title`}>{meta.title}</h1>
       {meta.authors.length > 0 ? <p className={styles.authors}>{meta.authors.join(', ')}</p> : null}
       <div className={styles.row}>
         {meta.year !== null ? <span className={styles.year}>{meta.year}</span> : null}
@@ -136,7 +136,7 @@ export function DocumentHeader({ slug, initial, facts }: DocumentHeaderProps) {
             {tag}
           </a>
         ))}
-        <button type="button" className={styles.edit} onClick={() => setDraft(toDraft(meta))}>
+        <button type="button" className={`${styles.edit} workshop-only`} onClick={() => setDraft(toDraft(meta))}>
           Edit details
         </button>
       </div>

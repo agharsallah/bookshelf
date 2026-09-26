@@ -40,14 +40,14 @@ describe('contentsSummary', () => {
   const units = [unit('front', { front_matter: true }), unit('ch01'), unit('ch02'), unit('ch03', { skip: true })];
 
   it('counts chapters (not front matter), the distilled ones among those distilled at all, and drafts waiting', () => {
-    expect(contentsSummary(units, { ch01: status({ distillation: 'approved' }), ch02: status({ waiting: 2 }), front: status({ waiting: 1 }) })).toBe(
-      '3 chapters · 1 distilled · 3 to review',
-    );
+    expect(contentsSummary(units, { ch01: status({ distillation: 'approved' }), ch02: status({ waiting: 2 }), front: status({ waiting: 1 }) })).toEqual({
+      chapters: '3 chapters',
+      work: '1 distilled · 3 to review',
+    });
   });
 
   it('says when every chapter that can be is distilled', () => {
-    expect(contentsSummary(units, { ch01: status({ distillation: 'approved' }), ch02: status({ distillation: 'approved' }) })).toBe(
-      '3 chapters · all distilled',
-    );
+    expect(contentsSummary(units, { ch01: status({ distillation: 'approved' }), ch02: status({ distillation: 'approved' }) }).work).toBe('all distilled');
+    expect(contentsSummary([unit('front', { front_matter: true })], {})).toEqual({ chapters: '0 chapters', work: null });
   });
 });

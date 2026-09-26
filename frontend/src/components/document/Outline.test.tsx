@@ -82,6 +82,29 @@ describe('<Outline> chapter details', () => {
   it('flags drafts waiting for review on the row, linking to the queue', () => {
     const [, flows] = renderOutline({ statuses: { ch01: approved, ch02: { ...approved, waiting: 2 } } });
     expect(within(flows!).getByRole('link', { name: '2 to review' }).getAttribute('href')).toBe('/review');
-    expect(screen.getByText('3 chapters · 2 distilled · 2 to review')).toBeTruthy();
+    const line = screen.getByText('3 chapters');
+    expect(line.textContent).toBe('3 chapters · 2 distilled · 2 to review');
+    expect(within(line).getByText(/2 distilled/).className).toBe('workshop-only');
+  });
+
+  it('keeps the machinery for workshop mode and offers the chapter’s own study material to everyone', async () => {
+    const faq = { kind: 'faq', label: 'FAQ', href: '/documents/meadows/study/faq?chapter=ch01', standing: 'approved' } as const;
+    render(
+      <Outline
+        documentId="d1"
+        slug="meadows"
+        units={units}
+        statuses={{ ch01: approved }}
+        actionable
+        study={{ ch01: [{ ...faq, type: 'faq', hint: '', bookOnly: false, artifactId: 'a1' }] }}
+        current="ch02"
+      />,
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Show details for Stocks' }));
+    const panel = screen.getByRole('region', { name: 'Details for Stocks' });
+    expect(within(panel).getByRole('link', { name: 'FAQ' }).getAttribute('href')).toBe(faq.href);
+    expect(within(panel).getByRole('button', { name: 'Summarize' }).closest('.workshop-only')).not.toBeNull();
+    expect(within(panel).getByText('Distillation').closest('.workshop-only')).not.toBeNull();
+    expect(screen.getByRole('link', { name: /Flows.*you are here/ })).toBeTruthy();
   });
 });

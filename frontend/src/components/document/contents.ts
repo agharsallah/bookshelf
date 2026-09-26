@@ -43,17 +43,22 @@ export function chapterBadge(status: ChapterStatus | undefined, unit: Pick<TreeN
   return { tone: 'quiet', text: 'Not distilled' };
 }
 
-/** "20 chapters · 18 distilled · 3 to review": the list at a glance. */
-export function contentsSummary(units: readonly Pick<TreeNode, 'anchor' | 'meta'>[], statuses: Record<string, ChapterStatus>): string {
+export interface ContentsSummary {
+  /** What a reader needs: "29 chapters". */
+  chapters: string;
+  /** What the workshop adds: "all distilled · 3 to review", or null when there is nothing to say. */
+  work: string | null;
+}
+
+/** "29 chapters", then "18 distilled · 3 to review" for the workshop: the list at a glance. */
+export function contentsSummary(units: readonly Pick<TreeNode, 'anchor' | 'meta'>[], statuses: Record<string, ChapterStatus>): ContentsSummary {
   const chapters = units.filter((u) => !u.meta.front_matter);
   const distillable = chapters.filter((u) => !u.meta.skip);
   const distilled = distillable.filter((u) => statuses[u.anchor]?.distillation === 'approved').length;
   const waiting = units.reduce((sum, u) => sum + (statuses[u.anchor]?.waiting ?? 0), 0);
-  return [
-    plural(chapters.length, 'chapter'),
+  const work = [
     distillable.length > 0 ? (distilled === distillable.length ? 'all distilled' : `${distilled} distilled`) : null,
     waiting > 0 ? `${waiting} to review` : null,
-  ]
-    .filter(Boolean)
-    .join(' · ');
+  ].filter(Boolean);
+  return { chapters: plural(chapters.length, 'chapter'), work: work.length > 0 ? work.join(' · ') : null };
 }
