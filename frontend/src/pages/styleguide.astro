@@ -63,8 +63,9 @@ const SECTIONS = [
       <header class="intro">
         <h1>Styleguide</h1>
         <p>
-          Vellum and ink. A reading serif for what the books say, a crisp grotesk for the tool around
-          them, and verdigris for everything that points back to a source.
+          Ink and highlighter. Cool paper and graphite, a serif for what the books say, a grotesk for
+          the tool around them, fountain-pen blue for everything you can follow or press, and one
+          highlighter for where you are.
         </p>
       </header>
 
@@ -73,16 +74,27 @@ const SECTIONS = [
         <Swatches
           title="Paper and ink"
           tokens={[
-            { name: '--paper', note: 'page' },
-            { name: '--paper-raised', note: 'figures, popovers' },
+            { name: '--paper', note: 'the desk' },
+            { name: '--paper-raised', note: 'sheets: the book’s content' },
             { name: '--paper-sunken', note: 'code' },
             { name: '--rule', note: 'hairlines' },
             { name: '--ink', note: 'text' },
             { name: '--ink-2', note: 'secondary' },
             { name: '--ink-3', note: 'muted, still AA' },
-            { name: '--accent', note: 'links, cites, focus' },
+            { name: '--accent', note: 'links, cites, actions, focus' },
           ]}
         />
+        <Swatches
+          title="The highlighter"
+          tokens={[
+            { name: '--marker', note: 'where you are, what is new, what you knew' },
+            { name: '--marker-soft', note: 'a hover preview of the stroke' },
+          ]}
+        />
+        <p class="lede">
+          The highlighter is spent in one place at a time: <span class="marker">the page you are on</span>, the chapter you
+          are in, the answer that was right. Buttons never wear it.
+        </p>
         <Swatches
           title="Callout tones"
           tokens={CALLOUT_TONES.map((tone) => ({ name: `--tone-${tone}`, note: TONES[tone].label }))}
