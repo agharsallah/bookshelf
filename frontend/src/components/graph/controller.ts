@@ -8,14 +8,47 @@
  * (re-focus, show more, depth) the simulation ticks on animation frames until it
  * cools, then the loop stops. On a re-focus the camera first compensates for the shift (nothing jumps), then glides
  * to the new centre. With reduced motion the layout is settled off-screen and drawn once.
+ *
+ * What is laid out, and how it is framed, is the `LayoutKit`'s: the neighbourhood's rings
+ * by default, the map's free layout (`../atlas/layout`) there. A kit may `bloom`: the
+ * first picture is still settled off-screen, then grows out from the centre into place.
+ * A lens change (`setLens`) cross-fades what is dimmed; `glideTo` brings a node to the
+ * middle; after a change that reshapes the picture the camera refits once it settles,
+ * unless you have moved it yourself in the meantime.
  */
 import { centerOn, edgeAt, nodeAt, toWorld, zoomAt, type Camera, type Point } from './geometry';
-import { createLayout, positionsOf, recentre, RING, seedPositions, settle, type Layout } from './layout';
+import { createLayout, positionsOf, recentre, RING, seedPositions, settle, type Layout, type Positions } from './layout';
 import { neighbours, type GraphModel } from './model';
 import type { GraphPalette } from './palette';
-import { drawScene } from './draw';
+import { drawScene, type Lens } from './draw';
 
 export type Selection = { kind: 'node' | 'edge'; id: string } | null;
+
+type AnyModel = GraphModel<unknown, unknown>;
+
+export interface LayoutKit {
+  /** A stopped simulation over `model`, starting from `known` positions where it can. */
+  create(model: AnyModel, known: Positions): Layout;
+  /** The camera that frames the picture in a `width × height` viewport. */
+  fit(model: AnyModel, layout: Layout, width: number, height: number): Camera;
+  /** Dotted guides at each ring's radius. */
+  rings: boolean;
+  /** Grow the first picture out from the centre instead of drawing it finished. */
+  bloom: boolean;
+}
+
+/** One focal node pinned at the origin, its rings at depth × RING. */
+export const NEIGHBOURHOOD_KIT: LayoutKit = {
+  create: (model, known) => createLayout(model, seedPositions(model, known)),
+  fit: (model, _layout, width, height) => {
+    const depth = Math.max(1, ...model.nodes.map((n) => n.depth));
+    const span = depth * RING + 70;
+    const k = Math.max(0.4, Math.min(1.3, Math.min(width, height) / 2 / span));
+    return centerOn({ x: 0, y: 0 }, width || 1, height || 1, k);
+  },
+  rings: true,
+  bloom: false,
+};
 
 export interface ControllerEvents {
   onSelect: (selection: Selection) => void;
@@ -23,10 +56,14 @@ export interface ControllerEvents {
 }
 
 const TWEEN_MS = 520;
+const BLOOM_MS = 900;
+const LENS_MS = 280;
 const CLICK_SLOP = 4;
 
+const easeOut = (t: number) => 1 - (1 - t) ** 3;
+
 export class GraphController {
-  private model: GraphModel | null = null;
+  private model: AnyModel | null = null;
   private layout: Layout | null = null;
   private palette: GraphPalette | null = null;
   private selected: Selection = null;
@@ -41,12 +78,18 @@ export class GraphController {
   private frame = 0;
   private reduced = false;
   private drag: { start: Point; cam: Camera; moved: boolean } | null = null;
+  private bloom: { start: number; to: Map<string, Point> } | null = null;
+  private lens: Lens | null = null;
+  private lensFade: { from: Lens | null; start: number } | null = null;
+  /** Frame the picture again once the simulation cools (cleared by a pan or zoom). */
+  private refit = false;
   private readonly ctx: CanvasRenderingContext2D | null;
   private readonly detach: () => void;
 
   constructor(
     private readonly canvas: HTMLCanvasElement,
     private readonly events: ControllerEvents,
+    private kit: LayoutKit = NEIGHBOURHOOD_KIT,
   ) {
     this.ctx = canvas.getContext('2d');
     this.detach = this.listen();
@@ -76,6 +119,36 @@ export class GraphController {
     this.request();
   }
 
+  /** Dim what the lens leaves out, fading from the previous lens. */
+  setLens(lens: Lens | null): void {
+    if (lens === this.lens) return;
+    this.lensFade = this.reduced ? null : { from: this.lens, start: performance.now() };
+    this.lens = lens;
+    this.request();
+  }
+
+  /** Swap how the picture is laid out (the map's grouping), reflowing from where it is. */
+  setKit(kit: LayoutKit): void {
+    if (kit === this.kit) return;
+    this.kit = kit;
+    if (!this.model || !this.layout) return;
+    const known = positionsOf(this.layout);
+    this.layout.simulation.stop();
+    this.layout = kit.create(this.model, known);
+    this.reflow();
+  }
+
+  /** Glide the camera until `id` sits in the middle, zooming in a little if far out. */
+  glideTo(id: string): void {
+    const node = this.layout?.byId.get(id);
+    if (!node || this.width === 0) return;
+    this.refit = false;
+    const to = centerOn(node, this.width, this.height, Math.max(this.cam.k, 1.1));
+    this.tween = this.reduced ? null : { from: this.cam, to, start: performance.now() };
+    if (this.reduced) this.cam = to;
+    this.request();
+  }
+
   resize(width: number, height: number, dpr: number): void {
     const first = this.width === 0;
     this.width = width;
@@ -87,7 +160,7 @@ export class GraphController {
     this.request();
   }
 
-  setModel(model: GraphModel, reducedMotion: boolean): void {
+  setModel(model: AnyModel, reducedMotion: boolean): void {
     const previous = this.layout ? positionsOf(this.layout) : new Map<string, Point>();
     const refocus = this.model !== null && this.model.focus !== model.focus;
     let known: Map<string, Point> = previous;
@@ -100,29 +173,56 @@ export class GraphController {
     this.layout?.simulation.stop();
     this.model = model;
     this.reduced = reducedMotion;
-    this.layout = createLayout(model, seedPositions(model, known));
+    this.layout = this.kit.create(model, known);
     this.hoverNode = null;
     this.hoverEdge = null;
-    const target = this.fit();
     if (reducedMotion || previous.size === 0) {
-      // First paint (and reduced motion): settle off-screen, draw the finished picture.
+      // First paint (and reduced motion): settle off-screen, draw the finished picture…
       settle(this.layout);
-      this.cam = target;
+      this.cam = this.fit();
       this.tween = null;
+      // …or, for a kit that blooms, grow it out from the centre into those places.
+      if (!reducedMotion && previous.size === 0 && this.kit.bloom) this.startBloom();
     } else if (refocus) {
       // …then glide to the new centre while the layout reflows.
-      this.tween = { from: this.cam, to: target, start: performance.now() };
+      this.tween = { from: this.cam, to: this.fit(), start: performance.now() };
+    } else {
+      this.refit = true; // show more, a filter: frame the new picture once it settles
     }
     this.request();
   }
 
+  private reflow(): void {
+    if (!this.layout) return;
+    if (this.reduced) {
+      settle(this.layout);
+      this.cam = this.fit();
+    } else {
+      this.layout.simulation.alpha(0.7);
+      this.refit = true;
+    }
+    this.request();
+  }
+
+  private startBloom(): void {
+    if (!this.layout) return;
+    const to = positionsOf(this.layout);
+    for (const n of this.layout.nodes) {
+      n.x *= 0.04;
+      n.y *= 0.04;
+    }
+    this.bloom = { start: performance.now(), to };
+  }
+
   zoomBy(factor: number): void {
     this.tween = null;
+    this.refit = false;
     this.cam = zoomAt(this.cam, { x: this.width / 2, y: this.height / 2 }, factor);
     this.request();
   }
 
   resetView(): void {
+    this.refit = false;
     const to = this.fit();
     this.tween = this.reduced ? null : { from: this.cam, to, start: performance.now() };
     if (this.reduced) this.cam = to;
@@ -130,10 +230,11 @@ export class GraphController {
   }
 
   private fit(): Camera {
-    const depth = Math.max(1, ...(this.model?.nodes.map((n) => n.depth) ?? [1]));
-    const span = depth * RING + 70;
-    const k = Math.max(0.4, Math.min(1.3, Math.min(this.width, this.height) / 2 / span));
-    return centerOn({ x: 0, y: 0 }, this.width || 1, this.height || 1, k);
+    if (!this.model || !this.layout) return centerOn({ x: 0, y: 0 }, this.width || 1, this.height || 1, 1);
+    // Mid-bloom, frame where the marks are going, not where they are.
+    const to = this.bloom?.to;
+    const layout = to ? { ...this.layout, nodes: this.layout.nodes.map((n) => ({ ...n, ...to.get(n.id) })) } : this.layout;
+    return this.kit.fit(this.model, layout, this.width || 1, this.height || 1);
   }
 
   private request(): void {
@@ -147,10 +248,30 @@ export class GraphController {
   private step(now: number): void {
     let busy = false;
     const sim = this.layout?.simulation;
-    if (sim && !this.reduced && sim.alpha() >= sim.alphaMin()) {
+    if (this.bloom && this.layout) {
+      const t = Math.min(1, (now - this.bloom.start) / BLOOM_MS);
+      // Farther nodes set out a little later, so the picture unfolds rather than zooms.
+      const reach = Math.max(1, ...[...this.bloom.to.values()].map((p) => Math.hypot(p.x, p.y)));
+      for (const n of this.layout.nodes) {
+        const to = this.bloom.to.get(n.id);
+        if (!to) continue;
+        const delay = 0.35 * (Math.hypot(to.x, to.y) / reach);
+        const e = easeOut(Math.max(0, Math.min(1, (t - delay) / (1 - delay))));
+        n.x = to.x * (0.04 + 0.96 * e);
+        n.y = to.y * (0.04 + 0.96 * e);
+      }
+      if (t >= 1) this.bloom = null;
+      busy = true;
+    } else if (sim && !this.reduced && sim.alpha() >= sim.alphaMin()) {
       sim.tick(sim.alpha() > 0.3 ? 2 : 1);
       busy = true;
+      if (sim.alpha() < sim.alphaMin() && this.refit) {
+        this.refit = false;
+        this.tween = { from: this.cam, to: this.fit(), start: now };
+      }
     }
+    if (this.lensFade && now - this.lensFade.start >= LENS_MS) this.lensFade = null;
+    if (this.lensFade) busy = true;
     if (this.tween) {
       const t = Math.min(1, (now - this.tween.start) / TWEEN_MS);
       const e = 1 - (1 - t) ** 3;
@@ -177,6 +298,10 @@ export class GraphController {
       lit: lightFrom ? neighbours(this.model, lightFrom) : null,
       hoverEdge: this.hoverEdge,
       selected: this.selected,
+      rings: this.kit.rings,
+      lens: this.lens,
+      lensFrom: this.lensFade?.from ?? null,
+      lensT: this.lensFade ? Math.min(1, (performance.now() - this.lensFade.start) / LENS_MS) : 1,
     });
   }
 
@@ -205,6 +330,7 @@ export class GraphController {
     const down = (e: PointerEvent) => {
       c.setPointerCapture(e.pointerId);
       this.tween = null;
+      this.refit = false;
       this.drag = { start: this.pointer(e), cam: this.cam, moved: false };
     };
     const move = (e: PointerEvent) => {
@@ -248,6 +374,7 @@ export class GraphController {
     const wheel = (e: WheelEvent) => {
       e.preventDefault();
       this.tween = null;
+      this.refit = false;
       this.cam = zoomAt(this.cam, this.pointer(e), Math.exp(-e.deltaY * 0.0015));
       this.request();
     };

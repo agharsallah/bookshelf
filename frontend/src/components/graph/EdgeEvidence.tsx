@@ -7,18 +7,19 @@
 import { useEffect, useState } from 'react';
 import { Problem, problemOf, type ProblemInfo } from '../common/Problem';
 import type { ApiClient } from '../../lib/api/client';
-import type { EdgeDetail, EdgeStatus } from '../../lib/api/types/graph';
+import type { EdgeDetail, EdgeStatus, GraphEdge } from '../../lib/api/types/graph';
 import { PassageList } from '../concepts/PassageList';
 import type { ModelEdge } from './model';
 import { RelationMark } from './Legend';
-import { RELATION_STYLES } from './styles';
+import { LINK_STYLES } from './styles';
 import styles from './Graph.module.css';
 
 const MAX_FOLDED = 6;
 
 export interface EdgeEvidenceProps {
   api: ApiClient;
-  edge: ModelEdge;
+  /** A neighbourhood edge, or a map line folded from stored edges. */
+  edge: ModelEdge<Pick<GraphEdge, 'edge_ids' | 'weight'>>;
   onChanged: () => void;
 }
 
@@ -54,7 +55,7 @@ export function EdgeEvidence({ api, edge, onChanged }: EdgeEvidenceProps) {
   };
 
   const first = details?.[0];
-  const style = RELATION_STYLES[edge.relation];
+  const style = LINK_STYLES[edge.relation];
   const passages = details?.flatMap((d) => d.evidence) ?? [];
   return (
     <div className={styles.panelBody}>

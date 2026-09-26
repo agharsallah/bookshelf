@@ -7,7 +7,7 @@
  * Relations are told apart by their terminal mark and line pattern, colour third; a
  * proposed edge of any relation is dashed.
  */
-import type { EntityKind, Relation } from '../../lib/api/types/graph';
+import { DERIVED_LINKS, RELATIONS, type AtlasRelation, type EntityKind, type Relation } from '../../lib/api/types/graph';
 
 export type Shape = 'ring' | 'square' | 'spine' | 'diamond';
 export type Terminal = 'arrow' | 'bar' | 'dot' | 'tick' | 'none' | 'equals';
@@ -47,6 +47,16 @@ export const RELATION_STYLES: Record<Relation, RelationStyle> = {
   defines: { label: 'Defines', verb: 'defines', color: '--tone-caution', dash: [], terminal: 'tick' },
   mentions: { label: 'Mentions', verb: 'mentions', color: '--ink-3', dash: [], terminal: 'none' },
   same_as: { label: 'Same as', verb: 'is the same as', color: '--ink-2', dash: [], terminal: 'equals' },
+};
+
+/** Every line the canvas can draw: the stored relations and the atlas's derived ones. */
+export type LinkKind = AtlasRelation;
+export const LINK_KINDS: readonly LinkKind[] = [...RELATIONS, ...DERIVED_LINKS];
+
+export const LINK_STYLES: Record<LinkKind, RelationStyle> = {
+  ...RELATION_STYLES,
+  contains: { label: 'Contains', verb: 'contains', color: '--rule-strong', dash: [], terminal: 'none' },
+  shares: { label: 'Shares ideas', verb: 'shares ideas with', color: '--series-2', dash: [2, 4], terminal: 'none' },
 };
 
 export const PROPOSED_DASH = [6, 4];

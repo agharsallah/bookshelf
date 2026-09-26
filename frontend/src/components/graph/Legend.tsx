@@ -2,8 +2,8 @@
  * The key to the canvas: node kinds by shape and colour, relations by line and mark.
  * The swatches are small inline SVGs drawn from the same style table as the canvas.
  */
-import { ENTITY_KINDS, RELATIONS, type EntityKind, type Relation } from '../../lib/api/types/graph';
-import { KIND_STYLES, PROPOSED_DASH, RELATION_STYLES } from './styles';
+import { ENTITY_KINDS, RELATIONS, type EntityKind } from '../../lib/api/types/graph';
+import { KIND_STYLES, LINK_STYLES, PROPOSED_DASH, RELATION_STYLES, type LinkKind } from './styles';
 import styles from './Graph.module.css';
 
 export function KindMark({ kind }: { kind: EntityKind }) {
@@ -19,8 +19,8 @@ export function KindMark({ kind }: { kind: EntityKind }) {
   );
 }
 
-export function RelationMark({ relation, proposed = false }: { relation: Relation; proposed?: boolean }) {
-  const style = RELATION_STYLES[relation];
+export function RelationMark({ relation, proposed = false }: { relation: LinkKind; proposed?: boolean }) {
+  const style = LINK_STYLES[relation];
   const color = `var(${style.color})`;
   const dash = (proposed ? PROPOSED_DASH : style.dash).join(' ') || undefined;
   return (

@@ -180,3 +180,58 @@ export interface MergeProposal {
   evidence: Passage[];
   created_at: string;
 }
+
+// --- The atlas: the whole shelf at chapter grain (`GET /graph/atlas`) --------------------
+
+export const ATLAS_KINDS = ['document', 'chapter', 'concept'] as const;
+export type AtlasKind = (typeof ATLAS_KINDS)[number];
+
+/** Lines the atlas derives: a book's chapters, and chapters that lean on the same concepts. */
+export const DERIVED_LINKS = ['contains', 'shares'] as const;
+export type DerivedLink = (typeof DERIVED_LINKS)[number];
+export type AtlasRelation = Relation | DerivedLink;
+
+export interface AtlasNode {
+  /** `document:<id>`, `concept:<id>`, or `node:<document_id>#<chapter anchor>`. */
+  id: GraphRef;
+  kind: AtlasKind;
+  label: string;
+  sublabel: string | null;
+  document: GraphDocument | null;
+  /** A chapter's anchor, for the reader. */
+  anchor: string | null;
+  blurb: string | null;
+  concept_kind: ConceptKind | null;
+  /** Reading order within the book. */
+  ordinal: number;
+  /** Lines touching it in this atlas. */
+  degree: number;
+  /** Books it appears in. */
+  books: number;
+  /** Evidence passages behind it. */
+  passages: number;
+}
+
+export interface AtlasEdge {
+  id: string;
+  src: GraphRef;
+  dst: GraphRef;
+  relation: AtlasRelation;
+  weight: number;
+  evidence_count: number;
+  status: EdgeStatus;
+  /** Stored edges folded into this line (none for derived lines). */
+  edge_ids: string[];
+  /** A few qualified anchors to open. */
+  evidence: string[];
+  /** `shares` only: the concepts the two chapters have in common. */
+  concepts: GraphRef[];
+}
+
+export interface Atlas {
+  nodes: AtlasNode[];
+  /** Ranked by weight × evidence count. */
+  edges: AtlasEdge[];
+  /** The concept or chapter budget cut the map. */
+  truncated: boolean;
+}

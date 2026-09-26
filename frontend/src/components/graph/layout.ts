@@ -64,7 +64,7 @@ export function nodeRadius(kind: EntityKind, isFocus: boolean): number {
   return isFocus ? base + 4 : base;
 }
 
-export function createLayout(model: GraphModel, previous: Positions = new Map()): Layout {
+export function createLayout(model: GraphModel<unknown, unknown>, previous: Positions = new Map()): Layout {
   const byId = new Map<string, SimNode>();
   const perRing = new Map<number, number>();
   const nodes: SimNode[] = model.nodes.map((n) => {
@@ -132,7 +132,7 @@ export function positionsOf(layout: Layout): Map<string, { x: number; y: number 
  * next to the first known neighbour it has, fanned out a little by its index, so new
  * nodes grow out of the node that brought them in rather than dropping in from nowhere.
  */
-export function seedPositions(model: GraphModel, known: Positions): Map<string, { x: number; y: number }> {
+export function seedPositions(model: GraphModel<unknown, unknown>, known: Positions): Map<string, { x: number; y: number }> {
   const out = new Map(known);
   model.nodes.forEach((node, i) => {
     if (out.has(node.id)) return;

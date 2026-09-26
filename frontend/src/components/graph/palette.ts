@@ -4,8 +4,8 @@
  * probe element's computed colour, and re-resolved when the theme changes.
  */
 import { useEffect, useState, type RefObject } from 'react';
-import { ENTITY_KINDS, RELATIONS, type EntityKind, type Relation } from '../../lib/api/types/graph';
-import { KIND_STYLES, RELATION_STYLES } from './styles';
+import { ENTITY_KINDS, type EntityKind } from '../../lib/api/types/graph';
+import { KIND_STYLES, LINK_KINDS, LINK_STYLES, type LinkKind } from './styles';
 
 export interface GraphPalette {
   ink: string;
@@ -19,7 +19,8 @@ export interface GraphPalette {
   marker: string;
   markerInk: string;
   kinds: Record<EntityKind, string>;
-  relations: Record<Relation, string>;
+  /** Every drawable line, stored relations and derived ones alike. */
+  relations: Record<LinkKind, string>;
 }
 
 const BASE = {
@@ -39,7 +40,7 @@ export function buildPalette(resolve: (token: string) => string): GraphPalette {
   return {
     ...base,
     kinds: Object.fromEntries(ENTITY_KINDS.map((k) => [k, resolve(KIND_STYLES[k].color)])) as Record<EntityKind, string>,
-    relations: Object.fromEntries(RELATIONS.map((r) => [r, resolve(RELATION_STYLES[r].color)])) as Record<Relation, string>,
+    relations: Object.fromEntries(LINK_KINDS.map((r) => [r, resolve(LINK_STYLES[r].color)])) as Record<LinkKind, string>,
   };
 }
 

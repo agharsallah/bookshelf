@@ -1,30 +1,76 @@
 /**
- * Paint one frame of the neighbourhood: faint ring guides, edges as bowed ink lines
+ * Paint one frame: faint ring guides (neighbourhoods only), edges as bowed ink lines
  * with their relation's terminal mark, nodes by shape, then labels placed without
  * collisions in screen space. Pure with respect to its inputs: hovering redraws, it
  * never re-lays out.
+ *
+ * Two things dim what is not in play, and they multiply: hover (instant: a node and its
+ * neighbours) and the lens (the map's filters), which cross-fades from the previous lens
+ * to the next as `lensT` runs from 0 to 1.
  */
-import { anchorLabel } from '../../lib/anchors';
 import { controlPoint, quadAt, quadTangent, toScreen, type Camera, type Point } from './geometry';
 import { placeLabels, shorten, type LabelCandidate } from './labels';
 import type { Layout, SimNode } from './layout';
 import { RING } from './layout';
 import type { GraphModel, ModelEdge, ModelNode } from './model';
 import type { GraphPalette } from './palette';
-import { edgeWidth, KIND_STYLES, PROPOSED_DASH, RELATION_STYLES } from './styles';
+import { edgeWidth, KIND_STYLES, LINK_STYLES, PROPOSED_DASH } from './styles';
+
+type AnyModel = GraphModel<unknown, unknown>;
+type AnyNode = ModelNode<unknown>;
+type AnyEdge = ModelEdge<unknown>;
+
+/** What a lens keeps lit; everything else is drawn faint. */
+export interface Lens {
+  nodes: ReadonlySet<string>;
+  edges: ReadonlySet<string>;
+}
 
 export interface Scene {
   width: number;
   height: number;
   dpr: number;
   cam: Camera;
-  model: GraphModel;
+  model: AnyModel;
   layout: Layout;
   palette: GraphPalette;
   /** Hovered or keyboard-active node and its neighbours; everything else dims. */
   lit: ReadonlySet<string> | null;
   hoverEdge: string | null;
   selected: { kind: 'node' | 'edge'; id: string } | null;
+  /** Dotted circles at each ring's radius (a neighbourhood's depth guides). */
+  rings?: boolean;
+  /** The map's filters; null lights everything. */
+  lens?: Lens | null;
+  /** The lens being faded out, and how far the fade has run (0–1). */
+  lensFrom?: Lens | null;
+  lensT?: number;
+}
+
+const DIM_NODE = 0.3;
+const DIM_EDGE = 0.1;
+const EDGE_ALPHA = 0.72;
+
+function inLens(lens: Lens | null | undefined, kind: keyof Lens, id: string): number {
+  return !lens || lens[kind].has(id) ? 1 : 0;
+}
+
+/** 1 when fully in play, 0 when fully dimmed; in between while a lens change fades. */
+function lensLevel(s: Scene, kind: keyof Lens, id: string): number {
+  const now = inLens(s.lens, kind, id);
+  const t = s.lensT ?? 1;
+  if (t >= 1) return now;
+  const before = inLens(s.lensFrom, kind, id);
+  return before + (now - before) * t;
+}
+
+function nodeLevel(s: Scene, id: string): number {
+  const hover = s.lit === null || s.lit.has(id) ? 1 : 0;
+  return Math.min(hover, lensLevel(s, 'nodes', id));
+}
+
+function mix(dim: number, full: number, level: number): number {
+  return dim + (full - dim) * level;
 }
 
 let fonts: { read: string; ui: string } | null = null;
@@ -40,12 +86,11 @@ function families(): { read: string; ui: string } {
   return fonts;
 }
 
-export function labelText(node: ModelNode): string {
-  if (node.kind === 'node' && node.data.anchor) return anchorLabel(node.data.anchor);
-  return shorten(node.label, node.depth === 0 ? 48 : 30);
+export function labelText(node: AnyNode): string {
+  return node.caption ?? shorten(node.label, node.depth === 0 ? 48 : 30);
 }
 
-function labelFont(node: ModelNode, focus: boolean): string {
+function labelFont(node: AnyNode, focus: boolean): string {
   const { read: FONT_READ, ui: FONT_UI } = families();
   if (focus) return `600 16px ${FONT_READ}`;
   if (node.kind === 'concept') return `italic 400 13.5px ${FONT_READ}`;
@@ -62,6 +107,7 @@ function alpha(color: string, a: number): string {
 }
 
 function drawRings(ctx: CanvasRenderingContext2D, s: Scene) {
+  if (s.rings === false) return;
   const rings = Math.max(...s.model.nodes.map((n) => n.depth), 0);
   ctx.save();
   ctx.strokeStyle = s.palette.grid;
@@ -75,8 +121,8 @@ function drawRings(ctx: CanvasRenderingContext2D, s: Scene) {
   ctx.restore();
 }
 
-function terminal(ctx: CanvasRenderingContext2D, edge: ModelEdge, a: Point, c: Point, b: Point, target: SimNode, k: number, color: string) {
-  const style = RELATION_STYLES[edge.relation];
+function terminal(ctx: CanvasRenderingContext2D, edge: AnyEdge, a: Point, c: Point, b: Point, target: SimNode, k: number, color: string) {
+  const style = LINK_STYLES[edge.relation];
   if (style.terminal === 'none') return;
   const size = 6 / k;
   let at: Point;
@@ -140,10 +186,14 @@ function drawEdges(ctx: CanvasRenderingContext2D, s: Scene) {
     if (!a || !b) continue;
     const selected = s.selected?.kind === 'edge' && s.selected.id === edge.id;
     const hovered = s.hoverEdge === edge.id;
-    const dim = s.lit !== null && !(s.lit.has(edge.source) && s.lit.has(edge.target)) && !selected && !hovered;
-    const color = alpha(s.palette.relations[edge.relation], dim ? 0.12 : selected || hovered ? 1 : 0.72);
+    const hover = s.lit === null || (s.lit.has(edge.source) && s.lit.has(edge.target)) ? 1 : 0;
+    const level = selected || hovered ? 1 : Math.min(hover, lensLevel(s, 'edges', edge.id));
+    const dim = level < 0.5;
+    // Weak lines recede: a passing mention should not drown out a typed link.
+    const full = EDGE_ALPHA * (0.45 + 0.55 * Math.sqrt(Math.min(1, edge.strength / (s.model.strongest || 1))));
+    const color = alpha(s.palette.relations[edge.relation], selected || hovered ? 1 : mix(DIM_EDGE, full, level));
     const c = controlPoint(a, b, edge.lane);
-    const style = RELATION_STYLES[edge.relation];
+    const style = LINK_STYLES[edge.relation];
     ctx.save();
     ctx.strokeStyle = color;
     ctx.lineWidth = (edgeWidth(edge.strength, s.model.strongest) + (selected || hovered ? 1 : 0)) / k;
@@ -183,13 +233,14 @@ function nodePath(ctx: CanvasRenderingContext2D, n: SimNode) {
 
 function drawNodes(ctx: CanvasRenderingContext2D, s: Scene) {
   const k = s.cam.k;
-  const byId = new Map(s.model.nodes.map((n) => [n.id, n]));
+  const byId = new Map<string, AnyNode>(s.model.nodes.map((n) => [n.id, n]));
   for (const sim of s.layout.nodes) {
     const node = byId.get(sim.id);
     if (!node) continue;
     const isFocus = sim.id === s.model.focus;
-    const dim = s.lit !== null && !s.lit.has(sim.id);
-    const color = alpha(s.palette.kinds[sim.kind], dim ? 0.3 : 1);
+    const level = nodeLevel(s, sim.id);
+    const dim = level < 0.5;
+    const color = alpha(s.palette.kinds[sim.kind], mix(DIM_NODE, 1, level));
     const hollow = KIND_STYLES[sim.kind].shape === 'ring' || KIND_STYLES[sim.kind].shape === 'diamond';
     ctx.save();
     nodePath(ctx, sim);
@@ -228,10 +279,10 @@ function drawMore(ctx: CanvasRenderingContext2D, n: SimNode, k: number, color: s
   }
 }
 
-function priority(node: ModelNode, s: Scene): number {
+function priority(node: AnyNode, s: Scene): number {
   if (node.id === s.model.focus) return 1000;
   if (s.selected?.kind === 'node' && s.selected.id === node.id) return 900;
-  const lit = s.lit?.has(node.id) ? 400 : 0;
+  const lit = (s.lit?.has(node.id) ? 400 : 0) + (s.lens && inLens(s.lens, 'nodes', node.id) ? 300 : 0);
   return lit + (node.depth === 1 ? 200 : 100) + node.weight * 20 + node.degree + (node.kind === 'concept' ? 10 : 0);
 }
 
@@ -242,10 +293,11 @@ function drawLabels(ctx: CanvasRenderingContext2D, s: Scene) {
   const fontsReady = typeof document === 'undefined' || !document.fonts || document.fonts.status === 'loaded';
   const cache = (fontsReady && widths.get(s.layout)) || new Map<string, number>();
   if (fontsReady) widths.set(s.layout, cache);
-  const candidates: (LabelCandidate & { node: ModelNode; text: string; font: string })[] = [];
+  const candidates: (LabelCandidate & { node: AnyNode; text: string; font: string })[] = [];
   for (const node of s.model.nodes) {
     const sim = s.layout.byId.get(node.id);
-    if (!sim) continue;
+    // Outside the lens a label is clutter: leave its room to the ones in play.
+    if (!sim || lensLevel(s, 'nodes', node.id) < 0.15) continue;
     const focus = node.id === s.model.focus;
     const font = labelFont(node, focus);
     const text = labelText(node);
@@ -266,7 +318,7 @@ function drawLabels(ctx: CanvasRenderingContext2D, s: Scene) {
   for (const p of placed) {
     const c = byId.get(p.id);
     if (!c) continue;
-    const dim = s.lit !== null && !s.lit.has(p.id);
+    const dim = nodeLevel(s, p.id) < 0.5;
     ctx.font = c.font;
     const y = p.y + p.height / 2;
     if (c.node.id === s.model.focus) {

@@ -7,7 +7,7 @@
 import { useMemo, useRef, type KeyboardEvent } from 'react';
 import type { Selection } from './controller';
 import type { GraphModel, ModelEdge, ModelNode } from './model';
-import { KIND_STYLES, RELATION_STYLES } from './styles';
+import { KIND_STYLES, LINK_STYLES } from './styles';
 import { KindMark } from './Legend';
 import styles from './Graph.module.css';
 
@@ -21,7 +21,7 @@ export interface NeighborhoodListProps {
 }
 
 function edgeLine(edge: ModelEdge, self: string, byId: Map<string, ModelNode>): string {
-  const style = RELATION_STYLES[edge.relation];
+  const style = LINK_STYLES[edge.relation];
   const otherId = edge.source === self ? edge.target : edge.source;
   const other = byId.get(otherId)?.label ?? otherId;
   const evidence = edge.data.evidence_count === 1 ? '1 passage' : `${edge.data.evidence_count} passages`;
