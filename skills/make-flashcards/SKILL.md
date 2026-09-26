@@ -1,20 +1,20 @@
 ---
 name: make-flashcards
-description: Turn one chapter of a Bookshelf document into one-fact spaced-repetition flashcards — from its remember callouts, definitions and key rules — each with a plain front and a short cited back, from the chapter distillation. Use for a flashcards artifact (pipeline stage 10, derive) or when the user asks for flashcards on a chapter anchor such as `ch02`.
-argument-hint: <document-slug> <chapter-anchor>
+description: Turn one chapter, or a whole Bookshelf document, into one-fact spaced-repetition flashcards — from its remember callouts, definitions and key rules — each with a plain front and a short cited back, from the chapter distillations. Use for a flashcards artifact (pipeline stage 10, derive) or when the user asks for flashcards on a chapter anchor such as `ch02`, or on the whole book (no anchor).
+argument-hint: <document-slug> [chapter-anchor]
 ---
 
 <!-- interactive:start -->
 ## Interactive use
 
-`$ARGUMENTS` is `<document-slug> <chapter-anchor>`, for example `okafor-queueing ch02`.
+`$ARGUMENTS` is `<document-slug> [chapter-anchor]`, for example `okafor-queueing ch02`; with no anchor the skill works on the whole book.
 
 1. Fetch the input — the response's `inputs` is the exact JSON the batch runner would send; keep its `input_hash`:
    `curl -s -H "X-API-Key: $BOOKSHELF_API_KEY" "$BOOKSHELF_API/skills/make-flashcards/inputs?document=<slug>&anchor=<anchor>"`
-   (`$BOOKSHELF_API` defaults to `http://127.0.0.1:8000/api/v1`.)
+   (whole book: leave out `&anchor=<anchor>`; `$BOOKSHELF_API` defaults to `http://127.0.0.1:8000/api/v1`.)
 2. Do the work below; let the user drop cards they already know cold.
-3. Write `{"skill": "make-flashcards", "document": "<slug>", "anchor": "<inputs.scope.anchor>", "input_hash": "<input_hash from the response>", "output": <the JSON object>}`
-   to `skills/.outbox/make-flashcards-<slug>-<anchor with / replaced by ->.json`.
+3. Write `{"skill": "make-flashcards", "document": "<slug>", "anchor": <inputs.scope.anchor, null for the whole book>, "input_hash": "<input_hash from the response>", "output": <the JSON object>}`
+   to `skills/.outbox/make-flashcards-<slug>-<anchor with / replaced by ->.json` (`make-flashcards-<slug>.json` for the whole book).
 4. Import it; the server runs the same schema, anchor and grounding gates as batch mode:
    `curl -s -X POST "$BOOKSHELF_API/artifacts/import" -H "X-API-Key: $BOOKSHELF_API_KEY" -H 'content-type: application/json' --data @skills/.outbox/<file>.json`
    Tell the user the verdict (review state, grounding).
@@ -28,6 +28,11 @@ You turn what a chapter marks as worth remembering into cards for spaced repetit
 cards are small: **one fact, one answer**, a front that can only be answered one way. You read
 the chapter's distillation (`chapter_distillations: [one item]`, `body.blocks` already cited
 to source blocks) and nothing else.
+
+**Book-wide** (`scope.anchor` is null): `chapter_distillations` holds every chapter in
+reading order, and two more keys say what the book itself considers central: `book_brief`
+(the brief's `thesis` and `ideas` sections) and `book_themes` (the book guide's recurring
+themes, each citing every chapter it appears in). Either may be empty.
 
 ## Method
 
@@ -46,10 +51,26 @@ to source blocks) and nothing else.
    symbolic form exactly as the distillation gives it.
 5. **5–20 cards per chapter**, no two testing the same fact.
 
+### Book-wide deck
+
+One deck for the whole book, which a reader can review in a few sessions. Instead of step 5:
+
+- **30–60 cards.** Keep the book's core first: a card for each `book_brief` idea and each
+  `book_themes` entry (what it is, in one fact), then every `remember` callout, then each
+  term the book defines, then key rules and numbers.
+- **One card per fact across the book.** A term or rule stated in several chapters gets one
+  card, its back citing each chapter that states it (most specific anchors, up to four); a
+  term the author refines later is carded in its final sense.
+- **Cover the book:** every chapter with something worth remembering has at least one card;
+  cut the least central cards of the busiest chapters first when over 60.
+- **Order** cards by the chapter that first states their fact.
+
 ## Hard rules
 
-1. **Only the given input.** Every back is supported by the distillation; never add facts,
-   mnemonics presented as the book's, or outside knowledge presented as the book's claim.
+1. **Only the given input.** Every back is supported by the distillations (book-wide, the
+   brief and themes may choose what to card, but the back still rests on the distillations);
+   never add facts, mnemonics presented as the book's, or outside knowledge presented as the
+   book's claim.
 2. **Every back span cites ≥ 1 anchor** copied verbatim from the input — the block anchors
    inside the distillation spans you used, most specific first. Never construct, guess or
    shorten an anchor.

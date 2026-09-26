@@ -11,7 +11,7 @@
   "properties": {
     "blocks": {
       "type": "array",
-      "maxItems": 15,
+      "maxItems": 30,
       "items": {
         "allOf": [
           {

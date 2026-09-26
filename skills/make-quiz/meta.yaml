@@ -1,11 +1,12 @@
 name: make-quiz
-version: 1
-description: Multiple-choice questions that test understanding of a chapter, with cited explanations.
+version: 2
+description: Multiple-choice questions that test understanding of a chapter, or of the whole book across chapters, with cited explanations.
 tier: distil
 job_kind: derive
 artifact_type: quiz
 scope: chapter
 selector: chapter_distillation
+document_selector: document_distillations  # no anchor: the whole book (skills/README.md)
 vision: false
 gates:
   grounding_min: 0.9

@@ -1,26 +1,26 @@
 ---
 name: extract-quotes
-description: Pick the most citable passages of one chapter of a Bookshelf document as verbatim quote blocks with page numbers and attribution — thesis sentences, sharp definitions, memorable formulations — copied character for character from the source blocks. Use for a quote_set (pipeline stage 10, derive) or when the user asks for quotable lines from a chapter anchor such as `ch03`.
-argument-hint: <document-slug> <chapter-anchor>
+description: Pick the most citable passages of one chapter of a Bookshelf document, or the defining lines of the whole book, as verbatim quote blocks with page numbers and attribution — thesis sentences, sharp definitions, memorable formulations — copied character for character from the source blocks. Use for a quote_set (pipeline stage 10, derive) or when the user asks for quotable lines from a chapter anchor such as `ch03`, or from the whole book (no anchor).
+argument-hint: <document-slug> [chapter-anchor]
 ---
 
 <!-- interactive:start -->
 ## Interactive use
 
-`$ARGUMENTS` is `<document-slug> <chapter-anchor>`, for example `okafor-queueing ch03`.
+`$ARGUMENTS` is `<document-slug> [chapter-anchor]`, for example `okafor-queueing ch03`; with no anchor the skill works on the whole book.
 
 1. Fetch the input — the response's `inputs` is the exact JSON the batch runner would send; keep its `input_hash`:
    `curl -s -H "X-API-Key: $BOOKSHELF_API_KEY" "$BOOKSHELF_API/skills/extract-quotes/inputs?document=<slug>&anchor=<anchor>"`
-   (`$BOOKSHELF_API` defaults to `http://127.0.0.1:8000/api/v1`.)
+   (whole book: leave out `&anchor=<anchor>`; `$BOOKSHELF_API` defaults to `http://127.0.0.1:8000/api/v1`.)
 2. Do the work below; show the user your shortlist and let them add or drop quotes.
-3. Write `{"skill": "extract-quotes", "document": "<slug>", "anchor": "<inputs.scope.anchor>", "input_hash": "<input_hash from the response>", "output": <the JSON object>}`
-   to `skills/.outbox/extract-quotes-<slug>-<anchor with / replaced by ->.json`.
+3. Write `{"skill": "extract-quotes", "document": "<slug>", "anchor": <inputs.scope.anchor, null for the whole book>, "input_hash": "<input_hash from the response>", "output": <the JSON object>}`
+   to `skills/.outbox/extract-quotes-<slug>-<anchor with / replaced by ->.json` (`extract-quotes-<slug>.json` for the whole book).
 4. Import it; the server runs the same schema, anchor and grounding gates as batch mode:
    `curl -s -X POST "$BOOKSHELF_API/artifacts/import" -H "X-API-Key: $BOOKSHELF_API_KEY" -H 'content-type: application/json' --data @skills/.outbox/<file>.json`
    Tell the user the verdict (review state, rejected anchors).
 <!-- interactive:end -->
 
-# Extract quotes from a chapter
+# Extract quotes
 
 ## Role
 
@@ -28,6 +28,14 @@ You pick the lines from one chapter that a reader would want to quote in their o
 and you copy them **exactly**. A quote set is citable verbatim material: if a single character
 differs from the book, it is worthless. You read the chapter's source blocks (`blocks`, in
 reading order, each with `anchor`, `kind`, `text`, `page`); `figures` are not quotable.
+
+**Book-wide** (`scope.anchor` is null) the whole source is too long to read, so the input
+offers candidates instead of `blocks`: `chapters: [{anchor, heading, quotes, passages}]` in
+reading order, where `quotes` are that chapter's quote set (quote blocks already checked
+and attributed) and `passages` are source blocks (`anchor`, `kind`, `text`, `page`) its
+distillation singles out as central. Either may be empty. `book_brief` (the brief's
+`thesis` and `ideas` sections) and `book_themes` (the book guide's recurring themes) say
+what the book is about; they are never quotable themselves.
 
 ## Method
 
@@ -49,16 +57,31 @@ reading order, each with `anchor`, `kind`, `text`, `page`); `figures` are not qu
    when the words are someone else's ("W. Edwards Deming, quoted by Ines Okafor").
 5. **Choose 5–12 quotes** (fewer for a short chapter), no two making the same point, in reading order.
 
+### Book-wide quotes
+
+The lines that stand for the book: the ones a reviewer would quote to say what it argues.
+Instead of steps 1 and 5:
+
+- **Candidates** are the chapters' `quotes` — reuse a quote block exactly as given, its
+  `text`, `cites`, `page` and `attribution` unchanged — and new cuts from `passages`,
+  made by steps 2–4 as if the passage were a chapter block.
+- **Choose 12–25 quotes**, preferring lines that state the `book_brief` thesis or ideas or a
+  `book_themes` entry in the author's own words, then each chapter's central claim. Most
+  chapters contribute one or two; none more than four. No two quotes make the same point,
+  even from different chapters — keep the sharper one.
+- **Order** by the quote's position in the book (chapter order, then reading order).
+
 ## Hard rules
 
-1. **Verbatim, character for character.** Copy `text` exactly as it appears in the block —
+1. **Verbatim, character for character.** Copy `text` exactly as it appears in the block
+   (book-wide: the passage, or the chapter quote you reuse) —
    same words, spelling, capitalisation, punctuation and typographic quotes. No ellipses, no
    brackets, no merging across blocks, no corrections (not even of typos). If extraction damage
    (a broken hyphenation, stray characters) sits inside a candidate, skip that candidate.
 2. **Only the given input.** Never supply a famous line from memory, even if you know the book;
    never attribute words to anyone the text does not identify as their speaker.
 3. **Every quote cites exactly one anchor** — the block it was copied from, as it appears in
-   `blocks[].anchor`. Never construct, guess or shorten an anchor.
+   `blocks[].anchor` (book-wide: `passages[].anchor`, or the reused quote's own cite). Never construct, guess or shorten an anchor.
 4. **`page` comes from the cited block**; never compute or guess it.
 5. **Thin or garbled input** (no whole, legible, self-contained sentences): return
    `{"blocks": []}`. Never pad.

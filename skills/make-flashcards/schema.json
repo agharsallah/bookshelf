@@ -11,7 +11,7 @@
   "properties": {
     "items": {
       "type": "array",
-      "maxItems": 40,
+      "maxItems": 80,
       "items": {
         "type": "object",
         "required": [

@@ -1,20 +1,20 @@
 ---
 name: make-quiz
-description: Write multiple-choice questions that test understanding (not recall of wording) of one chapter of a Bookshelf document — apply a mechanism, predict an effect, tell two concepts apart, spot the antipattern — with plausible distractors and a cited explanation, from the chapter distillation. Use for a quiz artifact (pipeline stage 10, derive) or when the user wants to test themselves on a chapter anchor such as `ch03`.
-argument-hint: <document-slug> <chapter-anchor>
+description: Write multiple-choice questions that test understanding (not recall of wording) of one chapter, or of a whole Bookshelf document across its chapters — apply a mechanism, predict an effect, tell two concepts apart, spot the antipattern — with plausible distractors and a cited explanation, from the chapter distillations. Use for a quiz artifact (pipeline stage 10, derive) or when the user wants to test themselves on a chapter anchor such as `ch03`, or on the whole book (no anchor).
+argument-hint: <document-slug> [chapter-anchor]
 ---
 
 <!-- interactive:start -->
 ## Interactive use
 
-`$ARGUMENTS` is `<document-slug> <chapter-anchor>`, for example `okafor-queueing ch03`.
+`$ARGUMENTS` is `<document-slug> [chapter-anchor]`, for example `okafor-queueing ch03`; with no anchor the skill works on the whole book.
 
 1. Fetch the input — the response's `inputs` is the exact JSON the batch runner would send; keep its `input_hash`:
    `curl -s -H "X-API-Key: $BOOKSHELF_API_KEY" "$BOOKSHELF_API/skills/make-quiz/inputs?document=<slug>&anchor=<anchor>"`
-   (`$BOOKSHELF_API` defaults to `http://127.0.0.1:8000/api/v1`.)
+   (whole book: leave out `&anchor=<anchor>`; `$BOOKSHELF_API` defaults to `http://127.0.0.1:8000/api/v1`.)
 2. Do the work below. Offer to quiz the user one question at a time before saving.
-3. Write `{"skill": "make-quiz", "document": "<slug>", "anchor": "<inputs.scope.anchor>", "input_hash": "<input_hash from the response>", "output": <the JSON object>}`
-   to `skills/.outbox/make-quiz-<slug>-<anchor with / replaced by ->.json`.
+3. Write `{"skill": "make-quiz", "document": "<slug>", "anchor": <inputs.scope.anchor, null for the whole book>, "input_hash": "<input_hash from the response>", "output": <the JSON object>}`
+   to `skills/.outbox/make-quiz-<slug>-<anchor with / replaced by ->.json` (`make-quiz-<slug>.json` for the whole book).
 4. Import it; the server runs the same schema, anchor and grounding gates as batch mode:
    `curl -s -X POST "$BOOKSHELF_API/artifacts/import" -H "X-API-Key: $BOOKSHELF_API_KEY" -H 'content-type: application/json' --data @skills/.outbox/<file>.json`
    Tell the user the verdict (review state, grounding).
@@ -28,6 +28,11 @@ You write a short quiz that tells a reader whether they *understood* a chapter, 
 they memorised its sentences. A wrong answer should teach something: its explanation links
 back to the passage. You read the chapter's distillation (`chapter_distillations: [one item]`,
 `body.blocks` already cited to source blocks) and nothing else.
+
+**Book-wide** (`scope.anchor` is null): `chapter_distillations` holds every chapter in
+reading order, and two more keys say what the book itself considers central: `book_brief`
+(the brief's `thesis` and `ideas` sections) and `book_themes` (the book guide's recurring
+themes, each citing every chapter it appears in). Either may be empty.
 
 ## Method
 
@@ -48,10 +53,29 @@ back to the passage. You read the chapter's distillation (`chapter_distillations
 5. **`explanation`** (1–3 sentences as spans): why the right answer is right, and, when useful,
    why the most tempting distractor is wrong. Cite the distillation anchors it rests on.
 
+### Book-wide quiz
+
+A book quiz tells a reader whether they understood *the book*, not whether they read every
+chapter. Instead of step 2:
+
+- **Write 15–25 questions**, weighted towards the book's argument: the `book_brief` thesis
+  and ideas and the `book_themes` first, then each chapter's central mechanism.
+- **At least a third are *connect* questions** that need two or more chapters: how a later
+  mechanism depends on an earlier one, which chapter's warning a scenario violates, how a
+  theme develops ("introduced as X, later extended to Y"). Their explanations cite an
+  anchor in each chapter they draw on.
+- **Cover the book:** every chapter with testable content contributes at least one question
+  or is part of a *connect* question; no chapter supplies more than a fifth of them.
+- **Order** questions by the chapter they rest on (a *connect* question sits at the latest
+  chapter it needs), so the quiz follows the book.
+- `book_brief` and `book_themes` guide what to ask; the answer and its explanation still
+  cite the anchors that state it — the block anchors inside the distillations, which the
+  brief's and themes' own cites reuse.
+
 ## Hard rules
 
 1. **Only the given input.** Questions, correct answers and explanations come solely from the
-   distillation; a scenario may be invented to *apply* a stated mechanism, but its outcome must
+   distillations (and, book-wide, the brief and themes, which summarise them); a scenario may be invented to *apply* a stated mechanism, but its outcome must
    follow from what the book says. Never present outside knowledge as the book's claim.
 2. **Every explanation span cites ≥ 1 anchor** copied verbatim from the input — the block
    anchors inside the distillation spans you used, most specific first. Never construct, guess

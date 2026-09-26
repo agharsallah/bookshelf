@@ -1,20 +1,20 @@
 ---
 name: make-faq
-description: Write the questions a thoughtful colleague would ask about one chapter of a Bookshelf document (why, how, when not, what's the difference, what do I do) and answer each from the chapter distillation with citations. Use for an faq artifact (pipeline stage 10, derive) or when the user asks for an FAQ on a chapter anchor such as `ch04`.
-argument-hint: <document-slug> <chapter-anchor>
+description: Write the questions a thoughtful colleague would ask about one chapter, or a whole Bookshelf document (why, how, when not, what's the difference, what do I do) and answer each from the chapter distillations with citations. Use for an faq artifact (pipeline stage 10, derive) or when the user asks for an FAQ on a chapter anchor such as `ch04`, or on the whole book (no anchor).
+argument-hint: <document-slug> [chapter-anchor]
 ---
 
 <!-- interactive:start -->
 ## Interactive use
 
-`$ARGUMENTS` is `<document-slug> <chapter-anchor>`, for example `okafor-queueing ch04`.
+`$ARGUMENTS` is `<document-slug> [chapter-anchor]`, for example `okafor-queueing ch04`; with no anchor the skill works on the whole book.
 
 1. Fetch the input — the response's `inputs` is the exact JSON the batch runner would send; keep its `input_hash`:
    `curl -s -H "X-API-Key: $BOOKSHELF_API_KEY" "$BOOKSHELF_API/skills/make-faq/inputs?document=<slug>&anchor=<anchor>"`
-   (`$BOOKSHELF_API` defaults to `http://127.0.0.1:8000/api/v1`.)
+   (whole book: leave out `&anchor=<anchor>`; `$BOOKSHELF_API` defaults to `http://127.0.0.1:8000/api/v1`.)
 2. Do the work below; ask the user which questions they would actually ask and adjust.
-3. Write `{"skill": "make-faq", "document": "<slug>", "anchor": <inputs.scope.anchor>, "input_hash": "<input_hash from the response>", "output": <the JSON object>}`
-   to `skills/.outbox/make-faq-<slug>-<anchor with / replaced by ->.json`.
+3. Write `{"skill": "make-faq", "document": "<slug>", "anchor": <inputs.scope.anchor, null for the whole book>, "input_hash": "<input_hash from the response>", "output": <the JSON object>}`
+   to `skills/.outbox/make-faq-<slug>-<anchor with / replaced by ->.json` (`make-faq-<slug>.json` for the whole book).
 4. Import it; the server runs the same schema, anchor and grounding gates as batch mode:
    `curl -s -X POST "$BOOKSHELF_API/artifacts/import" -H "X-API-Key: $BOOKSHELF_API_KEY" -H 'content-type: application/json' --data @skills/.outbox/<file>.json`
    Tell the user the verdict (review state, grounding).
@@ -27,8 +27,13 @@ argument-hint: <document-slug> <chapter-anchor>
 You anticipate how a smart colleague who has not read the chapter would question someone who
 has — and you answer only with what the chapter says. The FAQ doubles as a search seed, so
 questions are phrased the way people actually ask. You read the approved distillation(s) in
-`chapter_distillations: [{anchor, heading, body}]` (usually one chapter; several for a
-document-wide FAQ). You never see the source blocks; you cite through the distillation.
+`chapter_distillations: [{anchor, heading, body}]` (one chapter, or every chapter for a
+book-wide FAQ). You never see the source blocks; you cite through the distillation.
+
+**Book-wide** (`scope.anchor` is null): `chapter_distillations` holds every chapter in
+reading order, and two more keys say what the book itself considers central: `book_brief`
+(the brief's `thesis` and `ideas` sections) and `book_themes` (the book guide's recurring
+themes, each citing every chapter it appears in). Either may be empty.
 
 ## Method
 
@@ -47,11 +52,27 @@ document-wide FAQ). You never see the source blocks; you cite through the distil
 4. **Answer in 1–4 sentences** as spans, directly first ("Because…", "Divide…"), then the reason
    or condition. Use only the distillation's content.
 5. **Cite** each answer span with the anchors of the distillation spans it draws on.
-6. **5–10 items per chapter** (8–15 for a document-wide FAQ), no two answering the same thing.
+6. **5–10 items per chapter**, no two answering the same thing.
+
+### Book-wide FAQ
+
+The questions someone asks about *the book* before or after reading it — not a stack of
+chapter FAQs. Instead of step 6:
+
+- **12–25 items.** Open with the big ones the `book_brief` answers: what the book's central
+  claim is and why it holds, what it asks a reader to do differently, where its argument
+  stops (limits and preconditions the author states).
+- **Then the cross-chapter ones**, from `book_themes` and ideas several chapters develop:
+  "How does X relate to Y?", "Does Z still hold when …?". Their answers draw on every chapter
+  that states the idea and cite an anchor in each.
+- **Chapter-specific questions** only for a chapter's central mechanism or advice, at most
+  two per chapter, and only when the answer stands without the rest of the chapter.
+- **Order** by value, big-picture first, not by chapter.
 
 ## Hard rules
 
-1. **Only the given input.** Answers come solely from the distillation(s). If the distillation
+1. **Only the given input.** Answers come solely from the distillation(s) (and, book-wide,
+   the brief and themes, which summarise them). If the distillation
    does not answer a natural question, do not ask it. Never present outside knowledge as the
    book's claim.
 2. **Every answer span cites ≥ 1 anchor** copied verbatim from the input — the block anchors

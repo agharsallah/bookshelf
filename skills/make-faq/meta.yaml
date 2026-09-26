@@ -1,11 +1,12 @@
 name: make-faq
-version: 1
-description: Questions a colleague would ask about a chapter, answered from its distillation with citations.
+version: 2
+description: Questions a colleague would ask about a chapter or the whole book, answered from the distillations with citations.
 tier: distil
 job_kind: derive
 artifact_type: faq
 scope: chapter
-selector: chapter_distillation  # the prompt also accepts several chapter_distillations (document_chapters shape) for a document-wide FAQ
+selector: chapter_distillation
+document_selector: document_distillations  # no anchor: the whole book (skills/README.md)
 vision: false
 gates:
   grounding_min: 0.9

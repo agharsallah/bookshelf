@@ -1,11 +1,12 @@
 name: make-flashcards
-version: 1
-description: One-fact flashcards from a chapter's remember callouts, definitions and key rules.
+version: 2
+description: One-fact flashcards from a chapter's (or the whole book's) remember callouts, definitions and key rules.
 tier: distil
 job_kind: derive
 artifact_type: flashcards
 scope: chapter
 selector: chapter_distillation
+document_selector: document_distillations  # no anchor: the whole book (skills/README.md)
 vision: false
 gates:
   grounding_min: 0.9

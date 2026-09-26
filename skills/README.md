@@ -22,6 +22,8 @@ job_kind: distil_chapter        # JobKind that runs this skill
 artifact_type: chapter_distillation
 scope: chapter                  # document | chapter | section | block | note
 selector: chapter_section_notes # named input selector (table below)
+document_selector: null         # optional, chapter-scope skills: the selector a run with no
+                                # anchor reads, so the same skill also works book-wide
 vision: false                   # true: prompt carries image paths the CLI must read
 gates:
   grounding_min: 0.9            # share of leaf spans with >=1 valid cite; 0 disables
@@ -70,7 +72,9 @@ Output only the JSON object. No prose, no code fences.
 
 The inputs response is `{skill, skill_version, document_id, anchor, input_hash, inputs}`; the
 skill works on `inputs`. Document-scope skills omit `anchor` (the envelope's `anchor` is then
-`null`, as in `inputs.scope.anchor`). The note-scope skill (`structure-note`) passes
+`null`, as in `inputs.scope.anchor`), and so do chapter-scope skills with a
+`document_selector` run on the whole book: the artifact is stored with a null anchor, next to
+the per-chapter ones. The note-scope skill (`structure-note`) passes
 `note_id=<uuid>` instead of an anchor, and its outbox envelope adds `"note_id": "<uuid>"`.
 
 The batch runner strips the frontmatter and the `interactive` section, then appends:
@@ -100,10 +104,12 @@ plus the selector-specific keys:
 |---|---|---|
 | `outline_pages` | `pages: [{page, lines: [str]}]` (first ~25 lines of each of the first 30 pages), `toc_text` | parse-outline |
 | `element_context` | `element: {anchor, kind, text, meta, image_path?}`, `context: [block]` (±2 blocks). `image_path` is relative to `.media/` in the inputs (so `input_hash` is location-independent); the batch prompt shows it resolved to the absolute file | describe-figure, explain-code, describe-math, explain-table |
-| `scope_blocks` | `blocks: [block]` (all leaves under scope, reading order), `figures: [{anchor, takeaway, blocks}]` (non-low-confidence element explanations inside scope). For a section-scope skill on a chapter that has sections, only the chapter's intro leaves (those no section holds): the intro's `section_note` lives on the chapter anchor and is the first item of `chapter_section_notes` | summarize, distil-section, extract-quotes |
+| `scope_blocks` | `blocks: [block]` (all leaves under scope, reading order), `figures: [{anchor, takeaway, blocks}]` (non-low-confidence element explanations inside scope). For a section-scope skill on a chapter that has sections, only the chapter's intro leaves (those no section holds): the intro's `section_note` lives on the chapter anchor and is the first item of `chapter_section_notes` | summarize, distil-section, extract-quotes (chapter) |
 | `chapter_section_notes` | `section_notes: [{anchor, heading, body}]`, `figures` as above | distil-chapter |
-| `document_chapters` | `chapter_distillations: [{anchor, heading, body}]`, `shelf: [{slug, title, authors, thesis}]` (other documents' brief theses), `existing_concepts: [{canonical, aliases, kind}]` | write-brief, write-guide, link-concepts, make-glossary, make-faq (document scope) |
-| `chapter_distillation` | `chapter_distillations: [one item]` | make-quiz, make-faq (chapter), make-flashcards |
+| `document_chapters` | `chapter_distillations: [{anchor, heading, body}]`, `shelf: [{slug, title, authors, thesis}]` (other documents' brief theses), `existing_concepts: [{canonical, aliases, kind}]` | write-brief, write-guide, link-concepts, make-glossary |
+| `chapter_distillation` | `chapter_distillations: [one item]` | make-quiz, make-faq, make-flashcards (chapter) |
+| `document_distillations` | `chapter_distillations` as in `document_chapters`, `book_brief: [section]` (the preferred brief's `thesis` and `ideas` sections, or `[]`), `book_themes: [{name, spans}]` (the preferred book guide's themes, or `[]`). No `shelf` or concepts, so the hash only moves when this book's distillations, brief or guide do | make-quiz, make-faq, make-flashcards (book-wide) |
+| `document_quotes` | `chapters: [{anchor, heading, quotes, passages}]` — per chapter, its preferred quote set's quote blocks and up to 12 quotable source `block`s (paragraph, quote, aside) that its distillation's callouts and quote blocks cite, most cited first, minus those already quoted; chapters with neither are left out. Plus `book_brief`, `book_themes` as above | extract-quotes (book-wide) |
 | `note_context` | `note: {id, raw, anchor, highlighted_text}`, `blocks` (anchor's section), `distillation` (nearest chapter distillation body or null), `existing_concepts` | structure-note |
 
 A `block` is `{anchor, kind, text, page, meta}`; `meta` carries `table`, `caption`, `language`,
