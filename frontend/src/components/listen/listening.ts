@@ -4,7 +4,7 @@
  * you stopped at (kept per render in localStorage, when the browser allows it).
  */
 import type { Anchor } from '../../lib/contract';
-import type { AudioEpisode, AudioRender, Mark, VoicePublic } from '../../lib/api/types/audio';
+import type { AudioEpisode, AudioRender, AudioVersion, Mark, VoicePublic } from '../../lib/api/types/audio';
 import type { JobPublic } from '../../lib/api/types/jobs';
 
 export const AUDIO_SKILL = 'write-audio-summary';
@@ -180,10 +180,29 @@ export function browserStorage(): Storage | undefined {
 
 // --- Episodes and the jobs making them ------------------------------------------------
 
-/** The render to play: `key` if the episode has it, else its newest. */
-export function pickRender(episode: AudioEpisode | undefined, key: string | null): AudioRender | null {
-  if (!episode) return null;
-  return episode.renders.find((r) => r.key === key) ?? episode.renders[0] ?? null;
+/** The render to play: `key` if the version has it, else its newest. */
+export function pickRender(version: Pick<AudioVersion, 'renders'> | undefined, key: string | null): AudioRender | null {
+  if (!version) return null;
+  return version.renders.find((r) => r.key === key) ?? version.renders[0] ?? null;
+}
+
+/** An episode's versions, newest first (the current one alone when none are listed). */
+export function versionsOf(episode: AudioEpisode): AudioVersion[] {
+  return episode.versions?.length ? episode.versions : [{ script: episode.script, renders: episode.renders }];
+}
+
+/** The version to show: `id` if the episode has it, else the one it plays first. */
+export function pickVersion(episode: AudioEpisode | undefined, id: string | null): AudioVersion | undefined {
+  if (!episode) return undefined;
+  const versions = versionsOf(episode);
+  return versions.find((v) => v.script.id === id) ?? versions.find((v) => v.script.id === episode.script.id) ?? versions[0];
+}
+
+/** "Version 3 · current", "Version 1 · replaced · 1 recording". */
+export function versionLabel(version: AudioVersion, currentId: string): string {
+  const state = version.script.id === currentId ? 'current' : version.script.review === 'rejected' ? 'replaced' : 'earlier';
+  const takes = version.renders.length;
+  return [`Version ${version.script.version}`, state, takes === 0 ? 'not recorded' : `${takes} recording${takes === 1 ? '' : 's'}`].join(' · ');
 }
 
 /** Whether a job is part of making audio: writing a script, or recording one. */

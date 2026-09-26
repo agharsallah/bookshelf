@@ -59,13 +59,27 @@ class AudioScript(BaseModel):
     created_at: datetime
 
 
+class AudioVersion(BaseModel):
+    """One version of an episode's script, and every recording made of it."""
+
+    script: AudioScript
+    renders: Annotated[list[AudioRender], Field(description="Newest first.")]
+
+
 class AudioEpisode(BaseModel):
     """One episode of a book: a length, format and language, its script and renders."""
 
     variant: str
     params: dict[str, str | int]
-    script: AudioScript
-    renders: Annotated[list[AudioRender], Field(description="Newest first.")]
+    script: Annotated[AudioScript, Field(description="The version to play first.")]
+    renders: Annotated[list[AudioRender], Field(description="Its recordings, newest first.")]
+    versions: Annotated[
+        list[AudioVersion],
+        Field(
+            description="Every version, newest first: the live ones, and replaced or "
+            "rejected ones that were recorded, so no recording is ever lost."
+        ),
+    ] = []
 
 
 class AudioShelf(BaseModel):

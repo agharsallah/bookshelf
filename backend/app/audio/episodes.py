@@ -1,5 +1,8 @@
 """A book's episodes, as the Listen page shows them: per variant (`15m-conversation-en`),
-the script to read (the latest approved version, else the latest one) and its renders."""
+the script to play first (the latest approved version, else the latest one) and its
+renders, plus every version of the episode. A forced re-write replaces a script (the old
+row becomes `rejected`), but a version that was recorded stays listed with its audio, so
+making a new version never loses an old one."""
 
 from collections.abc import Mapping
 from pathlib import Path
@@ -12,7 +15,14 @@ from app.models import Artifact, Document
 from app.models.enums import ArtifactType, Review
 from app.pipeline.artifacts import pick_preferred
 from app.pipeline.skills import ParamValue, Skill
-from app.schemas.audio import AudioEpisode, AudioRender, AudioScript, AudioShelf, Mark
+from app.schemas.audio import (
+    AudioEpisode,
+    AudioRender,
+    AudioScript,
+    AudioShelf,
+    AudioVersion,
+    Mark,
+)
 
 FILES_ROUTE = "audio/files"
 _FORMAT_ORDER = ("narrator", "conversation", "panel", "roundtable")
@@ -46,22 +56,39 @@ def shelf(
         .where(
             Artifact.document_id == document.id,
             Artifact.type == ArtifactType.AUDIO_SUMMARY,
-            Artifact.review != Review.REJECTED,
         )
         .order_by(col(Artifact.version))
     ).all()
-    chosen = pick_preferred(rows, lambda row: row.variant)
-    renders: dict[str, list[store.Render]] = {}
+    renders: dict[str, list[AudioRender]] = {}
     for render in store.list_renders(audio_dir, document.id):
-        renders.setdefault(render.artifact_id, []).append(render)
-    episodes = [
-        AudioEpisode(
-            variant=artifact.variant or "",
-            params=script_params(catalogue, artifact),
-            script=AudioScript.model_validate(artifact, from_attributes=True),
-            renders=[render_public(r) for r in renders.get(str(artifact.id), [])],
+        renders.setdefault(render.artifact_id, []).append(render_public(render))
+    live = [row for row in rows if row.review is not Review.REJECTED]
+    chosen = pick_preferred(live, lambda row: row.variant)
+    # A variant whose every version was replaced or rejected still has its recordings.
+    for row in rows:
+        if row.variant not in chosen and renders.get(str(row.id)):
+            chosen[row.variant] = row
+
+    def version(row: Artifact) -> AudioVersion:
+        script = AudioScript.model_validate(row, from_attributes=True)
+        return AudioVersion(script=script, renders=renders.get(str(row.id), []))
+
+    episodes = []
+    for variant, artifact in chosen.items():
+        kept = [
+            row
+            for row in reversed(rows)
+            if row.variant == variant
+            and (row.review is not Review.REJECTED or renders.get(str(row.id)))
+        ]
+        episodes.append(
+            AudioEpisode(
+                variant=artifact.variant or "",
+                params=script_params(catalogue, artifact),
+                script=AudioScript.model_validate(artifact, from_attributes=True),
+                renders=renders.get(str(artifact.id), []),
+                versions=[version(row) for row in kept],
+            )
         )
-        for artifact in chosen.values()
-    ]
     episodes.sort(key=lambda e: _order(e.params))
     return AudioShelf(document_id=document.id, episodes=episodes)

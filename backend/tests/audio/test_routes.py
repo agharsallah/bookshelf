@@ -108,6 +108,36 @@ def test_episodes_are_one_per_variant_shortest_first_with_their_renders_newest_f
     assert episodes[1]["renders"] == []
 
 
+def test_a_new_version_keeps_the_old_ones_that_were_recorded(
+    api: TestClient, session: Session, book: Document, settings: Settings
+):
+    """A forced re-write rejects the old row (one live artifact per input); its recording
+    must stay reachable. Replaced versions with no recording are left out."""
+    first = add_script(session, book, "5m-narrator-en", review=Review.REJECTED)
+    add_script(session, book, "5m-narrator-en", version=2, review=Review.REJECTED)  # unrecorded
+    current = add_script(session, book, "5m-narrator-en", version=3)
+    kept = narration(settings.audio_dir, first, "v1", "2026-09-01T00:00:00+00:00")
+    narration(settings.audio_dir, current, "v3", "2026-09-20T00:00:00+00:00")
+
+    [episode] = api.get(f"{API}/documents/{book.slug}/audio").json()["episodes"]
+
+    assert episode["script"]["id"] == str(current.id)
+    assert [v["script"]["version"] for v in episode["versions"]] == [3, 1]
+    assert [r["url"] for r in episode["versions"][1]["renders"]] == [f"audio/files/{kept}"]
+
+
+def test_an_episode_whose_every_version_was_replaced_still_plays(
+    api: TestClient, session: Session, book: Document, settings: Settings
+):
+    only = add_script(session, book, "30m-panel-en", review=Review.REJECTED)
+    narration(settings.audio_dir, only, "k", "2026-09-01T00:00:00+00:00")
+
+    [episode] = api.get(f"{API}/documents/{book.slug}/audio").json()["episodes"]
+
+    assert episode["script"]["id"] == str(only.id)
+    assert len(episode["renders"]) == 1
+
+
 def test_a_book_without_episodes_has_an_empty_shelf_and_an_unknown_one_is_404(
     api: TestClient, book: Document
 ):

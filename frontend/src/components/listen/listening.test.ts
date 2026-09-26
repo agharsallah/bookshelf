@@ -12,6 +12,9 @@ import {
   paramsOfVariant,
   parseScript,
   pickRender,
+  pickVersion,
+  versionLabel,
+  versionsOf,
   readPosition,
   sectionJump,
   spokenTime,
@@ -159,3 +162,25 @@ describe('episodes and jobs', () => {
     expect(audioJobTitle(recording, [EPISODE], CATALOGUE.voices)).toBe('Recording 15 min · Conversation with Alice & Frank');
   });
 });
+
+describe('versions', () => {
+  const old = { script: { ...EPISODE.script, id: 'art-0', version: 1, review: 'rejected' as const }, renders: EPISODE.renders };
+  const current = { script: EPISODE.script, renders: [] };
+  const episode = { ...EPISODE, versions: [current, old] };
+
+  it('lists the current version alone when the API sends no history', () => {
+    expect(versionsOf(EPISODE)).toEqual([{ script: EPISODE.script, renders: EPISODE.renders }]);
+  });
+
+  it('shows the version asked for, else the one the episode plays first', () => {
+    expect(pickVersion(episode, 'art-0')?.script.version).toBe(1);
+    expect(pickVersion(episode, 'gone')?.script.id).toBe('art-1');
+    expect(pickVersion(undefined, null)).toBeUndefined();
+  });
+
+  it('says which version is current, which was replaced, and what was recorded', () => {
+    expect(versionLabel(current, 'art-1')).toBe('Version 1 · current · not recorded');
+    expect(versionLabel(old, 'art-1')).toBe('Version 1 · replaced · 1 recording');
+  });
+});
+

@@ -24,6 +24,9 @@ import {
   isAudioJob,
   parseScript,
   pickRender,
+  pickVersion,
+  versionLabel,
+  versionsOf,
   positionKey,
 } from './listening';
 import { Transcript } from './Transcript';
@@ -43,6 +46,7 @@ export interface ListenProps {
 export function Listen({ slug, bookTitle, documentId, shelf: initial, catalogue, params, api = browserApi }: ListenProps) {
   const [shelf, setShelf] = useState(initial);
   const [variant, setVariant] = useState<string | null>(() => initial.episodes.find((e) => e.renders.length > 0)?.variant ?? initial.episodes[0]?.variant ?? null);
+  const [versionId, setVersionId] = useState<string | null>(null);
   const [renderKey, setRenderKey] = useState<string | null>(null);
   const [time, setTime] = useState(0);
   const [making, setMaking] = useState(initial.episodes.length === 0);
@@ -51,8 +55,9 @@ export function Listen({ slug, bookTitle, documentId, shelf: initial, catalogue,
   const [now, setNow] = useState(() => Date.now());
 
   const episode = shelf.episodes.find((e) => e.variant === variant) ?? shelf.episodes[0];
-  const render = pickRender(episode, renderKey);
-  const script = useMemo(() => (episode ? parseScript(episode.script.body) : null), [episode]);
+  const version = pickVersion(episode, versionId);
+  const render = pickRender(version, renderKey);
+  const script = useMemo(() => (version ? parseScript(version.script.body) : null), [version]);
   const audioJobs = Object.values(jobs).filter(isAudioJob);
   const live = audioJobs.filter((job) => job.state === 'queued' || job.state === 'running');
   const finished = audioJobs.filter((job) => job.state === 'done' || job.state === 'skipped').map((job) => job.id).sort().join(',');
@@ -107,6 +112,7 @@ export function Listen({ slug, bookTitle, documentId, shelf: initial, catalogue,
                   aria-pressed={e.variant === episode?.variant}
                   onClick={() => {
                     setVariant(e.variant);
+                    setVersionId(null);
                     setRenderKey(null);
                     setTime(0);
                   }}
@@ -134,21 +140,40 @@ export function Listen({ slug, bookTitle, documentId, shelf: initial, catalogue,
         </ul>
       )}
 
-      {episode && script && (
+      {episode && version && script && (
         <article className={styles.episodeView} aria-labelledby="episode-title">
           <header className={styles.episodeHead}>
             <p className={styles.kicker}>{episodeLabel(episode.params)}</p>
             <h2 id="episode-title">{script.title}</h2>
-            {episode.script.review !== 'approved' && (
+            {version.script.review !== 'approved' && version.script.review !== 'rejected' && (
               <p className={styles.draft}>
-                Draft, not reviewed yet. <a href={`/review/${episode.script.id}`}>Review the script</a>
+                Draft, not reviewed yet. <a href={`/review/${version.script.id}`}>Review the script</a>
               </p>
             )}
-            {episode.renders.length > 1 && (
+            {versionsOf(episode).length > 1 && (
+              <label className={styles.castPick}>
+                Version
+                <select
+                  value={version.script.id}
+                  onChange={(event) => {
+                    setVersionId(event.currentTarget.value);
+                    setRenderKey(null);
+                    setTime(0);
+                  }}
+                >
+                  {versionsOf(episode).map((v) => (
+                    <option key={v.script.id} value={v.script.id}>
+                      {versionLabel(v, episode.script.id)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            {version.renders.length > 1 && (
               <label className={styles.castPick}>
                 Voices
                 <select value={render?.key ?? ''} onChange={(event) => setRenderKey(event.currentTarget.value)}>
-                  {episode.renders.map((r) => (
+                  {version.renders.map((r) => (
                     <option key={r.key} value={r.key}>
                       {castNames(r.voices, catalogue.voices)}
                     </option>

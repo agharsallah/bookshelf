@@ -56,12 +56,21 @@ export interface AudioScript {
   created_at: string;
 }
 
-export interface AudioEpisode {
-  variant: string;
-  params: Record<string, string | number>;
+/** One version of an episode's script, and every recording made of it. */
+export interface AudioVersion {
   script: AudioScript;
   /** Newest first. */
   renders: AudioRender[];
+}
+
+export interface AudioEpisode {
+  variant: string;
+  params: Record<string, string | number>;
+  /** The version to play first, and its recordings (newest first). */
+  script: AudioScript;
+  renders: AudioRender[];
+  /** Every version, newest first, including replaced ones that were recorded. */
+  versions?: AudioVersion[];
 }
 
 /** `GET /documents/{ref}/audio`: shortest episode first. */
