@@ -1,0 +1,302 @@
+/*
+ * The query box is the page's hero: one large field in the tool's voice, its Search
+ * button inside the field, Ask for an answer beside what the search did. Search options
+ * fold the modes and filters away as plain-language choices.
+ */
+.queryForm {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
+  border: 1.5px solid var(--rule-strong);
+  border-radius: var(--radius-l);
+  background: var(--paper-raised);
+  transition:
+    border-color var(--dur-1) var(--ease-out),
+    box-shadow var(--dur-1) var(--ease-out);
+}
+
+.field:hover {
+  border-color: var(--ink-3);
+}
+
+.field:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-wash);
+}
+
+.glass {
+  flex: none;
+  inline-size: 1.5rem;
+  block-size: 1.5rem;
+  fill: none;
+  stroke: var(--ink-3);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+
+.field:focus-within .glass {
+  stroke: var(--accent);
+}
+
+.input {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  padding: var(--space-2) 0;
+  border: none;
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: var(--text-lg);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: var(--leading-tight);
+}
+
+.input::placeholder {
+  color: var(--ink-3);
+  font-weight: 400;
+}
+
+.input:focus-visible {
+  outline: none;
+}
+
+.input::-webkit-search-cancel-button {
+  cursor: pointer;
+}
+
+.submit {
+  flex: none;
+  min-block-size: 2.75rem;
+  padding-inline: var(--space-5);
+}
+
+.below {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3) var(--space-5);
+  padding-inline: var(--space-1);
+}
+
+.intent {
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  transition: opacity var(--dur-2) var(--ease-out);
+}
+
+.intent[data-loading] {
+  opacity: 0.55;
+}
+
+.keyHint {
+  color: var(--ink-3);
+}
+
+.keyHint kbd {
+  padding: 0 0.35em;
+  border: 1px solid var(--rule-strong);
+  border-block-end-width: 2px;
+  border-radius: var(--radius-s);
+  background: var(--paper-raised);
+  font-size: var(--text-xs);
+}
+
+.ask {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+
+.askWhy {
+  max-inline-size: 22rem;
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  line-height: var(--leading-ui);
+}
+
+/* ── Search options ────────────────────────────────────────── */
+.options {
+  border-block: 1px solid var(--rule);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  line-height: var(--leading-ui);
+}
+
+.options summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-3);
+  padding-block: var(--space-3);
+  color: var(--ink-2);
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+}
+
+.options summary::-webkit-details-marker {
+  display: none;
+}
+
+.options summary::before {
+  content: '';
+  inline-size: 0.45em;
+  block-size: 0.45em;
+  border-block-end: 1.5px solid currentColor;
+  border-inline-end: 1.5px solid currentColor;
+  rotate: -45deg;
+  translate: 0 -0.1em;
+  transition: rotate var(--dur-2) var(--ease-out);
+}
+
+.options[open] summary::before {
+  rotate: 45deg;
+}
+
+.options summary:hover {
+  color: var(--ink);
+}
+
+.changed {
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.optionsBody {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: var(--space-5);
+  padding-block: var(--space-2) var(--space-4);
+}
+
+.group {
+  display: grid;
+  align-content: start;
+  gap: var(--space-2);
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.group legend {
+  margin-block-end: var(--space-2);
+  padding: 0;
+  color: var(--ink);
+  font-weight: 650;
+}
+
+/* The mode choice spans the first row: it is the one most people will read. */
+.modes {
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: var(--space-2);
+}
+
+.mode {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-m);
+  cursor: pointer;
+  transition: border-color var(--dur-1) var(--ease-out);
+}
+
+.mode:hover {
+  border-color: var(--rule-strong);
+}
+
+.mode:has(input:checked) {
+  border-color: var(--accent);
+  background: var(--accent-wash);
+}
+
+.mode input,
+.check input {
+  flex: none;
+  margin-block-start: 0.2em;
+  accent-color: var(--accent);
+}
+
+.modeText {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.modeLabel {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.modeWhy {
+  color: var(--ink-2);
+  font-size: var(--text-xs);
+}
+
+.checks {
+  display: grid;
+  gap: var(--space-1);
+  max-block-size: 13rem;
+  overflow: auto;
+  padding-inline-end: var(--space-2);
+}
+
+.check {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+.check:has(input:checked) {
+  color: var(--ink);
+}
+
+.check :global(.book-title) {
+  font-size: var(--text-ui);
+}
+
+.reset {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-block-end: var(--space-3);
+  margin-inline-start: calc(-1 * var(--space-4));
+}
+
+@media (max-width: 40rem) {
+  .field {
+    padding-inline-start: var(--space-3);
+    gap: var(--space-2);
+  }
+
+  .glass {
+    display: none;
+  }
+
+  .input {
+    font-size: var(--text-md);
+  }
+
+  .submit {
+    padding-inline: var(--space-4);
+  }
+
+  .keyHint {
+    display: none;
+  }
+}

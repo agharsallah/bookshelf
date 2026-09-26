@@ -2,7 +2,8 @@
  * Search results, grouped by document. Each book shows what you already know about the
  * query (distillation hits) apart from the evidence (source passages); lexical hits
  * carry their matched words highlighted. An addressed query leads with the chapter it
- * resolved to and that chapter's approved artifacts.
+ * resolved to and that chapter's approved artifacts. The book speaks in the serif (titles,
+ * distillations on a sheet, quoted passages); labels and counts are the tool's sans.
  */
 import type { MouseEvent } from 'react';
 import { Blocks } from '../blocks';
@@ -62,13 +63,13 @@ function Group({ group, onOpen }: { group: GroupView; onOpen: ResultsProps['onOp
   return (
     <article className={styles.group} aria-labelledby={`doc-${document.id}`}>
       <header className={styles.groupHead}>
-        <h2 id={`doc-${document.id}`}>
+        <h2 id={`doc-${document.id}`} className="book-title">
           <a href={readerHref(document.slug)}>{document.title}</a>
         </h2>
         {document.authors.length ? <p className={styles.authors}>{document.authors.join(', ')}</p> : null}
       </header>
       {group.known.length ? (
-        <section className={styles.tier} aria-label={`What you know from ${document.title}`}>
+        <section className={`${styles.tier} ${styles.knownTier}`} aria-label={`What you know from ${document.title}`}>
           <h3 className={styles.tierHead}>What you know</h3>
           <ul className={styles.hits}>
             {group.known.map((hit) => (
@@ -98,8 +99,8 @@ function Resolved({ view, onOpen }: { view: ResultsView; onOpen: ResultsProps['o
   const lead = view.order[0];
   return (
     <article className={styles.resolved} aria-labelledby="resolved-title">
-      <p className={styles.resolvedBook}>{resolved.document.title}</p>
-      <h2 id="resolved-title" className={styles.resolvedTitle}>
+      <p className={`book-title ${styles.resolvedBook}`}>{resolved.document.title}</p>
+      <h2 id="resolved-title" className={`book-title ${styles.resolvedTitle}`}>
         {resolved.heading ?? (resolved.anchor ? anchorLabel(resolved.anchor) : 'The whole book')}
       </h2>
       <a

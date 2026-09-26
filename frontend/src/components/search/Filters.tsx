@@ -1,11 +1,11 @@
 /**
- * Narrow a search to some books, tags or kinds of distillation. Collapsed by default;
- * the summary says how many filters are on so a narrowed search never hides it.
+ * Narrow a search to some books, tags or kinds of distillation: the filter fieldsets
+ * shown inside "Search options" (SearchOptions.tsx), which says how many are on.
  */
 import type { ArtifactType } from '../../lib/api/types/artifacts';
 import { TYPE_LABELS } from '../review/labels';
 import type { SearchState } from './url-state';
-import styles from './Search.module.css';
+import styles from './Query.module.css';
 
 export interface FilterDocument {
   id: string;
@@ -25,62 +25,59 @@ export const FILTER_TYPES: ArtifactType[] = [
   'faq',
 ];
 
-export interface FiltersProps {
+export type FilterPatch = Partial<Pick<SearchState, 'documents' | 'tags' | 'types'>>;
+
+export interface FilterFieldsProps {
   state: SearchState;
   documents: readonly FilterDocument[];
   tags: readonly string[];
-  onChange: (patch: Partial<Pick<SearchState, 'documents' | 'tags' | 'types'>>) => void;
+  onChange: (patch: FilterPatch) => void;
 }
 
 function toggle<T>(list: readonly T[], value: T): T[] {
   return list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
 }
 
-export function Filters({ state, documents, tags, onChange }: FiltersProps) {
-  const count = state.documents.length + state.tags.length + state.types.length;
+export function FilterFields({ state, documents, tags, onChange }: FilterFieldsProps) {
   return (
-    <details className={styles.filters} open={count > 0 || undefined}>
-      <summary>
-        Filters{count ? <span className={styles.count}> ({count} on)</span> : null}
-      </summary>
-      <div className={styles.filterGrid}>
-        {documents.length ? (
-          <fieldset>
-            <legend>Books</legend>
+    <>
+      {documents.length ? (
+        <fieldset className={styles.group}>
+          <legend>Books</legend>
+          <div className={styles.checks}>
             {documents.map((d) => (
               <label key={d.id} className={styles.check}>
                 <input type="checkbox" checked={state.documents.includes(d.id)} onChange={() => onChange({ documents: toggle(state.documents, d.id) })} />
-                <span>{d.title}</span>
+                <span className="book-title">{d.title}</span>
               </label>
             ))}
-          </fieldset>
-        ) : null}
-        {tags.length ? (
-          <fieldset>
-            <legend>Tags</legend>
+          </div>
+        </fieldset>
+      ) : null}
+      {tags.length ? (
+        <fieldset className={styles.group}>
+          <legend>Tags</legend>
+          <div className={styles.checks}>
             {tags.map((t) => (
               <label key={t} className={styles.check}>
                 <input type="checkbox" checked={state.tags.includes(t)} onChange={() => onChange({ tags: toggle(state.tags, t) })} />
                 <span>{t}</span>
               </label>
             ))}
-          </fieldset>
-        ) : null}
-        <fieldset>
-          <legend>Distillations</legend>
+          </div>
+        </fieldset>
+      ) : null}
+      <fieldset className={styles.group}>
+        <legend>Kinds of distillation</legend>
+        <div className={styles.checks}>
           {FILTER_TYPES.map((t) => (
             <label key={t} className={styles.check}>
               <input type="checkbox" checked={state.types.includes(t)} onChange={() => onChange({ types: toggle(state.types, t) })} />
               <span>{TYPE_LABELS[t]}</span>
             </label>
           ))}
-        </fieldset>
-      </div>
-      {count ? (
-        <button type="button" className={styles.clear} onClick={() => onChange({ documents: [], tags: [], types: [] })}>
-          Clear filters
-        </button>
-      ) : null}
-    </details>
+        </div>
+      </fieldset>
+    </>
   );
 }

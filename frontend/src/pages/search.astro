@@ -2,14 +2,16 @@
 /**
  * Search (§10): ask, don't dig. The query lives in the URL (`?q=&mode=&doc=&tag=&type=`),
  * so a search is shareable; the island runs it and streams cited answers. The shelf is
- * loaded here only to offer book and tag filters.
+ * loaded here only to offer book and tag filters, and the most connected concepts to
+ * suggest before the first query.
  */
 import BaseLayout from '../layouts/BaseLayout.astro';
 import SearchPage from '../components/search/SearchPage';
 import { tagCloud } from '../components/library/filters';
-import { parseSearchParams } from '../components/search/url-state';
+import { parseSearchParams, searchHref } from '../components/search/url-state';
 import type { Page } from '../lib/api/types';
 import type { DocumentSummary } from '../lib/api/types/documents';
+import type { ConceptSummary } from '../lib/api/types/graph';
 import { serverApi } from '../lib/api/server';
 
 export const prerender = false;
@@ -19,12 +21,19 @@ const askOnLoad = Astro.url.searchParams.get('ask') === '1' && initial.q.trim() 
 
 let documents: { id: string; title: string }[] = [];
 let tags: string[] = [];
-try {
-  const shelf = await serverApi().get<Page<DocumentSummary>>('documents', { query: { limit: 100 } });
-  documents = shelf.items.map((d) => ({ id: d.id, title: d.title })).sort((a, b) => a.title.localeCompare(b.title));
-  tags = tagCloud(shelf.items).map((t) => t.tag);
-} catch {
-  // Filters are optional: search still works if the shelf list is unavailable.
+let suggestions: { label: string; href: string }[] = [];
+const api = serverApi();
+// Filters and suggestions are optional: search still works if either list is unavailable.
+const [shelf, concepts] = await Promise.allSettled([
+  api.get<Page<DocumentSummary>>('documents', { query: { limit: 100 } }),
+  initial.q ? Promise.resolve(null) : api.get<Page<ConceptSummary>>('concepts', { query: { sort: 'connected', limit: 8 } }),
+]);
+if (shelf.status === 'fulfilled') {
+  documents = shelf.value.items.map((d) => ({ id: d.id, title: d.title })).sort((a, b) => a.title.localeCompare(b.title));
+  tags = tagCloud(shelf.value.items).map((t) => t.tag);
+}
+if (concepts.status === 'fulfilled' && concepts.value) {
+  suggestions = concepts.value.items.map((c) => ({ label: c.canonical, href: searchHref({ q: c.canonical }) }));
 }
 const title = initial.q ? `“${initial.q}”` : 'Search';
 ---
@@ -33,19 +42,18 @@ const title = initial.q ? `“${initial.q}”` : 'Search';
   <div class="page">
     <header class="head">
       <h1>Search</h1>
-      <p class="lede">
-        Everything you have distilled comes first, then the passages it rests on. Ask for an answer and it is written from
-        those passages, each claim cited.
-      </p>
+      <p class="lede">What you distilled comes first, then the passages it rests on.</p>
     </header>
-    <SearchPage client:load initial={initial} askOnLoad={askOnLoad} documents={documents} tags={tags} />
+    <SearchPage client:load initial={initial} askOnLoad={askOnLoad} documents={documents} tags={tags} suggestions={suggestions} />
   </div>
 </BaseLayout>
 
 <style>
   .page {
     display: grid;
-    gap: var(--space-6);
+    gap: var(--space-5);
+    max-inline-size: 60rem;
+    padding-block-start: var(--space-4);
   }
 
   .head {
@@ -60,5 +68,7 @@ const title = initial.q ? `“${initial.q}”` : 'Search';
 
   .lede {
     color: var(--ink-2);
+    font-family: var(--font-ui);
+    font-size: var(--text-ui);
   }
 </style>

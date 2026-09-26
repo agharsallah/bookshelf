@@ -1,8 +1,9 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { fakeApi } from '../review/testing/fakeApi';
 import { SearchPage } from './SearchPage';
+import { RECENT_SEARCHES_KEY } from './recent';
 import { emptySearch } from './url-state';
 
 const doc = { id: 'm', slug: 'meadows', title: 'Thinking in Systems', authors: ['Donella Meadows'] };
@@ -105,5 +106,31 @@ describe('SearchPage', () => {
     stream.finish();
     await waitFor(() => expect(screen.getByRole('alert').textContent).toContain('The model run failed.'));
     expect(screen.getByRole('alert').textContent).toContain('req-9');
+  });
+
+  describe('search options and the start', () => {
+    afterEach(() => localStorage.clear());
+
+    it('searches by the mode chosen under Search options and keeps it in the address', async () => {
+      const { api, calls } = fakeApi({ 'POST search': () => hits });
+      render(<SearchPage initial={{ ...emptySearch, q: 'stock' }} documents={[]} tags={[]} api={api} debounceMs={0} />);
+      await userEvent.click(screen.getByText('Search options'));
+      await userEvent.click(screen.getByRole('radio', { name: /Exact words/ }));
+      await waitFor(() => expect(calls.at(-1)?.body).toMatchObject({ query: 'stock', mode: 'lexical' }));
+      expect(location.search).toContain('mode=lexical');
+      expect(screen.getByText('Search options').textContent).toContain('Exact words');
+    });
+
+    it('offers recent searches and suggested concepts before the first query', () => {
+      localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify([{ label: 'feedback loops', href: '/search?q=feedback+loops' }]));
+      const { api, calls } = fakeApi({});
+      const suggestions = [{ label: 'STAR method', href: '/search?q=STAR+method' }];
+      render(<SearchPage initial={emptySearch} documents={[]} tags={[]} suggestions={suggestions} api={api} debounceMs={0} />);
+      const recent = screen.getByRole('region', { name: 'Recent searches' });
+      expect(within(recent).getByRole('link', { name: 'feedback loops' }).getAttribute('href')).toBe('/search?q=feedback+loops');
+      const concepts = screen.getByRole('region', { name: 'Concepts to look up' });
+      expect(within(concepts).getByRole('link', { name: 'STAR method' }).getAttribute('href')).toBe('/search?q=STAR+method');
+      expect(calls).toHaveLength(0);
+    });
   });
 });
