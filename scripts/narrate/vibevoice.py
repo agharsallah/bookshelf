@@ -160,12 +160,10 @@ class Voicer:
         if self._model is None:
             log(event="loading", model=self.request["model"], device=self.device, dtype=str(self.dtype))
             self._processor = AutoProcessor.from_pretrained(self.request["model"])
-            # Straight onto the device: loading on the CPU and then moving would hold two
-            # copies of the weights (about 11 GB) at once.
-            model = AutoModelForTextToWaveform.from_pretrained(
-                self.request["model"], dtype=self.dtype, device_map=self.device, low_cpu_mem_usage=True
-            )
-            self._model = model.eval()
+            # Load on the CPU, then move: `.to()` moves one tensor at a time, freeing each CPU
+            # copy as it goes. (`device_map="mps"` segfaults while loading on Apple GPUs.)
+            model = AutoModelForTextToWaveform.from_pretrained(self.request["model"], dtype=self.dtype)
+            self._model = model.to(self.device).eval()
             log(event="loaded", seconds=round(time.monotonic() - self._created))
         set_seed(int(self.request.get("seed", 42)))
         inputs = self._processor.apply_chat_template(
