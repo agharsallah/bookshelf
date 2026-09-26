@@ -1,7 +1,8 @@
 /**
  * Document-wide jobs: re-parse, write the brief, and book-wide study material (glossary,
  * guide, and the quiz, FAQ, quotes and flashcards over the whole book). Re-runs queue a
- * job and say so in a toast; study material shows its job's live progress in place.
+ * job and say so in a toast, after asking first for those that replace what you see (a
+ * re-parse rebuilds the outline); study material shows its job's live progress in place.
  */
 import { useState } from 'react';
 import { browserApi } from '../../lib/api/client';
@@ -25,6 +26,11 @@ export interface DocumentActionsProps {
   made?: Record<string, string>;
 }
 
+/** Re-runs that replace what the page shows, with the question to ask before queueing them. */
+export const CONFIRM: Partial<Record<JobKind, string>> = {
+  parse: 'Re-parse this document? Its chapters are rebuilt from the file (outline fixes are kept), and your place in any chapter that changes is lost.',
+};
+
 export function DocumentActions(props: DocumentActionsProps) {
   const { derive = [] } = props;
   return derive.length > 0 ? <StudyActions {...props} derive={derive} /> : <RunActions {...props} />;
@@ -32,7 +38,9 @@ export function DocumentActions(props: DocumentActionsProps) {
 
 function RunActions({ documentId, kinds = [] }: DocumentActionsProps) {
   const [busy, setBusy] = useState<string | null>(null);
-  const run = async (key: string, request: EnqueueRequest) => {
+  const run = async (key: JobKind, request: EnqueueRequest) => {
+    const question = CONFIRM[key];
+    if (question && !window.confirm(question)) return;
     setBusy(key);
     await enqueue(browserApi, request);
     setBusy(null);
