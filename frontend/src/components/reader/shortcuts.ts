@@ -5,7 +5,18 @@
  */
 import type { Shortcut } from '../common/ShortcutHelp';
 
-export type ReaderAction = 'focus' | 'fullscreen' | 'contents' | 'pane' | 'semantic' | 'spotlight' | 'bigger' | 'smaller' | 'help';
+export type ReaderAction =
+  | 'focus'
+  | 'fullscreen'
+  | 'contents'
+  | 'pane'
+  | 'semantic'
+  | 'salience'
+  | 'nextIdea'
+  | 'spotlight'
+  | 'bigger'
+  | 'smaller'
+  | 'help';
 
 const ACTION_KEYS: Readonly<Record<string, ReaderAction>> = {
   f: 'focus',
@@ -13,6 +24,8 @@ const ACTION_KEYS: Readonly<Record<string, ReaderAction>> = {
   t: 'contents',
   d: 'pane',
   c: 'semantic',
+  h: 'salience',
+  '.': 'nextIdea',
   s: 'spotlight',
   '+': 'bigger',
   '=': 'bigger',
@@ -35,6 +48,8 @@ export const READER_SHORTCUTS: readonly Shortcut[] = [
   { keys: ['t'], label: 'Show or hide the contents' },
   { keys: ['d'], label: 'Show or hide the distillation' },
   { keys: ['c'], label: 'Colour-code quotes, examples, asides' },
+  { keys: ['h'], label: 'Mark what matters: core ideas, key points, terms' },
+  { keys: ['.'], label: 'Next key idea (with marks on)' },
   { keys: ['s'], label: 'Spotlight the block being read' },
   { keys: ['+', '−'], label: 'Larger / smaller text' },
   { keys: ['?'], label: 'Show these shortcuts' },

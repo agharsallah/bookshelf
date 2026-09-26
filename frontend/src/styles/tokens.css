@@ -71,6 +71,10 @@
   --hl-sky: light-dark(#c8dcf3, #2a445b);
   --hl-violet: light-dark(#dccff2, #43375d);
 
+  /* ── "What matters" marks: a warm stroke apart from your own highlights ── */
+  --sal-core: light-dark(#ffcf9f, #6a3f1f);
+  --sal-key: light-dark(#ffe6cc, #45311f);
+
   /* ── Charts: ink first, then colours that stay apart for colour-blind readers ── */
   --series-1: light-dark(#2f48b8, #8397f5);
   --series-2: light-dark(#c28a12, #c69a2f);

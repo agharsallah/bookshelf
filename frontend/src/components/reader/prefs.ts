@@ -1,7 +1,7 @@
 /**
  * Reader preferences: how the text is set (font, size, leading, paragraph spacing,
  * measure, alignment), which panes are shown, and the reading aids (focus mode,
- * colour-coded passages, spotlight). One JSON object in localStorage, validated
+ * colour-coded passages, what-matters marks, spotlight). One JSON object in localStorage, validated
  * field by field on the way in so a stale or hand-edited value never breaks the page.
  */
 
@@ -39,6 +39,8 @@ export interface ReaderPrefs {
   focus: boolean;
   /** Quotes, examples, exercises, warnings… tinted and labelled by what they are. */
   semantic: boolean;
+  /** Core ideas, key points and terms marked in the text, drawn in as you read. */
+  salience: boolean;
   /** Dim every block but the one being read. */
   spotlight: boolean;
 }
@@ -56,6 +58,7 @@ export const DEFAULT_PREFS: Readonly<ReaderPrefs> = Object.freeze({
   pane: true,
   focus: false,
   semantic: false,
+  salience: false,
   spotlight: false,
 });
 
@@ -111,6 +114,7 @@ export function parsePrefs(raw: string | null): ReaderPrefs {
     pane: flag(data.pane, d.pane),
     focus: flag(data.focus, d.focus),
     semantic: flag(data.semantic, d.semantic),
+    salience: flag(data.salience, d.salience),
     spotlight: flag(data.spotlight, d.spotlight),
   };
 }

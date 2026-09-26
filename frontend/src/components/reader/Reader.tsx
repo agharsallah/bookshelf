@@ -22,6 +22,7 @@ import { paintPaneNotes, paneNoteAt, revealPaneNote } from './paneMarks';
 import { groupMarks, marksFor, notedBlocks, type MarksByAnchor } from './marks';
 import { ShortcutHelp } from '../common/ShortcutHelp';
 import { Navigator, type NavSection, type NavUnit } from './Navigator';
+import type { LexTerm } from './lexicon';
 import type { Panes } from './panes';
 import { minutesLeft, timeLeftLabel, wordCount } from './progress';
 import { figureItems } from './figures';
@@ -30,12 +31,14 @@ import { MeasureHandle } from './MeasureHandle';
 import { clampSize, prefsVars, WIDTH_REM } from './prefs';
 import { ReaderToolbar, type ReaderView } from './ReaderToolbar';
 import { ReadingSettings } from './ReadingSettings';
+import { salienceFor } from './salience';
 import { SourceBlock } from './SourceBlock';
 import { useReaderPrefs } from './usePrefs';
 import { actionFor, READER_SHORTCUTS, type ReaderAction } from './shortcuts';
 import { useFigureLightbox } from './useFigureLightbox';
 import { useFollowUrl } from './useFollowUrl';
 import { useReaderEvents } from './useReaderEvents';
+import { useSalienceMode } from './useSalienceMode';
 import { useSavePosition } from './useSavePosition';
 import { useAutoHide, useFocusChrome, useFullscreen, useMediaQuery } from './useReaderLayout';
 import styles from './Reader.module.css';
@@ -48,6 +51,8 @@ export interface ReaderProps {
   /** Every note in the book: the chapter's are shown in place, the rest in the notes list. */
   notes: NoteDetail[];
   codeHtml: Record<string, string>;
+  /** The book's concepts and glossary terms, for the what-matters marks. */
+  lexicon?: LexTerm[];
   initialAnchor: string | null;
   truncated: boolean;
 }
@@ -63,7 +68,9 @@ function firstTab(panes: Panes): Tab {
   return 'distillation';
 }
 
-export function Reader({ document: doc, unit, units, panes, notes: initialNotes, codeHtml, initialAnchor, truncated }: ReaderProps) {
+const NO_TERMS: LexTerm[] = [];
+
+export function Reader({ document: doc, unit, units, panes, notes: initialNotes, codeHtml, lexicon = NO_TERMS, initialAnchor, truncated }: ReaderProps) {
   const sourceRef = useRef<HTMLDivElement>(null);
   const paneRef = useRef<HTMLDivElement>(null);
   const [tab, setTab] = useState<Tab>(() => firstTab(panes));
@@ -93,6 +100,7 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
   const { notes: wireNotes, saving, add, annotate, recolor, remove, review } = useNotes(initialNotes);
 
   const flat = useMemo(() => flatten(unit), [unit]);
+  const nodes = useMemo(() => flat.map((f) => f.node), [flat]);
   const anchors = useMemo(() => flat.map((f) => f.node.anchor), [flat]);
   const order = useMemo(() => new Map(anchors.map((a, i) => [a, i])), [anchors]);
   const texts = useMemo(() => new Map(flat.map((f) => [f.node.anchor, f.node.text ?? ''])), [flat]);
@@ -131,9 +139,25 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
   const active = useAnchorSync(sourceRef, SOURCE_ATTR, [flat.length]);
   const activeSection = active ? (sectionOf.get(active) ?? null) : null;
   const progress = active ? ((order.get(active) ?? 0) + 1) / Math.max(1, anchors.length) : 0;
-  const figures = useMemo(() => figureItems(flat.map((f) => f.node)), [flat]);
+  const figures = useMemo(() => figureItems(nodes), [nodes]);
   const words = useMemo(() => flat.map(({ node }) => wordCount(node.text ?? '')), [flat]);
   const timeLeft = timeLeftLabel(minutesLeft(words, active ? (order.get(active) ?? 0) : 0));
+  const salience = useSalienceMode({
+    sourceRef,
+    nodes,
+    panes,
+    lexicon,
+    enabled: prefs.salience,
+    storageKey: `${doc.slug}:${unit.anchor}`,
+    order,
+    activeAnchor: active,
+    onKeep: async (s) => {
+      const text = texts.get(s.anchor) ?? '';
+      const range = { start: s.start, end: s.end };
+      const created = await add({ documentId: doc.id, anchor: s.anchor, range: toCodePointRange(text, range), raw: null, color: 'amber', passage: text.slice(s.start, s.end) });
+      return Boolean(created);
+    },
+  });
 
   // The block being read carries `data-active`, for the spotlight. Set on the DOM so no block re-renders.
   useEffect(() => {
@@ -218,6 +242,7 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
       return action !== null;
     },
     onNoteClick: openNote,
+    onSalientClick: salience.openAt,
     onMagnify: openFigure,
     onPaneClick: (x, y) => {
       const id = paneNoteAt(paneNotes, x, y);
@@ -244,6 +269,12 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
         break;
       case 'semantic':
         setPrefs((p) => ({ semantic: !p.semantic }));
+        break;
+      case 'salience':
+        setPrefs((p) => ({ salience: !p.salience }));
+        break;
+      case 'nextIdea':
+        if (prefs.salience) salience.next();
         break;
       case 'spotlight':
         setPrefs((p) => ({ spotlight: !p.spotlight }));
@@ -308,6 +339,7 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
       data-pane={showPane ? undefined : 'off'}
       data-focus={prefs.focus ? '' : undefined}
       data-semantic={prefs.semantic ? '' : undefined}
+      data-salience={prefs.salience ? '' : undefined}
       data-spotlight={prefs.spotlight ? '' : undefined}
       style={prefsVars(prefs, canDragMeasure(layout)) as CSSProperties}
     >
@@ -359,6 +391,7 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
               key={node.anchor}
               node={node}
               marks={marksFor(marks, node.anchor)}
+              salient={salienceFor(salience.byAnchor, node.anchor)}
               page={pages[i] ?? null}
               codeHtml={codeHtml[node.anchor]}
               hasBlockNote={blockNotes.has(node.anchor)}
@@ -374,6 +407,7 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
               onChange={(measure) => setPrefs({ measure })}
             />
           ) : null}
+          {salience.meter}
           <footer className={styles.end}>
             {next ? (
               <a href={readHref(next.anchor)}>Next: {next.heading}</a>
@@ -419,6 +453,7 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
       </div>
 
       {lightbox}
+      {salience.card}
 
       <ShortcutHelp open={helpOpen} shortcuts={READER_SHORTCUTS} onClose={() => setHelpOpen(false)} />
 

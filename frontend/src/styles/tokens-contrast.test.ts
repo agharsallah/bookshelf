@@ -38,6 +38,10 @@ describe('palette contrast', () => {
     const marker = palette.get('--marker')?.[theme] ?? '#000000';
     expect(contrast('#1e2227', marker)).toBeGreaterThanOrEqual(7);
     const accent = palette.get('--accent')?.[theme] ?? '#000000';
+    for (const wash of ['--sal-core', '--sal-key']) {
+      const ink = palette.get('--ink')?.[theme] ?? '#000000';
+      expect(contrast(ink, palette.get(wash)?.[theme] ?? ink)).toBeGreaterThanOrEqual(7);
+    }
     const onAccent = palette.get('--on-accent')?.[theme] ?? '#000000';
     expect(contrast(onAccent, accent)).toBeGreaterThanOrEqual(4.5);
   });

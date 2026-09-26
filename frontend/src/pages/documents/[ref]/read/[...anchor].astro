@@ -1,12 +1,14 @@
 ---
 /**
  * Reader: `/documents/{ref}/read/{anchor?}`. Loads the chapter that contains the
- * anchor (the first real chapter when there is none), its artifacts, the book's notes,
- * pre-renders code and math, and hands everything to the reader island.
+ * anchor (the first real chapter when there is none), its artifacts, the book's notes
+ * and vocabulary (concepts and glossary, for the what-matters marks), pre-renders code
+ * and math, and hands everything to the reader island.
  */
 import BaseLayout from '../../../../layouts/BaseLayout.astro';
 import Reader from '../../../../components/reader/Reader';
 import { Problem } from '../../../../components/common/Problem';
+import { lexiconFromArtifacts } from '../../../../components/reader/lexicon';
 import { buildPanes, paneEntries } from '../../../../components/reader/panes';
 import { serverApi } from '../../../../lib/api/server';
 import type { NodeSubtree } from '../../../../lib/api/types/documents';
@@ -29,12 +31,15 @@ const loaded = await load(async () => {
   const unit = requested ? unitFor(units, requested) : defaultUnit(units);
   if (!unit) return { doc, units, missing: true as const };
   const api = serverApi();
-  const [subtree, artifacts, notes] = await Promise.all([
+  const [subtree, artifacts, notes, conceptLinks, glossary] = await Promise.all([
     api.get<NodeSubtree>(`nodes/${doc.slug}/${unit.anchor}`),
     getArtifacts(doc.id, { anchor_prefix: unit.anchor }),
     // The whole book's notes: the chapter's are shown in place, all of them in the notes list.
     fetchAll<NoteDetail>(api, 'notes', { document_id: doc.id }),
+    getArtifacts(doc.id, { type: 'concept_links' }),
+    getArtifacts(doc.id, { type: 'glossary' }),
   ]);
+  const lexicon = lexiconFromArtifacts([...conceptLinks, ...glossary]);
   const flat = flatten(subtree.node);
   const headings = Object.fromEntries(
     flat.map(({ node }) => [node.anchor, node.heading ?? node.meta.caption ?? '']).filter(([, h]) => h),
@@ -54,7 +59,7 @@ const loaded = await load(async () => {
         if (html) codeHtml[node.anchor] = html;
       }),
   );
-  return { doc, units, missing: false as const, unit: subtree.node, truncated: subtree.truncated, panes, notes: notes.items, codeHtml };
+  return { doc, units, missing: false as const, unit: subtree.node, truncated: subtree.truncated, panes, notes: notes.items, codeHtml, lexicon };
 });
 
 if (!loaded.ok && loaded.notFound) Astro.response.status = 404;
@@ -96,6 +101,7 @@ const title = data && !data.missing ? `${data.unit.heading ?? data.unit.anchor},
         panes={data.panes}
         notes={data.notes}
         codeHtml={data.codeHtml}
+        lexicon={data.lexicon}
         initialAnchor={requested}
         truncated={data.truncated}
       />

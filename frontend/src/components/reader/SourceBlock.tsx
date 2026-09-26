@@ -4,12 +4,14 @@
  * ranges and highlights can split them. Every block carries its anchor as `id`,
  * a margin page marker when the page changes, and a hover handle to copy its link.
  * Its semantic role (semantics.ts) rides along as `data-role` with a label; both
- * only show when the reader's colour-coded mode is on.
+ * only show when the reader's colour-coded mode is on. "What matters" marks
+ * (salience.ts) ride on the runs as `data-sal` / `data-term`, shown only in that mode.
  */
-import { memo, type ReactNode } from 'react';
+import { memo, type CSSProperties, type ReactNode } from 'react';
 import type { TreeNode } from '../../lib/api/types/documents';
 import { mediaSrc } from './figures';
 import { clip, pieces, segment, topColor, type Mark, type Piece, type Segment } from './segments';
+import { salientRuns, type Salient } from './salience';
 import { isPassage, roleOf } from './semantics';
 import spanStyles from '../blocks/Spans.module.css';
 import styles from './SourceBlock.module.css';
@@ -17,6 +19,8 @@ import styles from './SourceBlock.module.css';
 export interface SourceBlockProps {
   node: TreeNode;
   marks: readonly Mark[];
+  /** Core ideas, key points and terms in this block (the reader's what-matters mode). */
+  salient?: readonly Salient[];
   /** Page to show in the margin when it differs from the previous block's. */
   page: number | null;
   /** Pre-highlighted HTML for code blocks (Shiki, server-side). */
@@ -27,16 +31,37 @@ export interface SourceBlockProps {
 }
 
 export const TEXT_KINDS = new Set(['paragraph', 'list', 'quote', 'aside']);
+const NO_SALIENT: readonly Salient[] = Object.freeze([]);
 
-function Runs({ text, segments, piece }: { text: string; segments: Segment[]; piece: Piece }) {
+/** Milliseconds per character of a marked sentence's draw-in, so the stroke sweeps at reading pace. */
+const DRAW_MS = 7;
+
+/** A run of text at offset `start`; under a salient sentence it carries when its stroke starts and how long it takes. */
+function Run({ text, start, end, salient }: { text: string; start: number; end: number; salient: readonly Salient[] }) {
+  return salientRuns(start, end, salient).map(({ start: from, end: to, sentence, term }) => (
+    <span
+      key={from}
+      data-o={from}
+      data-sal={sentence?.tier}
+      data-sal-id={sentence?.id}
+      data-sal-first={sentence && from === sentence.start ? '' : undefined}
+      data-term={term?.id}
+      style={
+        sentence
+          ? ({ '--sal-delay': `${(from - sentence.start) * DRAW_MS}ms`, '--sal-draw': `${(to - from) * DRAW_MS}ms` } as CSSProperties)
+          : undefined
+      }
+    >
+      {text.slice(from, to)}
+    </span>
+  ));
+}
+
+function Runs({ text, segments, piece, salient }: { text: string; segments: Segment[]; piece: Piece; salient: readonly Salient[] }) {
   return (
     <>
       {clip(segments, piece).map((seg) => {
-        const run = (
-          <span data-o={seg.start} key={seg.start}>
-            {text.slice(seg.start, seg.end)}
-          </span>
-        );
+        const run = <Run key={seg.start} text={text} start={seg.start} end={seg.end} salient={salient} />;
         if (seg.marks.length === 0) return run;
         return (
           <mark
@@ -66,7 +91,7 @@ function Magnifiable({ anchor, label, children }: { anchor: string; label: strin
   );
 }
 
-function body(node: TreeNode, marks: readonly Mark[], codeHtml: string | undefined, level: number): ReactNode {
+function body(node: TreeNode, marks: readonly Mark[], salient: readonly Salient[], codeHtml: string | undefined, level: number): ReactNode {
   const text = node.text ?? '';
   const segments = TEXT_KINDS.has(node.kind) ? segment(text.length, marks) : [];
   const lines = (strip = false) => pieces(text, { stripMarkers: strip });
@@ -81,7 +106,7 @@ function body(node: TreeNode, marks: readonly Mark[], codeHtml: string | undefin
           {lines().map((piece, i) => (
             <span key={piece.start}>
               {i > 0 ? <br /> : null}
-              <Runs text={text} segments={segments} piece={piece} />
+              <Runs text={text} segments={segments} piece={piece} salient={salient} />
             </span>
           ))}
         </p>
@@ -92,7 +117,7 @@ function body(node: TreeNode, marks: readonly Mark[], codeHtml: string | undefin
         <Tag className={styles.list}>
           {lines(true).map((piece) => (
             <li key={piece.start}>
-              <Runs text={text} segments={segments} piece={piece} />
+              <Runs text={text} segments={segments} piece={piece} salient={salient} />
             </li>
           ))}
         </Tag>
@@ -103,7 +128,7 @@ function body(node: TreeNode, marks: readonly Mark[], codeHtml: string | undefin
         <blockquote className={styles.quote}>
           {lines().map((piece) => (
             <p key={piece.start}>
-              <Runs text={text} segments={segments} piece={piece} />
+              <Runs text={text} segments={segments} piece={piece} salient={salient} />
             </p>
           ))}
         </blockquote>
@@ -114,7 +139,7 @@ function body(node: TreeNode, marks: readonly Mark[], codeHtml: string | undefin
           {node.meta.label ? <p className={styles.asideLabel}>{node.meta.label}</p> : null}
           {lines().map((piece) => (
             <p key={piece.start}>
-              <Runs text={text} segments={segments} piece={piece} />
+              <Runs text={text} segments={segments} piece={piece} salient={salient} />
             </p>
           ))}
         </aside>
@@ -185,7 +210,7 @@ function body(node: TreeNode, marks: readonly Mark[], codeHtml: string | undefin
   }
 }
 
-function SourceBlockImpl({ node, marks, page, codeHtml, hasBlockNote, level }: SourceBlockProps) {
+function SourceBlockImpl({ node, marks, salient = NO_SALIENT, page, codeHtml, hasBlockNote, level }: SourceBlockProps) {
   const role = roleOf(node);
   return (
     <div
@@ -195,6 +220,7 @@ function SourceBlockImpl({ node, marks, page, codeHtml, hasBlockNote, level }: S
       data-kind={node.kind}
       data-role={role?.role}
       data-passage={role && isPassage(role.role) ? '' : undefined}
+      data-salient={salient.length ? '' : undefined}
       tabIndex={-1}
     >
       {role ? <span className={styles.roleLabel}>{role.label}</span> : null}
@@ -203,7 +229,7 @@ function SourceBlockImpl({ node, marks, page, codeHtml, hasBlockNote, level }: S
           p. {page}
         </span>
       ) : null}
-      {body(node, marks, codeHtml, level)}
+      {body(node, marks, salient, codeHtml, level)}
       <button type="button" className={styles.handle} data-copy-anchor={node.anchor} aria-label={`Copy link to ${node.anchor}`}>
         #
       </button>

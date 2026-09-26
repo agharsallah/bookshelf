@@ -1,0 +1,334 @@
+/*
+ * "What matters" mode (`data-salience` on the reader). Core ideas get a full
+ * highlighter wash, key points a lower half-stroke, terms bolder ink with a dotted
+ * underline: shape and weight differ, so nothing relies on colour alone.
+ *
+ * A block draws its strokes once it is lit (`data-lit`, set as it scrolls into view).
+ * Each run sweeps its own share of a sentence (`--sal-delay`, `--sal-draw`, set per
+ * run), so a sentence split by a note highlight still draws as one stroke.
+ */
+
+:global([data-salience]) :global([data-sal]) {
+  --sal-wash: var(--sal-key);
+  --sal-h: 48%;
+  background-image: linear-gradient(var(--sal-wash), var(--sal-wash));
+  background-repeat: no-repeat;
+  background-position: 0 92%;
+  background-size: 0% var(--sal-h);
+  cursor: pointer;
+}
+
+:global([data-salience]) :global([data-sal='core']) {
+  --sal-wash: var(--sal-core);
+  --sal-h: 78%;
+}
+
+:global([data-salience]) :global([data-lit]) :global([data-sal]) {
+  animation: draw var(--sal-draw, 300ms) var(--ease-stroke) var(--sal-delay, 0ms) both;
+}
+
+@keyframes draw {
+  from {
+    background-size: 0% var(--sal-h);
+  }
+  to {
+    background-size: 100% var(--sal-h);
+  }
+}
+
+:global([data-salience]) :global([data-sal]):hover,
+:global([data-salience]) :global([data-sal][data-picked]) {
+  --sal-wash: color-mix(in oklab, var(--sal-core) 80%, var(--tone-caution));
+}
+
+/* A small spark opens each core idea, and pops in as its stroke starts. */
+:global([data-salience]) :global([data-sal='core'][data-sal-first])::before {
+  content: '✦';
+  display: inline-block;
+  margin-inline-end: 0.2em;
+  color: var(--tone-caution);
+  font-size: 0.75em;
+  transform: scale(0);
+}
+
+:global([data-salience]) :global([data-lit]) :global([data-sal='core'][data-sal-first])::before {
+  animation: spark var(--dur-4) var(--ease-turn) var(--sal-delay, 0ms) both;
+}
+
+@keyframes spark {
+  0% {
+    transform: scale(0) rotate(-90deg);
+  }
+  70% {
+    transform: scale(1.35) rotate(10deg);
+  }
+  100% {
+    transform: scale(1) rotate(0);
+  }
+}
+
+:global([data-salience]) :global([data-term]) {
+  font-weight: 600;
+  text-decoration-line: underline;
+  text-decoration-style: dotted;
+  text-decoration-thickness: 2px;
+  text-decoration-color: transparent;
+  text-underline-offset: 0.22em;
+  cursor: help;
+  transition: text-decoration-color var(--dur-4) var(--ease-out);
+}
+
+:global([data-salience]) :global([data-lit]) :global([data-term]) {
+  text-decoration-color: var(--accent);
+}
+
+:global([data-salience]) :global([data-term][data-picked]),
+:global([data-salience]) :global([data-term]):hover {
+  color: var(--accent-strong);
+  text-decoration-style: solid;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :global([data-salience]) :global([data-sal]),
+  :global([data-salience]) :global([data-lit]) :global([data-sal]) {
+    animation: none;
+    background-size: 100% var(--sal-h);
+  }
+
+  :global([data-salience]) :global([data-sal='core'][data-sal-first])::before {
+    animation: none;
+    transform: none;
+  }
+
+  :global([data-salience]) :global([data-term]) {
+    text-decoration-color: var(--accent);
+    transition: none;
+  }
+}
+
+@media (forced-colors: active) {
+  :global([data-salience]) :global([data-sal]) {
+    background: none;
+    text-decoration: underline 2px;
+  }
+
+  :global([data-salience]) :global([data-sal='core']) {
+    text-decoration-style: double;
+  }
+}
+
+/* ── The card ─────────────────────────────────────────────── */
+
+.card {
+  --tier: var(--sal-key);
+  position: fixed;
+  z-index: 40;
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  border: 1px solid var(--rule);
+  border-block-start: 4px solid var(--tier);
+  border-radius: var(--radius-l);
+  background: var(--paper-raised);
+  box-shadow: var(--shadow-pop);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  animation: rise var(--dur-3) var(--ease-turn) both;
+  transform-origin: top center;
+}
+
+.card[data-flip] {
+  transform-origin: bottom center;
+}
+
+.card[data-tier='core'] {
+  --tier: var(--sal-core);
+}
+
+.card[data-tier='term'] {
+  --tier: var(--accent);
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.96);
+  }
+}
+
+.card p {
+  margin: 0;
+}
+
+.cardTier {
+  color: var(--ink-3);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.cardTitle {
+  color: var(--ink);
+  font-family: var(--reader-font, var(--font-read));
+  font-size: var(--text-md);
+  line-height: 1.2;
+}
+
+.cardGloss {
+  color: var(--ink);
+  line-height: 1.5;
+}
+
+.cardWhy {
+  color: var(--ink-2);
+}
+
+.cardActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  justify-content: space-between;
+  margin-block-start: var(--space-1);
+}
+
+.cardActions button {
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-pill);
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+
+.cardActions button:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.cardActions button:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.kept {
+  color: var(--tone-insight);
+  font-weight: 600;
+}
+
+/* ── The meter ────────────────────────────────────────────── */
+
+.meterDock {
+  position: sticky;
+  inset-block-end: var(--space-4);
+  z-index: 5;
+  display: flex;
+  justify-content: flex-end;
+  margin-block-start: var(--space-5);
+  pointer-events: none;
+}
+
+.meter {
+  position: relative;
+  display: inline-flex;
+  gap: var(--space-2);
+  align-items: center;
+  padding: var(--space-1) var(--space-3) var(--space-1) var(--space-1);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-pill);
+  background: var(--paper-raised);
+  box-shadow: var(--shadow-lift);
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  pointer-events: auto;
+  transition:
+    transform var(--dur-2) var(--ease-turn),
+    color var(--dur-2) var(--ease-out);
+}
+
+.meter:hover {
+  color: var(--ink);
+  transform: translateY(-2px);
+}
+
+.meter[data-done] {
+  border-color: var(--tone-caution);
+  color: var(--ink);
+  animation: cheer var(--dur-4) var(--ease-turn);
+}
+
+@keyframes cheer {
+  40% {
+    transform: scale(1.08);
+  }
+}
+
+.ring {
+  width: 1.5rem;
+  height: 1.5rem;
+  transform: rotate(-90deg);
+}
+
+.ringTrack,
+.ringFill {
+  fill: none;
+  stroke-width: 3;
+}
+
+.ringTrack {
+  stroke: var(--rule);
+}
+
+.ringFill {
+  stroke: var(--tone-caution);
+  stroke-linecap: round;
+  transition: stroke-dashoffset var(--dur-4) var(--ease-out);
+}
+
+.sparks {
+  position: absolute;
+  inset-block-start: 50%;
+  inset-inline-start: 0.75rem;
+  pointer-events: none;
+}
+
+.sparks i {
+  --angle: calc(var(--i) * 45deg);
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--tone-caution);
+  opacity: 0;
+  animation: burst 700ms var(--ease-out) forwards;
+}
+
+.sparks i:nth-child(even) {
+  background: var(--accent);
+}
+
+@keyframes burst {
+  0% {
+    opacity: 1;
+    transform: rotate(var(--angle)) translateX(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(var(--angle)) translateX(1.75rem) scale(0.4);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card,
+  .meter[data-done] {
+    animation: none;
+  }
+
+  .sparks {
+    display: none;
+  }
+}

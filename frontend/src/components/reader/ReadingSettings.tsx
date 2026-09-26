@@ -16,6 +16,7 @@ import {
   WIDTHS,
   type ReaderPrefs,
 } from './prefs';
+import { SALIENCE_TIERS, TIER_LABELS } from './salience';
 import { PASSAGE_ROLES, ROLE_LABELS } from './semantics';
 import type { PrefsUpdate } from './usePrefs';
 import styles from './ReadingSettings.module.css';
@@ -124,6 +125,14 @@ export function ReadingSettings({ prefs, onChange, onClose, opener }: ReadingSet
         />
         {prefs.semantic ? <RoleLegend /> : null}
         <AidSwitch
+          label="Mark what matters"
+          hint="Core ideas, key points and terms, drawn in as you read"
+          shortcut="h"
+          on={prefs.salience}
+          onToggle={() => onChange((p) => ({ salience: !p.salience }))}
+        />
+        {prefs.salience ? <TierLegend /> : null}
+        <AidSwitch
           label="Spotlight"
           hint="Dim everything but the block you are reading"
           shortcut="s"
@@ -155,6 +164,19 @@ function RoleLegend() {
       {PASSAGE_ROLES.map((role) => (
         <li key={role} data-role={role}>
           {ROLE_LABELS[role]}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** What each mark means in the what-matters mode; samples use the same `data-sal` / `data-term` styles as the text. */
+function TierLegend() {
+  return (
+    <ul className={styles.tiers} aria-label="Mark key" data-salience="" data-lit="">
+      {SALIENCE_TIERS.map((tier) => (
+        <li key={tier}>
+          <span {...(tier === 'term' ? { 'data-term': 'legend' } : { 'data-sal': tier })}>{TIER_LABELS[tier]}</span>
         </li>
       ))}
     </ul>

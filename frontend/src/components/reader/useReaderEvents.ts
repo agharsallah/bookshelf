@@ -1,7 +1,7 @@
 /**
  * The reader's DOM-level interactions, kept out of the component body:
  * selection → highlight toolbar, cross-pane hover highlighting, copy-link handles,
- * clicks on existing highlights (in the text and on the pane), and the keyboard shortcuts
+ * clicks on existing highlights and "what matters" marks (in the text and on the pane), and the keyboard shortcuts
  * (j/k block, [/] chapter, n note, Esc close; the rest via `onAction`).
  */
 import { useEffect, useRef, type RefObject } from 'react';
@@ -25,6 +25,8 @@ export interface ReaderEventOptions {
   onCompose: (target: ComposerTarget) => void;
   onEscape: () => void;
   onNoteClick: (noteId: string) => void;
+  /** A plain click on the text that is not on a note: return true if it opened a mark's card. */
+  onSalientClick: (target: Element, x: number, y: number) => boolean;
   /** A figure's Magnify button (`data-magnify` = its anchor). */
   onMagnify: (anchor: string) => void;
   /** A plain click on the distillation or summary text, to open a highlight under it. */
@@ -90,9 +92,12 @@ export function useReaderEvents(options: ReaderEventOptions): void {
       }
       const mark = target?.closest<HTMLElement>('mark[data-notes]');
       const selection = window.getSelection();
-      if (mark && (!selection || selection.isCollapsed)) {
+      if (selection && !selection.isCollapsed) return;
+      if (mark) {
         const first = mark.dataset.notes?.split(' ')[0];
         if (first) latest.current.onNoteClick(first);
+      } else if (target) {
+        latest.current.onSalientClick(target, event.clientX, event.clientY);
       }
     };
     const onSourceOver = (event: MouseEvent) => {
