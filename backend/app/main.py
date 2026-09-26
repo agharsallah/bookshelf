@@ -22,19 +22,35 @@ from app.core.logging import configure_logging
 from app.core.middleware import MaxBodySizeMiddleware, RequestContextMiddleware
 from app.core.ratelimit import RateLimitMiddleware
 from app.core.security import API_KEY_HEADER
+from app.jobs.background import BackgroundWorker
 from app.jobs.embedded import EmbedRunner
+from app.jobs.worker import Worker, autodiscover
+from app.models.enums import JobKind
 from app.retrieval.client import close_client
 
 logger = logging.getLogger(__name__)
+
+
+def _job_worker(settings: Settings) -> BackgroundWorker | None:
+    """The API's own pipeline worker (`app.jobs.background`): every kind with a handler,
+    except `embed` while embedded Qdrant's runner owns it."""
+    if not settings.api_worker:
+        return None
+    autodiscover()
+    exclude = [JobKind.EMBED] if settings.qdrant_url is None else []
+    worker = Worker(exclude=exclude, label="api")
+    return BackgroundWorker(worker, name="job-worker")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Startup/shutdown hooks. https://fastapi.tiangolo.com/advanced/events/
 
-    With embedded Qdrant the API owns the store, so it also runs `embed` jobs (on one
-    background thread) until shutdown. Nothing here connects to Qdrant: startup never
-    waits on it, and a missing store only degrades search.
+    The API runs a pipeline worker on a background thread, so queued jobs run without a
+    second process; on shutdown it hands unfinished jobs back to the queue. With embedded
+    Qdrant the API owns the store, so it also runs `embed` jobs (on one more thread) until
+    shutdown. Nothing here connects to Qdrant: startup never waits on it, and a missing
+    store only degrades search.
     """
     settings: Settings = app.state.settings
     # Re-applied here: uvicorn installs its own handlers after import time, so the
@@ -53,10 +69,16 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.embed_runner = runner
     if runner is not None:
         runner.start()
+    job_worker = _job_worker(settings)
+    app.state.job_worker = job_worker
+    if job_worker is not None:
+        job_worker.start()
     try:
         yield
     finally:
         restore_signals()
+        if job_worker is not None:
+            job_worker.stop(abandon=True)
         if runner is not None:
             runner.stop()
         close_client()  # release the embedded store's lock before a reload reopens it

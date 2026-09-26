@@ -13,6 +13,11 @@ long CLI runs), and only a dead worker's job may be reclaimed. The
 worker owns state transitions: success → `complete`, `PermanentJobError` → `failed`,
 anything else → retry with backoff. Then the orchestrator decides what comes next.
 
+While it runs, the worker keeps a row in `workers` fresh (`app.jobs.presence`), so the API
+can say whether queued work will be picked up at all. The API runs one of these itself
+(`app.jobs.background`); `abandon()` is how it stops mid-job on a reload: the jobs go back
+to the queue and their `claude` runs are killed rather than waited for.
+
 Embedded Qdrant (no `BOOKSHELF_QDRANT_URL`) locks its directory to one process, and the
 API needs it for search, so the API owns it: its lifespan runs `embed` jobs in-process
 (`app.jobs.embedded`) and this worker leaves them alone unless `--kinds embed` asks.
@@ -21,9 +26,12 @@ API needs it for search, so the API owns it: its lifespan runs `embed` jobs in-p
 import argparse
 import importlib
 import logging
+import os
 import pkgutil
 import signal
+import socket
 import threading
+import time
 import uuid
 from collections.abc import Callable, Collection, Mapping, Sequence
 from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
@@ -33,8 +41,15 @@ from sqlmodel import Session
 
 from app.core.config import get_settings
 from app.core.logging import configure_logging
-from app.jobs import queue
-from app.jobs.registry import Handler, JobContext, PermanentJobError, get_handler, registered_kinds
+from app.jobs import presence, queue
+from app.jobs.registry import (
+    Handler,
+    HandlerResult,
+    JobContext,
+    PermanentJobError,
+    get_handler,
+    registered_kinds,
+)
 from app.models import Job
 from app.models.enums import JobKind, JobState
 
@@ -78,6 +93,7 @@ class Worker:
         only: Collection[JobKind] | None = None,
         exclude: Collection[JobKind] = (),
         heartbeat_seconds: float | None = None,
+        label: str = "worker",
     ) -> None:
         settings = get_settings()
         self.concurrency = concurrency or settings.worker_concurrency
@@ -89,6 +105,12 @@ class Worker:
         self._exclude = frozenset(exclude)
         self.heartbeat_seconds = heartbeat_seconds or queue.HEARTBEAT_SECONDS
         self.stop = threading.Event()
+        self.id = uuid.uuid4()
+        self.name = f"{label} {socket.gethostname()}:{os.getpid()}"
+        self._lock = threading.Lock()
+        self._held: set[uuid.UUID] = set()  # claimed and not yet recorded
+        self._released: set[uuid.UUID] = set()  # handed back by `abandon()`: never record
+        self._last_seen = 0.0
 
     # -- handler lookup -------------------------------------------------------------
 
@@ -112,9 +134,58 @@ class Worker:
             return None
         with self._session_factory() as session:
             job = queue.claim(session, kinds)
+            if job is not None and self.stop.is_set():  # claimed while `abandon()` ran
+                queue.release(session, [job.id])
+                return None
             if job is not None:
                 session.expunge(job)
+                with self._lock:
+                    self._held.add(job.id)
             return job
+
+    def abandon(self) -> int:
+        """Stop now: claim nothing more, put every held job back in the queue, and kill the
+        `claude` runs working on them. Returns how many jobs went back."""
+        from app.pipeline.runner import terminate_all
+
+        self.stop.set()
+        with self._lock:
+            held = list(self._held)
+            self._released.update(held)
+        with self._session_factory() as session:
+            released = queue.release(session, held)
+        terminate_all()
+        if released:
+            logger.info("Handed running jobs back to the queue", extra={"jobs": released})
+        return released
+
+    def _is_released(self, job_id: uuid.UUID) -> bool:
+        with self._lock:
+            return job_id in self._released
+
+    # -- presence ---------------------------------------------------------------------
+
+    def beat(self, *, force: bool = False) -> None:
+        """Refresh this worker's `workers` row, at most every `presence.BEAT_SECONDS`."""
+        now = time.monotonic()
+        if not force and now - self._last_seen < presence.BEAT_SECONDS:
+            return
+        self._last_seen = now
+        with self._lock:
+            running = len(self._held)
+        try:
+            with self._session_factory() as session:
+                presence.beat(session, self.id, name=self.name, kinds=self.kinds(),
+                              concurrency=self.concurrency, running=running)  # fmt: skip
+        except Exception:  # presence is advisory: never stop the loop over it
+            logger.warning("Worker presence update failed", exc_info=True)
+
+    def _leave(self) -> None:
+        try:
+            with self._session_factory() as session:
+                presence.leave(session, self.id)
+        except Exception:
+            logger.warning("Worker presence removal failed", exc_info=True)
 
     def _beat(self, job_id: uuid.UUID, done: threading.Event) -> None:
         """Renew the job's lock until `done` is set (own session: never the job's)."""
@@ -138,25 +209,35 @@ class Worker:
         finally:
             done.set()
             beat.join()
+            with self._lock:
+                self._held.discard(job.id)
 
     def _execute(self, job: Job) -> JobState:
         with self._session_factory() as session:
             job = session.merge(job, load=True)
             handler = self.handler_for(job.kind)
             extra = {"job_id": str(job.id), "kind": job.kind.value, "anchor": job.anchor}
+            outcome: HandlerResult | None = None
+            error: Exception | None = None
             try:
                 if handler is None:
                     raise PermanentJobError(f"no handler registered for {job.kind.value}")
                 outcome = handler(JobContext(session=session, job=job))
-            except PermanentJobError as exc:
-                session.rollback()
-                queue.fail(session, job, str(exc), retry=False)
-                logger.warning("Job failed permanently", extra={**extra, "error": str(exc)})
             except Exception as exc:
                 session.rollback()
-                queue.fail(session, job, f"{type(exc).__name__}: {exc}")
-                logger.exception("Job failed", extra={**extra, "attempts": job.attempts})
-            else:
+                error = exc
+            if self._is_released(job.id):  # abandoned mid-run: the queue already has it back
+                session.rollback()
+                return JobState.QUEUED
+            if isinstance(error, PermanentJobError):
+                queue.fail(session, job, str(error), retry=False)
+                logger.warning("Job failed permanently", extra={**extra, "error": str(error)})
+            elif error is not None:
+                queue.fail(session, job, f"{type(error).__name__}: {error}")
+                logger.error(
+                    "Job failed", extra={**extra, "attempts": job.attempts}, exc_info=error
+                )
+            elif outcome is not None:
                 queue.complete(
                     session,
                     job,
@@ -183,10 +264,26 @@ class Worker:
 
         Returns the number of jobs processed.
         """
+        self._prune_and_join()
+        try:
+            return self._loop(once=once)
+        finally:
+            self._leave()
+
+    def _prune_and_join(self) -> None:
+        try:
+            with self._session_factory() as session:
+                presence.prune(session)
+        except Exception:
+            logger.warning("Worker presence prune failed", exc_info=True)
+        self.beat(force=True)
+
+    def _loop(self, *, once: bool) -> int:
         processed = 0
         with ThreadPoolExecutor(self.concurrency, thread_name_prefix="job") as pool:
             running: set[Future[JobState]] = set()
             while not self.stop.is_set():
+                self.beat()
                 job = self.claim() if len(running) < self.concurrency else None
                 if job is not None:
                     running.add(pool.submit(self.execute, job))

@@ -24,9 +24,10 @@ from app.models.enums import JobKind, JobState, RunMode
 # Exponential backoff between attempts: 30s, 2m, 8m, ...
 _BACKOFF_BASE_SECONDS = 30
 # A running job whose worker died is reclaimed after this long. A live worker renews the
-# lock every `HEARTBEAT_SECONDS` (`heartbeat`), so a long job is never taken for a dead one.
-STALE_AFTER = timedelta(minutes=30)
+# lock every `HEARTBEAT_SECONDS` (`heartbeat`), so a long job is never taken for a dead one;
+# five missed beats mean the worker is gone.
 HEARTBEAT_SECONDS = 60.0
+STALE_AFTER = timedelta(seconds=HEARTBEAT_SECONDS * 5)
 # `jobs.result` key: CLI runs the job has made over all its attempts (`app.pipeline.ceiling`).
 RUNS = "runs"
 
@@ -185,6 +186,43 @@ def cancel(session: Session, job_id: uuid.UUID) -> Job | None:
     if job is not None:
         session.refresh(job)
     return job
+
+
+def release(session: Session, job_ids: list[uuid.UUID]) -> int:
+    """Hand running jobs back to the queue untouched: a worker that stops mid-job (the API
+    reloading) returns them at once instead of leaving them to go stale. The attempt it
+    started does not count. Commits; returns how many went back."""
+    if not job_ids:
+        return 0
+    rows = session.execute(
+        text(
+            """
+            update jobs set state = 'queued', locked_at = null, started_at = null,
+                            attempts = greatest(attempts - 1, 0), run_after = now()
+            where id = any(:ids) and state = 'running'
+            returning id
+            """
+        ),
+        {"ids": job_ids},
+    ).all()
+    session.commit()
+    return len(rows)
+
+
+def positions(session: Session) -> dict[uuid.UUID, int]:
+    """Each queued job's place in line (1 = next), in `claim()`'s order: runnable jobs by
+    priority then age, then jobs still waiting out a retry backoff, soonest first."""
+    rows = session.execute(
+        text(
+            """
+            select id, row_number() over (
+              order by run_after > now(), priority, run_after, created_at
+            ) as place
+            from jobs where state = 'queued'
+            """
+        )
+    ).all()
+    return {row[0]: int(row[1]) for row in rows}
 
 
 def retry_spec(job: Job) -> JobSpec:

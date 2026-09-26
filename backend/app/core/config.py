@@ -82,6 +82,9 @@ class Settings(BaseSettings):
     # Embedded Qdrant (no `qdrant_url`) can be opened by one process only, so the API runs
     # `embed` jobs itself (`app.jobs.embedded`). Off: nothing embeds until a URL is set.
     api_embed_runner: bool = True
+    # The API also runs a pipeline worker (`app.jobs.background`), so starting the API is
+    # enough for queued jobs to run. Off: run `python -m app.jobs.worker` yourself.
+    api_worker: bool = True
     # Run ceiling (§14): per-document cap on CLI runs before the document is paused.
     max_runs_per_document: Annotated[int, Field(ge=1)] = 400
     # Model ladder overrides (D16): a `claude --model` alias or full name per tier. Unset

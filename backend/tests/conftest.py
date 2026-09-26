@@ -52,6 +52,7 @@ os.environ.update(
         "BOOKSHELF_QDRANT_URL": "",
         "BOOKSHELF_QDRANT_PATH": str(_TMP / "qdrant"),
         "BOOKSHELF_API_EMBED_RUNNER": "false",  # tests drive jobs themselves
+        "BOOKSHELF_API_WORKER": "false",
         "BOOKSHELF_CLAUDE_BIN": "/nonexistent/claude-must-be-faked-in-tests",
         # A developer `.env` may put tiers on other models or efforts; tests assert the ladder.
         "BOOKSHELF_MODEL_EXPLORE": "",
@@ -93,7 +94,7 @@ API_KEY = "test-secret-key"
 AUTH = {"X-API-Key": API_KEY}
 # Children first, so plain DELETEs satisfy foreign keys. DELETE on a handful of rows is
 # ~10x cheaper than TRUNCATE, whose fixed per-table cost dominated the suite's runtime.
-_TABLES = ("edges", "concepts", "jobs", "artifacts", "notes", "nodes", "documents")
+_TABLES = ("edges", "concepts", "jobs", "workers", "artifacts", "notes", "nodes", "documents")
 
 
 def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:

@@ -34,6 +34,10 @@ from app.pipeline.models import cli_alias, cli_effort
 
 _FENCE = re.compile(r"^\s*```[a-zA-Z0-9_-]*\s*\n(.*?)\n\s*```\s*$", re.DOTALL)
 _STDERR_TAIL = 2000
+# Every `claude` process this process started and has not reaped, so a stopping API can
+# end them (`terminate_all`) instead of waiting minutes for runs nobody will record.
+_LIVE: set[subprocess.Popen[str]] = set()
+_LIVE_LOCK = threading.Lock()
 
 
 class RunnerError(RuntimeError):
@@ -272,16 +276,31 @@ class ClaudeCliRunner:
             )
         except OSError as exc:
             raise RunnerError(f"cannot start {self.claude_bin!r}: {exc}") from exc
+        with _LIVE_LOCK:
+            _LIVE.add(proc)
         try:
             stdout, stderr = proc.communicate(prompt, timeout=self.timeout_seconds)
         except subprocess.TimeoutExpired as exc:
             _kill_group(proc)
             proc.communicate()
             raise RunnerError(f"claude timed out after {self.timeout_seconds}s") from exc
+        finally:
+            with _LIVE_LOCK:
+                _LIVE.discard(proc)
         if proc.returncode != 0:
             tail = (stderr or stdout or "")[-_STDERR_TAIL:].strip()
             raise RunnerError(f"claude exited with {proc.returncode}: {tail}")
         return stdout
+
+
+def terminate_all() -> int:
+    """Kill every running `claude` process tree this process started; their `run` calls
+    fail with a `RunnerError`. Returns how many were killed."""
+    with _LIVE_LOCK:
+        procs = list(_LIVE)
+    for proc in procs:
+        _kill_group(proc)
+    return len(procs)
 
 
 def _kill_group(proc: subprocess.Popen[str]) -> None:
