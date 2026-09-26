@@ -64,6 +64,10 @@ function flagFor(raw: string): GateFlag | null {
       };
     case 'over_max_words':
       return { key: raw, label: 'Too long', tone: 'warn', detail: 'Longer than the skill allows.' };
+    case 'too_short_to_fill':
+      return { key: raw, label: 'Too short', tone: 'warn', detail: 'Spoken, it would end well before the episode’s length.' };
+    case 'too_long_to_fit':
+      return { key: raw, label: 'Too long to fit', tone: 'warn', detail: 'Spoken, it would run well past the episode’s length.' };
     case 'code_not_verbatim':
       return {
         key: raw,

@@ -16,6 +16,7 @@ export const JOB_KINDS = [
   'link_concepts',
   'derive',
   'export',
+  'narrate',
 ] as const;
 export type JobKind = (typeof JOB_KINDS)[number];
 
@@ -29,6 +30,8 @@ export interface JobPublic {
   anchor: string | null;
   skill: string | null;
   skill_version: string | null;
+  /** What the job was asked for (`params`, `voices`, `artifact_id`, `force`…). */
+  payload?: Record<string, unknown>;
   state: JobState;
   attempts: number;
   error: string | null;
@@ -78,6 +81,12 @@ export interface JobCreate {
   force?: boolean;
   skill?: string | null;
   note_id?: string | null;
+  /** Run parameters of a skill that declares them (`SkillPublic.params`). */
+  params?: Record<string, string | number>;
+  /** Narrated skills and `narrate`: a voice id per speaker, speaker 1 first. */
+  voices?: string[];
+  /** Required for `narrate`: the `audio_summary` script to voice. */
+  artifact_id?: string;
 }
 
 /**

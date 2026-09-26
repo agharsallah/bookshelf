@@ -1,6 +1,7 @@
 /**
  * Body → render blocks. Most artifact bodies are `{blocks}`; the rest (brief sections,
- * quiz/faq/flashcards items, figure and formula descriptions, concept links, outlines)
+ * quiz/faq/flashcards items, figure and formula descriptions, concept links, outlines,
+ * audio summary scripts)
  * are mapped onto the closed block set here so `<Blocks>` draws every artifact.
  *
  * Text the adapter adds (a quiz choice, a concept name) is not a claim the skill made,
@@ -149,6 +150,22 @@ function flashcards(body: Json): RenderBlock[] {
   return grouped(list(body.items).filter(isRecord), (item) => [{ type: 'definition', term: str(item.front), spans: spans(item.back) }]);
 }
 
+/** An audio summary script: each part a heading, each turn who says it, then what. */
+function audioScript(body: Json): RenderBlock[] {
+  const speakers = list(body.speakers).filter(isRecord).map((s) => str(s.role) || 'Speaker');
+  return list(body.sections)
+    .filter(isRecord)
+    .flatMap((section): RenderBlock[] => [
+      { type: 'heading', level: 3, text: str(section.title) },
+      ...list(section.turns)
+        .filter(isRecord)
+        .map((turn): RenderBlock => ({
+          type: 'paragraph',
+          spans: [synthetic(`${speakers[Number(turn.speaker) - 1] ?? `Speaker ${String(turn.speaker)}`}: `), ...spans([turn])],
+        })),
+    ]);
+}
+
 function endpoint(v: unknown): string {
   if (!isRecord(v)) return '?';
   return v.kind === 'node' ? `passage ${str(v.ref)}` : str(v.ref);
@@ -208,6 +225,10 @@ export function adaptBody(type: ArtifactType, raw: unknown): AdaptedBody {
       return { blocks: flashcards(body), facts: [], confidence };
     case 'concept_links':
       return { blocks: conceptLinks(body), facts: [], confidence };
+    case 'audio_summary': {
+      const cast = list(body.speakers).filter(isRecord).map((s) => `${str(s.role)} (${str(s.persona)})`);
+      return { blocks: audioScript(body), facts: [...fact('Title', str(body.title)), ...fact('Cast', cast.join('; '))], confidence };
+    }
     case 'outline_override':
       return { blocks: outline(body), facts: [], confidence };
     case 'figure_description': {

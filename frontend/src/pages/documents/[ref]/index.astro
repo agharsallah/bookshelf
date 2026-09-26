@@ -70,6 +70,7 @@ const unitName = (unit: (typeof units)[number]) =>
 const deriving = data !== null && data.doc.status !== 'needs_review';
 const chapterDerive = data && deriving ? deriveSkills(data.skills, 'chapter') : [];
 const documentDerive = data && deriving ? deriveSkills(data.skills, 'document') : [];
+const listenable = Boolean(data?.skills.some((s) => s.narrate));
 const distilled = Object.values(statuses).some((s) => s.distillation === 'approved');
 const made = data ? madeIndex(data.artifacts, [...chapterDerive, ...documentDerive], madeKey) : {};
 const parsed = data !== null && !['registered', 'parsing', 'parse_failed'].includes(data.doc.status);
@@ -248,6 +249,11 @@ const added = data ? new Date(data.doc.created_at).toLocaleDateString('en-GB', {
                   initialJobs={data.jobs}
                   made={made}
                 />
+                {listenable && (
+                  <p class="side-hint">
+                    <a href={`/documents/${data.doc.slug}/listen`}>Make an audio summary</a>: 5, 15 or 30 minutes, one to four voices.
+                  </p>
+                )}
               </section>
             </aside>
           )}

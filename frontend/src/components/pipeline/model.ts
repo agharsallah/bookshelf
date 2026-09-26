@@ -114,4 +114,5 @@ export const KIND_LABELS: Record<JobKind, string> = {
   link_concepts: 'Link concepts',
   derive: 'Derive',
   export: 'Export',
+  narrate: 'Record audio',
 };

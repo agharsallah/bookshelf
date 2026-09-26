@@ -22,6 +22,7 @@ export const JOB_LABELS: Partial<Record<JobKind, string>> = {
   explain_code: 'Explain code',
   describe_math: 'Describe formula',
   export: 'Export',
+  narrate: 'Record audio',
 };
 
 export function jobLabel(kind: JobKind): string {
@@ -42,6 +43,7 @@ const DERIVE_LABELS: Readonly<Record<string, string>> = {
   'make-flashcards': 'Make flashcards',
   'make-glossary': 'Make a glossary',
   'write-guide': 'Write the book guide',
+  'write-audio-summary': 'Make an audio summary',
 };
 
 export function deriveLabel(skill: Pick<SkillPublic, 'name'>): string {
@@ -62,10 +64,18 @@ function runsAt(skill: SkillPublic, scope: DeriveScope): boolean {
   return skill.scope === scope || (scope === 'document' && skill.document_selector !== null);
 }
 
-/** The catalogue's derive skills for one scope, in a stable order. Book-wide, that includes
- * chapter skills (quiz, FAQ, quotes, flashcards) that can also run on the whole book. */
+/** Whether a skill asks for choices before it runs (`params`): it is made on its own page
+ * (the audio summary on the Listen page), not with a one-click button. */
+export function takesChoices(skill: Pick<SkillPublic, 'params'>): boolean {
+  return Object.keys(skill.params ?? {}).length > 0;
+}
+
+/** The catalogue's one-click derive skills for one scope, in a stable order. Book-wide, that
+ * includes chapter skills (quiz, FAQ, quotes, flashcards) that can also run on the whole book. */
 export function deriveSkills(skills: readonly SkillPublic[], scope: DeriveScope): SkillPublic[] {
-  return skills.filter((s) => s.job_kind === 'derive' && runsAt(s, scope)).sort((a, b) => deriveLabel(a).localeCompare(deriveLabel(b)));
+  return skills
+    .filter((s) => s.job_kind === 'derive' && runsAt(s, scope) && !takesChoices(s))
+    .sort((a, b) => deriveLabel(a).localeCompare(deriveLabel(b)));
 }
 
 const DISTILLATION_SELECTORS = new Set(['chapter_distillation', 'document_chapters', 'document_distillations', 'document_quotes']);

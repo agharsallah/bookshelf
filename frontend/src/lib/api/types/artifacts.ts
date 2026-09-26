@@ -22,6 +22,7 @@ export const ARTIFACT_TYPES = [
   'quiz',
   'flashcards',
   'glossary',
+  'audio_summary',
 ] as const;
 export type ArtifactType = (typeof ARTIFACT_TYPES)[number];
 
@@ -54,6 +55,8 @@ export interface ArtifactPublic {
   document_id: string;
   anchor: string | null;
   note_id: string | null;
+  /** The episode a parameterised run made (`15m-conversation-en`); null for other types. */
+  variant?: string | null;
   type: ArtifactType;
   version: number;
   origin: Origin;

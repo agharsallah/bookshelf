@@ -1,0 +1,617 @@
+/* The Listen page: episodes, the player, the transcript that follows it, and the maker. */
+
+.listen {
+  display: grid;
+  gap: var(--space-5);
+  max-inline-size: 50rem;
+  margin-inline: auto;
+  font-family: var(--font-ui);
+}
+
+/* ── Episodes ─────────────────────────────────────────────── */
+
+.episodes ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.episode {
+  display: grid;
+  gap: 0.1rem;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-m);
+  background: var(--paper-raised);
+  color: var(--ink);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+  transition: border-color var(--dur-1) var(--ease-out);
+}
+
+.episode:hover {
+  border-color: var(--ink-3);
+}
+
+.episode[aria-pressed='true'] {
+  border-color: var(--ink);
+  box-shadow: inset 0 -3px 0 var(--marker);
+}
+
+.episodeLabel {
+  font-size: var(--text-ui);
+  font-weight: 700;
+}
+
+.episodeMeta {
+  color: var(--ink-3);
+  font-size: var(--text-xs);
+}
+
+/* ── Jobs in the works ────────────────────────────────────── */
+
+.working {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px dashed var(--rule-strong);
+  border-radius: var(--radius-m);
+  list-style: none;
+  font-size: var(--text-sm);
+}
+
+.working li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.workingState {
+  color: var(--ink-3);
+}
+
+.spinner {
+  inline-size: 0.9em;
+  block-size: 0.9em;
+  border: 2px solid var(--rule-strong);
+  border-block-start-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    rotate: 1turn;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation-duration: 3s;
+  }
+}
+
+/* ── The episode ──────────────────────────────────────────── */
+
+.episodeView {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.episodeHead {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.episodeHead h2 {
+  font-family: var(--font-read);
+  font-size: var(--text-xl);
+  line-height: var(--leading-tight);
+}
+
+.kicker {
+  color: var(--accent-strong);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.draft {
+  color: var(--tone-caution);
+  font-size: var(--text-sm);
+}
+
+.castPick,
+.speed {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+}
+
+.castPick select,
+.speed select,
+.castRow select {
+  min-block-size: 2.25rem;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-m);
+  background: var(--paper-raised);
+  color: var(--ink);
+  font: inherit;
+}
+
+.unrecorded {
+  padding: var(--space-4);
+  border: 1px dashed var(--rule-strong);
+  border-radius: var(--radius-l);
+  color: var(--ink-2);
+}
+
+/* ── The player ───────────────────────────────────────────── */
+
+.player {
+  position: sticky;
+  z-index: 2;
+  inset-block-start: var(--space-2);
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-l);
+  background: var(--paper-raised);
+  box-shadow: var(--shadow-lift);
+}
+
+.now {
+  display: grid;
+  gap: 0.1rem;
+  min-block-size: 2.6em;
+}
+
+.nowLabel {
+  color: var(--ink-3);
+  font-size: var(--text-xs);
+}
+
+.nowTitle {
+  overflow: hidden;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scrub {
+  position: relative;
+  display: grid;
+  gap: var(--space-1);
+}
+
+.range {
+  --played: 0%;
+
+  inline-size: 100%;
+  block-size: 1.5rem;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+  appearance: none;
+}
+
+.range::-webkit-slider-runnable-track {
+  block-size: 6px;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(to right, var(--marker) var(--played), var(--rule) var(--played));
+}
+
+.range::-moz-range-track {
+  block-size: 6px;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(to right, var(--marker) var(--played), var(--rule) var(--played));
+}
+
+.range::-webkit-slider-thumb {
+  inline-size: 16px;
+  block-size: 16px;
+  margin-block-start: -5px;
+  border: 2px solid var(--paper-raised);
+  border-radius: 50%;
+  background: var(--ink);
+  appearance: none;
+}
+
+.range::-moz-range-thumb {
+  inline-size: 14px;
+  block-size: 14px;
+  border: 2px solid var(--paper-raised);
+  border-radius: 50%;
+  background: var(--ink);
+}
+
+.range:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* Where each part starts, over the track. */
+.ticks {
+  position: absolute;
+  inset: calc(0.75rem - 5px) 8px auto;
+  block-size: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  pointer-events: none;
+}
+
+.ticks li {
+  position: absolute;
+  inline-size: 2px;
+  block-size: 10px;
+  border-radius: 1px;
+  background: var(--ink-3);
+}
+
+.clock {
+  display: flex;
+  justify-content: space-between;
+  color: var(--ink-3);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+}
+
+.icon,
+.play {
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid var(--rule-strong);
+  border-radius: 50%;
+  background: var(--paper);
+  color: var(--ink);
+  cursor: pointer;
+  transition:
+    border-color var(--dur-1) var(--ease-out),
+    scale var(--dur-1) var(--ease-out);
+}
+
+.icon {
+  inline-size: 2.75rem;
+  block-size: 2.75rem;
+}
+
+.play {
+  inline-size: 3.75rem;
+  block-size: 3.75rem;
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.icon:hover,
+.play:hover {
+  border-color: var(--ink);
+}
+
+.play:active,
+.icon:active {
+  scale: 0.95;
+}
+
+.icon svg,
+.play svg {
+  inline-size: 1.25rem;
+  block-size: 1.25rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.play svg {
+  inline-size: 1.5rem;
+  block-size: 1.5rem;
+  fill: currentColor;
+}
+
+.skip {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.extras {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+}
+
+.keys {
+  color: var(--ink-3);
+  font-size: var(--text-xs);
+}
+
+@media (width < 40rem) {
+  .player {
+    padding: var(--space-3);
+  }
+
+  .keys {
+    display: none;
+  }
+}
+
+/* ── The transcript ───────────────────────────────────────── */
+
+.transcript,
+.turns {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.transcript {
+  gap: var(--space-5);
+}
+
+.turns {
+  gap: var(--space-1);
+}
+
+.part {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.partTitle {
+  font-size: var(--text-md);
+}
+
+.partSeek {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.partSeek:hover {
+  text-decoration: underline;
+  text-decoration-color: var(--marker);
+  text-decoration-thickness: 0.3em;
+  text-underline-offset: -0.1em;
+}
+
+.partTime {
+  color: var(--ink-3);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.turn {
+  --voice: var(--series-1);
+
+  display: grid;
+  grid-template-columns: 9rem 1fr;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-inline-start: 3px solid transparent;
+  border-radius: 0 var(--radius-s) var(--radius-s) 0;
+  transition: background var(--dur-2) var(--ease-out);
+}
+
+.turn[data-speaker='1'] {
+  --voice: var(--series-2);
+}
+
+.turn[data-speaker='2'] {
+  --voice: var(--series-3);
+}
+
+.turn[data-speaker='3'] {
+  --voice: var(--series-4);
+}
+
+.turn[aria-current='true'] {
+  border-inline-start-color: var(--voice);
+  background: var(--marker-soft);
+}
+
+.who {
+  display: grid;
+  align-content: start;
+  gap: 0.1rem;
+  color: var(--voice);
+  font-size: var(--text-sm);
+  font-weight: 700;
+}
+
+.turnSeek {
+  justify-self: start;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink-3);
+  font: inherit;
+  font-size: var(--text-xs);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.turnSeek:hover {
+  color: var(--ink);
+}
+
+.says {
+  color: var(--ink);
+  font-family: var(--font-read);
+  line-height: var(--leading-read);
+}
+
+@media (width < 40rem) {
+  .turn {
+    grid-template-columns: 1fr;
+    gap: var(--space-1);
+  }
+
+  .who {
+    display: flex;
+    gap: var(--space-2);
+  }
+}
+
+/* ── Making an episode ────────────────────────────────────── */
+
+.make {
+  display: grid;
+  gap: var(--space-3);
+  padding-block-start: var(--space-4);
+  border-block-start: 1px solid var(--rule);
+}
+
+.makeTitle {
+  font-size: var(--text-lg);
+}
+
+.maker {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.choice {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.choice legend,
+.cast legend {
+  margin-block-end: var(--space-2);
+  font-weight: 700;
+}
+
+.option {
+  position: relative;
+  display: grid;
+  gap: 0.1rem;
+  padding: var(--space-3);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-m);
+  background: var(--paper-raised);
+  cursor: pointer;
+}
+
+.option:has(input:checked) {
+  border-color: var(--ink);
+  box-shadow: inset 0 -3px 0 var(--marker);
+}
+
+.option:has(input:focus-visible) {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.option input {
+  position: absolute;
+  opacity: 0;
+}
+
+.optionLabel {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  font-weight: 700;
+}
+
+.optionHint {
+  color: var(--ink-3);
+  font-size: var(--text-sm);
+}
+
+.voicesCount {
+  color: var(--accent);
+  font-size: var(--text-xs);
+  letter-spacing: 0.1em;
+}
+
+.cast {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.castRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--space-2);
+}
+
+.castRow label {
+  display: grid;
+  flex: 1 1 16rem;
+  gap: 0.1rem;
+}
+
+.castRow select {
+  inline-size: 100%;
+}
+
+.role {
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+}
+
+.makerActions {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-2);
+}
+
+.fresh {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.fine {
+  max-inline-size: 60ch;
+  color: var(--ink-3);
+  font-size: var(--text-sm);
+}
+
+.error {
+  color: var(--tone-antipattern);
+  font-size: var(--text-sm);
+}

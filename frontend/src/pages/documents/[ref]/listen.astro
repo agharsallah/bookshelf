@@ -1,0 +1,143 @@
+---
+/**
+ * Listen: a book's audio summaries — 5, 15 or 30 minutes, told by a narrator, two hosts,
+ * a panel or a roundtable, in English or Chinese — played with the transcript following
+ * along, downloadable as MP3. The episodes, voices and choices are loaded here; the
+ * player, transcript and the form to make a new episode are one island (`Listen`).
+ */
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import { Problem } from '../../../components/common/Problem';
+import Listen from '../../../components/listen/Listen';
+import StudySwitcher from '../../../components/study/StudySwitcher.astro';
+import { switcherItems } from '../../../components/study/study-page';
+import { AUDIO_SKILL } from '../../../components/listen/listening';
+import { serverApi } from '../../../lib/api/server';
+import type { AudioShelf, VoiceCatalogue } from '../../../lib/api/types/audio';
+import type { SkillPublic } from '../../../lib/api/types/skills';
+import { getDocument, getStudyArtifacts, load } from '../../../lib/documents/server';
+import { availableMaterials } from '../../../lib/documents/study';
+
+export const prerender = false;
+
+const ref = Astro.params.ref ?? '';
+const loaded = await load(async () => {
+  const doc = await getDocument(ref);
+  const api = serverApi();
+  const [study, shelf, catalogue, skills] = await Promise.all([
+    getStudyArtifacts(doc.id),
+    api.get<AudioShelf>(`documents/${encodeURIComponent(doc.id)}/audio`),
+    api.get<VoiceCatalogue>('audio/voices'),
+    // The catalogue only adds the form to make an episode; the page plays without it.
+    api.get<SkillPublic[]>('skills').catch(() => [] as SkillPublic[]),
+  ]);
+  const skill = skills.find((s) => s.name === AUDIO_SKILL);
+  return {
+    doc,
+    shelf,
+    catalogue,
+    params: skill?.params ?? null,
+    items: switcherItems(doc.slug, availableMaterials(doc.slug, study), 'listen'),
+  };
+});
+if (!loaded.ok && loaded.notFound) Astro.response.status = 404;
+const data = loaded.ok ? loaded.value : null;
+---
+
+<BaseLayout title={data ? `Listen: ${data.doc.title}` : 'Listen'} width="wide">
+  {
+    !data ? (
+      !loaded.ok && loaded.notFound ? (
+        <div class="empty">
+          <h1>Not on the shelf</h1>
+          <p>
+            No document is called “{ref}”. <a href="/library">Back to the library</a>
+          </p>
+        </div>
+      ) : (
+        !loaded.ok && <Problem title="The audio summaries could not be loaded." problem={loaded.problem} />
+      )
+    ) : (
+      <>
+        <nav class="tools" aria-label="Listen">
+          <a href={`/documents/${data.doc.slug}`}>Back to the document</a>
+        </nav>
+        <div class="switch-bar">
+          <StudySwitcher items={data.items} />
+        </div>
+        <header class="head">
+          <p class="kind">Listen</p>
+          <h1>{data.doc.title}</h1>
+          <p class="lede">
+            {data.shelf.episodes.length > 0
+              ? 'The book, spoken. Pick an episode; the transcript follows along, and every line links back to its passage.'
+              : 'The book, spoken: choose how long, who talks and their voices, and it is written from the chapter distillations and recorded for you.'}
+          </p>
+        </header>
+        <Listen
+          client:load
+          slug={data.doc.slug}
+          bookTitle={data.doc.title}
+          documentId={data.doc.id}
+          shelf={data.shelf}
+          catalogue={data.catalogue}
+          params={data.params}
+        />
+      </>
+    )
+  }
+</BaseLayout>
+
+<style>
+  .tools {
+    display: flex;
+    max-inline-size: 50rem;
+    margin: 0 auto var(--space-4);
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+  }
+
+  .tools a {
+    color: var(--ink-3);
+  }
+
+  .switch-bar {
+    max-inline-size: 50rem;
+    margin: 0 auto var(--space-5);
+    padding-block: var(--space-2);
+    border-block: 1px solid var(--rule);
+  }
+
+  .head {
+    display: grid;
+    gap: var(--space-2);
+    max-inline-size: 50rem;
+    margin: 0 auto var(--space-5);
+  }
+
+  .kind {
+    color: var(--accent);
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+    font-weight: 600;
+  }
+
+  .head h1 {
+    font-size: var(--text-2xl);
+    line-height: var(--leading-tight);
+  }
+
+  .lede {
+    max-inline-size: 60ch;
+    color: var(--ink-2);
+  }
+
+  .empty {
+    display: grid;
+    gap: var(--space-3);
+    max-inline-size: 40rem;
+  }
+
+  .empty h1 {
+    font-size: var(--text-xl);
+  }
+</style>

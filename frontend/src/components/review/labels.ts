@@ -5,6 +5,7 @@
 import type { ArtifactPublic, ArtifactType, Review } from '../../lib/api/types/artifacts';
 import type { JobCreate, JobKind } from '../../lib/api/types/jobs';
 import type { SkillPublic } from '../../lib/api/types/skills';
+import { paramsOfVariant } from '../listen/listening';
 
 export const TYPE_LABELS: Record<ArtifactType, string> = {
   outline_override: 'Outline',
@@ -25,6 +26,7 @@ export const TYPE_LABELS: Record<ArtifactType, string> = {
   quiz: 'Quiz',
   flashcards: 'Flashcards',
   glossary: 'Glossary',
+  audio_summary: 'Audio summary script',
 };
 
 export const REVIEW_LABELS: Record<Review, string> = {
@@ -57,6 +59,7 @@ const PRODUCER: Partial<Record<ArtifactType, JobKind>> = {
   quiz: 'derive',
   flashcards: 'derive',
   glossary: 'derive',
+  audio_summary: 'derive',
 };
 
 /**
@@ -65,14 +68,19 @@ const PRODUCER: Partial<Record<ArtifactType, JobKind>> = {
  * note without its note id has nothing to structure, and outline overrides are not jobs.
  */
 export function rerunRequest(
-  artifact: Pick<ArtifactPublic, 'type' | 'skill' | 'document_id' | 'anchor' | 'note_id'>,
+  artifact: Pick<ArtifactPublic, 'type' | 'skill' | 'document_id' | 'anchor' | 'note_id' | 'variant'>,
   skills: readonly SkillPublic[] = [],
 ): JobCreate | null {
   const declared = skills.find((s) => s.name === artifact.skill)?.job_kind;
   const kind: JobKind | null = declared ?? PRODUCER[artifact.type] ?? null;
   if (!kind) return null;
   const scope = { kind, document_id: artifact.document_id, anchor: artifact.anchor };
-  if (kind === 'derive') return artifact.skill ? { ...scope, skill: artifact.skill } : null;
+  if (kind === 'derive') {
+    if (!artifact.skill) return null;
+    // An episode re-runs as itself: the same length, format and language.
+    const params = artifact.type === 'audio_summary' ? paramsOfVariant(artifact.variant) : null;
+    return { ...scope, skill: artifact.skill, ...(params ? { params } : {}) };
+  }
   if (kind === 'structure_note') return artifact.note_id ? { ...scope, note_id: artifact.note_id } : null;
   return scope;
 }

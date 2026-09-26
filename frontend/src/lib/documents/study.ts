@@ -1,8 +1,9 @@
 /**
  * Study material: what a book (or one chapter) became, as a reader sees it. Each kind
  * names the artifact it is drawn from, what to call it, what one item of it is, and
- * where it opens: the brief and guide have their own pages; the rest open on the study
- * page (`/documents/{slug}/study/{kind}`, `?chapter=ch03` for one chapter's set).
+ * where it opens: the brief, guide and audio summaries (`listen`) have their own pages;
+ * the rest open on the study page (`/documents/{slug}/study/{kind}`, `?chapter=ch03` for
+ * one chapter's set).
  */
 import type { ArtifactListItem, ArtifactType } from '../api/types/artifacts';
 import { pickBest, type Standing } from './artifacts';
@@ -10,8 +11,12 @@ import { pickBest, type Standing } from './artifacts';
 export const STUDY_KINDS = ['flashcards', 'quiz', 'faq', 'quotes', 'glossary'] as const;
 export type StudyKind = (typeof STUDY_KINDS)[number];
 
+/** The materials with a page of their own, rather than the study page. */
+export type PageKind = 'brief' | 'guide' | 'listen';
+const PAGE_KINDS: ReadonlySet<string> = new Set<PageKind>(['brief', 'guide', 'listen']);
+
 export interface StudyMaterial {
-  kind: StudyKind | 'brief' | 'guide';
+  kind: StudyKind | PageKind;
   type: ArtifactType;
   label: string;
   /** What it lets you do, in a few words, for tiles. */
@@ -23,6 +28,7 @@ export interface StudyMaterial {
 export const MATERIALS: readonly StudyMaterial[] = [
   { kind: 'brief', type: 'book_brief', label: 'Brief', hint: 'The book on one page', bookOnly: true },
   { kind: 'guide', type: 'book_guide', label: 'Book guide', hint: 'Chapter by chapter, with charts', bookOnly: true },
+  { kind: 'listen', type: 'audio_summary', label: 'Listen', hint: 'The book, spoken, in 5 to 30 minutes', bookOnly: true },
   { kind: 'flashcards', type: 'flashcards', label: 'Flashcards', hint: 'Turn cards, mark what you knew', bookOnly: false },
   { kind: 'quiz', type: 'quiz', label: 'Quiz', hint: 'Check yourself, with explanations', bookOnly: false },
   { kind: 'faq', type: 'faq', label: 'FAQ', hint: 'Questions a colleague would ask', bookOnly: false },
@@ -34,7 +40,7 @@ export function isStudyKind(value: string | undefined): value is StudyKind {
   return (STUDY_KINDS as readonly string[]).includes(value ?? '');
 }
 
-export function materialOf(kind: StudyKind | 'brief' | 'guide'): StudyMaterial {
+export function materialOf(kind: StudyKind | PageKind): StudyMaterial {
   const material = MATERIALS.find((m) => m.kind === kind);
   if (!material) throw new Error(`Unknown study material: ${kind}`);
   return material;
@@ -42,7 +48,7 @@ export function materialOf(kind: StudyKind | 'brief' | 'guide'): StudyMaterial {
 
 /** Where a material opens, for the book or one chapter. */
 export function studyHref(slug: string, kind: StudyMaterial['kind'], chapter: string | null = null): string {
-  if (kind === 'brief' || kind === 'guide') return `/documents/${slug}/${kind}`;
+  if (PAGE_KINDS.has(kind)) return `/documents/${slug}/${kind}`;
   return `/documents/${slug}/study/${kind}${chapter ? `?chapter=${encodeURIComponent(chapter)}` : ''}`;
 }
 
