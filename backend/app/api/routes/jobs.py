@@ -13,8 +13,9 @@ from app.models import Job
 from app.models.enums import JobKind, JobState
 from app.pipeline.skills import load_catalogue
 from app.schemas.common import Page
-from app.schemas.job import JobAccepted, JobCreate, JobPublic
+from app.schemas.job import JobAccepted, JobCreate, JobPublic, QueueStatus
 from app.services import jobs as job_service
+from app.services.queue_view import public_job, public_jobs, queue_status
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 
@@ -32,9 +33,21 @@ def list_jobs(
         session, state=state, kind=kind, document_id=document_id, limit=limit, offset=offset
     )
     total = queue.count_jobs(session, state=state, kind=kind, document_id=document_id)
-    return Page(
-        items=[JobPublic.model_validate(j) for j in jobs], total=total, limit=limit, offset=offset
-    )
+    return Page(items=public_jobs(session, jobs), total=total, limit=limit, offset=offset)
+
+
+@router.get(
+    "/queue",
+    response_model=QueueStatus,
+    summary="Queue health: live workers, and job kinds nobody is running",
+    description=(
+        "`unclaimed_kinds` lists kinds with runnable queued jobs that no live worker claims: "
+        "those jobs will not start until a worker for them runs. The API runs a worker "
+        "itself unless `BOOKSHELF_API_WORKER=false`."
+    ),
+)
+def get_queue(session: SessionDep) -> QueueStatus:
+    return queue_status(session)
 
 
 @router.get("/{job_id}", response_model=JobPublic, summary="Get one job")
@@ -42,7 +55,7 @@ def get_job(job_id: uuid.UUID, session: SessionDep) -> JobPublic:
     job = session.get(Job, job_id)
     if job is None:
         raise NotFoundError(f"Job {job_id} does not exist.")
-    return JobPublic.model_validate(job)
+    return public_job(session, job)
 
 
 @router.post(
@@ -65,7 +78,7 @@ def create_job(body: JobCreate, session: SessionDep, skills_dir: SkillsDirDep) -
     )
     spec = job_service.job_spec(session, request, load_catalogue(skills_dir))
     job, deduplicated = job_service.enqueue_or_live(session, spec)
-    return JobAccepted(job=JobPublic.model_validate(job), deduplicated=deduplicated)
+    return JobAccepted(job=public_job(session, job), deduplicated=deduplicated)
 
 
 def _job(session: SessionDep, job_id: uuid.UUID) -> Job:
@@ -121,4 +134,4 @@ def retry_job(job_id: uuid.UUID, session: SessionDep) -> JobAccepted:
             [{"field": "state", "state": job.state.value}],
         )
     again, deduplicated = job_service.enqueue_or_live(session, queue.retry_spec(job))
-    return JobAccepted(job=JobPublic.model_validate(again), deduplicated=deduplicated)
+    return JobAccepted(job=public_job(session, again), deduplicated=deduplicated)

@@ -12,9 +12,17 @@ where the build deviates from it).
 uv sync                             # create .venv and install deps
 cp .env.example .env                # adjust as needed
 uv run python -m app.db.migrate     # apply ../supabase/migrations/*.sql locally
-uv run fastapi dev app/main.py      # API on http://127.0.0.1:8000
-uv run python -m app.jobs.worker    # the job worker (a second terminal)
+uv run fastapi dev app/main.py      # API on http://127.0.0.1:8000, with its own job worker
 ```
+
+The API runs a pipeline worker on a background thread (`app/jobs/background.py`), so
+starting it is enough for queued jobs to run. On shutdown or a `fastapi dev` reload it
+hands unfinished jobs back to the queue and kills their `claude` runs, so the next
+process restarts them at once. Set `BOOKSHELF_API_WORKER=false` to run workers only as
+separate processes (`python -m app.jobs.worker`); any number can share the queue. Every
+worker keeps a row in `workers` fresh, and `GET /jobs/queue` (and the `queue` event of
+`/jobs/stream`) reports the live ones and any job kind with queued work that no worker
+runs — the UI shows that as "no worker is running" instead of an endless "queued".
 
 - Swagger UI: http://127.0.0.1:8000/docs · ReDoc: `/redoc` · schema: `/openapi.json`
 - Liveness `GET /health` · readiness `GET /health/ready` (database; Qdrant reported

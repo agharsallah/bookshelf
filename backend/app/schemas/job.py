@@ -59,6 +59,10 @@ class JobPublic(BaseModel):
     created_at: datetime
     started_at: datetime | None
     finished_at: datetime | None
+    # When a queued job may start: now for fresh work, later while a retry backs off.
+    run_after: datetime
+    # A queued job's place in line (1 = next to start); null unless queued.
+    queue_position: int | None = None
 
 
 class JobAccepted(BaseModel):
@@ -66,3 +70,25 @@ class JobAccepted(BaseModel):
 
     job: JobPublic
     deduplicated: bool
+
+
+class WorkerPublic(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    name: str
+    kinds: list[str]
+    concurrency: int
+    running: int
+    started_at: datetime
+    seen_at: datetime
+
+
+class QueueStatus(BaseModel):
+    """Whether queued work will actually run: who is polling, and what nobody picks up."""
+
+    workers: list[WorkerPublic]
+    queued: int
+    running: int
+    # Kinds with runnable queued jobs that no live worker claims: those jobs wait forever
+    # until a worker for them starts. Empty when every queued job has a taker.
+    unclaimed_kinds: list[JobKind]

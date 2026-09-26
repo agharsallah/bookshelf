@@ -155,9 +155,11 @@ def test_job_stream_sends_a_snapshot_then_ends(client, session: Session):
         if chunk.startswith("event:")
     ]
     assert response.headers["content-type"].startswith("text/event-stream")
-    assert [e["event"] for e in events] == ["job", "end"]
-    assert json.loads(events[0]["data"])["id"] == str(job.id)
-    assert json.loads(events[0]["data"])["state"] == "queued"
+    assert [e["event"] for e in events] == ["queue", "job", "end"]
+    health = json.loads(events[0]["data"])
+    assert (health["workers"], health["queued"], health["unclaimed_kinds"]) == ([], 1, ["export"])
+    sent = json.loads(events[1]["data"])
+    assert (sent["id"], sent["state"], sent["queue_position"]) == (str(job.id), "queued", 1)
 
 
 def test_outbox_file_imports_as_an_interactive_artifact(session, book, skills_dir, tmp_path):
