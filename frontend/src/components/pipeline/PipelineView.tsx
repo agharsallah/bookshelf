@@ -1,8 +1,9 @@
 /**
  * The pipeline, live (§7): jobs from `GET /jobs` seeded server-side, then kept current by
- * `/jobs/stream` through the shared `useJobStream` hook. Tallies, per-document stage
- * tracks, running work with elapsed time (queued jobs can be cancelled), failures with
- * retry, and documents the run ceiling paused, with Resume.
+ * `/jobs/stream` through the shared `useJobStream` hook. Tallies by state (which filter),
+ * per-document stage bars and jobs by kind, running work with elapsed time (queued jobs
+ * can be cancelled), failures grouped by cause with "Retry all", and documents the run
+ * ceiling paused, with Resume.
  */
 import { useCallback, useMemo, useState } from 'react';
 import { browserApi, type ApiClient } from '../../lib/api/client';
@@ -11,9 +12,13 @@ import { useJobStream } from '../../lib/hooks/useJobStream';
 import { sortedJobs } from '../../lib/jobs/stream';
 import { PausedNotice } from '../common/PausedNotice';
 import type { DocumentLabel } from '../review/api';
-import { FailedRow, RecentRow, RunningRow } from './JobRows';
+import { groupFailures } from './failures';
+import { FailureGroups } from './FailureGroups';
+import { RecentRow, RunningRow } from './JobRows';
+import { KindBars } from './KindBars';
 import { QueueBanner } from './QueueBanner';
-import { countKinds, countStates, filterJobs, KIND_LABELS, stageProgress, type JobFilters } from './model';
+import { countStates, filterJobs, KIND_LABELS, stageProgress, type JobFilters } from './model';
+import { Bumped, Swatch } from './StateBar';
 import { StageTrack } from './StageTrack';
 import { useNow } from './useNow';
 import styles from './Pipeline.module.css';
@@ -40,10 +45,9 @@ export function PipelineView({ jobs: seed, documents: initialDocuments, initialF
 
   const shown = useMemo(() => filterJobs(all, filters), [all, filters]);
   const states = countStates(filterJobs(all, { ...filters, state: '' }));
-  const kinds = countKinds(shown);
-  const maxKind = Math.max(1, ...Object.values(kinds));
   const running = shown.filter((j) => j.state === 'running' || j.state === 'queued');
-  const failed = shown.filter((j) => j.state === 'failed');
+  const failed = useMemo(() => shown.filter((j) => j.state === 'failed'), [shown]);
+  const causes = useMemo(() => groupFailures(failed), [failed]);
   const recent = shown.filter((j) => j.state === 'done' || j.state === 'skipped').slice(0, RECENT);
   const now = useNow(running.length > 0);
 
@@ -71,7 +75,8 @@ export function PipelineView({ jobs: seed, documents: initialDocuments, initialF
           {JOB_STATES.map((state) => (
             <li key={state}>
               <button type="button" className={styles.tally} data-state={state} aria-pressed={filters.state === state} onClick={() => toggleState(state)}>
-                <span className={styles.tallyCount}>{states[state]}</span> {state}
+                <Swatch state={state} />
+                <Bumped value={states[state]} className={styles.tallyCount} /> {state}
               </button>
             </li>
           ))}
@@ -130,7 +135,7 @@ export function PipelineView({ jobs: seed, documents: initialDocuments, initialF
             {trackedDocs.map((doc) => (
               <li key={doc.id} className={styles.doc}>
                 <p className={styles.docHead}>
-                  <a href={`/documents/${doc.slug}`} className={styles.docTitle}>
+                  <a href={`/documents/${doc.slug}`} className={`book-title ${styles.docTitle}`}>
                     {doc.title}
                   </a>
                   <span className={styles.docStatus}>{doc.status?.replaceAll('_', ' ')}</span>
@@ -145,18 +150,7 @@ export function PipelineView({ jobs: seed, documents: initialDocuments, initialF
           <h2 id="kinds-title" className={styles.sectionTitle}>
             By kind
           </h2>
-          {Object.keys(kinds).length === 0 ? <p className={styles.muted}>No jobs match.</p> : null}
-          <dl className={styles.kindList}>
-            {JOB_KINDS.filter((k) => kinds[k]).map((k) => (
-              <div key={k} className={styles.kindRow}>
-                <dt>{KIND_LABELS[k]}</dt>
-                <dd>
-                  <span className={styles.kindBar} style={{ inlineSize: `${((kinds[k] ?? 0) / maxKind) * 100}%` }} aria-hidden="true" />
-                  <span className={styles.num}>{kinds[k]}</span>
-                </dd>
-              </div>
-            ))}
-          </dl>
+          <KindBars jobs={shown} />
         </section>
       </div>
 
@@ -175,21 +169,16 @@ export function PipelineView({ jobs: seed, documents: initialDocuments, initialF
       <section aria-labelledby="failed-title">
         <h2 id="failed-title" className={styles.sectionTitle}>
           Failed <span className={styles.count}>{failed.length}</span>
+          {causes.length > 1 ? <span className={styles.subCount}>from {causes.length} causes</span> : null}
         </h2>
-        {failed.length === 0 ? <p className={styles.muted}>No failures.</p> : null}
-        <ul className={styles.jobs}>
-          {failed.map((job) => (
-            <FailedRow
-              key={job.id}
-              job={job}
-              title={title(job)}
-              now={now}
-              api={api}
-              onChanged={track}
-              paused={job.document_id !== null && pausedIds.has(job.document_id)}
-            />
-          ))}
-        </ul>
+        <FailureGroups
+          groups={causes}
+          now={now}
+          api={api}
+          onChanged={track}
+          title={title}
+          isPaused={(job) => job.document_id !== null && pausedIds.has(job.document_id)}
+        />
       </section>
 
       <section aria-labelledby="recent-title">

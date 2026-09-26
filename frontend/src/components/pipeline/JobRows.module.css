@@ -88,17 +88,19 @@
 }
 
 .retry button {
-  padding: var(--space-1) var(--space-3);
-  border: 1px solid var(--rule-strong);
-  border-radius: var(--radius-m);
-  background: var(--paper-raised);
+  min-block-size: 2rem;
+  padding-inline: var(--space-3);
   font-size: var(--text-sm);
-  cursor: pointer;
 }
 
-.retry button:disabled {
-  opacity: 0.5;
-  cursor: default;
+/* In a failure group: one line, the retry at its end. */
+.job[data-compact] {
+  grid-template-columns: 9rem minmax(0, 1fr) auto auto;
+  align-items: center;
+}
+
+.job[data-compact] .retry {
+  grid-column: auto;
 }
 
 
@@ -117,7 +119,8 @@
 }
 
 @media (max-width: 52rem) {
-  .job {
+  .job,
+  .job[data-compact] {
     grid-template-columns: minmax(0, 1fr) auto;
   }
 

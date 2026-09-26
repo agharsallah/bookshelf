@@ -1,103 +1,73 @@
 /*
- * One document's stages as stations on a line. The only motion on the page is the
- * active station's slow breath, and none when reduced motion is preferred.
+ * One document's stages as seven short bars in a row: the label above, the bar split by
+ * state, and the live or failed count below. The active stage's label breathes slowly,
+ * and not at all when reduced motion is preferred.
  */
-/* Stations on a line: the rule runs through the dots, stopping at the last one. */
 .track {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--space-2);
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .station {
-  --state: var(--rule-strong);
-  position: relative;
   display: grid;
-  justify-items: start;
-  gap: var(--space-1);
+  gap: 0.3rem;
+  min-inline-size: 0;
 }
 
-.station::before {
-  content: '';
-  position: absolute;
-  inset-block-start: 0.3rem;
-  inset-inline: 0.7rem 0;
-  block-size: 1px;
-  background: var(--rule-strong);
+.stationLabel {
+  overflow: hidden;
+  color: var(--ink-3);
+  font-size: var(--text-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.station:last-child::before {
-  display: none;
+.station[data-state='active'] .stationLabel {
+  color: var(--ink);
+  font-weight: 650;
 }
 
-.station[data-state='done']::before {
-  background: var(--done);
+.station[data-state='failed'] .stationLabel {
+  color: var(--tone-important);
+  font-weight: 650;
 }
 
-.dot {
-  position: relative;
-  inline-size: 0.65rem;
-  block-size: 0.65rem;
-  border: 1.5px solid var(--state);
-  border-radius: 50%;
-  background: var(--paper);
+.note {
+  min-block-size: 1.2em;
+  color: var(--ink-2);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
-.station[data-state='done'] {
-  --state: var(--done);
-}
-
-.station[data-state='done'] .dot {
-  background: var(--done);
-}
-
-.station[data-state='active'] {
-  --state: var(--active);
-}
-
-.station[data-state='active'] .dot {
-  box-shadow: 0 0 0 3px color-mix(in oklab, var(--active) 25%, transparent);
+.station[data-state='failed'] .note {
+  color: var(--tone-important);
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .station[data-state='active'] .dot {
+  .station[data-state='active'] .stationLabel {
     animation: breathe 2.4s var(--ease-out) infinite;
   }
 }
 
 @keyframes breathe {
   50% {
-    box-shadow: 0 0 0 5px color-mix(in oklab, var(--active) 12%, transparent);
+    opacity: 0.55;
   }
 }
 
-.station[data-state='failed'] {
-  --state: var(--failed);
-}
+@media (max-width: 36rem) {
+  .track {
+    gap: var(--space-1);
+  }
 
-.station[data-state='failed'] .dot {
-  background: var(--failed);
-  clip-path: polygon(20% 0, 50% 30%, 80% 0, 100% 20%, 70% 50%, 100% 80%, 80% 100%, 50% 70%, 20% 100%, 0 80%, 30% 50%, 0 20%);
-  border: 0;
-  border-radius: 0;
-}
-
-.stationLabel {
-  color: var(--ink-3);
-  font-size: var(--text-xs);
-}
-
-.station[data-state='active'] .stationLabel,
-.station[data-state='failed'] .stationLabel {
-  color: var(--state);
-  font-weight: 600;
-}
-
-
-@media (max-width: 52rem) {
-  .stationLabel {
-    font-size: 0.65rem;
+  .stationLabel,
+  .note {
+    font-size: 0.6875rem;
   }
 }

@@ -56,6 +56,16 @@ export function countKinds(jobs: readonly JobPublic[]): Partial<Record<JobKind, 
   return counts;
 }
 
+/** Per kind, how many jobs sit in each state (the "By kind" bars). */
+export function countKindStates(jobs: readonly JobPublic[]): Partial<Record<JobKind, StateCounts>> {
+  const counts: Partial<Record<JobKind, StateCounts>> = {};
+  for (const job of jobs) (counts[job.kind] ??= zero())[job.state] += 1;
+  return counts;
+}
+
+/** Total jobs in a tally. */
+export const totalOf = (counts: StateCounts): number => Object.values(counts).reduce((a, b) => a + b, 0);
+
 /**
  * One document's stages. Live work makes a stage active; a failure with nothing live
  * marks it failed; the document status (or all jobs finished) marks it done.

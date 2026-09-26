@@ -68,6 +68,7 @@ export function RunningRow({ job, title, now, api, onChanged, queue = null }: Jo
         <span className={styles.retry}>
           <button
             type="button"
+            className="btn"
             onClick={() => void send()}
             disabled={cancel.state === 'sending'}
             aria-label={`Cancel ${jobTitle(job, kindLabel)} for ${title}`}
@@ -81,8 +82,17 @@ export function RunningRow({ job, title, now, api, onChanged, queue = null }: Jo
   );
 }
 
-export function FailedRow({ job, title, now, api, onChanged, paused = false }: JobControlProps & { paused?: boolean }) {
-  const [retry, setRetry] = useState<Control>({ state: 'idle' });
+export interface FailedRowProps extends JobControlProps {
+  paused?: boolean;
+  /** Already queued again from elsewhere (its group's "Retry all"). */
+  retried?: boolean;
+  /** One line, without the error: its group already says it (./FailureGroups.tsx). */
+  compact?: boolean;
+}
+
+export function FailedRow({ job, title, now, api, onChanged, paused = false, retried = false, compact = false }: FailedRowProps) {
+  const [own, setRetry] = useState<Control>({ state: 'idle' });
+  const retry: Control = retried && own.state === 'idle' ? { state: 'sent', deduplicated: false } : own;
 
   const send = async () => {
     setRetry({ state: 'sending' });
@@ -96,14 +106,14 @@ export function FailedRow({ job, title, now, api, onChanged, paused = false }: J
   };
 
   return (
-    <li className={styles.job} data-state="failed" data-ceiling={paused || undefined}>
+    <li className={styles.job} data-state="failed" data-ceiling={paused || undefined} data-compact={compact || undefined}>
       <span className={styles.jobKind}>{jobTitle(job, kindLabel)}</span>
       <Scope job={job} title={title} />
       <span className={styles.jobTime}>
         {job.finished_at ? relativeTime(job.finished_at, now) : null}
         <span className={styles.attempts}> after {job.attempts} attempt{job.attempts === 1 ? '' : 's'}</span>
       </span>
-      {job.error ? (
+      {job.error && !compact ? (
         <details className={styles.error}>
           <summary>{job.error.split('\n')[0]?.slice(0, 160)}</summary>
           <pre>{job.error}</pre>
@@ -113,7 +123,7 @@ export function FailedRow({ job, title, now, api, onChanged, paused = false }: J
         {paused ? (
           <span className={styles.muted}>Its document is paused; resuming requeues it.</span>
         ) : (
-          <button type="button" onClick={() => void send()} disabled={retry.state === 'sending' || retry.state === 'sent'}>
+          <button type="button" className="btn" onClick={() => void send()} disabled={retry.state === 'sending' || retry.state === 'sent'}>
             {retry.state === 'sending' ? 'Retrying…' : 'Retry'}
           </button>
         )}

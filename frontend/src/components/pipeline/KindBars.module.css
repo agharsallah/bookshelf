@@ -1,0 +1,36 @@
+.list {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 8.5rem minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+}
+
+.row dt {
+  color: var(--ink-2);
+}
+
+.row dd {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 2.5rem;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.num {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  text-align: end;
+}
+
+.empty {
+  color: var(--ink-3);
+  font-size: var(--text-sm);
+}

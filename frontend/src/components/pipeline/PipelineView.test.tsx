@@ -56,6 +56,33 @@ describe('<PipelineView>', () => {
     expect(within(screen.getByRole('region', { name: /Running and queued/ })).getByText('Distil chapter')).toBeTruthy();
   });
 
+  it('lists failures with the same cause once and retries them all, saying how it went', async () => {
+    const skipped = (id: string, anchor: string, finished_at: string) =>
+      job({ id, kind: 'distil_chapter', anchor, state: 'failed', finished_at, error: `cannot select inputs: ${anchor} is inside a skipped container` });
+    const jobs = [skipped('a', 'ch24', '2026-09-23T10:00:05Z'), skipped('b', 'ch25', '2026-09-23T10:00:06Z'), skipped('c', 'ch26', '2026-09-23T10:00:07Z'), failed];
+    const { api, calls } = fakeApi({
+      'POST jobs/a/retry': () => ({ job: { ...jobs[0], id: 'a2', state: 'queued' }, deduplicated: false }),
+      'POST jobs/b/retry': () => ({ job: { ...jobs[1], id: 'b2', state: 'queued' }, deduplicated: true }),
+      'POST jobs/c/retry': () => {
+        throw new Error('Job c is not failed.');
+      },
+    });
+    render(<PipelineView jobs={jobs} documents={[systems]} api={api} live={false} />);
+
+    const failures = screen.getByRole('region', { name: /Failed/ });
+    expect(within(failures).getAllByRole('listitem').filter((li) => li.parentElement?.tagName === 'OL')).toHaveLength(2);
+    const signature = (_: string, el: Element | null) => el?.tagName === 'P' && el.textContent === 'cannot select inputs: anchor is inside a skipped container';
+    expect(within(failures).getByText(signature)).toBeTruthy();
+    expect(within(failures).getByText('at 24–26')).toBeTruthy();
+
+    await userEvent.click(within(failures).getByRole('button', { name: 'Retry all 3' }));
+
+    await waitFor(() => expect(within(failures).getByText('1 queued again, 1 already queued. 1 not queued: Job c is not failed.')).toBeTruthy());
+    expect(calls.map((c) => c.path).sort()).toEqual(['jobs/a/retry', 'jobs/b/retry', 'jobs/c/retry']);
+    expect(within(failures).getByRole('button', { name: 'Retry all 1' })).toBeTruthy();
+    expect(within(screen.getByRole('region', { name: /Running and queued/ })).getAllByText('Distil chapter')).toHaveLength(2);
+  });
+
   it('filters the lists by state from the tallies', async () => {
     render(<PipelineView jobs={[job({}), failed]} documents={[]} api={fakeApi().api} live={false} />);
     await userEvent.click(screen.getByRole('button', { name: /1 failed/ }));

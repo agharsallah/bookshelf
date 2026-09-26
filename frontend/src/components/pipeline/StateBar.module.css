@@ -1,0 +1,82 @@
+/* Job states in the chart series; one mapping for bars, tracks and tally swatches. */
+.bar,
+.swatch {
+  --done: var(--series-1);
+  --running: var(--series-2);
+  --queued: color-mix(in oklab, var(--series-2) 45%, var(--paper));
+  --failed: var(--series-6);
+  --skipped: var(--series-other);
+}
+
+.bar {
+  display: flex;
+  inline-size: 100%;
+  block-size: 0.5rem;
+  overflow: hidden;
+  border-radius: var(--radius-s);
+  background: var(--chart-grid);
+}
+
+.bar[data-bare] {
+  background: transparent;
+}
+
+.part {
+  flex: none;
+  min-inline-size: 3px;
+  background: var(--part);
+  transition: inline-size var(--dur-4) var(--ease-out);
+}
+
+/* A hairline of paper between parts, inside their width so the scale stays true. */
+.part + .part {
+  border-inline-start: 1px solid var(--paper);
+}
+
+.part[data-state='done'],
+.swatch[data-state='done'] {
+  --part: var(--done);
+}
+
+.part[data-state='running'],
+.swatch[data-state='running'] {
+  --part: var(--running);
+}
+
+.part[data-state='queued'],
+.swatch[data-state='queued'] {
+  --part: var(--queued);
+}
+
+.part[data-state='failed'],
+.swatch[data-state='failed'] {
+  --part: var(--failed);
+}
+
+.part[data-state='skipped'],
+.swatch[data-state='skipped'] {
+  --part: var(--skipped);
+}
+
+.swatch {
+  display: inline-block;
+  flex: none;
+  inline-size: 0.625rem;
+  block-size: 0.625rem;
+  border-radius: 2px;
+  background: var(--part);
+}
+
+/* A changed number: the highlighter passes over it once. */
+.bumped {
+  border-radius: 2px;
+  animation: bump var(--dur-4) var(--ease-out) 1 both;
+  animation-duration: calc(var(--dur-4) * 3);
+}
+
+@keyframes bump {
+  from {
+    background: var(--marker);
+    color: var(--marker-ink);
+  }
+}

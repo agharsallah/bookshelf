@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { JobPublic } from '../../lib/api/types/jobs';
-import { countStates, elapsedMs, filterJobs, formatDuration, stageProgress } from './model';
+import { countKindStates, countStates, elapsedMs, filterJobs, formatDuration, stageProgress } from './model';
 
 function job(overrides: Partial<JobPublic> = {}): JobPublic {
   return {
@@ -54,6 +54,15 @@ describe('stageProgress', () => {
 describe('countStates', () => {
   it('tallies jobs by state', () => {
     expect(countStates([job(), job({ state: 'failed' }), job({ state: 'failed' })])).toEqual({ queued: 0, running: 0, done: 1, failed: 2, skipped: 0 });
+  });
+});
+
+describe('countKindStates', () => {
+  it('tallies each kind by state', () => {
+    const counts = countKindStates([job(), job({ kind: 'embed', state: 'failed' }), job({ kind: 'embed', state: 'running' })]);
+    expect(counts.parse).toEqual({ queued: 0, running: 0, done: 1, failed: 0, skipped: 0 });
+    expect(counts.embed).toEqual({ queued: 0, running: 1, done: 0, failed: 1, skipped: 0 });
+    expect(counts.derive).toBeUndefined();
   });
 });
 
