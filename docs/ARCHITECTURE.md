@@ -947,12 +947,22 @@ Docs relied on: [multi-representation search](https://qdrant.tech/documentation/
 
 ## 11. The idea graph
 
-Ambitious in the idea dump ("a big net"); the scoped version is **neighborhoods, not nets**.
+Ambitious in the idea dump ("a big net"); the scoped version is **neighborhoods, not nets**,
+plus one chapter-grain map of the whole shelf.
 
 **Nodes**: concepts, blocks, artifacts, documents. **Edges**: the seven relations in §6.
 `link-concepts` runs over approved distillations, proposes concepts and edges with evidence
 anchors, and every edge records its origin so machine proposals and human curation stay
 distinguishable.
+
+**Mention seeds** close the gap `link-concepts` leaves: it ties each concept to the few passages
+that define or use it best, so later chapters (and other books) that lean on the same idea never
+meet. A deterministic pass (`app.graph.mentions`) scans every block for every live concept's name
+and aliases (short names only as capitals, `STAR`, `WIP`; the longest name wins) and links the
+*section* to the concept, `section —mentions→ concept`, with the blocks as evidence and a weight
+that grows with how often it is named. Blocks the skill already linked are not counted twice.
+Mention edges are seeds: re-run on every graph refresh (for every book when concepts come or go,
+and after a human renames or merges one), and they never keep a concept alive on their own.
 
 **Concept deduplication** — the failure mode that turns a graph into noise: candidate merges come
 from embedding similarity above a threshold plus an LLM confirmation, and then land in the review
@@ -964,8 +974,14 @@ queue as a proposed `same_as` edge. Merges are applied by a human, never automat
 - Edges ranked by weight × evidence count; the long tail is collapsed behind "show more".
 - Every edge in the UI is clickable through to its evidence passages. An edge you can't verify
   is a liability.
-- No global "show me everything" view. It looks impressive in a screenshot and is useless in
-  practice.
+- One global view, and a coarse one: the **atlas** (`GET /graph/atlas`). Not every passage
+  (that is the useless "show me everything"), but books, the chapters that take part in the
+  graph, and concepts, with passage edges folded up to their chapter, `book —contains→ chapter`
+  for structure, and a derived `chapter —shares→ chapter` wherever two chapters lean on the same
+  concepts (rare concepts bind harder; each chapter keeps its three strongest partners). It is
+  read-only and derived on request, and the map built on it has a lens that filters and
+  highlights by connection type, kind and book. Everything it shows opens the reader, the
+  concept page, or that node's neighbourhood.
 
 Queries are recursive CTEs over the indexed `edges` table (D9).
 
@@ -984,6 +1000,7 @@ Keep Astro as the shell and routing layer; add React islands only where interact
 | **Guide** | Astro + one React island | The book guide with its charts (arc strip, chapter rows, theme heatmap, stat tiles), server-rendered then hydrated: a cite, chapter title or heatmap cell opens the passage in place (a drawer with the whole chapter, the cited block marked, previous / next chapter, "Open in reader"; its left edge drags wider with the reader's own width grip, and its width and typography are the reader's saved preferences); diagrams and charts magnify in the reader's lightbox. ⌘/Ctrl/middle click still opens the reader |
 | **Search** | React island | Query box, intent badge, grouped results, cited answer with click-through |
 | **Graph** | React island | Canvas force layout over a neighborhood endpoint, node cap enforced client-side |
+| **Map** | React island | The atlas as a live force layout: books, chapters and concepts; select to read, double-click to open. A lens mode filters and highlights by connection type, kind and book, dims or hides the rest, and can group by book |
 | **Review queue** | React island | Draft artifacts, diff against the previous version, approve / edit / reject / re-run |
 
 The render contract (§9) is implemented once as a `<Blocks>` component and reused by reader,
@@ -1030,6 +1047,7 @@ POST   /search                         {query, mode?, filters?}  → grouped res
 POST   /search/answer                  SSE: cited answer
 GET    /concepts?q=&sort=              typeahead, edge_count
 GET    /graph/neighborhood?node=&depth=
+GET    /graph/atlas?include_proposed=  the whole shelf at chapter grain (map)
 GET    /exports/{document_id}.md       Markdown bundle
 GET    /exports/{document_id}.json     tree + approved artifacts, render-contract JSON
 GET    /exports/{document_id}/tables.csv  every table/chart block flattened
