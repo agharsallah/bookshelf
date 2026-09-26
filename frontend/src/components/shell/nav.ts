@@ -22,6 +22,7 @@ export const NAV: readonly NavItem[] = [
   { href: '/library', label: 'Library', also: ['/documents'] },
   { href: '/search', label: 'Search' },
   { href: '/graph', label: 'Concepts', also: ['/concepts'] },
+  { href: '/map', label: 'Map' },
   { href: '/review', label: 'Review', workshop: true, count: 'review' },
   { href: '/pipeline', label: 'Pipeline', workshop: true, count: 'pipeline' },
 ];

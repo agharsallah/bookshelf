@@ -1,9 +1,9 @@
 ---
 /**
  * Concepts (§11): the index of every concept across your books. The graph is one way
- * to look at them: there is no global view, you open a concept in the graph and see
- * its neighbourhood. In workshop mode the merge queue sits beside the index, where
- * proposed `same_as` merges wait for a human decision.
+ * to look at them: open a concept in the graph to see its neighbourhood, or the map
+ * (`/map`) for the whole shelf at chapter grain. In workshop mode the merge queue sits
+ * beside the index, where proposed `same_as` merges wait for a human decision.
  */
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import ConceptBrowser from '../../components/concepts/ConceptBrowser';
@@ -33,6 +33,7 @@ const queueProblem: ProblemInfo | null = proposals.status === 'rejected' ? probl
       <p class="lede">
         The ideas, frameworks, people and terms your books name, each grounded in the passages that use it. Open one to
         read its gloss and evidence, or open it in the graph to see what it connects to, one neighbourhood at a time.
+        Or see <a href="/map">the whole shelf as a map</a>.
       </p>
     </header>
 

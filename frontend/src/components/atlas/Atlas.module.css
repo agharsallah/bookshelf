@@ -1,0 +1,287 @@
+/*
+ * The map's own pieces; the stage, panel, legend and list are the graph's
+ * (`../graph/Graph.module.css`). The lens sits in the left margin like a reader's index
+ * card of what to look for.
+ */
+
+/* ── Header ────────────────────────────────────────────────── */
+.head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: var(--space-2) var(--space-5);
+}
+
+.titleBlock {
+  display: grid;
+  gap: var(--space-2);
+  max-inline-size: var(--measure);
+}
+
+.titleBlock h1 {
+  font-size: var(--text-2xl);
+}
+
+.lede {
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-base);
+  line-height: 1.5;
+}
+
+.tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.search input {
+  inline-size: 14rem;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-m);
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+}
+
+.search input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* ── Body: the lens beside the stage ───────────────────────── */
+.body {
+  display: grid;
+}
+
+.bodyLens {
+  display: grid;
+  grid-template-columns: minmax(13rem, 15rem) minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-5);
+}
+
+.lensPanel {
+  display: grid;
+  align-content: start;
+  justify-items: start;
+  min-inline-size: 0;
+  gap: var(--space-4);
+  padding-inline-end: var(--space-4);
+  border-inline-end: 1px solid var(--rule);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.group {
+  display: grid;
+  justify-self: stretch;
+  min-inline-size: 0;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.group legend {
+  margin-block-end: var(--space-1);
+  color: var(--ink-3);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  min-inline-size: 0;
+  gap: var(--space-2);
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+.check:has(input:not(:checked)) {
+  color: var(--ink-3);
+}
+
+.check input {
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.tally {
+  margin-inline-start: auto;
+  color: var(--ink-3);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.bookName {
+  flex: 1;
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.only {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  color: var(--ink-3);
+  font-size: var(--text-xs);
+}
+
+.linkish {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* ── Detail panel ──────────────────────────────────────────── */
+.italic {
+  font-style: italic;
+}
+
+.detailSection {
+  display: grid;
+  gap: var(--space-2);
+  padding-block-start: var(--space-3);
+  border-block-start: 1px solid var(--rule);
+}
+
+.detailSection h3 {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.detailCount {
+  color: var(--ink-3);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
+.rows,
+.chips {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+}
+
+.row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.shared {
+  display: grid;
+  gap: 0;
+}
+
+.pick {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--space-2);
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  text-align: start;
+  cursor: pointer;
+}
+
+.pick:hover > span:first-child {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.pickConcept {
+  font-family: var(--font-read);
+  font-style: italic;
+}
+
+.pickNote,
+.via {
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+}
+
+.via {
+  margin: 0;
+}
+
+.read {
+  flex: none;
+  color: var(--accent);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+}
+
+.hint {
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+}
+
+/* ── List ──────────────────────────────────────────────────── */
+.dimmed {
+  opacity: 0.5;
+}
+
+.srOnly {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (max-width: 56rem) {
+  .head,
+  .bodyLens {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .lensPanel {
+    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+    padding-inline-end: 0;
+    padding-block-end: var(--space-4);
+    border-inline-end: none;
+    border-block-end: 1px solid var(--rule);
+  }
+
+  .search input {
+    inline-size: 100%;
+  }
+}

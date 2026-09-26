@@ -1,0 +1,49 @@
+---
+/**
+ * The map (§11): the whole shelf at chapter grain — books, their chapters, the concepts
+ * they discuss — as a live force layout with a lens. The atlas is loaded here so the map
+ * draws on arrival; the island owns the view, which lives in the query string.
+ */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import AtlasExplorer from '../components/atlas/AtlasExplorer';
+import { lensFromParams } from '../components/atlas/lens';
+import { Problem, problemOf, type ProblemInfo } from '../components/common/Problem';
+import type { Atlas } from '../lib/api/types/graph';
+import { serverApi } from '../lib/api/server';
+
+export const prerender = false;
+
+const lens = lensFromParams(Astro.url.searchParams);
+let atlas: Atlas | null = null;
+let problem: ProblemInfo | null = null;
+try {
+  atlas = await serverApi().get<Atlas>('graph/atlas');
+} catch (error) {
+  problem = problemOf(error);
+}
+---
+
+<BaseLayout title="Map" description="Your books, their chapters and the ideas they share, as one map.">
+  {
+    atlas ? (
+      <AtlasExplorer client:load initial={atlas} lens={lens} />
+    ) : (
+      <div class="missing">
+        <h1>Map</h1>
+        {problem && <Problem title="The map could not be loaded." problem={problem} />}
+      </div>
+    )
+  }
+</BaseLayout>
+
+<style>
+  .missing {
+    display: grid;
+    gap: var(--space-4);
+    max-inline-size: var(--measure);
+  }
+
+  h1 {
+    font-size: var(--text-xl);
+  }
+</style>
