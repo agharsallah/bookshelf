@@ -238,3 +238,14 @@ export interface NodeSubtree {
 export function isContainer(kind: NodeKind): kind is ContainerKind {
   return (CONTAINER_KINDS as readonly string[]).includes(kind);
 }
+
+/** `GET/PUT /documents/{ref}/reading`: where you are in one chapter. */
+export interface ReadingPosition {
+  /** The chapter (reading unit) anchor. */
+  unit: string;
+  /** The block last read: where to pick up again. */
+  anchor: string;
+  /** Furthest point reached in the chapter, 0–1 (never goes back). */
+  progress: number;
+  updated_at: string;
+}

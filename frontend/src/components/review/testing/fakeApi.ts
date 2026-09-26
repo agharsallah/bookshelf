@@ -5,7 +5,7 @@
 import type { ApiClient } from '../../../lib/api/client';
 
 export interface Call {
-  method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   path: string;
   body?: unknown;
   query?: unknown;
@@ -24,6 +24,7 @@ export function fakeApi(routes: Record<string, Handler> = {}) {
   const api: ApiClient = {
     get: <T>(path: string, options?: { query?: unknown }) => handle({ method: 'GET', path, query: options?.query }) as Promise<T>,
     post: <T>(path: string, body?: unknown) => handle({ method: 'POST', path, body }) as Promise<T>,
+    put: <T>(path: string, body?: unknown) => handle({ method: 'PUT', path, body }) as Promise<T>,
     patch: <T>(path: string, body?: unknown) => handle({ method: 'PATCH', path, body }) as Promise<T>,
     delete: <T>(path: string) => handle({ method: 'DELETE', path }) as Promise<T>,
     url: (path: string) => `/api/${path}`,

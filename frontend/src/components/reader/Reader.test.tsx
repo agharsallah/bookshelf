@@ -7,7 +7,7 @@ import type * as MermaidModule from '../../lib/mermaid';
 import type { Panes } from './panes';
 import { Reader } from './Reader';
 
-const api = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), patch: vi.fn(), delete: vi.fn(), url: (p: string) => `/api/${p}` }));
+const api = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: vi.fn(), url: (p: string) => `/api/${p}` }));
 vi.mock('../../lib/api/client', () => ({ browserApi: api }));
 vi.mock('../../lib/mermaid', async (importOriginal) => ({
   ...(await importOriginal<typeof MermaidModule>()),

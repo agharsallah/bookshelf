@@ -15,11 +15,14 @@ export interface RequestOptions {
   body?: unknown;
   headers?: HeadersInit;
   signal?: AbortSignal;
+  /** Let the request outlive the page (a last save on `pagehide`). */
+  keepalive?: boolean;
 }
 
 export interface ApiClient {
   get<T>(path: string, options?: Omit<RequestOptions, 'body'>): Promise<T>;
   post<T>(path: string, body?: unknown, options?: RequestOptions): Promise<T>;
+  put<T>(path: string, body?: unknown, options?: RequestOptions): Promise<T>;
   patch<T>(path: string, body?: unknown, options?: RequestOptions): Promise<T>;
   delete<T>(path: string, options?: RequestOptions): Promise<T>;
   /** The absolute or root-relative URL a path resolves to (for links, EventSource…). */
@@ -81,6 +84,7 @@ export function createApiClient(config: ClientConfig): ApiClient {
         headers,
         body,
         signal: options.signal,
+        keepalive: options.keepalive,
       });
     } catch (cause) {
       if (cause instanceof DOMException && cause.name === 'AbortError') throw cause;
@@ -95,6 +99,7 @@ export function createApiClient(config: ClientConfig): ApiClient {
   return {
     get: (path, options) => request('GET', path, options),
     post: (path, body, options) => request('POST', path, { ...options, body }),
+    put: (path, body, options) => request('PUT', path, { ...options, body }),
     patch: (path, body, options) => request('PATCH', path, { ...options, body }),
     delete: (path, options) => request('DELETE', path, options),
     url: (path, query) => buildUrl(config.baseUrl, path, query),

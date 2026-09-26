@@ -4,7 +4,7 @@
  * Cite chips scroll to and flash their passage; hovering a passage lights up what
  * cites it. Select text (of the source, the distillation or the summary) to highlight
  * or annotate it; your notes list covers the chapter or the whole book. The URL follows the block in
- * view so any position can be shared.
+ * view so any position can be shared, and your place in the chapter is saved as you read.
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import type { NoteDetail } from '../../lib/api/types/notes';
@@ -36,6 +36,7 @@ import { actionFor, READER_SHORTCUTS, type ReaderAction } from './shortcuts';
 import { useFigureLightbox } from './useFigureLightbox';
 import { useFollowUrl } from './useFollowUrl';
 import { useReaderEvents } from './useReaderEvents';
+import { useSavePosition } from './useSavePosition';
 import { useAutoHide, useFocusChrome, useFullscreen, useMediaQuery } from './useReaderLayout';
 import styles from './Reader.module.css';
 
@@ -149,6 +150,7 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
   const next = units[index + 1] ?? null;
 
   useFollowUrl(active, readHref, initialAnchor);
+  useSavePosition(doc.slug, unit.anchor, active, progress);
 
   // Land on the anchor from the URL.
   useEffect(() => {
