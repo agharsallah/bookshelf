@@ -126,19 +126,27 @@ function quiz(body: Json): RenderBlock[] {
     });
 }
 
+/** A level-2 heading wherever an item's `group` (a book-wide topic) differs from the last. */
+function grouped(items: Json[], draw: (item: Json) => RenderBlock[]): RenderBlock[] {
+  let current = '';
+  return items.flatMap((item) => {
+    const group = str(item.group);
+    const heading: RenderBlock[] = group && group !== current ? [{ type: 'heading', level: 2, text: group }] : [];
+    current = group || current;
+    return [...heading, ...draw(item)];
+  });
+}
+
 function faq(body: Json): RenderBlock[] {
-  return list(body.items)
-    .filter(isRecord)
-    .flatMap((item): RenderBlock[] => [
-      { type: 'heading', level: 3, text: str(item.question) },
-      { type: 'paragraph', spans: spans(item.answer) },
-    ]);
+  return grouped(list(body.items).filter(isRecord), (item) => [
+    { type: 'heading', level: 3, text: str(item.question) },
+    { type: 'paragraph', spans: spans(item.answer) },
+    ...blocks(item.detail),
+  ]);
 }
 
 function flashcards(body: Json): RenderBlock[] {
-  return list(body.items)
-    .filter(isRecord)
-    .map((item) => ({ type: 'definition', term: str(item.front), spans: spans(item.back) }));
+  return grouped(list(body.items).filter(isRecord), (item) => [{ type: 'definition', term: str(item.front), spans: spans(item.back) }]);
 }
 
 function endpoint(v: unknown): string {

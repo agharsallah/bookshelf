@@ -83,6 +83,22 @@ describe('adaptBody', () => {
     ]);
   });
 
+  it('heads each book-wide topic once and draws the detail blocks under their answer', () => {
+    const steps = { type: 'steps', items: [[cited('Count.')], [cited('Cap.')]] };
+    const body = {
+      items: [
+        { group: 'The approach', question: 'Why?', answer: [cited('Because.')] },
+        { group: 'The approach', question: 'How?', answer: [cited('Like so.')], detail: [steps] },
+        { group: 'In the room', question: 'When?', answer: [cited('Then.')] },
+      ],
+    };
+    expect(adaptBody('faq', body).blocks.map((b) => (b.type === 'heading' ? `h${b.level}:${b.text}` : b.type))).toEqual([
+      'h2:The approach', 'h3:Why?', 'paragraph', 'h3:How?', 'paragraph', 'steps', 'h2:In the room', 'h3:When?', 'paragraph',
+    ]);
+    const cards = { items: [{ group: 'Terms', front: 'Stock', back: [cited('An accumulation.')] }, { group: 'Terms', front: 'Flow', back: [cited('A rate.')] }] };
+    expect(adaptBody('flashcards', cards).blocks.map((b) => b.type)).toEqual(['heading', 'definition', 'definition']);
+  });
+
   it('appends a figure takeaway as an insight callout and reports its confidence', () => {
     const adapted = adaptBody('figure_description', {
       kind: 'chart',
