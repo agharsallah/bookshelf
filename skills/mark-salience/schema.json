@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bookshelf.local/skills/mark-salience/schema.json",
+  "title": "mark-salience output",
+  "description": "Marks over a chapter's source text, in reading order: core ideas and key points as verbatim sentences, terms as the verbatim phrase where the chapter defines them. Each cites exactly the one block its text is copied from and says in one line why it matters.",
+  "type": "object",
+  "required": ["marks"],
+  "additionalProperties": false,
+  "properties": {
+    "marks": {
+      "type": "array",
+      "maxItems": 60,
+      "items": {
+        "type": "object",
+        "required": ["tier", "text", "cites", "why"],
+        "additionalProperties": false,
+        "properties": {
+          "tier": {
+            "enum": ["core", "key", "term"],
+            "description": "core: a sentence the chapter exists to establish; key: a claim, rule or result the argument rests on; term: a name the chapter defines."
+          },
+          "text": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 400,
+            "description": "Copied character for character from the cited block: a whole sentence for core and key, the term as written for term."
+          },
+          "cites": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 1,
+            "items": {"$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/anchor"}
+          },
+          "why": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Why it matters to the chapter (core, key), or what the term means (term). One line; not a paraphrase of the text."
+          }
+        }
+      }
+    }
+  }
+}

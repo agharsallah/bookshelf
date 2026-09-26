@@ -36,6 +36,7 @@ SELECTORS = {
     "document_distillations",
     "document_quotes",
     "chapter_distillation",
+    "chapter_salience",
     "note_context",
 }
 REQUIRED_META = {
@@ -282,6 +283,14 @@ def _table_copied_into_explanation(out: dict[str, Any]) -> None:
     out["blocks"].append({"type": "table", "header": ["a"], "rows": [[{"text": "1", "cites": []}]]})
 
 
+def _mark_two_cites(out: dict[str, Any]) -> None:
+    out["marks"][0]["cites"].append("ch03/s01/p002")
+
+
+def _mark_unknown_tier(out: dict[str, Any]) -> None:
+    out["marks"][0]["tier"] = "important"
+
+
 # Each skill-specific tightening, and a mutation of that skill's example that must break it.
 TIGHTENINGS: list[tuple[str, Callable[[dict[str, Any]], None]]] = [
     ("write-brief", _swap_brief_sections),
@@ -301,6 +310,8 @@ TIGHTENINGS: list[tuple[str, Callable[[dict[str, Any]], None]]] = [
     ("link-concepts", _edge_without_evidence),
     ("describe-figure", _chart_without_data),
     ("explain-table", _table_copied_into_explanation),
+    ("mark-salience", _mark_two_cites),
+    ("mark-salience", _mark_unknown_tier),
 ]
 
 

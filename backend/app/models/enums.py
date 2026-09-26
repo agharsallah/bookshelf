@@ -82,6 +82,7 @@ class ArtifactType(StrEnum):
     FLASHCARDS = "flashcards"
     GLOSSARY = "glossary"
     AUDIO_SUMMARY = "audio_summary"
+    SALIENCE_MARKS = "salience_marks"
 
 
 class Origin(StrEnum):

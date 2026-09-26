@@ -1,0 +1,13 @@
+name: mark-salience
+version: 1
+description: Mark what matters in a chapter's own words — its core ideas, key points and the terms it defines — as verbatim sentences with a one-line why, for the reader's what-matters mode.
+tier: distil
+job_kind: derive
+artifact_type: salience_marks
+scope: chapter
+selector: chapter_salience   # the chapter's blocks, plus its distillation when there is one
+vision: false
+gates:
+  grounding_min: 0.9    # each mark is a leaf (text + one cite); the schema makes every one cited
+  compression: [0.01, 0.25]  # marked words / chapter words: under 1% marks nothing, over 25% marks everything
+  verbatim: true        # each mark's text must be found in the block it cites

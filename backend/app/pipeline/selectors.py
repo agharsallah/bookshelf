@@ -339,6 +339,22 @@ def chapter_distillation(ctx: Context) -> Selection:
     return ctx.selection({"chapter_distillations": [_distillation_item(chapter, found)]})
 
 
+def chapter_salience(ctx: Context) -> Selection:
+    """The chapter's leaves to mark, with its preferred distillation when there is one: the
+    claims the study note makes, and the blocks it cites, hint at what the chapter rests on."""
+    chapter = ctx.require_node()
+    leaves = ctx.leaves()
+    if not leaves:
+        raise SelectorError("no blocks under this scope")
+    kind = ArtifactType.CHAPTER_DISTILLATION
+    found = artifacts.preferred(ctx.session, ctx.tree.document.id, [kind]).get(
+        (kind, chapter.anchor)
+    )
+    return ctx.selection(
+        {"blocks": [block(n) for n in leaves], "distillation": found.body if found else None}
+    )
+
+
 def note_context(ctx: Context) -> Selection:
     note, node = ctx.note, ctx.node
     if note is None:
@@ -388,6 +404,7 @@ SELECTORS: dict[str, Callable[[Context], Selection]] = {
     "document_distillations": document_distillations,
     "document_quotes": document_quotes,
     "chapter_distillation": chapter_distillation,
+    "chapter_salience": chapter_salience,
     "note_context": note_context,
 }
 

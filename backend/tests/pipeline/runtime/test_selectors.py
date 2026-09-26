@@ -91,6 +91,21 @@ def test_chapter_section_notes_use_the_preferred_note_per_section(session, book)
     assert notes[0]["body"] == body(paragraph("section_note v1", "ch01/s01"))
 
 
+def test_chapter_salience_offers_the_blocks_and_the_distillation_once_there_is_one(session, book):
+    before = select(session, "chapter_salience", book, "ch01")
+    assert [b["anchor"] for b in before.inputs["blocks"]] == [
+        "ch01/s01/p001", "ch01/s01/f001", "ch01/s02/p001",
+    ]  # fmt: skip
+    assert before.inputs["distillation"] is None
+
+    store(session, book, ArtifactType.CHAPTER_DISTILLATION, "ch01", review=Review.APPROVED)
+    after = select(session, "chapter_salience", book, "ch01")
+    assert (
+        after.inputs["distillation"]["blocks"][0]["spans"][0]["text"] == "chapter_distillation v1"
+    )
+    assert input_hash("s", "1", after.inputs) != input_hash("s", "1", before.inputs)
+
+
 def test_selectors_refuse_scopes_with_nothing_to_read_yet(session, book):
     with pytest.raises(SelectorError, match="no section notes yet"):
         select(session, "chapter_section_notes", book, "ch01")

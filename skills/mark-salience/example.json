@@ -1,0 +1,52 @@
+{
+  "marks": [
+    {
+      "tier": "core",
+      "text": "This chapter argues that the love is misplaced: past a point, every extra percent of utilization buys a disproportionate amount of waiting.",
+      "cites": [
+        "ch03/s01/p001"
+      ],
+      "why": "The chapter's thesis: the rest of it measures how steep that curve gets and what to do about it."
+    },
+    {
+      "tier": "key",
+      "text": "At 90 percent utilization the average wait is nine times the work itself; at 95 percent it is nineteen times.",
+      "cites": [
+        "ch03/s01/p004"
+      ],
+      "why": "The numbers that make the thesis concrete, and the ones the later advice on WIP limits leans on."
+    },
+    {
+      "tier": "key",
+      "text": "Utilization is only half the story; the other half is variability.",
+      "cites": [
+        "ch03/s02/p003"
+      ],
+      "why": "Turns the argument: waiting has two causes, so cutting load alone is not enough."
+    },
+    {
+      "tier": "term",
+      "text": "Kingman's formula",
+      "cites": [
+        "ch03/s02/p005"
+      ],
+      "why": "Queue time approximated as a utilization term times a variability term times the mean service time."
+    },
+    {
+      "tier": "core",
+      "text": "If waiting is the price of busyness, slack is not waste.",
+      "cites": [
+        "ch03/s03/p001"
+      ],
+      "why": "The practical conclusion the chapter builds to, and the idea the next chapter's WIP limits put to work."
+    },
+    {
+      "tier": "term",
+      "text": "slack",
+      "cites": [
+        "ch03/s03/p001"
+      ],
+      "why": "Capacity held in reserve for work nobody can predict; the chapter's answer to the trap."
+    }
+  ]
+}
