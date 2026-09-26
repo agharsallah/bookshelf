@@ -194,4 +194,6 @@ def test_human_origin_bypasses_the_soft_gates():
         "flags": [],
         "schema_retry": False,
         "repairs": [],
+        "coverage": None,
+        "uncovered": [],
     }

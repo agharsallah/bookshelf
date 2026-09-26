@@ -12,6 +12,7 @@ class SkillGates(BaseModel):
     grounding_min: float
     compression: tuple[float, float] | None
     max_words: int | None
+    coverage_min: float | None = None
 
 
 class SkillPublic(BaseModel):
@@ -24,6 +25,7 @@ class SkillPublic(BaseModel):
     scope: str
     selector: str
     document_selector: str | None
+    document_tier: Tier | None
     vision: bool
     gates: SkillGates
 

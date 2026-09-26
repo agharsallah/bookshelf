@@ -31,6 +31,7 @@ def _public(skill: Skill) -> SkillPublic:
         scope=meta.scope,
         selector=meta.selector,
         document_selector=meta.document_selector,
+        document_tier=meta.document_tier,
         vision=meta.vision,
         gates=SkillGates.model_validate(meta.gates.model_dump()),
     )

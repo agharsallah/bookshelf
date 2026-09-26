@@ -42,6 +42,9 @@ class GateConfig(BaseModel):
     grounding_min: Annotated[float, Field(ge=0, le=1)] = 0.9
     compression: tuple[float, float] | None = None
     max_words: Annotated[int | None, Field(ge=1)] = None
+    # Book-wide runs: share of the input's chapters the output must cite at least once.
+    # Only checked when the selector reports the chapters it offered (`Selection.chapters`).
+    coverage_min: Annotated[float | None, Field(ge=0, le=1)] = None
 
 
 class SkillMeta(BaseModel):
@@ -60,6 +63,9 @@ class SkillMeta(BaseModel):
     # A chapter-scope skill that can also run on the whole book: the selector it reads
     # when a job names no anchor (and no note). None: the skill has one scope only.
     document_selector: str | None = None
+    # The model tier for those book-wide runs, when it differs from `tier`: synthesising a
+    # whole book's distillations is a harder job than one chapter's. None: `tier`.
+    document_tier: Tier | None = None
     vision: bool = False
     gates: GateConfig = Field(default_factory=GateConfig)
 
@@ -68,6 +74,12 @@ class SkillMeta(BaseModel):
         if anchor is None and note_id is None and self.document_selector is not None:
             return self.document_selector
         return self.selector
+
+    def tier_for(self, anchor: str | None, note_id: uuid.UUID | None = None) -> Tier:
+        """The tier for one run: `document_tier` when it runs book-wide (see `selector_for`)."""
+        if self.selector_for(anchor, note_id) == self.document_selector and self.document_tier:
+            return self.document_tier
+        return self.tier
 
     @field_validator("version", mode="before")
     @classmethod

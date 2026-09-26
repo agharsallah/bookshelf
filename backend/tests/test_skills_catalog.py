@@ -142,6 +142,10 @@ def test_meta_follows_the_contract(name: str) -> None:
     if (book_wide := meta.get("document_selector")) is not None:  # chapter skill, also book-wide
         assert meta["scope"] == "chapter"
         assert book_wide in SELECTORS
+        assert 0 < meta["gates"].get("coverage_min", 0) <= 1, "book-wide runs must check coverage"
+    if (book_tier := meta.get("document_tier")) is not None:
+        assert meta.get("document_selector") is not None
+        Tier(book_tier)
 
     gates = meta["gates"]
     assert 0 <= gates["grounding_min"] <= 1
@@ -258,6 +262,10 @@ def _two_choices(out: dict[str, Any]) -> None:
     out["items"][0]["choices"] = out["items"][0]["choices"][:2]
 
 
+def _faq_prose_detail(out: dict[str, Any]) -> None:
+    out["items"][-1]["detail"].append(_para())
+
+
 def _capitalised_concept(out: dict[str, Any]) -> None:
     out["concepts"][0]["canonical"] = "Little's Law"
 
@@ -288,6 +296,7 @@ TIGHTENINGS: list[tuple[str, Callable[[dict[str, Any]], None]]] = [
     ("extract-quotes", _second_cite),
     ("make-glossary", _append_paragraph),
     ("make-quiz", _two_choices),
+    ("make-faq", _faq_prose_detail),
     ("link-concepts", _capitalised_concept),
     ("link-concepts", _edge_without_evidence),
     ("describe-figure", _chart_without_data),

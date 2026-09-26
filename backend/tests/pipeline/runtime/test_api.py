@@ -174,6 +174,7 @@ def test_skill_catalogue_lists_packages_with_their_gates(api):
         "grounding_min": 0.9,
         "compression": None,
         "max_words": None,
+        "coverage_min": None,
     }
     assert skills["parse-outline"]["job_kind"] is None
 

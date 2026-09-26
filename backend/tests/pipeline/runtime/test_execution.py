@@ -69,7 +69,7 @@ def test_skill_run_stores_a_draft_artifact_with_gates_and_provenance(
     assert artifact.citations == ["ch01/s01/p001"]
     assert artifact.gates == {
         "grounding": 1.0, "compression": None, "words": 5, "flags": [], "schema_retry": False,
-        "repairs": [],
+        "repairs": [], "coverage": None, "uncovered": [],
     }  # fmt: skip
     assert artifact.input_hash == outcome.result["input_hash"]
     assert '"anchor": "ch01/s01/p001"' in runner.calls[0]["prompt"]
@@ -230,6 +230,37 @@ def test_a_derive_with_no_anchor_runs_book_wide_on_the_document_selector(
     assert '"book_themes": []' in prompt
     assert '"anchor": "ch01"' in prompt
     assert '"anchor": "ch02"' in prompt
+
+
+def test_book_wide_runs_use_the_document_tier_and_flag_uncovered_chapters(
+    session, book, make_job, skills_dir
+):
+    write_skill(skills_dir, "make-faq", job_kind="derive", artifact_type="faq", tier="distil",
+                scope="chapter", selector="chapter_distillation",
+                document_selector="document_distillations", document_tier="reason",
+                gates={"grounding_min": 0.9, "coverage_min": 0.9})  # fmt: skip
+    for anchor, cite in (("ch01", "ch01/s01/p001"), ("ch02", "ch02/p001")):
+        session.add(Artifact(document_id=book.id, anchor=anchor, version=1, origin=Origin.HUMAN,
+                             type=ArtifactType.CHAPTER_DISTILLATION, input_hash=f"d-{anchor}",
+                             body=body(paragraph(anchor, cite))))  # fmt: skip
+    session.commit()
+    runner = FakeRunner(reply(body(paragraph("Only the first chapter", "ch01/s01/p001"))))
+
+    run(session, make_job(JobKind.DERIVE, book, None, skill="make-faq"), runner, skills_dir)
+    chapter = make_job(JobKind.DERIVE, book, "ch02", skill="make-faq")
+    run(session, chapter, FakeRunner(reply(body(paragraph("x", "ch02/p001")))), skills_dir)
+
+    faq = next(
+        a for a in artifacts_of(session, book) if a.type is ArtifactType.FAQ and a.anchor is None
+    )
+    assert runner.calls[0]["tier"] is Tier.REASON
+    assert (faq.tier, faq.review) == (Tier.REASON, Review.NEEDS_REVIEW)
+    assert (faq.gates["coverage"], faq.gates["uncovered"]) == (0.5, ["ch02"])
+    assert "coverage_below_min" in faq.gates["flags"]
+    per_chapter = next(
+        a for a in artifacts_of(session, book) if a.type is ArtifactType.FAQ and a.anchor
+    )
+    assert (per_chapter.tier, per_chapter.gates["coverage"]) == (Tier.DISTIL, None)
 
 
 def test_interactive_only_skills_are_skipped_gracefully(session, book, make_job, skills_dir):

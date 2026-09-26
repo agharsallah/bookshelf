@@ -42,6 +42,8 @@ class Selection:
     # What the skill could see: the scope's subtree plus every anchor named anywhere in
     # `inputs` (e.g. the blocks section notes cite). None: every valid anchor.
     visible_anchors: frozenset[str] | None = None
+    # Book-wide inputs: the chapters offered, for the `coverage_min` gate. Empty: no check.
+    chapters: tuple[str, ...] = ()
 
     def prompt_inputs(self) -> dict[str, Any]:
         """`inputs` as the batch prompt shows them: the element's media-relative
@@ -286,11 +288,10 @@ def document_distillations(ctx: Context) -> Selection:
     """Book-wide quiz, FAQ and flashcards: every chapter distillation plus the book's own
     synthesis (`book_inputs.book_synthesis`). No shelf or concepts: they would not change
     the output, but would change its hash whenever the shelf grows."""
+    items = _distilled_chapters(ctx)
     return ctx.selection(
-        {
-            "chapter_distillations": _distilled_chapters(ctx),
-            **book_synthesis(ctx.session, ctx.tree.document),
-        }
+        {"chapter_distillations": items, **book_synthesis(ctx.session, ctx.tree.document)},
+        chapters=tuple(item["anchor"] for item in items),
     )
 
 
@@ -322,7 +323,10 @@ def document_quotes(ctx: Context) -> Selection:
             )
     if not chapters:
         raise SelectorError("no chapter quotes or distillations yet")
-    return ctx.selection({"chapters": chapters, **book_synthesis(ctx.session, ctx.tree.document)})
+    return ctx.selection(
+        {"chapters": chapters, **book_synthesis(ctx.session, ctx.tree.document)},
+        chapters=tuple(c["anchor"] for c in chapters),
+    )
 
 
 def chapter_distillation(ctx: Context) -> Selection:

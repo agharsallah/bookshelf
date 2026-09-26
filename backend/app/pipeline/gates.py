@@ -5,7 +5,8 @@ Two kinds of gate:
 * **Hard** (`output_problems`): schema and anchor validity. A failure rejects the output;
   the batch runner retries once with the problems appended, then fails the job.
 * **Soft** (`evaluate`): grounding, compression band, max words, non-prose confidence,
-  verbatim code, duplication between sibling section notes. A failure stores the artifact
+  verbatim code, duplication between sibling section notes, and chapter coverage of
+  book-wide study material. A failure stores the artifact
   as `needs_review` with the reasons in `gates.flags`.
 
 Human-authored artifacts (D15) pass the hard gates only: `origin = human` bypasses the rest.
@@ -111,6 +112,8 @@ class GateReport:
     flags: list[str] = field(default_factory=list)
     schema_retry: bool = False
     repairs: list[str] = field(default_factory=list)  # render-block shape fixes (repair.py)
+    coverage: float | None = None  # book-wide: share of offered chapters cited
+    uncovered: list[str] = field(default_factory=list)  # ...and the chapters never cited
 
     @property
     def review(self) -> Review:
@@ -125,6 +128,8 @@ class GateReport:
             "flags": self.flags,
             "schema_retry": self.schema_retry,
             "repairs": self.repairs,
+            "coverage": self.coverage,
+            "uncovered": self.uncovered,
         }
 
 
@@ -136,6 +141,12 @@ def grounding_score(output: Any, valid_anchors: Collection[str]) -> float | None
     valid = set(valid_anchors)
     grounded = sum(1 for s in spans if any(c in valid for c in s["cites"] if isinstance(c, str)))
     return grounded / len(spans)
+
+
+def uncovered_chapters(output: Any, chapters: Sequence[str]) -> list[str]:
+    """The chapters (anchors) no cite in `output` falls under, in the given order."""
+    cited = cited_anchors(output)
+    return [ch for ch in chapters if not any(a == ch or a.startswith(ch + "/") for a in cited)]
 
 
 def shingles(text: str, size: int = _SHINGLE) -> set[tuple[str, ...]]:
@@ -176,11 +187,14 @@ def evaluate(
     schema_retry: bool = False,
     visible_anchors: Collection[str] | None = None,
     repairs: Sequence[str] = (),
+    chapters: Sequence[str] = (),
 ) -> GateReport:
     """Score an output that already passed the hard gates.
 
     `visible_anchors`: what the skill was shown. A cite of an existing anchor outside it
-    (grounded on paper, but on a passage the model never saw) flags `out_of_scope_cites`."""
+    (grounded on paper, but on a passage the model never saw) flags `out_of_scope_cites`.
+    `chapters`: the chapters a book-wide input offered; with `coverage_min` set, citing too
+    few of them flags `coverage_below_min` and lists the rest in `uncovered`."""
     words = count_words(plain_text(output))
     report = GateReport(words=words, schema_retry=schema_retry, repairs=list(repairs))
     if origin is Origin.HUMAN:  # D15 human bypass: schema + anchors only
@@ -204,6 +218,11 @@ def evaluate(
         report.flags.append("code_not_verbatim")
     if visible_anchors is not None and cited_anchors(output) - set(visible_anchors):
         report.flags.append("out_of_scope_cites")
+    if chapters and config.coverage_min is not None:
+        report.uncovered = uncovered_chapters(output, chapters)
+        report.coverage = round(1 - len(report.uncovered) / len(chapters), 4)
+        if report.coverage < config.coverage_min:
+            report.flags.append("coverage_below_min")
     for anchor in duplicates(plain_text(output), siblings or {}):
         report.flags.append(f"duplicate_of:{anchor}")
     return report

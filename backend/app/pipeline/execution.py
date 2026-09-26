@@ -21,7 +21,7 @@ from app.core.config import get_settings
 from app.db.session import release
 from app.jobs.registry import HandlerResult, PermanentJobError
 from app.models import Artifact, Document, Job
-from app.models.enums import ArtifactType, JobKind, JobState, Origin, RunMode
+from app.models.enums import ArtifactType, JobKind, JobState, Origin, RunMode, Tier
 from app.pipeline import artifacts, ceiling, gates
 from app.pipeline.bodies import plain_text
 from app.pipeline.hashing import input_hash
@@ -61,6 +61,10 @@ class Prepared:
     note_id: uuid.UUID | None
     selection: Selection
     input_hash: str
+
+    @property
+    def tier(self) -> Tier:
+        return self.skill.meta.tier_for(self.anchor, self.note_id)
 
     @property
     def artifact_type(self) -> ArtifactType:
@@ -152,6 +156,7 @@ def build_artifact(
         schema_retry=schema_retry,
         visible_anchors=prepared.selection.visible_anchors,
         repairs=repairs,
+        chapters=prepared.selection.chapters,
     )
     return Artifact(
         document_id=prepared.document.id,
@@ -164,7 +169,7 @@ def build_artifact(
         skill_version=prepared.skill.version,
         model=model,
         run_mode=run_mode,
-        tier=prepared.skill.meta.tier,
+        tier=prepared.tier,
         input_hash=prepared.input_hash,
         body=output,
         citations=artifacts.citations_of(output),
@@ -241,7 +246,7 @@ def execute_skill_job(
         run = run_structured(
             counted,
             prompt,
-            tier=skill.meta.tier,
+            tier=prepared.tier,
             validate=lambda output: output_problems(prepared, output),
             images=prepared.selection.images if skill.meta.vision else (),
             repair=repair_blocks,
