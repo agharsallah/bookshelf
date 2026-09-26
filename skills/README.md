@@ -32,7 +32,30 @@ gates:
   max_words: null               # hard cap on output words (summaries: 150)
   coverage_min: null            # book-wide runs: share of the input's chapters the output
                                 # must cite; below it → needs_review, `gates.uncovered` lists them
+  words_per_minute: null        # spoken output: [low, high] words a minute of the run's
+                                # `minutes` param; outside → too_short_to_fill / too_long_to_fit
+params: {}                      # optional run parameters, chosen per job (below)
+variant: null                   # with params: the episode key they name, e.g. "{minutes}m-{format}"
+narrate: false                  # the artifact is a script to speak: storing one queues `narrate`
 ```
+
+### Run parameters
+
+A skill whose output depends on a choice the reader makes (how long, which format)
+declares `params`, each a closed set of `choices` with a `default`:
+
+```yaml
+params:
+  minutes: {choices: [5, 15, 30], default: 15, description: How long the episode lasts.}
+variant: "{minutes}m"
+```
+
+`POST /jobs {params: {minutes: 5}}` (or `?params=minutes:5` on the inputs endpoint, and
+`"params"` in an outbox envelope) picks them; defaults fill the rest, anything undeclared
+or outside its choices is a `422`. The resolved params join the inputs as
+`inputs.params`, so each combination has its own `input_hash`, and they name the
+artifact's `variant`, which joins the version scope: one document keeps one history per
+variant. A skill without `params` has no variant. `write-audio-summary` is the one user.
 
 ### Utility skills
 
@@ -111,7 +134,7 @@ plus the selector-specific keys:
 | `chapter_section_notes` | `section_notes: [{anchor, heading, body}]`, `figures` as above | distil-chapter |
 | `document_chapters` | `chapter_distillations: [{anchor, heading, body}]`, `shelf: [{slug, title, authors, thesis}]` (other documents' brief theses), `existing_concepts: [{canonical, aliases, kind}]` | write-brief, write-guide, link-concepts, make-glossary |
 | `chapter_distillation` | `chapter_distillations: [one item]` | make-quiz, make-faq, make-flashcards (chapter) |
-| `document_distillations` | `chapter_distillations` as in `document_chapters`, `book_brief: [section]` (the preferred brief's `thesis` and `ideas` sections, or `[]`), `book_themes: [{name, spans}]` (the preferred book guide's themes, or `[]`). No `shelf` or concepts, so the hash only moves when this book's distillations, brief or guide do | make-quiz, make-faq, make-flashcards (book-wide) |
+| `document_distillations` | `chapter_distillations` as in `document_chapters`, `book_brief: [section]` (the preferred brief's `thesis` and `ideas` sections, or `[]`), `book_themes: [{name, spans}]` (the preferred book guide's themes, or `[]`). No `shelf` or concepts, so the hash only moves when this book's distillations, brief or guide do | make-quiz, make-faq, make-flashcards (book-wide), write-audio-summary |
 | `document_quotes` | `chapters: [{anchor, heading, quotes, passages}]` — per chapter, its preferred quote set's quote blocks and up to 12 quotable source `block`s (paragraph, quote, aside) that its distillation's callouts and quote blocks cite, most cited first, minus those already quoted; chapters with neither are left out. Plus `book_brief`, `book_themes` as above | extract-quotes (book-wide) |
 | `note_context` | `note: {id, raw, anchor, highlighted_text}`, `blocks` (anchor's section), `distillation` (nearest chapter distillation body or null), `existing_concepts` | structure-note |
 
@@ -146,3 +169,4 @@ Gates walk the whole output: any object with `text` + `cites` is a leaf span, an
 | make-quiz | `{items: [{question, choices: [str], answer: int, explanation: spans}]}` |
 | make-flashcards | `{items: [{front, back: spans, group?}]}` — `group` book-wide only |
 | make-glossary | `{blocks}` (definition blocks only) |
+| write-audio-summary | `{title, speakers: [{role, persona}] (1–4), sections: [{title, turns: [{speaker: 1–4, text, cites}]}]}`; each turn is a leaf span |

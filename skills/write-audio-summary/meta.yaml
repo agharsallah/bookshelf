@@ -1,0 +1,30 @@
+name: write-audio-summary
+version: 1
+description: A 5, 15 or 30 minute spoken summary of the whole book, written to be heard — one narrator, two hosts, a panel or a roundtable — then voiced with VibeVoice.
+tier: reason  # the whole book at once, and the argument must survive being said aloud
+job_kind: derive
+artifact_type: audio_summary
+scope: document
+selector: document_distillations
+vision: false
+# Chosen per run (POST /jobs `params`); each combination is its own episode (`variant`).
+params:
+  minutes:
+    choices: [5, 15, 30]
+    default: 15
+    description: How long the episode lasts.
+  format:
+    choices: [narrator, conversation, panel, roundtable]
+    default: conversation
+    description: One narrator, two hosts, a host and two guests, or four voices.
+  language:
+    choices: [en, zh]
+    default: en
+    description: The language it is spoken in (VibeVoice speaks English and Chinese).
+variant: "{minutes}m-{format}-{language}"
+narrate: true  # storing a script queues a `narrate` job (app/audio)
+gates:
+  grounding_min: 0.9
+  coverage_min: 0.6  # a 5-minute episode cannot visit every chapter, but most
+  # Spoken words per minute of the chosen length: VibeVoice talks at about 150.
+  words_per_minute: [115, 185]
