@@ -1,110 +1,190 @@
 ---
 /**
- * The library: every document standing on a shelf, filtered by query params
- * (tag, status, author, q), with the ingest desk in front of it.
+ * The library: every book on the shelf, as spines or as a catalogue list, filtered and
+ * ordered by query params (q, author, tag, status, sort). Every book is rendered and
+ * the filters hide the rest, so the page's script can filter as you type; without
+ * JavaScript the GET form does the same through the server. "Add a book" opens the
+ * ingest desk in a dialog.
  */
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import AddBookButton from '../../components/library/AddBookButton.astro';
+import AddBookDialog from '../../components/library/AddBookDialog.astro';
+import Catalogue from '../../components/library/Catalogue.astro';
 import EmptyShelf from '../../components/library/EmptyShelf.astro';
 import FilterBar from '../../components/library/FilterBar.astro';
-import IngestPanel from '../../components/library/IngestPanel';
 import Shelf from '../../components/library/Shelf.astro';
-import { documentsQuery, hasFilters, parseFilters, tagCloud } from '../../components/library/filters';
-import { plural } from '../../components/library/spine';
-import { Problem, problemOf, type ProblemInfo } from '../../components/common/Problem';
-import type { Page } from '../../lib/api/types';
-import type { DocumentSummary, LibraryFile } from '../../lib/api/types/documents';
-import { serverApi } from '../../lib/api/server';
+import ViewToggle from '../../components/library/ViewToggle.astro';
+import { hasFilters, libraryHref, noMatchMessage, parseFilters, resultSummary, tagCloud } from '../../components/library/filters';
+import { libraryItems } from '../../components/library/items';
+import { loadLibrary } from '../../components/library/load';
+import { parseSort } from '../../components/library/sort';
+import { DEFAULT_VIEW, viewBootstrapScript, viewClass } from '../../components/library/view';
+import { Problem } from '../../components/common/Problem';
 
 export const prerender = false;
 
-const api = serverApi();
-const filters = parseFilters(Astro.url.searchParams);
+const params = Astro.url.searchParams;
+const filters = parseFilters(params);
+const sort = parseSort(params.get('sort'));
 const filtered = hasFilters(filters);
 
-let documents: DocumentSummary[] = [];
-let total = 0;
-let everything: DocumentSummary[] = [];
-let problem: ProblemInfo | null = null;
-let files: LibraryFile[] | null = null;
-let filesProblem: ProblemInfo | null = null;
-
-const [shown, all, pending] = await Promise.allSettled([
-  api.get<Page<DocumentSummary>>('documents', { query: documentsQuery(filters) }),
-  // Tags come from the whole shelf, so a filtered view can still switch tags.
-  filtered ? api.get<Page<DocumentSummary>>('documents', { query: { limit: 100 } }) : Promise.resolve(null),
-  api.get<Page<LibraryFile>>('library', { query: { limit: 100 } }),
-]);
-
-if (shown.status === 'fulfilled') {
-  documents = shown.value.items;
-  total = shown.value.total;
-  everything = all.status === 'fulfilled' && all.value ? all.value.items : documents;
-} else {
-  problem = problemOf(shown.reason);
-}
-if (pending.status === 'fulfilled') files = pending.value.items;
-else filesProblem = problemOf(pending.reason);
-
-const tags = tagCloud(everything);
-const summary = filtered
-  ? `${plural(total, 'document')} match`
-  : total === 0
-    ? 'Nothing here yet'
-    : `${plural(total, 'document')} on the shelf`;
+const { documents, problem, files, filesProblem, extras } = await loadLibrary();
+const items = libraryItems(documents, extras, filters, sort);
+const total = documents.length;
+const shown = items.filter((item) => !item.hidden).length;
+const waiting = files?.length ?? 0;
+const tags = tagCloud(documents);
+const label = filtered ? 'Matching books' : 'All books';
+const clearHref = libraryHref({ tag: null, status: null, author: null, q: null }, sort);
 ---
 
 <BaseLayout title="Library" description="Every book and article on your shelf.">
-  <div class="library">
+  <div class:list={['library', viewClass(DEFAULT_VIEW)]} data-library>
+    <script is:inline set:html={viewBootstrapScript} />
     <header class="head">
-      <h1>Library</h1>
-      <p class="summary" aria-live="polite">{summary}</p>
+      <div class="heading">
+        <h1>Library</h1>
+        <p class="count">
+          {total === 0 ? 'Nothing on the shelf yet' : `${resultSummary(total, total, false)} on your shelf`}
+        </p>
+      </div>
+      <AddBookButton waiting={waiting} />
     </header>
-
-    <IngestPanel client:idle initialFiles={files} initialProblem={filesProblem} />
 
     {problem ? (
       <Problem title="The shelf could not be loaded." problem={problem} />
+    ) : total === 0 ? (
+      <EmptyShelf waiting={waiting} />
     ) : (
       <>
-        {(total > 0 || filtered) && <FilterBar filters={filters} tags={tags} />}
-        {documents.length > 0 ? (
-          <Shelf documents={documents} label={filtered ? 'Matching documents' : 'All documents'} />
-        ) : (
-          <EmptyShelf filtered={filtered} />
-        )}
-        {total > documents.length && (
-          <p class="more">Showing the first {documents.length} of {total}. Narrow the filters to find the rest.</p>
-        )}
+        <FilterBar filters={filters} sort={sort} tags={tags} />
+
+        <div class="results">
+          <p class="summary" aria-live="polite">
+            <span data-summary>{resultSummary(shown, total, filtered)}</span>
+            <a href={clearHref} data-clear hidden={!filtered}>Clear filters</a>
+          </p>
+          <ViewToggle />
+        </div>
+
+        <div class="no-match" data-no-match hidden={shown > 0}>
+          <p class="no-match-text" data-no-match-text>{noMatchMessage(filters)}</p>
+          <p>
+            Try fewer words, or <a href={clearHref} data-clear>clear the filters</a> to see the whole shelf.
+          </p>
+        </div>
+
+        <div class="view shelf-view">
+          <Shelf items={items} label={label} />
+        </div>
+        <div class="view list-view">
+          <Catalogue items={items} label={label} />
+        </div>
       </>
     )}
+
+    <AddBookDialog files={files} problem={filesProblem} />
   </div>
 </BaseLayout>
+
+<script>
+  import { initLibrary } from '../../components/library/live';
+
+  const root = document.querySelector<HTMLElement>('[data-library]');
+  if (root) initLibrary(root);
+</script>
 
 <style>
   .library {
     display: grid;
-    gap: var(--space-6);
+    gap: var(--space-5);
   }
 
   .head {
     display: flex;
     flex-wrap: wrap;
-    align-items: baseline;
+    align-items: flex-end;
     justify-content: space-between;
-    gap: var(--space-2) var(--space-5);
+    gap: var(--space-3) var(--space-5);
+    margin-block-end: var(--space-2);
+  }
+
+  .heading {
+    display: grid;
+    gap: var(--space-1);
   }
 
   h1 {
     font-size: var(--text-2xl);
-    font-weight: 450;
     letter-spacing: -0.02em;
+    line-height: 1;
   }
 
-  .summary,
-  .more {
-    color: var(--ink-3);
+  .count {
+    color: var(--ink-2);
     font-family: var(--font-ui);
     font-size: var(--text-ui);
+  }
+
+  .results {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding-block-start: var(--space-2);
+    border-block-start: 1px solid var(--rule);
+    font-family: var(--font-ui);
+  }
+
+  .summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--space-3);
+    color: var(--ink-2);
+    font-size: var(--text-ui);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .summary a {
+    font-size: var(--text-sm);
+  }
+
+  [data-clear][hidden] {
+    display: none;
+  }
+
+  .no-match {
+    display: grid;
+    gap: var(--space-2);
+    padding: var(--space-6) 0;
+    color: var(--ink-2);
+    font-family: var(--font-ui);
+  }
+
+  .no-match[hidden] {
+    display: none;
+  }
+
+  .no-match-text {
+    color: var(--ink);
+    font-size: var(--text-md);
+    font-weight: 600;
+  }
+
+  .view {
+    padding-block-start: var(--space-4);
+  }
+
+  .view-shelf .list-view,
+  .view-list .shelf-view {
+    display: none;
+  }
+
+  /* An empty result shows the message, not an empty plank. */
+  .library:has([data-no-match]:not([hidden])) .view {
+    display: none;
   }
 
   @media (max-width: 40rem) {

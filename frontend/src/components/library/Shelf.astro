@@ -1,26 +1,27 @@
 ---
 /**
- * The shelf: documents stand as spines in rows, each row resting on a plank. Rows
- * have a fixed height so the planks can be drawn as one repeating background.
+ * The shelf view: books stand as spines in rows, each row resting on a plank. Rows
+ * have a fixed height (a little taller than the tallest spine, so a lifted book stays
+ * inside its row), so the planks can be drawn as one repeating background.
  */
-import type { DocumentSummary } from '../../lib/api/types/documents';
 import Spine from './Spine.astro';
+import type { LibraryItem } from './items';
 
 interface Props {
-  documents: DocumentSummary[];
+  items: LibraryItem[];
   label: string;
 }
 
-const { documents, label } = Astro.props;
+const { items, label } = Astro.props;
 ---
 
-<ul class="shelf" aria-label={label}>
-  {documents.map((doc, index) => <Spine doc={doc} index={index} />)}
+<ul class="shelf" aria-label={label} data-books>
+  {items.map((item, index) => <Spine index={index} {...item} />)}
 </ul>
 
 <style>
   .shelf {
-    --row: 17rem;
+    --row: 20.5rem;
     --plank: 0.8rem;
     --gap: 2.25rem;
     --plank-top: light-dark(#c9b58f, #3a3226);
@@ -50,7 +51,7 @@ const { documents, label } = Astro.props;
       flex-direction: column;
       align-items: stretch;
       gap: 2px;
-      padding: 0 0 var(--plank);
+      padding: var(--space-3) 0 var(--plank);
       background: none;
       border-block-end: var(--plank) solid var(--plank-face);
     }

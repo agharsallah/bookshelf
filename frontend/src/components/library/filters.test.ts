@@ -1,5 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { documentsQuery, filterHref, hasFilters, parseFilters, tagCloud } from './filters';
+import {
+  documentsQuery,
+  filterHref,
+  hasFilters,
+  libraryHref,
+  matchesFilters,
+  noMatchMessage,
+  parseFilters,
+  resultSummary,
+  tagCloud,
+  type LibraryFilters,
+} from './filters';
 
 const parse = (qs: string) => parseFilters(new URLSearchParams(qs));
 
@@ -63,5 +74,55 @@ describe('tagCloud', () => {
       { tag: 'b', count: 1 },
       { tag: 'c', count: 1 },
     ]);
+  });
+});
+
+const none: LibraryFilters = { tag: null, status: null, author: null, q: null };
+
+describe('matchesFilters', () => {
+  const book = { title: 'Thinking in Systems', authors: ['Donella Meadows'], tags: ['systems'], status: 'linked' };
+
+  it('passes every book when nothing is set', () => {
+    expect(matchesFilters(book, none)).toBe(true);
+  });
+
+  it('matches words in the title and the authors, ignoring case', () => {
+    expect(matchesFilters(book, { ...none, q: 'in sys' })).toBe(true);
+    expect(matchesFilters(book, { ...none, q: 'flow' })).toBe(false);
+    expect(matchesFilters(book, { ...none, author: 'meadows' })).toBe(true);
+    expect(matchesFilters(book, { ...none, author: 'Reinertsen' })).toBe(false);
+  });
+
+  it('matches the tag and the state exactly, and needs every filter to pass', () => {
+    expect(matchesFilters(book, { ...none, tag: 'systems', status: 'linked' })).toBe(true);
+    expect(matchesFilters(book, { ...none, tag: 'system' })).toBe(false);
+    expect(matchesFilters(book, { ...none, status: 'parsed' })).toBe(false);
+    expect(matchesFilters(book, { ...none, tag: 'systems', q: 'flow' })).toBe(false);
+  });
+});
+
+describe('libraryHref', () => {
+  it('keeps the filters and adds the order unless it is the default', () => {
+    expect(libraryHref({ ...none, q: 'flow' }, 'read')).toBe('/library?q=flow');
+    expect(libraryHref({ ...none, q: 'flow' }, 'title')).toBe('/library?q=flow&sort=title');
+    expect(libraryHref(none, 'author')).toBe('/library?sort=author');
+    expect(libraryHref(none, 'read')).toBe('/library');
+  });
+});
+
+describe('noMatchMessage', () => {
+  it('names what was asked for', () => {
+    expect(noMatchMessage({ ...none, q: 'x' })).toBe('No books match “x”.');
+    expect(noMatchMessage({ ...none, q: 'loops', author: 'Meadows', tag: 'systems' })).toBe(
+      'No books match “loops” by “Meadows” tagged “systems”.',
+    );
+  });
+});
+
+describe('resultSummary', () => {
+  it('counts the shelf, or the matches out of it while filtering', () => {
+    expect(resultSummary(2, 2, false)).toBe('2 books');
+    expect(resultSummary(1, 1, false)).toBe('1 book');
+    expect(resultSummary(0, 5, true)).toBe('0 of 5 books');
   });
 });

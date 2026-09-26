@@ -9,6 +9,9 @@ import type { DocumentAccepted, DocumentCreate } from '../../lib/api/types/docum
 import type { JobPublic } from '../../lib/api/types/jobs';
 import { problemOf, type ProblemInfo } from '../common/Problem';
 
+/** Dispatched on `window` when a book was accepted, so the page can refresh its shelf. */
+export const INGESTED_EVENT = 'bookshelf:ingested';
+
 export type IngestOutcome =
   | { kind: 'accepted'; slug: string; title: string; jobId: string; job: JobPublic }
   | { kind: 'duplicate'; slug: string | null; message: string }

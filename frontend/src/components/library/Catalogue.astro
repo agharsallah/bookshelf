@@ -1,0 +1,20 @@
+---
+/**
+ * The list view: the library as a catalogue, one book per row, for scanning titles,
+ * progress and what there is to study. Same items and order as the shelf.
+ */
+import CatalogueRow from './CatalogueRow.astro';
+import type { LibraryItem } from './items';
+import styles from './Catalogue.module.css';
+
+interface Props {
+  items: LibraryItem[];
+  label: string;
+}
+
+const { items, label } = Astro.props;
+---
+
+<ol class={styles.catalogue} aria-label={label} data-books>
+  {items.map((item) => <CatalogueRow {...item} />)}
+</ol>

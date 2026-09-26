@@ -1,7 +1,8 @@
 /**
- * Ingest island: files waiting in `library/` with one-click "Add to shelf", plus
- * "Add an article by URL". Each ingest's parse job is followed live over
- * `/jobs/stream`; a duplicate (409) links to the copy already on the shelf.
+ * Ingest island (inside the library's "Add a book" dialog): files waiting in
+ * `library/` with one-click "Add to shelf", plus "Add an article by URL". Each
+ * ingest's parse job is followed live over `/jobs/stream`; a duplicate (409) links to
+ * the copy already on the shelf. An accepted ingest announces `INGESTED_EVENT`.
  */
 import { useCallback, useEffect, useMemo, useState, type SubmitEvent } from 'react';
 import { browserApi } from '../../lib/api/client';
@@ -11,7 +12,7 @@ import type { JobState } from '../../lib/api/types/jobs';
 import { useJobStream } from '../../lib/hooks/useJobStream';
 import { Problem, problemOf, type ProblemInfo } from '../common/Problem';
 import { isFinished } from '../../lib/jobs/stream';
-import { formatSize, ingest, jobPhrase, type IngestOutcome } from './ingest';
+import { formatSize, ingest, INGESTED_EVENT, jobPhrase, type IngestOutcome } from './ingest';
 import styles from './IngestPanel.module.css';
 
 export interface IngestPanelProps {
@@ -54,7 +55,10 @@ export function IngestPanel({ initialFiles, initialProblem = null }: IngestPanel
   const add = async (key: string, body: { path: string } | { url: string }) => {
     setOutcomes((o) => ({ ...o, [key]: { kind: 'sending' } }));
     const outcome = await ingest(browserApi, body);
-    if (outcome.kind === 'accepted') track(outcome.job);
+    if (outcome.kind === 'accepted') {
+      track(outcome.job);
+      window.dispatchEvent(new CustomEvent(INGESTED_EVENT, { detail: { slug: outcome.slug } }));
+    }
     setOutcomes((o) => ({ ...o, [key]: outcome }));
   };
 
@@ -76,13 +80,13 @@ export function IngestPanel({ initialFiles, initialProblem = null }: IngestPanel
     <section className={styles.panel} aria-labelledby="ingest-title">
       <div className={styles.head}>
         <h2 id="ingest-title" className={styles.title}>
-          Add to the shelf
+          Add a book
         </h2>
         <p className={styles.sub}>
           {files === null
             ? 'Looking in library/…'
             : files.length === 0
-              ? 'Every file in library/ is already on the shelf.'
+              ? 'Every file in library/ is already on the shelf. Drop a PDF, HTML or Markdown file there to add it.'
               : `${files.length} ${files.length === 1 ? 'file is' : 'files are'} waiting in library/.`}
         </p>
       </div>

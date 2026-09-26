@@ -1,0 +1,88 @@
+---
+/**
+ * One book in the list view: a strip of its cloth, the title in the book's voice with
+ * its authors and year, how far you have read, and the study material it already
+ * has (book-wide brief, guide, cards, quiz...). Workshop mode adds its pipeline state.
+ */
+import { pipelineProgress } from '../../lib/documents/pipeline';
+import { bookAttributes } from './book-data';
+import type { LibraryItem } from './items';
+import { readingLabel } from './progress';
+import { sortKeys } from './sort';
+import { CLOTH_COLORS, plural, spineLook, waitingReview } from './spine';
+import styles from './Catalogue.module.css';
+
+type Props = LibraryItem;
+
+const { doc, reading, materials, current, hidden } = Astro.props;
+const cloth = CLOTH_COLORS[spineLook(doc).cloth];
+const progress = pipelineProgress(doc.status);
+const waiting = waitingReview(doc);
+const href = `/documents/${doc.slug}`;
+const titleId = `row-${doc.id}`;
+const byline = [doc.authors.join(', '), doc.year].filter(Boolean).join(', ');
+const read = readingLabel(reading);
+---
+
+<li
+  class={styles.row}
+  style={`--cloth:${cloth}`}
+  data-current={current ? '' : undefined}
+  hidden={hidden}
+  aria-labelledby={titleId}
+  {...bookAttributes(doc, sortKeys(doc, reading.lastRead))}
+>
+  <span class={styles.cloth} aria-hidden="true"></span>
+  <div class={styles.main}>
+    <a class:list={[styles.title, 'book-title']} href={href} id={titleId}>{doc.title}</a>
+    {byline && <p class={styles.byline}>{byline}</p>}
+    {
+      doc.tags.length > 0 && (
+        <ul class={styles.tags} aria-label="Tags">
+          {doc.tags.map((tag) => <li>{tag}</li>)}
+        </ul>
+      )
+    }
+  </div>
+
+  <div class={styles.reading}>
+    <span
+      class={styles.bar}
+      role="img"
+      aria-label={current ? `Reading now, ${read}` : read}
+      style={`--share:${reading.share}`}
+      data-started={reading.lastRead ? '' : undefined}
+    >
+      <span></span>
+    </span>
+    <span class={styles.readLabel} aria-hidden="true">
+      {current ? <span class="marker">Reading now</span> : null}
+      <span>{read}</span>
+    </span>
+  </div>
+
+  <div class={styles.study}>
+    {
+      materials === null ? (
+        doc.artifacts.approved > 0 ? (
+          <a href={href}>Study material</a>
+        ) : null
+      ) : materials.length > 0 ? (
+        <ul aria-label="Study material">
+          {materials.map((m) => (
+            <li>
+              <a href={m.href}>{m.label}</a>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <span class={styles.none}>No study material yet</span>
+      )
+    }
+  </div>
+
+  <p class:list={[styles.state, 'workshop-only']} data-attention={progress.attention ?? undefined}>
+    {progress.label}
+    {waiting > 0 && <span>{plural(waiting, 'draft')} to review</span>}
+  </p>
+</li>

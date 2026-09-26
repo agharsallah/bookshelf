@@ -1,0 +1,87 @@
+---
+/**
+ * The ingest desk in a modal dialog, so the shelf is the first thing on every visit.
+ * Esc or the close button closes it (a `method="dialog"` form: no script needed);
+ * after a book was added, closing it reloads the page so the new book is on the shelf.
+ */
+import type { ProblemInfo } from '../common/Problem';
+import type { LibraryFile } from '../../lib/api/types/documents';
+import IngestPanel from './IngestPanel';
+import { ADD_BOOK_DIALOG } from './live-ids';
+
+interface Props {
+  files: LibraryFile[] | null;
+  problem: ProblemInfo | null;
+}
+
+const { files, problem } = Astro.props;
+---
+
+<dialog id={ADD_BOOK_DIALOG} class="dialog" aria-labelledby="ingest-title" closedby="any">
+  <form method="dialog" class="close">
+    <button type="submit" class="btn btn-quiet" aria-label="Close">
+      <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+        <path d="M3.5 3.5l9 9m0-9l-9 9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path>
+      </svg>
+    </button>
+  </form>
+  <IngestPanel client:idle initialFiles={files} initialProblem={problem} />
+</dialog>
+
+<style>
+  .dialog {
+    inline-size: min(40rem, calc(100vw - 2rem));
+    max-block-size: calc(100dvh - 4rem);
+    margin: auto;
+    padding: var(--space-5) var(--space-6) var(--space-6);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-l);
+    background: var(--paper-raised);
+    box-shadow: var(--shadow-pop);
+    color: var(--ink);
+  }
+
+  .dialog::backdrop {
+    background: color-mix(in oklab, var(--ink) 35%, transparent);
+  }
+
+  .dialog[open] {
+    animation: pop var(--dur-3) var(--ease-turn);
+  }
+
+  .dialog[open]::backdrop {
+    animation: fade var(--dur-2) var(--ease-out);
+  }
+
+  @keyframes pop {
+    from {
+      opacity: 0;
+      scale: 0.97;
+      translate: 0 0.5rem;
+    }
+  }
+
+  @keyframes fade {
+    from {
+      opacity: 0;
+    }
+  }
+
+  .close {
+    position: absolute;
+    inset-block-start: var(--space-3);
+    inset-inline-end: var(--space-3);
+  }
+
+  .close .btn {
+    min-block-size: 2.25rem;
+    padding: 0 var(--space-2);
+    color: var(--ink-2);
+  }
+
+  @media (max-width: 40rem) {
+    .dialog {
+      padding: var(--space-4);
+    }
+  }
+</style>

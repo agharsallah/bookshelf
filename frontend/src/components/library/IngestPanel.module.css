@@ -1,27 +1,21 @@
-/* The desk in front of the shelf: loose files waiting to be catalogued. */
+/* The ingest desk (in the library's dialog): loose files waiting to be catalogued. */
 .panel {
   display: grid;
   gap: var(--space-4);
-  padding: var(--space-5);
-  border: 1px dashed var(--rule-strong);
-  border-radius: var(--radius-l);
-  background: color-mix(in oklab, var(--paper-raised) 70%, transparent);
   font-family: var(--font-ui);
   font-size: var(--text-ui);
   line-height: var(--leading-ui);
 }
 
 .head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--space-2) var(--space-4);
+  display: grid;
+  gap: var(--space-1);
+  /* Room for the dialog's close button. */
+  padding-inline-end: var(--space-6);
 }
 
 .title {
-  font-family: var(--font-read);
-  font-size: var(--text-md);
-  font-weight: 560;
+  font-size: var(--text-lg);
 }
 
 .sub {
@@ -84,21 +78,25 @@
 }
 
 .add {
-  height: 2rem;
-  padding: 0 var(--space-3);
-  border: 1px solid var(--ink);
+  height: 2.25rem;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--accent);
   border-radius: var(--radius-m);
-  background: transparent;
-  color: var(--ink);
+  background: var(--accent);
+  color: var(--on-accent);
   font-weight: 600;
   white-space: nowrap;
   cursor: pointer;
-  transition: background-color var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out);
+  transition: background-color var(--dur-1) var(--ease-out), border-color var(--dur-1) var(--ease-out);
 }
 
 .add:hover {
-  background: var(--ink);
-  color: var(--paper);
+  border-color: var(--accent-strong);
+  background: var(--accent-strong);
+}
+
+.urlRow .add {
+  height: 2.5rem;
 }
 
 .status {
@@ -150,8 +148,8 @@
 }
 
 .urlLabel {
-  color: var(--ink-3);
-  font-size: var(--text-xs);
+  color: var(--ink-2);
+  font-size: var(--text-sm);
 }
 
 .urlRow {
@@ -162,7 +160,7 @@
 .urlRow input {
   flex: 1 1 auto;
   min-width: 0;
-  height: 2rem;
+  height: 2.5rem;
   padding: 0 var(--space-3);
   border: 1px solid var(--rule-strong);
   border-radius: var(--radius-m);
@@ -170,10 +168,6 @@
 }
 
 @media (max-width: 40rem) {
-  .panel {
-    padding: var(--space-4);
-  }
-
   .file {
     grid-template-columns: auto minmax(0, 1fr);
   }

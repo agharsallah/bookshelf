@@ -1,39 +1,29 @@
 ---
 /** An empty shelf teaches the flow: drop a file in library/, add it, read it. */
+import AddBookButton from './AddBookButton.astro';
+
 interface Props {
-  filtered: boolean;
+  waiting: number;
 }
 
-const { filtered } = Astro.props;
+const { waiting } = Astro.props;
 ---
 
-{
-  filtered ? (
-    <div class="empty">
-      <p class="lead">Nothing on the shelf matches these filters.</p>
-      <p>
-        <a href="/library">Show the whole shelf</a>
-      </p>
-    </div>
-  ) : (
-    <div class="empty">
-      <p class="lead">Your shelf is empty.</p>
-      <ol class="flow">
-        <li>
-          <span class="step">Drop a PDF, HTML or Markdown file into</span> <code>library/</code> at the root of
-          the repository.
-        </li>
-        <li>
-          <span class="step">Add it to the shelf</span> from the list above, or paste an article’s URL.
-        </li>
-        <li>
-          <span class="step">Read it</span> once parsing finishes: chapters, figures and tables, with your
-          highlights and notes beside the text.
-        </li>
-      </ol>
-    </div>
-  )
-}
+<div class="empty">
+  <p class="lead">Your shelf is empty.</p>
+  <ol class="flow">
+    <li>
+      <span class="step">Drop a PDF, HTML or Markdown file into</span> <code>library/</code> at the root of the
+      repository.
+    </li>
+    <li><span class="step">Add it to the shelf</span> with “Add a book”, or paste an article’s URL there.</li>
+    <li>
+      <span class="step">Read it</span> once parsing finishes: chapters, figures and tables, with your highlights
+      and notes beside the text.
+    </li>
+  </ol>
+  <p><AddBookButton waiting={waiting} /></p>
+</div>
 
 <style>
   .empty {
