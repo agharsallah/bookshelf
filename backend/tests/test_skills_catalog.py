@@ -320,4 +320,4 @@ def test_link_concepts_vocabularies_match_the_database_enums() -> None:
     kinds = props["concepts"]["items"]["properties"]["kind"]["enum"]
     relations = props["edges"]["items"]["properties"]["relation"]["enum"]
     assert set(kinds) == set(ConceptKind)
-    assert set(relations) == set(Relation)
+    assert set(relations) == {r for r in Relation if not r.is_derived}

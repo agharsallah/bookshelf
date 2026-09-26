@@ -136,6 +136,11 @@ class Relation(StrEnum):
     SAME_AS = "same_as"
     ECHOES = "echoes"  # chapters whose passages say similar things (app.graph.semantic)
 
+    @property
+    def is_derived(self) -> bool:
+        """Computed by the graph from vectors, never proposed by a skill."""
+        return self is Relation.ECHOES
+
 
 class EdgeStatus(StrEnum):
     PROPOSED = "proposed"
