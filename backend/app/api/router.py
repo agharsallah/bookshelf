@@ -17,6 +17,7 @@ from app.api.routes import (
     media,
     nodes,
     notes,
+    reading,
     search,
     skills,
 )
@@ -26,6 +27,7 @@ api_router.include_router(library.router)
 api_router.include_router(documents.router)
 api_router.include_router(nodes.router)
 api_router.include_router(notes.router)
+api_router.include_router(reading.router)
 api_router.include_router(job_events.router)  # before jobs: /jobs/stream vs /jobs/{id}
 api_router.include_router(jobs.router)
 api_router.include_router(exports.router)
