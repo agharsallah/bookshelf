@@ -1,7 +1,8 @@
 """The idea graph (§11, §13): one neighborhood at a time, and every edge's evidence.
 
-`GET /graph/neighborhood` is the only way to see the graph: one focal node, depth ≤ 2, at
-most 150 nodes, edges ranked by weight x evidence count. There is no global view.
+`GET /graph/neighborhood` walks the graph from one focal node: depth ≤ 2, at most 150 nodes,
+edges ranked by weight x evidence count. `GET /graph/atlas` is the one global view, and a
+coarse one: books, chapters and concepts only, passages folded into their chapter.
 Edges are proposed by skills and curated here: accept or reject a proposal, draw an edge
 by hand (with evidence), or delete one.
 """
@@ -13,11 +14,11 @@ from fastapi import APIRouter, Depends, Query, Response, status
 from app.api.deps import SessionDep
 from app.core.errors import NotFoundError
 from app.core.security import require_api_key
-from app.graph import curation, views
+from app.graph import atlas, curation, views
 from app.graph.neighborhood import MAX_DEPTH, neighborhood
 from app.graph.refs import RefError, resolve_ref
 from app.models import Edge
-from app.schemas.graph import EdgeCreate, EdgeDetail, EdgeUpdate, Neighborhood
+from app.schemas.graph import Atlas, EdgeCreate, EdgeDetail, EdgeUpdate, Neighborhood
 
 router = APIRouter(tags=["graph"])
 
@@ -49,6 +50,17 @@ def get_neighborhood(
         raise NotFoundError(str(exc)) from exc
     hood = neighborhood(session, focus, depth=depth, include_proposed=include_proposed)
     return views.neighborhood_out(hood)
+
+
+@router.get("/graph/atlas", response_model=Atlas, summary="The whole shelf at chapter grain")
+def get_atlas(
+    session: SessionDep,
+    include_proposed: bool = Query(default=False, description="Also fold proposed edges."),
+) -> Atlas:
+    """Every book, every chapter taking part in the graph, and every live concept, with
+    `contains` (book → chapter), the stored relations folded up to chapters, and derived
+    `shares` lines between chapters that lean on the same concepts."""
+    return views.atlas_out(atlas.atlas(session, include_proposed=include_proposed))
 
 
 @router.get("/edges/{edge_id}", response_model=EdgeDetail, summary="An edge and its evidence")

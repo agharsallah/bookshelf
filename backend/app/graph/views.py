@@ -12,12 +12,16 @@ from sqlalchemy import Label, func, literal_column, text
 from sqlmodel import Session, col, select
 
 from app.graph import evidence as ev
+from app.graph.atlas import Atlas as AtlasView
 from app.graph.merge import concept_edges
 from app.graph.neighborhood import Neighborhood as Hood
 from app.graph.refs import Ref
 from app.models import Concept, Edge
 from app.models.enums import ConceptKind, EdgeStatus, EntityKind, Relation
 from app.schemas.graph import (
+    Atlas,
+    AtlasEdge,
+    AtlasNode,
     ConceptDetail,
     ConceptEdge,
     ConceptPublic,
@@ -257,4 +261,43 @@ def neighborhood_out(hood: Hood) -> Neighborhood:
             for e in hood.edges
         ],
         truncated=hood.truncated,
+    )
+
+
+def atlas_out(view: AtlasView) -> Atlas:
+    docs = {i: DocumentRef(id=d.id, slug=d.slug, title=d.title) for i, d in view.documents.items()}
+    return Atlas(
+        nodes=[
+            AtlasNode(
+                id=n.ref,
+                kind=n.kind,
+                label=n.label,
+                sublabel=n.sublabel,
+                document=docs.get(n.document_id) if n.document_id else None,
+                anchor=n.anchor,
+                blurb=n.blurb,
+                concept_kind=ConceptKind(n.concept_kind) if n.concept_kind else None,
+                ordinal=n.ordinal,
+                degree=n.degree,
+                books=len(n.books),
+                passages=n.passages,
+            )
+            for n in view.nodes
+        ],
+        edges=[
+            AtlasEdge(
+                id=e.id,
+                src=e.src,
+                dst=e.dst,
+                relation=e.relation,
+                weight=round(e.weight, 4),
+                evidence_count=e.evidence_count,
+                status=e.status,
+                edge_ids=e.edge_ids,
+                evidence=e.evidence,
+                concepts=e.concepts,
+            )
+            for e in view.edges
+        ],
+        truncated=view.truncated,
     )

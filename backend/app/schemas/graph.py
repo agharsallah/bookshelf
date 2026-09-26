@@ -203,3 +203,53 @@ class MergeProposal(BaseModel):
     origin: str
     evidence: list[Passage]
     created_at: datetime
+
+
+# --- The atlas: the whole shelf at chapter grain (`GET /graph/atlas`) -----------------------
+
+AtlasKind = Literal["document", "chapter", "concept"]
+AtlasRelation = Annotated[
+    str,
+    Field(
+        description="A stored relation (`defines`, `supports`, …), or a derived one: "
+        "`contains` (book → chapter) or `shares` (chapters naming the same concepts).",
+        examples=["mentions", "contains", "shares"],
+    ),
+]
+
+
+class AtlasNode(BaseModel):
+    id: Annotated[
+        GraphRef,
+        Field(description="`document:<id>`, `concept:<id>`, or `node:<document_id>#<chapter>`."),
+    ]
+    kind: AtlasKind
+    label: str
+    sublabel: str | None = None
+    document: DocumentRef | None = None
+    anchor: Annotated[str | None, Field(description="A chapter's anchor, for the reader.")] = None
+    blurb: str | None = None
+    concept_kind: ConceptKind | None = None
+    ordinal: Annotated[int, Field(description="Reading order within the book.")] = 0
+    degree: Annotated[int, Field(ge=0, description="Lines touching it in this atlas.")] = 0
+    books: Annotated[int, Field(ge=0, description="Books it appears in.")] = 0
+    passages: Annotated[int, Field(ge=0, description="Evidence passages behind it.")] = 0
+
+
+class AtlasEdge(BaseModel):
+    id: str
+    src: str
+    dst: str
+    relation: AtlasRelation
+    weight: float
+    evidence_count: int
+    status: EdgeStatus
+    edge_ids: Annotated[list[uuid.UUID], Field(description="Stored edges folded into it.")]
+    evidence: Annotated[list[str], Field(description="A few qualified anchors to open.")]
+    concepts: Annotated[list[str], Field(description="`shares` only: the concepts in common.")]
+
+
+class Atlas(BaseModel):
+    nodes: list[AtlasNode]
+    edges: Annotated[list[AtlasEdge], Field(description="Ranked by weight x evidence count.")]
+    truncated: Annotated[bool, Field(description="The concept or chapter budget cut the map.")]
