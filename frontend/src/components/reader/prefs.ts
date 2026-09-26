@@ -29,6 +29,8 @@ export interface ReaderPrefs {
   align: Align;
   /** A dragged text width in px, used while a side pane is shown; null: the `width` preset. */
   measure: number | null;
+  /** The dragged width of the passage drawer (the book guide's cites), px; null: its default. */
+  passage: number | null;
   /** The contents rail on the left (wide screens). */
   contents: boolean;
   /** The distillation pane on the right. */
@@ -49,6 +51,7 @@ export const DEFAULT_PREFS: Readonly<ReaderPrefs> = Object.freeze({
   width: 'normal',
   align: 'start',
   measure: null,
+  passage: null,
   contents: true,
   pane: true,
   focus: false,
@@ -103,6 +106,7 @@ export function parsePrefs(raw: string | null): ReaderPrefs {
     width: oneOf(WIDTHS, data.width, d.width),
     align: oneOf(ALIGNS, data.align, d.align),
     measure: measure(data.measure),
+    passage: measure(data.passage),
     contents: flag(data.contents, d.contents),
     pane: flag(data.pane, d.pane),
     focus: flag(data.focus, d.focus),

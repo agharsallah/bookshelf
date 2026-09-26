@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { TreeNode } from '../../lib/api/types/documents';
@@ -40,6 +40,7 @@ beforeAll(() => {
 beforeEach(() => {
   clearChapterCache();
   api.get.mockReset();
+  window.localStorage.clear();
 });
 
 describe('<PassagePanel>', () => {
@@ -65,6 +66,53 @@ describe('<PassagePanel>', () => {
     expect(onTarget).toHaveBeenCalledWith({ unit: units[2], anchor: 'ch19' });
     await userEvent.click(screen.getByRole('button', { name: /17\. Toward Better Stories/ }));
     expect(onTarget).toHaveBeenLastCalledWith({ unit: units[0], anchor: 'ch17' });
+  });
+
+  it('drags wider from its left edge and remembers the width with the reader preferences', () => {
+    api.get.mockResolvedValue({ node: ch18, truncated: false });
+    render(<PassagePanel slug="book" units={units} target={{ unit: units[1]!, anchor: 'ch18' }} onTarget={vi.fn()} onClose={vi.fn()} readHref={readHref} />);
+    const dialog = screen.getByRole('dialog');
+    expect(dialog.style.getPropertyValue('--passage-width')).toBe('736px');
+
+    // happy-dom lays nothing out: the drawer's right edge is at 0, so the left edge follows the pointer leftwards.
+    const handle = screen.getByRole('separator', { name: 'Passage width' });
+    fireEvent.pointerDown(handle, { button: 0, clientX: 0 });
+    fireEvent.pointerMove(window, { clientX: -900 });
+    expect(dialog.dataset.resizing).toBe('');
+    expect(dialog.style.getPropertyValue('--passage-width')).toBe('900px');
+    fireEvent.pointerUp(window, { clientX: -900 });
+
+    expect(dialog.dataset.resizing).toBeUndefined();
+    expect(JSON.parse(window.localStorage.getItem('bookshelf:reader')!)).toMatchObject({ passage: 900 });
+    // A drag released past the edge ends in a click on the backdrop: that must not close it.
+    fireEvent.click(dialog);
+    expect(dialog.hasAttribute('open')).toBe(true);
+    fireEvent.doubleClick(handle);
+    expect(dialog.style.getPropertyValue('--passage-width')).toBe('736px');
+  });
+
+  it('closes on a click that starts and ends on the backdrop', () => {
+    api.get.mockResolvedValue({ node: ch18, truncated: false });
+    const onClose = vi.fn();
+    render(<PassagePanel slug="book" units={units} target={{ unit: units[1]!, anchor: 'ch18' }} onTarget={vi.fn()} onClose={onClose} readHref={readHref} />);
+    const dialog = screen.getByRole('dialog');
+    fireEvent.pointerDown(dialog);
+    fireEvent.click(dialog);
+    expect(dialog.hasAttribute('open')).toBe(false);
+  });
+
+  it('nudges the width with the arrows: left widens, since the grip is on the left edge', async () => {
+    window.localStorage.setItem('bookshelf:reader', JSON.stringify({ size: 5 }));
+    api.get.mockResolvedValue({ node: ch18, truncated: false });
+    render(<PassagePanel slug="book" units={units} target={{ unit: units[1]!, anchor: 'ch18' }} onTarget={vi.fn()} onClose={vi.fn()} readHref={readHref} />);
+    const dialog = screen.getByRole('dialog');
+    expect(dialog.style.getPropertyValue('--reader-size')).toBe('1.375rem'); // the reader's text size, reused
+
+    act(() => screen.getByRole('separator', { name: 'Passage width' }).focus());
+    await userEvent.keyboard('{ArrowLeft}{ArrowLeft}{ArrowRight}');
+    expect(dialog.style.getPropertyValue('--passage-width')).toBe(`${736 + 16}px`);
+    await userEvent.keyboard('{Enter}');
+    expect(dialog.style.getPropertyValue('--passage-width')).toBe('736px');
   });
 
   it('says so when the chapter cannot load, and retries on request', async () => {

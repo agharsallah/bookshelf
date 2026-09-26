@@ -5,7 +5,8 @@
 .panel {
   position: fixed;
   inset: 0 0 0 auto;
-  inline-size: min(46rem, 100vw);
+  /* Dragged on its left edge (MeasureHandle); the guide always keeps a strip in view. */
+  inline-size: min(var(--passage-width, 46rem), calc(100vw - 3rem));
   max-inline-size: 100vw;
   block-size: 100dvh;
   max-block-size: 100dvh;
@@ -21,6 +22,13 @@
 
 .panel[open] {
   animation: slide-in var(--dur-3) var(--ease-out);
+}
+
+/* While the edge is dragged: no text selection, no animation catching up. */
+.panel:global([data-resizing]) {
+  cursor: col-resize;
+  user-select: none;
+  animation: none;
 }
 
 /* The guide behind stays put while a passage is open. */
@@ -130,13 +138,13 @@
 
 /* The chapter text, set like the reader's source column. */
 .body {
-  --reader-gap: var(--space-4);
-  --reader-align: start;
   overflow-y: auto;
-  padding: var(--space-5) var(--space-2) 30dvh 0;
-  font-family: var(--font-read);
-  font-size: var(--text-base);
-  line-height: var(--leading-read);
+  /* Room on the left for the page numbers in the margin and the width grip. */
+  padding: var(--space-5) var(--space-2) 30dvh var(--space-4);
+  /* The reader's typography preferences (prefsVars), else the house defaults. */
+  font-family: var(--reader-font, var(--font-read));
+  font-size: var(--reader-size, var(--text-base));
+  line-height: var(--reader-leading, var(--leading-read));
   scroll-padding-block: 5rem;
 }
 
@@ -222,6 +230,7 @@
 @media (max-width: 40rem) {
   .panel {
     inset: auto 0 0 0;
+    /* A sheet from the bottom: full width, nothing to drag sideways. */
     inline-size: 100vw;
     block-size: 92dvh;
     border-inline-start: 0;
@@ -263,6 +272,10 @@
     position: absolute;
     inset-block-start: var(--space-3);
     inset-inline-end: var(--space-3);
+  }
+
+  .panel > :global([role='separator']) {
+    display: none;
   }
 }
 

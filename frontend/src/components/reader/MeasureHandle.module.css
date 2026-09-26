@@ -21,6 +21,12 @@
   transition: opacity var(--dur-2) var(--ease-out);
 }
 
+/* On a column pinned at its end (the passage drawer), the grip sits inside its start edge. */
+.measureHandle[data-edge='start'] {
+  inset-inline-start: 0;
+  inset-inline-end: auto;
+}
+
 /* The grip rides along the middle of the screen, however long the chapter. */
 .measureGrip {
   position: sticky;

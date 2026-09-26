@@ -2,18 +2,23 @@
  * The cited passage, in place: a drawer that opens the whole chapter beside the guide,
  * scrolled to the cited block and marked, so a claim can be checked without leaving
  * the page. Previous / next browse on through the book; "Open in reader" goes to the
- * full reader at the same passage. Figures open in the shared lightbox.
+ * full reader at the same passage. Figures open in the shared lightbox. Its left edge
+ * drags wider or narrower (the reader's MeasureHandle), and its width and typography
+ * are the reader's saved preferences, so the text reads the same in both places.
  *
  * A modal <dialog>: Escape or the backdrop closes it, focus stays inside, and it
  * hands focus back to the cite that opened it.
  */
-import { useCallback, useEffect, useId, useMemo, useRef, useState, type MouseEvent } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type CSSProperties, type MouseEvent, type PointerEvent } from 'react';
 import { pageMarkers } from '../../lib/documents/tree';
 import { toast } from '../document/toast';
 import { revealBlock, sourceBlock } from '../reader/dom';
 import { figureItems } from '../reader/figures';
+import { MeasureHandle } from '../reader/MeasureHandle';
+import { prefsVars } from '../reader/prefs';
 import { SourceBlock } from '../reader/SourceBlock';
 import { useFigureLightbox } from '../reader/useFigureLightbox';
+import { useReaderPrefs } from '../reader/usePrefs';
 import { loadChapter, neighbours, sectionHeading, targetBlock, type LoadedChapter, type PassageUnit } from './passage';
 import styles from './PassagePanel.module.css';
 
@@ -36,6 +41,9 @@ type Load = { status: 'loading' } | { status: 'error' } | { status: 'ready'; cha
 
 const NO_MARKS: never[] = [];
 
+/** The drawer's width until it is dragged (46rem), px. */
+export const PASSAGE_WIDTH = 736;
+
 export function PassagePanel({ slug, units, target, onTarget, onClose, readHref }: PassagePanelProps) {
   const dialog = useRef<HTMLDialogElement>(null);
   const body = useRef<HTMLDivElement>(null);
@@ -49,6 +57,9 @@ export function PassagePanel({ slug, units, target, onTarget, onClose, readHref 
   const cited = anchor === unit.anchor ? null : targetBlock(flat, anchor);
   const section = cited ? sectionHeading(flat, cited) : null;
   const { previous, next } = neighbours(units, unit);
+  const [prefs, setPrefs] = useReaderPrefs();
+  const width = prefs.passage ?? PASSAGE_WIDTH;
+  const style = { ...prefsVars(prefs), '--passage-width': `${width}px` } as CSSProperties;
 
   // Open as a modal; hand focus back to the opener on close.
   useEffect(() => {
@@ -105,9 +116,15 @@ export function PassagePanel({ slug, units, target, onTarget, onClose, readHref 
     }
   };
 
-  // The backdrop is the dialog itself: a click that lands on it (not its panel) closes.
+  // The backdrop is the dialog itself: a click on it (not its panel) closes — but only one
+  // that also started there, so a width drag released past the edge never closes it.
+  const pressedBackdrop = useRef(false);
+  const onDialogPointerDown = (event: PointerEvent<HTMLDialogElement>) => {
+    pressedBackdrop.current = event.target === dialog.current;
+  };
   const onDialogClick = (event: MouseEvent<HTMLDialogElement>) => {
-    if (event.target === dialog.current) dialog.current?.close();
+    if (pressedBackdrop.current && event.target === dialog.current) dialog.current?.close();
+    pressedBackdrop.current = false;
   };
 
   const go = (to: PassageUnit | null) => to && onTarget({ unit: to, anchor: to.anchor });
@@ -116,8 +133,10 @@ export function PassagePanel({ slug, units, target, onTarget, onClose, readHref 
     <dialog
       ref={dialog}
       className={styles.panel}
+      style={style}
       aria-labelledby={titleId}
       onClose={onClose}
+      onPointerDown={onDialogPointerDown}
       onClick={onDialogClick}
       // While the lightbox is up, Escape is its to handle.
       onCancel={(event) => lightboxOpen && event.preventDefault()}
@@ -189,6 +208,15 @@ export function PassagePanel({ slug, units, target, onTarget, onClose, readHref 
           ) : null}
         </nav>
       </div>
+      <MeasureHandle
+        column={dialog}
+        root={dialog}
+        anchor="end"
+        property="--passage-width"
+        label="Passage width"
+        width={width}
+        onChange={(passage) => setPrefs({ passage })}
+      />
       {lightbox}
     </dialog>
   );

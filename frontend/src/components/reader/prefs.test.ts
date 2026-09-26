@@ -19,6 +19,12 @@ describe('parsePrefs', () => {
     expect(parsePrefs('{"measure": "wide"}').measure).toBeNull();
   });
 
+  it("keeps the passage drawer's dragged width under the same rule", () => {
+    expect(parsePrefs('{"passage": 900.4}').passage).toBe(900);
+    expect(parsePrefs('{"passage": -5}').passage).toBeNull();
+    expect(parsePrefs('{}').passage).toBeNull();
+  });
+
   it('clamps the size into the scale and rounds it to a step', () => {
     expect(parsePrefs('{"size": 99}').size).toBe(SIZES.length - 1);
     expect(parsePrefs('{"size": -3}').size).toBe(0);

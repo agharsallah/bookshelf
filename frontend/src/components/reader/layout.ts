@@ -47,11 +47,19 @@ export function clampMeasure(px: number): number {
 }
 
 /**
- * The text width that puts the column's edge under the pointer. With the pane
- * shown the column is anchored at its start (`origin` = its left edge); without it
- * the column is centred (`origin` = its centre), so its edge moves half as fast as
- * its width. The grid still caps the width at the room available.
+ * Which part of a resizable column stays put while its grip is dragged: its start
+ * (the grip on its end edge), its centre (both edges move), or its end (the grip
+ * on its start edge, as for a drawer pinned to the right of the screen).
  */
-export function dragMeasure(pointerX: number, origin: number, centred: boolean): number {
-  return clampMeasure(centred ? 2 * (pointerX - origin) : pointerX - origin);
+export type MeasureAnchor = 'start' | 'centre' | 'end';
+
+/**
+ * The width that puts the column's moving edge under the pointer. `origin` is the
+ * anchored point: the column's left edge (`start`), its centre (`centre`, so the
+ * edge moves half as fast as the width) or its right edge (`end`, so dragging left
+ * widens it). The layout still caps the width at the room available.
+ */
+export function dragMeasure(pointerX: number, origin: number, anchor: MeasureAnchor): number {
+  if (anchor === 'centre') return clampMeasure(2 * (pointerX - origin));
+  return clampMeasure(anchor === 'end' ? origin - pointerX : pointerX - origin);
 }

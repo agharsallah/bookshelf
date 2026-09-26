@@ -367,7 +367,7 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
             <MeasureHandle
               column={sourceRef}
               root={readerRef}
-              centred={isCentred(layout, showPane)}
+              anchor={isCentred(layout, showPane) ? 'centre' : 'start'}
               width={prefs.measure ?? WIDTH_REM[prefs.width] * 16}
               onChange={(measure) => setPrefs({ measure })}
             />

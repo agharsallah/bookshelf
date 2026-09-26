@@ -31,15 +31,20 @@ describe('canDragMeasure / isCentred', () => {
 
 describe('dragMeasure', () => {
   it('puts the edge of an anchored column under the pointer', () => {
-    expect(dragMeasure(900, 200, false)).toBe(700);
+    expect(dragMeasure(900, 200, 'start')).toBe(700);
+  });
+
+  it('widens a column pinned at its end as the pointer moves left, away from that end', () => {
+    expect(dragMeasure(480, 1280, 'end')).toBe(800);
   });
 
   it('grows a centred column twice as fast as the pointer moves, since both edges move', () => {
-    expect(dragMeasure(1100, 800, true)).toBe(600);
+    expect(dragMeasure(1100, 800, 'centre')).toBe(600);
   });
 
   it('never goes below the narrowest readable column', () => {
-    expect(dragMeasure(210, 200, false)).toBe(MIN_MEASURE);
+    expect(dragMeasure(210, 200, 'start')).toBe(MIN_MEASURE);
+    expect(dragMeasure(1100, 1280, 'end')).toBe(MIN_MEASURE);
     expect(clampMeasure(612.4)).toBe(612);
   });
 });
