@@ -9,6 +9,7 @@ import { serverApi } from '../api/server';
 import type { ArtifactListItem, ArtifactPublic, ArtifactType } from '../api/types/artifacts';
 import type { DocumentDetail, DocumentTree } from '../api/types/documents';
 import { fetchAll } from '../api/fetch-all';
+import { MATERIALS } from './study';
 
 export type Loaded<T> = { ok: true; value: T } | { ok: false; notFound: boolean; problem: ProblemInfo };
 
@@ -32,6 +33,13 @@ export function getOutline(ref: string): Promise<DocumentTree> {
 /** The whole tree with its blocks (for word counts and reading times). */
 export function getFullTree(ref: string): Promise<DocumentTree> {
   return serverApi().get<DocumentTree>(`documents/${encodeURIComponent(ref)}/tree`, { query: { depth: 20, include: 'blocks' } });
+}
+
+/** Only the artifact types that are study material (lib/documents/study), one small call each:
+ * the unfiltered list carries every section note and can be large. */
+export async function getStudyArtifacts(documentId: string): Promise<ArtifactListItem[]> {
+  const lists = await Promise.all(MATERIALS.map((m) => getArtifacts(documentId, { type: m.type })));
+  return lists.flat();
 }
 
 export async function getArtifacts(

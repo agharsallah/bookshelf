@@ -1,0 +1,62 @@
+---
+/**
+ * The switcher between a book's study material (brief, guide, flashcards, quiz, FAQ,
+ * quotes, glossary: `switcherItems`), the page you are on highlighted. Shared by the
+ * study pages and the brief and guide, so you can move between them from any one.
+ */
+import type { SwitchItem } from './study-page';
+
+interface Props {
+  items: SwitchItem[];
+}
+
+const { items } = Astro.props;
+---
+
+<nav class="switcher" aria-label="Study material">
+  <ul>
+    {
+      items.map((item) => (
+        <li>
+          <a href={item.href} aria-current={item.current ? 'page' : undefined} data-missing={item.missing ? '' : undefined}>
+            <span class={item.current ? 'marker' : undefined}>{item.label}</span>
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+</nav>
+
+<style>
+  ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-4);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-family: var(--font-ui);
+    font-size: var(--text-ui);
+  }
+
+  a {
+    display: inline-block;
+    padding-block: var(--space-1);
+    color: var(--ink-2);
+    font-weight: 560;
+    text-decoration: none;
+  }
+
+  a:hover {
+    color: var(--accent);
+  }
+
+  a[aria-current='page'] {
+    color: var(--ink);
+    font-weight: 650;
+  }
+
+  a[data-missing]:not([aria-current]) {
+    color: var(--ink-3);
+  }
+</style>

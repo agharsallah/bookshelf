@@ -9,7 +9,10 @@ import GuideSheet from '../../../components/guide/GuideSheet.astro';
 import { chapterLabel, chapterRows, glance, parseGuide, readableMap, unitOf } from '../../../components/guide/guide';
 import { Problem } from '../../../components/common/Problem';
 import { pickBest } from '../../../lib/documents/artifacts';
-import { getArtifacts, getDocument, getFullTree, load } from '../../../lib/documents/server';
+import StudySwitcher from '../../../components/study/StudySwitcher.astro';
+import { switcherItems } from '../../../components/study/study-page';
+import { getDocument, getFullTree, getStudyArtifacts, load } from '../../../lib/documents/server';
+import { availableMaterials } from '../../../lib/documents/study';
 import { readingUnits } from '../../../lib/documents/tree';
 import { prepareBlocks } from '../../../lib/prepare';
 
@@ -18,14 +21,14 @@ export const prerender = false;
 const ref = Astro.params.ref ?? '';
 const loaded = await load(async () => {
   const doc = await getDocument(ref);
-  const [guides, briefs] = await Promise.all([
-    getArtifacts(doc.id, { type: 'book_guide' }),
-    getArtifacts(doc.id, { type: 'book_brief', review: 'approved' }),
-  ]);
+  const study = await getStudyArtifacts(doc.id);
+  const items = switcherItems(doc.slug, availableMaterials(doc.slug, study), 'guide');
+  const guides = study.filter((a) => a.type === 'book_guide');
+  const briefs = study.filter((a) => a.type === 'book_brief' && a.review === 'approved');
   const best = pickBest(guides, 'book_guide', null);
   const guide = best ? parseGuide(best.artifact.body) : null;
   const hasBrief = briefs.length > 0;
-  if (!best || !guide) return { doc, hasBrief, sheet: null };
+  if (!best || !guide) return { doc, items, hasBrief, sheet: null };
   const [tree, sections] = await Promise.all([
     getFullTree(doc.slug),
     Promise.all(
@@ -39,6 +42,7 @@ const loaded = await load(async () => {
   const at = best.artifact.reviewed_at ?? best.artifact.created_at;
   return {
     doc,
+    items,
     hasBrief,
     sheet: {
       sections,
@@ -86,6 +90,9 @@ const data = loaded.ok ? loaded.value : null;
             </button>
           </span>
         </nav>
+        <div class="switch-bar">
+          <StudySwitcher items={data.items} />
+        </div>
         <GuideSheet
           slug={data.doc.slug}
           title={data.doc.title}
@@ -105,6 +112,7 @@ const data = loaded.ok ? loaded.value : null;
       </>
     ) : (
       <div class="empty">
+        <StudySwitcher items={data.items} />
         <p class="kind">Book guide</p>
         <h1>{data.doc.title} has no guide yet</h1>
         <p>
@@ -162,6 +170,14 @@ const data = loaded.ok ? loaded.value : null;
     cursor: pointer;
   }
 
+  /* The same switcher as the study pages, between the toolbar and the sheet. */
+  .switch-bar {
+    max-width: 68rem;
+    margin: 0 auto var(--space-5);
+    padding-block: var(--space-2);
+    border-block: 1px solid var(--rule);
+  }
+
   .empty {
     display: grid;
     gap: var(--space-3);
@@ -214,7 +230,8 @@ const data = loaded.ok ? loaded.value : null;
     :global(.masthead),
     :global(.colophon),
     :global(.skip-link),
-    .tools {
+    .tools,
+    .switch-bar {
       display: none !important;
     }
 

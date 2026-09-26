@@ -16,8 +16,8 @@ import StudyHeader from '../../../../components/study/StudyHeader.astro';
 import { parseFaq, parseFlashcards, parseGlossary, parseQuiz, parseQuotes } from '../../../../components/study/study-body';
 import { chapterParam, chapterScopes, emptyMessage, switcherItems } from '../../../../components/study/study-page';
 import { pickBest } from '../../../../lib/documents/artifacts';
-import { getArtifacts, getDocument, getOutline, load } from '../../../../lib/documents/server';
-import { availableMaterials, isStudyKind, MATERIALS, materialOf, studyHref } from '../../../../lib/documents/study';
+import { getDocument, getOutline, getStudyArtifacts, load } from '../../../../lib/documents/server';
+import { availableMaterials, isStudyKind, materialOf, studyHref } from '../../../../lib/documents/study';
 import { readingUnits } from '../../../../lib/documents/tree';
 
 export const prerender = false;
@@ -31,7 +31,7 @@ const chapter = material.bookOnly ? null : chapterParam(Astro.url.searchParams.g
 
 const loaded = await load(async () => {
   const doc = await getDocument(ref);
-  const artifacts = (await Promise.all(MATERIALS.map((m) => getArtifacts(doc.id, { type: m.type })))).flat();
+  const artifacts = await getStudyArtifacts(doc.id);
   const best = pickBest(artifacts, material.type, chapter);
   const anchors = material.bookOnly ? [] : chapterScopes(artifacts, material.type);
   const units = anchors.length > 0 ? readingUnits((await getOutline(doc.slug)).nodes) : [];

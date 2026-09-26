@@ -5,6 +5,7 @@
  * their own sets, a scope switch between the whole book and one chapter. The switch is a
  * plain GET form; with scripts it navigates as soon as you pick.
  */
+import StudySwitcher from './StudySwitcher.astro';
 import type { SwitchItem } from './study-page';
 
 interface Scope {
@@ -33,19 +34,7 @@ const current = items.find((i) => i.current);
     {title}<span class="visually-hidden">: {current?.label}</span>
   </h1>
   <div class="bar">
-    <nav aria-label="Study material">
-      <ul class="switch">
-        {
-          items.map((item) => (
-            <li>
-              <a href={item.href} aria-current={item.current ? 'page' : undefined} data-missing={item.missing ? '' : undefined}>
-                <span class={item.current ? 'marker' : undefined}>{item.label}</span>
-              </a>
-            </li>
-          ))
-        }
-      </ul>
-    </nav>
+    <StudySwitcher items={items} />
     {
       scopes.length > 0 && (
         <form class="scope" method="get" action={action} data-scope>
@@ -112,35 +101,6 @@ const current = items.find((i) => i.current);
     border-block: 1px solid var(--rule);
     font-family: var(--font-ui);
     font-size: var(--text-ui);
-  }
-
-  .switch {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-1) var(--space-4);
-    padding: 0;
-    list-style: none;
-  }
-
-  .switch a {
-    display: inline-block;
-    padding-block: var(--space-1);
-    color: var(--ink-2);
-    font-weight: 560;
-    text-decoration: none;
-  }
-
-  .switch a:hover {
-    color: var(--accent);
-  }
-
-  .switch a[aria-current='page'] {
-    color: var(--ink);
-    font-weight: 650;
-  }
-
-  .switch a[data-missing]:not([aria-current]) {
-    color: var(--ink-3);
   }
 
   .scope {

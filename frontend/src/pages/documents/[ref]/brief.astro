@@ -10,7 +10,10 @@ import { Problem } from '../../../components/common/Problem';
 import { serverApi } from '../../../lib/api/server';
 import type { DocumentPublic } from '../../../lib/api/types/documents';
 import { pickBest } from '../../../lib/documents/artifacts';
-import { getArtifacts, getDocument, load } from '../../../lib/documents/server';
+import StudySwitcher from '../../../components/study/StudySwitcher.astro';
+import { switcherItems } from '../../../components/study/study-page';
+import { getDocument, getStudyArtifacts, load } from '../../../lib/documents/server';
+import { availableMaterials } from '../../../lib/documents/study';
 import { prepareBlocks } from '../../../lib/prepare';
 
 export const prerender = false;
@@ -18,11 +21,13 @@ export const prerender = false;
 const ref = Astro.params.ref ?? '';
 const loaded = await load(async () => {
   const doc = await getDocument(ref);
-  const briefs = await getArtifacts(doc.id, { type: 'book_brief' });
+  const study = await getStudyArtifacts(doc.id);
+  const items = switcherItems(doc.slug, availableMaterials(doc.slug, study), 'brief');
+  const briefs = study.filter((a) => a.type === 'book_brief');
   const approved = pickBest(briefs.filter((b) => b.review === 'approved'), 'book_brief', null);
   const pending = briefs.some((b) => b.review === 'draft' || b.review === 'needs_review');
   const brief = approved ? parseBrief(approved.artifact.body) : null;
-  if (!approved || !brief) return { doc, pending, sheet: null };
+  if (!approved || !brief) return { doc, items, pending, sheet: null };
   const sections = await Promise.all(brief.sections.map(async (s) => ({ ...s, blocks: await prepareBlocks(s.blocks) })));
   const api = serverApi();
   const readNext: ReadNextItem[] = await Promise.all(
@@ -38,6 +43,7 @@ const loaded = await load(async () => {
   const at = approved.artifact.reviewed_at ?? approved.artifact.created_at;
   return {
     doc,
+    items,
     pending,
     sheet: {
       sections,
@@ -68,6 +74,9 @@ const data = loaded.ok ? loaded.value : null;
           <a href={`/documents/${data.doc.slug}`}>Back to the document</a>
           <button type="button" data-print>Print</button>
         </nav>
+        <div class="switch-bar">
+          <StudySwitcher items={data.items} />
+        </div>
         <BriefSheet
           slug={data.doc.slug}
           title={data.doc.title}
@@ -81,6 +90,7 @@ const data = loaded.ok ? loaded.value : null;
       </>
     ) : (
       <div class="empty">
+        <StudySwitcher items={data.items} />
         <p class="kind">Brief</p>
         <h1>{data.doc.title} has no approved brief yet</h1>
         <p>
@@ -126,6 +136,14 @@ const data = loaded.ok ? loaded.value : null;
     background: var(--paper-raised);
     color: var(--ink);
     cursor: pointer;
+  }
+
+  /* The same switcher as the study pages, between the toolbar and the sheet. */
+  .switch-bar {
+    max-width: 62rem;
+    margin: 0 auto var(--space-5);
+    padding-block: var(--space-2);
+    border-block: 1px solid var(--rule);
   }
 
   .empty {
@@ -180,7 +198,8 @@ const data = loaded.ok ? loaded.value : null;
     :global(.masthead),
     :global(.colophon),
     :global(.skip-link),
-    .tools {
+    .tools,
+    .switch-bar {
       display: none !important;
     }
 

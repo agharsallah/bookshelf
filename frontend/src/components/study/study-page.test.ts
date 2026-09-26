@@ -19,6 +19,20 @@ describe('switcherItems', () => {
     ]);
   });
 
+  it('marks the brief or guide as the current page when the switcher sits on their pages', () => {
+    const items = switcherItems('book', availableMaterials('book', artifacts), 'brief');
+    expect(items.map((i) => [i.label, i.current, i.href])).toEqual([
+      ['Brief', true, '/documents/book/brief'],
+      ['Flashcards', false, '/documents/book/study/flashcards'],
+      ['FAQ', false, '/documents/book/study/faq'],
+    ]);
+    expect(switcherItems('book', availableMaterials('book', artifacts), 'guide').find((i) => i.current)).toMatchObject({
+      label: 'Book guide',
+      missing: true,
+      href: '/documents/book/guide',
+    });
+  });
+
   it('keeps the current page in the list when it has nothing yet', () => {
     const items = switcherItems('book', availableMaterials('book', artifacts), 'quiz', null);
     expect(items.find((i) => i.current)).toMatchObject({ kind: 'quiz', missing: true, href: '/documents/book/study/quiz' });

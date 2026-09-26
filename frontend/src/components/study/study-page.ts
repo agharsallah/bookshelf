@@ -1,7 +1,7 @@
 /**
- * What the study page header needs, worked out from the document's artifacts: the
- * switcher between the materials of this scope, the chapters that have their own set,
- * and the wording of the empty state.
+ * What the study pages need, worked out from the document's artifacts: the switcher
+ * between the materials of this scope (shared with the brief and guide pages), the
+ * chapters that have their own set, and the wording of the empty state.
  */
 import type { ArtifactPublic, ArtifactType } from '../../lib/api/types/artifacts';
 import { compareAnchors } from '../../lib/documents/artifacts';
@@ -17,7 +17,12 @@ export interface SwitchItem {
 }
 
 /** The materials that exist, plus the current one even when it does not, in shelf order. */
-export function switcherItems(slug: string, available: readonly AvailableMaterial[], kind: StudyKind, chapter: string | null): SwitchItem[] {
+export function switcherItems(
+  slug: string,
+  available: readonly AvailableMaterial[],
+  kind: AvailableMaterial['kind'],
+  chapter: string | null = null,
+): SwitchItem[] {
   return MATERIALS.flatMap((material) => {
     const found = available.find((m) => m.kind === material.kind);
     const current = material.kind === kind;
