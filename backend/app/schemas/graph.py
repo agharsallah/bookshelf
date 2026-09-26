@@ -188,6 +188,22 @@ class EdgeDetail(BaseModel):
     origin: str
     evidence: list[Passage]
     created_at: datetime
+    rationale: Annotated[
+        str | None, Field(description="Why a skill proposed it (bridges, dedup).")
+    ] = None
+    confidence: str | None = None
+
+
+class BridgeRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    document_id: Annotated[
+        uuid.UUID | None, Field(description="One book's concepts; omitted: every book's.")
+    ] = None
+
+
+class BridgeQueued(BaseModel):
+    jobs: Annotated[list[uuid.UUID], Field(description="Bridge jobs queued (one per book).")]
 
 
 class MergeProposal(BaseModel):

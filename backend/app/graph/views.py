@@ -196,6 +196,8 @@ def edge_detail(session: Session, edge: Edge) -> EdgeDetail:
         origin=edge.origin,
         evidence=[passage_out(found[r]) for r in edge.evidence if r in found],
         created_at=edge.created_at,
+        rationale=edge.meta.get("rationale"),
+        confidence=edge.meta.get("confidence"),
     )
 
 

@@ -10,15 +10,26 @@ by hand (with evidence), or delete one.
 import uuid
 
 from fastapi import APIRouter, Depends, Query, Response, status
+from sqlmodel import select
 
 from app.api.deps import SessionDep
 from app.core.errors import NotFoundError
 from app.core.security import require_api_key
 from app.graph import atlas, curation, views
 from app.graph.neighborhood import MAX_DEPTH, neighborhood
+from app.graph.pipeline import bridge_spec
 from app.graph.refs import RefError, resolve_ref
-from app.models import Edge
-from app.schemas.graph import Atlas, EdgeCreate, EdgeDetail, EdgeUpdate, Neighborhood
+from app.jobs.queue import enqueue
+from app.models import Document, Edge
+from app.schemas.graph import (
+    Atlas,
+    BridgeQueued,
+    BridgeRequest,
+    EdgeCreate,
+    EdgeDetail,
+    EdgeUpdate,
+    Neighborhood,
+)
 
 router = APIRouter(tags=["graph"])
 
@@ -61,6 +72,24 @@ def get_atlas(
     `contains` (book → chapter), the stored relations folded up to chapters, and derived
     `shares` lines between chapters that lean on the same concepts."""
     return views.atlas_out(atlas.atlas(session, include_proposed=include_proposed))
+
+
+@router.post(
+    "/graph/bridges",
+    response_model=BridgeQueued,
+    status_code=status.HTTP_202_ACCEPTED,
+    dependencies=[Depends(require_api_key)],
+    summary="Ask how concepts relate across books (queues bridge jobs)",
+)
+def queue_bridges(body: BridgeRequest, session: SessionDep) -> BridgeQueued:
+    """One `relate-concepts` bridge job per book (or the one named). Each sends at most
+    `concept_bridge_max_pairs` cross-book pairs to the model; relations come back as
+    proposed edges, to accept or reject on the map. Queued again while one waits: a no-op."""
+    if body.document_id is not None and session.get(Document, body.document_id) is None:
+        raise NotFoundError(f"Document {body.document_id} does not exist.")
+    ids = [body.document_id] if body.document_id else list(session.exec(select(Document.id)).all())
+    jobs = [job.id for doc in ids if (job := enqueue(session, bridge_spec(doc, ["manual"])))]
+    return BridgeQueued(jobs=jobs)
 
 
 @router.get("/edges/{edge_id}", response_model=EdgeDetail, summary="An edge and its evidence")

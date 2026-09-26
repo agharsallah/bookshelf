@@ -10,6 +10,8 @@ query is a recursive CTE over it. Modules, bottom up:
                    a class of edges exactly a desired set, idempotently.
 * `apply`          a `concept_links` artifact → concepts + edges (and its withdrawal).
 * `diagram_seeds`  diagram nodes/arrows in figure descriptions → candidate edges (§8).
+* `semantic`       Qdrant vectors → echoing chapters and paraphrasing passages (seeds).
+* `bridges`        cross-book concept pairs → `relate-concepts` → proposed relations.
 * `mentions`       sections that name a known concept → `mentions` seed edges, across books.
 * `dedup`          embedding similarity + a model confirmation → proposed `same_as` edges.
 * `merge`          the human-confirmed merge that repoints edges to the survivor.
@@ -18,5 +20,5 @@ query is a recursive CTE over it. Modules, bottom up:
 * `evidence`       labels and passages for any endpoint or evidence ref, across documents.
 * `curation`       human writes: concepts, edges, review of proposals.
 * `views`          read models for the API (typeahead, concept pages, merge proposals).
-* `pipeline`       the orchestrator effect (`refresh_document`) and the dedup job body.
+* `pipeline`       the orchestrator effect (`refresh_document`), the dedup and bridge jobs.
 """

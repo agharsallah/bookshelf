@@ -256,7 +256,7 @@ def _refresh_graph(state: State) -> Effect:
 
 def link_finished(state: State, job: Job) -> Plan:
     """The link job's artifact (unless it waits in `needs_review`) enters the graph."""
-    if graph.is_dedup_job(job):  # merge proposals are for the review queue; nothing follows
+    if graph.is_graph_job(job):  # merge and bridge proposals wait for a human; nothing follows
         return Plan()
     return Plan(status=DocumentStatus.LINKED, effects=[_refresh_graph(state)])
 

@@ -121,6 +121,11 @@ class Settings(BaseSettings):
     # the most pairs one dedup job may send to the model.
     concept_dedup_threshold: Annotated[float, Field(gt=0, le=1)] = 0.88
     concept_dedup_max_pairs: Annotated[int, Field(ge=1)] = 20
+    # Bridges: cosine that nominates a cross-book pair for `relate-concepts` (below the dedup
+    # threshold: above it the pair is a merge question), and the most pairs one job may send.
+    # Measured on bge-small: cross-book concept pairs median 0.53, the closest ~0.67.
+    concept_bridge_threshold: Annotated[float, Field(gt=0, le=1)] = 0.62
+    concept_bridge_max_pairs: Annotated[int, Field(ge=1)] = 8
 
     # --- Guardrails: network --------------------------------------------
     # `NoDecode` keeps pydantic-settings from JSON-parsing these, so the validator

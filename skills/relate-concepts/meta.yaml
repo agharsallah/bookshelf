@@ -1,0 +1,11 @@
+name: relate-concepts
+version: 1
+description: Judge how two concepts from different books relate (supports, contradicts, extends, example of, or not at all), citing a passage from each; a relation becomes a proposed edge a human confirms.
+tier: reason
+job_kind: null          # utility skill: run inline by app/graph/bridges.py, never queued
+artifact_type: null     # the verdict lands as an edge, not an artifact
+scope: document
+selector: concept_pair  # built by app/graph/bridges.py, not a registered selector
+vision: false
+gates:
+  grounding_min: 0      # no spans: the output is a verdict, not content

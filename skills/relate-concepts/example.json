@@ -1,0 +1,7 @@
+{
+  "relation": "contradicts",
+  "direction": "a_to_b",
+  "confidence": "medium",
+  "rationale": "A1 praises shipping before things are ready and fixing in production; B1 says a system corrects itself only when a balancing loop slows it down, and B2 warns that pushing harder without that brake makes it overshoot.",
+  "evidence": ["A1", "B1", "B2"]
+}

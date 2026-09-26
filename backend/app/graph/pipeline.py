@@ -1,17 +1,19 @@
-"""Where the graph meets the pipeline: the orchestrator effect and the dedup job.
+"""Where the graph meets the pipeline: the orchestrator effect, and the dedup and bridge jobs.
 
     link_concepts job done · concept_links approved / edited / rejected
       → refresh_document: sync the document's effective concept_links (`apply`),
         re-seed its diagram edges and its mention edges (every other document's too
         when concepts came or went), and hand back a dedup job for the concepts it created
-        and, when concepts came or went, an embed that re-runs the semantic pass
+        and, when concepts came or went, an embed that re-runs the semantic pass and a
+        bridge job that asks how the new concepts relate to other books'
 
 Dedup is a job, not inline work: it embeds concepts and calls the model once per
 candidate pair, which must never run inside an HTTP request (an approval) or hold up the
 worker thread that finished the link job. There is no `dedup` JobKind without a
 migration, so it rides on `link_concepts` with `payload.mode = "dedup"` and an
 `input_hash` over the concept ids (the live-work dedupe index then keeps it apart from
-the document's link job). `app.pipeline.handlers.skills` routes it here.
+the document's link job). Bridges (`app.graph.bridges`) ride the same way with
+`payload.mode = "bridge"`. `app.pipeline.handlers.skills` routes both here.
 """
 
 import uuid
@@ -22,6 +24,7 @@ from sqlmodel import Session
 
 from app.core.config import get_settings
 from app.graph import apply, diagram_seeds, mentions
+from app.graph.bridges import run_bridges
 from app.graph.dedup import DenseEmbedder, run_dedup
 from app.jobs.queue import JobSpec
 from app.jobs.registry import HandlerResult, PermanentJobError
@@ -34,10 +37,32 @@ from app.pipeline.runner import ModelRunner
 DEDUP_MODE = "dedup"
 DEDUP_PRIORITY = 125  # after link_concepts (120): propose merges once the links are in
 SEMANTIC_PRIORITY = 128  # after dedup: paraphrases read the concepts the links left
+BRIDGE_MODE = "bridge"
+BRIDGE_PRIORITY = 130  # last: a bridge is judged on concepts that have settled
 
 
 def is_dedup_job(job: Job) -> bool:
     return job.kind is JobKind.LINK_CONCEPTS and job.payload.get("mode") == DEDUP_MODE
+
+
+def is_bridge_job(job: Job) -> bool:
+    return job.kind is JobKind.LINK_CONCEPTS and job.payload.get("mode") == BRIDGE_MODE
+
+
+def is_graph_job(job: Job) -> bool:
+    """A `link_concepts` job that proposes edges (dedup, bridges) rather than linking a book."""
+    return is_dedup_job(job) or is_bridge_job(job)
+
+
+def bridge_spec(document_id: uuid.UUID, key: Sequence[str] = ()) -> JobSpec:
+    """Ask how this book's concepts relate to other books'. `key` separates requests."""
+    return JobSpec(
+        kind=JobKind.LINK_CONCEPTS,
+        document_id=document_id,
+        input_hash=input_hash("bridge", "1", {"document": str(document_id), "key": sorted(key)}),
+        payload={"mode": BRIDGE_MODE},
+        priority=BRIDGE_PRIORITY,
+    )
 
 
 def dedup_spec(document_id: uuid.UUID, concept_ids: Sequence[uuid.UUID]) -> JobSpec | None:
@@ -63,6 +88,8 @@ def refresh_document(session: Session, document_id: uuid.UUID) -> list[JobSpec]:
         mentions.seed_all(session, exclude=document_id)
         if session.get(Document, document_id) is not None:
             specs.append(semantic_spec(document_id))
+            if applied.created:
+                specs.append(bridge_spec(document_id, [str(c) for c in applied.created]))
     return specs
 
 
@@ -130,5 +157,51 @@ def run_dedup_job(
             "mode": DEDUP_MODE,
             "proposals": proposals,
             "proposed": sum(1 for v in verdicts if v.same),
+        },
+    )
+
+
+def run_bridge_job(
+    session: Session,
+    job: Job,
+    *,
+    runner: ModelRunner,
+    embedder: DenseEmbedder | None = None,
+    skills_dir: Path | None = None,
+) -> HandlerResult:
+    """Handler body: propose cross-book relations for pairs touching the job's document.
+
+    Metered and pausable like dedup: each verdict is a CLI run on the document's ceiling."""
+    from app.pipeline.execution import SKILL_JOB_KINDS  # execution imports the graph
+
+    settings = get_settings()
+    document = session.get(Document, job.document_id) if job.document_id else None
+    if document is None:
+        raise PermanentJobError("bridge jobs need an existing document_id")
+    ceiling.refuse_if_paused(session, document)
+    runner = ceiling.metered(
+        runner, session, job, document, SKILL_JOB_KINDS, settings.max_runs_per_document
+    )
+    if embedder is None:
+        from app.retrieval.embedding import get_embedder  # lazy: loads FastEmbed
+
+        embedder = get_embedder()
+    verdicts = run_bridges(
+        session,
+        runner=runner,
+        embedder=embedder,
+        skills_dir=skills_dir or settings.skills_dir,
+        threshold=float(job.payload.get("threshold", settings.concept_bridge_threshold)),
+        ceiling=settings.concept_dedup_threshold,
+        limit=int(job.payload.get("limit", settings.concept_bridge_max_pairs)),
+        document_id=document.id,
+    )
+    related = [v for v in verdicts if v.relation not in (None, "none")]
+    return HandlerResult(
+        state=JobState.DONE if verdicts else JobState.SKIPPED,
+        result={
+            "mode": BRIDGE_MODE,
+            "verdicts": [v.as_json() for v in verdicts],
+            "proposed": len(related),
         },
     )

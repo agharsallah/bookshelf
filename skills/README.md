@@ -67,6 +67,7 @@ verdict where it belongs. Its interactive section needs no inputs endpoint or im
 | Skill | Run by | Input | Output |
 |---|---|---|---|
 | confirm-merge | `app/graph/dedup.py` (dedup job) | `pair: {similarity, a, b}`, each side `{canonical, aliases, kind, blurb, documents}` | `{same, confidence, rationale, survivor: a\|b}` → a `same_as` edge, proposed (same) or rejected |
+| relate-concepts | `app/graph/bridges.py` (bridge job) | `pair: {similarity, a, b}`, each side `{canonical, kind, blurb, book, passages: [{id, heading, text}]}` | `{relation, direction, confidence, rationale, evidence: [A1, B2…]}` → a proposed edge citing both books, or a rejected one for `none` |
 
 ## SKILL.md
 
