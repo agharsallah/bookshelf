@@ -4,8 +4,8 @@ import uuid
 
 from fastapi import APIRouter, Depends, Query, status
 
-from app.api.deps import LimitDep, OffsetDep, SessionDep
-from app.api.pipeline import SkillsDirDep
+from app.api.deps import LimitDep, OffsetDep, SessionDep, SettingsDep
+from app.api.pipeline import SkillsDirDep, pipeline_errors
 from app.core.errors import ConflictError, NotFoundError
 from app.core.security import require_api_key
 from app.jobs import queue
@@ -65,9 +65,12 @@ def get_job(job_id: uuid.UUID, session: SessionDep) -> JobPublic:
     dependencies=[Depends(require_api_key)],
     summary="Enqueue a job",
 )
-def create_job(body: JobCreate, session: SessionDep, skills_dir: SkillsDirDep) -> JobAccepted:
+def create_job(
+    body: JobCreate, session: SessionDep, skills_dir: SkillsDirDep, settings: SettingsDep
+) -> JobAccepted:
     """Queue a (re-)run. `deduplicated` is true when an identical job is already queued:
-    same kind and scope, and the same `skill` (derive) or `note_id` (structure_note)."""
+    same kind and scope, and the same `skill` and `params` (derive), `note_id`
+    (structure_note), or script and voices (narrate)."""
     request = job_service.JobRequest(
         kind=body.kind,
         document_id=body.document_id,
@@ -75,8 +78,14 @@ def create_job(body: JobCreate, session: SessionDep, skills_dir: SkillsDirDep) -
         skill=body.skill,
         note_id=body.note_id,
         force=body.force,
+        params=body.params,
+        voices=tuple(body.voices) if body.voices is not None else None,
+        artifact_id=body.artifact_id,
     )
-    spec = job_service.job_spec(session, request, load_catalogue(skills_dir))
+    with pipeline_errors():
+        spec = job_service.job_spec(
+            session, request, load_catalogue(skills_dir), voices_dir=settings.voices_dir
+        )
     job, deduplicated = job_service.enqueue_or_live(session, spec)
     return JobAccepted(job=public_job(session, job), deduplicated=deduplicated)
 

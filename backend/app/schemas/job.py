@@ -17,6 +17,14 @@ class JobCreate(BaseModel):
                 {"kind": "summarize", "document_id": "…", "anchor": "ch03"},
                 {"kind": "derive", "document_id": "…", "anchor": "ch03", "skill": "make-quiz"},
                 {"kind": "structure_note", "document_id": "…", "note_id": "…", "force": True},
+                {
+                    "kind": "derive",
+                    "document_id": "…",
+                    "skill": "write-audio-summary",
+                    "params": {"minutes": 15, "format": "conversation", "language": "en"},
+                    "voices": ["alice", "frank"],
+                },
+                {"kind": "narrate", "document_id": "…", "artifact_id": "…", "voices": ["maya"]},
             ]
         },
     )
@@ -39,6 +47,26 @@ class JobCreate(BaseModel):
         uuid.UUID | None,
         Field(default=None, description="Required for `structure_note`: a note of the document."),
     ]
+    params: Annotated[
+        dict[str, str | int] | None,
+        Field(
+            default=None,
+            description="Run parameters of a skill that declares them (`GET /skills` `params`).",
+        ),
+    ]
+    voices: Annotated[
+        list[Annotated[str, Field(max_length=80)]] | None,
+        Field(
+            default=None,
+            max_length=4,
+            description="Narrated skills and `narrate`: a voice id (`GET /audio/voices`) per "
+            "speaker, speaker 1 first. Omitted: the format's default cast.",
+        ),
+    ]
+    artifact_id: Annotated[
+        uuid.UUID | None,
+        Field(default=None, description="Required for `narrate`: the script to voice."),
+    ]
 
 
 class JobPublic(BaseModel):
@@ -50,6 +78,10 @@ class JobPublic(BaseModel):
     anchor: str | None
     skill: str | None
     skill_version: str | None
+    payload: Annotated[
+        dict[str, Any],
+        Field(description="What the job was asked for: `params`, `voices`, `artifact_id`…"),
+    ] = {}
     state: JobState
     attempts: int
     error: str | None

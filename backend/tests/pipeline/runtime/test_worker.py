@@ -11,11 +11,14 @@ import pytest
 from sqlalchemy import text
 from sqlmodel import Session, select
 
+from app.core.config import get_settings
 from app.db.session import engine
 from app.jobs import queue
+from app.jobs.narration import NarrateRunner
 from app.jobs.queue import JobSpec
 from app.jobs.registry import HandlerResult, JobContext, PermanentJobError
 from app.jobs.worker import Worker, autodiscover, kind_filters, parse_kinds
+from app.main import _job_worker
 from app.models import Artifact, Job
 from app.models.enums import JobKind, JobState, RunMode
 from app.pipeline import interactive
@@ -199,9 +202,10 @@ def test_excluded_kinds_stay_queued_while_the_rest_run(session: Session):
 @pytest.mark.parametrize(
     ("only", "embedded", "expected_exclude"),
     [
-        (None, True, [JobKind.EMBED]),  # the API owns embedded Qdrant
-        (None, False, []),  # a Qdrant server: the worker embeds
-        ([JobKind.EMBED], True, []),  # explicit `--kinds embed` wins
+        (None, True, [JobKind.NARRATE, JobKind.EMBED]),  # the API owns embedded Qdrant
+        (None, False, [JobKind.NARRATE]),  # a Qdrant server: the worker embeds
+        ([JobKind.EMBED], True, [JobKind.NARRATE]),  # explicit `--kinds embed` wins
+        ([JobKind.NARRATE], False, []),  # explicit `--kinds narrate` wins too
     ],
 )
 def test_worker_cli_leaves_embed_to_the_api_only_for_embedded_qdrant(
@@ -214,3 +218,28 @@ def test_worker_cli_parsesparse_kindss_and_rejects_unknown_kinds():
     assert parse_kinds("parse, summarize") == [JobKind.PARSE, JobKind.SUMMARIZE]
     with pytest.raises(argparse.ArgumentTypeError):
         parse_kinds("parse,teleport")
+
+
+def test_the_api_narrate_runner_claims_narrate_jobs_only_one_at_a_time(session: Session):
+    queue.enqueue(session, JobSpec(kind=JobKind.NARRATE, anchor="episode"))
+    queue.enqueue(session, JobSpec(kind=JobKind.EXPORT, anchor="bundle"))
+    handlers = {kind: lambda ctx: HandlerResult() for kind in (JobKind.NARRATE, JobKind.EXPORT)}
+    runner = NarrateRunner(poll_seconds=0.01, handlers=handlers)
+
+    assert runner.worker.run(once=True) == 1
+    jobs = jobs_by_anchor(session)
+    assert (jobs["episode"].state, jobs["bundle"].state) == (JobState.DONE, JobState.QUEUED)
+    assert runner.worker.concurrency == 1
+
+
+@pytest.mark.parametrize("qdrant_url", [None, "http://qdrant:6333"])
+def test_the_api_pipeline_worker_leaves_narrate_to_its_own_runner(qdrant_url):
+    settings = get_settings().model_copy(update={"api_worker": True, "qdrant_url": qdrant_url})
+
+    background = _job_worker(settings)
+
+    assert background is not None
+    kinds = background.worker.kinds()
+    assert JobKind.NARRATE not in kinds
+    assert JobKind.DERIVE in kinds
+    assert (JobKind.EMBED in kinds) is (qdrant_url is not None)

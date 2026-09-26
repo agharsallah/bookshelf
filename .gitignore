@@ -188,6 +188,7 @@ htmlcov/
 library/*
 !library/.gitkeep
 .media/
+.audio/
 .qdrant/
 exports/
 skills/.outbox/

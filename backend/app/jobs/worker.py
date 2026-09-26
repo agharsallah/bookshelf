@@ -322,10 +322,14 @@ def parse_kinds(value: str) -> list[JobKind]:
 def kind_filters(
     only: list[JobKind] | None, exclude: list[JobKind], *, qdrant_embedded: bool
 ) -> tuple[list[JobKind] | None, list[JobKind]]:
-    """The CLI's `(only, exclude)`, plus `embed` excluded when the API owns embedded Qdrant.
+    """The CLI's `(only, exclude)`, plus `embed` excluded when the API owns embedded Qdrant,
+    and `narrate`, which the API runs one at a time (`app.jobs.narration`).
 
-    An explicit `--kinds embed` wins: e.g. a one-off rebuild while the API is down.
+    An explicit `--kinds embed` (or `narrate`) wins: e.g. a one-off rebuild while the API
+    is down.
     """
+    if JobKind.NARRATE not in (only or []) and JobKind.NARRATE not in exclude:
+        exclude = [*exclude, JobKind.NARRATE]
     if qdrant_embedded and JobKind.EMBED not in (only or []) and JobKind.EMBED not in exclude:
         exclude = [*exclude, JobKind.EMBED]
         logger.warning(

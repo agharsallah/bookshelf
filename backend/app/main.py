@@ -24,6 +24,7 @@ from app.core.ratelimit import RateLimitMiddleware
 from app.core.security import API_KEY_HEADER
 from app.jobs.background import BackgroundWorker
 from app.jobs.embedded import EmbedRunner
+from app.jobs.narration import NarrateRunner
 from app.jobs.worker import Worker, autodiscover
 from app.models.enums import JobKind
 from app.retrieval.client import close_client
@@ -33,11 +34,12 @@ logger = logging.getLogger(__name__)
 
 def _job_worker(settings: Settings) -> BackgroundWorker | None:
     """The API's own pipeline worker (`app.jobs.background`): every kind with a handler,
-    except `embed` while embedded Qdrant's runner owns it."""
+    except `embed` while embedded Qdrant's runner owns it, and `narrate`, which runs on a
+    slot of its own (`app.jobs.narration`)."""
     if not settings.api_worker:
         return None
     autodiscover()
-    exclude = [JobKind.EMBED] if settings.qdrant_url is None else []
+    exclude = [JobKind.NARRATE, *([JobKind.EMBED] if settings.qdrant_url is None else [])]
     worker = Worker(exclude=exclude, label="api")
     return BackgroundWorker(worker, name="job-worker")
 
@@ -69,6 +71,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.embed_runner = runner
     if runner is not None:
         runner.start()
+    narrator = NarrateRunner() if settings.api_narrate_runner else None
+    app.state.narrate_runner = narrator
+    if narrator is not None:
+        narrator.start()
     job_worker = _job_worker(settings)
     app.state.job_worker = job_worker
     if job_worker is not None:
@@ -79,6 +85,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         restore_signals()
         if job_worker is not None:
             job_worker.stop(abandon=True)
+        if narrator is not None:
+            narrator.stop(abandon=True)  # back to the queue; the speech model is killed
         if runner is not None:
             runner.stop()
         close_client()  # release the embedded store's lock before a reload reopens it

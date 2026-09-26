@@ -7,6 +7,7 @@ from fastapi import APIRouter
 
 from app.api.routes import (
     artifacts,
+    audio,
     concepts,
     documents,
     exports,
@@ -32,6 +33,7 @@ api_router.include_router(job_events.router)  # before jobs: /jobs/stream vs /jo
 api_router.include_router(jobs.router)
 api_router.include_router(exports.router)
 api_router.include_router(media.router)
+api_router.include_router(audio.router)
 api_router.include_router(artifacts.router)
 api_router.include_router(skills.router)
 api_router.include_router(search.router)

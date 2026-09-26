@@ -29,6 +29,7 @@ from dataclasses import dataclass, field
 
 from sqlmodel import Session, col, func, select
 
+from app.audio import narration
 from app.graph import pipeline as graph
 from app.jobs import queue
 from app.jobs.queue import JobSpec
@@ -230,6 +231,19 @@ def brief_finished(state: State, job: Job) -> Plan:
     return brief_approved(state, brief)
 
 
+def derive_finished(state: State, job: Job) -> Plan:
+    """A narrated skill's script (new, or an unchanged input's existing one) is voiced by
+    the cast the job asked for (`payload.voices`, set by `POST /jobs`)."""
+    voices = job.payload.get("voices")
+    made = (job.result or {}).get("artifact_id")
+    if not isinstance(voices, list) or not isinstance(made, str):
+        return Plan()
+    script = state.session.get(Artifact, uuid.UUID(made))
+    if script is None or script.type is not ArtifactType.AUDIO_SUMMARY:
+        return Plan()
+    return Plan(jobs=[narration.narrate_spec(script, [str(v) for v in voices])])
+
+
 def embed_finished(state: State, job: Job) -> Plan:
     return Plan(jobs=[state.spec(JobKind.LINK_CONCEPTS)], status=DocumentStatus.INDEXED)
 
@@ -292,6 +306,7 @@ AFTER_JOB: dict[JobKind, JobRule] = {
     JobKind.DISTIL_SECTION: section_finished,
     JobKind.DISTIL_CHAPTER: chapter_finished,
     JobKind.BRIEF: brief_finished,
+    JobKind.DERIVE: derive_finished,
     JobKind.EMBED: embed_finished,
     JobKind.LINK_CONCEPTS: link_finished,
 }

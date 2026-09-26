@@ -3,10 +3,13 @@
 import uuid
 from collections.abc import Mapping
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 from sqlmodel import Session, select
 
+from app.audio import narration
+from app.core.config import get_settings
 from app.core.errors import NotFoundError
 from app.jobs import queue
 from app.jobs.queue import JobSpec
@@ -54,6 +57,9 @@ class JobRequest:
     skill: str | None = None
     note_id: uuid.UUID | None = None
     force: bool = False
+    params: Mapping[str, str | int] | None = None
+    voices: tuple[str, ...] | None = None
+    artifact_id: uuid.UUID | None = None
 
 
 def _check_skill(request: JobRequest, catalogue: Mapping[str, Skill]) -> str | None:
@@ -91,22 +97,66 @@ def _check_note(session: Session, request: JobRequest) -> Note | None:
     return note
 
 
-def job_spec(session: Session, request: JobRequest, catalogue: Mapping[str, Skill]) -> JobSpec:
+def _run_params(
+    request: JobRequest, skill: Skill | None, voices_dir: Path
+) -> tuple[dict[str, Any], str | None]:
+    """A parameterised skill's payload additions (`params`, and a narrated one's `voices`)
+    and its episode key. `ParamError` for bad params, `InvalidInputError` for a bad cast."""
+    if skill is None or not skill.meta.params:
+        if request.params:
+            raise InvalidInputError("This job takes no `params`.", field="body.params")
+        if request.voices is not None:
+            raise InvalidInputError("Only narrated skills take `voices`.", field="body.voices")
+        return {}, None
+    params = skill.meta.resolve_params(request.params)
+    extra: dict[str, Any] = {"params": params}
+    if skill.meta.narrate:
+        extra["voices"] = narration.cast_for(voices_dir, request.voices, params)
+    elif request.voices is not None:
+        raise InvalidInputError("Only narrated skills take `voices`.", field="body.voices")
+    return extra, skill.meta.variant_of(params)
+
+
+def job_spec(
+    session: Session,
+    request: JobRequest,
+    catalogue: Mapping[str, Skill],
+    *,
+    voices_dir: Path | None = None,
+) -> JobSpec:
     """Validate a manual job request and build its spec.
 
     `input_hash` doubles as the queue's dedupe key, so re-runs of different skills
-    (`skill:<name>`) or notes (`note:<id>`) on the same scope are distinct live jobs.
+    (`skill:<name>`, `skill:<name>:<variant>` with params), notes (`note:<id>`) or
+    narrations (`narrate:<script>:<voices>`) on the same scope are distinct live jobs.
     """
     if request.document_id is not None and session.get(Document, request.document_id) is None:
         raise NotFoundError(f"Document {request.document_id} does not exist.")
+    voices_dir = voices_dir or get_settings().voices_dir
+    if request.kind is JobKind.NARRATE:
+        return narration.requested_spec(
+            session,
+            document_id=request.document_id,
+            artifact_id=request.artifact_id,
+            voices=request.voices,
+            catalogue=catalogue,
+            voices_dir=voices_dir,
+            force=request.force,
+        )
     skill = _check_skill(request, catalogue)
     note = _check_note(session, request)
+    extra, variant = _run_params(request, catalogue.get(skill) if skill else None, voices_dir)
     payload: dict[str, Any] = {"force": True} if request.force else {}
+    payload.update(extra)
     if note is not None:
         payload["note_id"] = str(note.id)
         key: str | None = f"note:{note.id}"
+    elif skill is not None:
+        key = f"skill:{skill}" + (f":{variant}" if variant else "")
+        if "voices" in extra:  # the cast rides along to the narration this run queues
+            key += ":" + "+".join(extra["voices"])
     else:
-        key = f"skill:{skill}" if skill is not None else None
+        key = None
     return JobSpec(
         kind=request.kind,
         document_id=request.document_id,

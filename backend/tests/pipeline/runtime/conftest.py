@@ -125,6 +125,66 @@ def write_skill(root: Path, name: str, **meta: Any) -> Path:
     return directory
 
 
+# A narrated, parameterised skill shaped like skills/write-audio-summary, but book-wide over
+# the raw blocks, so it needs no distillations to run. Not in `SKILLS`: only the tests that
+# ask for it (`write_audio_skill`) see a skill with params in their catalogue.
+AUDIO_SKILL = "write-audio-summary"
+AUDIO_SCHEMA = {
+    "type": "object",
+    "required": ["title", "speakers", "sections"],
+    "properties": {
+        "title": {"type": "string"},
+        "speakers": {"type": "array", "minItems": 1, "maxItems": 4},
+        "sections": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["title", "turns"],
+                "properties": {
+                    "turns": {
+                        "type": "array",
+                        "items": {"type": "object", "required": ["speaker", "text", "cites"]},
+                    }
+                },
+            },
+        },
+    },
+}
+AUDIO_META: dict[str, Any] = {
+    "job_kind": "derive",
+    "artifact_type": "audio_summary",
+    "scope": "document",
+    "selector": "scope_blocks",
+    "tier": "reason",
+    "params": {
+        "minutes": {"choices": [5, 15, 30], "default": 15},
+        "format": {"choices": ["narrator", "conversation", "panel"], "default": "conversation"},
+        "language": {"choices": ["en", "zh"], "default": "en"},
+    },
+    "variant": "{minutes}m-{format}-{language}",
+    "narrate": True,
+    "gates": {"grounding_min": 0.5, "words_per_minute": [115, 185]},
+}
+
+
+def write_audio_skill(root: Path, **overrides: Any) -> Path:
+    return write_skill(root, AUDIO_SKILL, **{**AUDIO_META, "schema": AUDIO_SCHEMA, **overrides})
+
+
+def turn(speaker: int, text: str, *cites: str) -> dict[str, Any]:
+    return {"speaker": speaker, "text": text, "cites": list(cites)}
+
+
+def section(title: str, *turns: dict[str, Any]) -> dict[str, Any]:
+    return {"title": title, "turns": list(turns)}
+
+
+def script(*sections: dict[str, Any], speakers: int = 2, title: str = "Stocks in brief"):
+    """An `audio_summary` body: `speakers` cast members, then `sections` of turns."""
+    cast = [{"role": f"host {n}", "persona": "Explains with stories."} for n in range(speakers)]
+    return {"title": title, "speakers": cast, "sections": list(sections)}
+
+
 @pytest.fixture
 def skills_dir(tmp_path: Path) -> Path:
     root = tmp_path / "skills"

@@ -12,6 +12,8 @@ from sqlalchemy import case, func, null
 from sqlmodel import Session, col, select
 from sqlmodel.sql.expression import SelectOfScalar
 
+from app.audio import store as audio_store
+from app.core.config import get_settings
 from app.core.errors import ConflictError, NotFoundError
 from app.jobs.queue import JobSpec
 from app.models import Artifact, Document, Job, Node, Note
@@ -175,7 +177,8 @@ def delete_document(session: Session, document: Document) -> None:
     Derived stores follow (D1): the document's part of the idea graph (its concept links'
     and diagram seeds' edges, and concepts only they kept alive) is withdrawn in the same
     transaction, and its search points, which live outside Postgres, are purged by an
-    `embed` job without a document (so it survives the cascade).
+    `embed` job without a document (so it survives the cascade). Its narrations, on disk,
+    go with it.
     """
     from app.graph import pipeline as graph  # the graph imports services; keep this one-way
 
@@ -184,6 +187,7 @@ def delete_document(session: Session, document: Document) -> None:
     session.flush()  # the cascade is gone before the graph is re-synced without it
     graph.refresh_document(session, document_id)  # commits the delete with the withdrawal
     enqueue_or_live(session, purge_job(document_id))
+    audio_store.remove_document(get_settings().audio_dir, document_id)  # its narrations
 
 
 def purge_job(document_id: uuid.UUID) -> JobSpec:

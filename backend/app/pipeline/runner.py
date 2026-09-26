@@ -276,26 +276,38 @@ class ClaudeCliRunner:
             )
         except OSError as exc:
             raise RunnerError(f"cannot start {self.claude_bin!r}: {exc}") from exc
-        with _LIVE_LOCK:
-            _LIVE.add(proc)
         try:
-            stdout, stderr = proc.communicate(prompt, timeout=self.timeout_seconds)
+            stdout, stderr = communicate_tracked(proc, prompt, timeout=self.timeout_seconds)
         except subprocess.TimeoutExpired as exc:
-            _kill_group(proc)
-            proc.communicate()
             raise RunnerError(f"claude timed out after {self.timeout_seconds}s") from exc
-        finally:
-            with _LIVE_LOCK:
-                _LIVE.discard(proc)
         if proc.returncode != 0:
             tail = (stderr or stdout or "")[-_STDERR_TAIL:].strip()
             raise RunnerError(f"claude exited with {proc.returncode}: {tail}")
         return stdout
 
 
+def communicate_tracked(
+    proc: subprocess.Popen[str], stdin: str, *, timeout: float
+) -> tuple[str, str]:
+    """`proc.communicate`, with `proc` known to `terminate_all` while it runs. On a timeout
+    the whole process group is killed before `TimeoutExpired` propagates. For any long
+    subprocess a job waits on (the CLI here, the speech model in `app.audio.runner`)."""
+    with _LIVE_LOCK:
+        _LIVE.add(proc)
+    try:
+        return proc.communicate(stdin, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        _kill_group(proc)
+        proc.communicate()
+        raise
+    finally:
+        with _LIVE_LOCK:
+            _LIVE.discard(proc)
+
+
 def terminate_all() -> int:
-    """Kill every running `claude` process tree this process started; their `run` calls
-    fail with a `RunnerError`. Returns how many were killed."""
+    """Kill every tracked process tree this process started (`claude`, the speech model);
+    their `run` calls fail. Returns how many were killed."""
     with _LIVE_LOCK:
         procs = list(_LIVE)
     for proc in procs:

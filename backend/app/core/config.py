@@ -59,6 +59,9 @@ class Settings(BaseSettings):
     media_dir: Path = REPO_ROOT / ".media"  # derived: figure crops, rendered pages
     exports_dir: Path = REPO_ROOT / "exports"  # derived: .md / .json / .csv bundles
     skills_dir: Path = REPO_ROOT / "skills"
+    audio_dir: Path = REPO_ROOT / ".audio"  # derived: narrations (app/audio/store.py)
+    # Reference clips: built-in samples are cached here, your own go in `custom/`.
+    voices_dir: Path = REPO_ROOT / ".audio" / "voices"
 
     # --- Qdrant (§10) -----------------------------------------------------
     # With a URL: remote cluster. Without: embedded on-disk store at `qdrant_path`.
@@ -97,6 +100,21 @@ class Settings(BaseSettings):
     effort_explore: Effort = Effort.MEDIUM
     effort_distil: Effort = Effort.MEDIUM
     effort_reason: Effort = Effort.MEDIUM
+
+    # --- Speech runtime (app/audio) ----------------------------------------
+    # Narrations run `narrate_script` with `uv run --script`: VibeVoice in its own env.
+    uv_bin: str = "uv"
+    narrate_script: Path = REPO_ROOT / "scripts" / "narrate" / "vibevoice.py"
+    narrate_model: str = "vibevoice/VibeVoice-1.5B-hf"  # or vibevoice/VibeVoice-7B-hf
+    narrate_device: Literal["auto", "cuda", "mps", "cpu"] = "auto"
+    # More diffusion steps: cleaner audio, slower. Guidance: how closely it follows the voice.
+    narrate_diffusion_steps: Annotated[int, Field(ge=2, le=50)] = 10
+    narrate_guidance_scale: Annotated[float, Field(ge=1, le=3)] = 1.3
+    narrate_seed: int = 42
+    narrate_timeout_seconds: Annotated[int, Field(gt=0)] = 6 * 3600
+    # Narration holds gigabytes of model on the GPU, so the API runs `narrate` jobs on one
+    # slot of their own (`app.jobs.narration`) and the pipeline workers leave them alone.
+    api_narrate_runner: bool = True
 
     # --- Idea graph (§11) ---------------------------------------------------
     # Concept dedup: cosine similarity that nominates a pair for the model to confirm, and

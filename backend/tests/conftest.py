@@ -49,10 +49,13 @@ os.environ.update(
         "BOOKSHELF_LIBRARY_DIR": str(_TMP / "library"),
         "BOOKSHELF_MEDIA_DIR": str(_TMP / "media"),
         "BOOKSHELF_EXPORTS_DIR": str(_TMP / "exports"),
+        "BOOKSHELF_AUDIO_DIR": str(_TMP / "audio"),
+        "BOOKSHELF_VOICES_DIR": str(_TMP / "voices"),
         "BOOKSHELF_QDRANT_URL": "",
         "BOOKSHELF_QDRANT_PATH": str(_TMP / "qdrant"),
         "BOOKSHELF_API_EMBED_RUNNER": "false",  # tests drive jobs themselves
         "BOOKSHELF_API_WORKER": "false",
+        "BOOKSHELF_API_NARRATE_RUNNER": "false",  # it would voice queued scripts for real
         "BOOKSHELF_CLAUDE_BIN": "/nonexistent/claude-must-be-faked-in-tests",
         # A developer `.env` may put tiers on other models or efforts; tests assert the ladder.
         "BOOKSHELF_MODEL_EXPLORE": "",
