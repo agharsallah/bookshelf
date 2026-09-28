@@ -28,6 +28,8 @@ export interface SourceBlockProps {
   hasBlockNote: boolean;
   /** Section depth below the unit, for heading levels. */
   level: number;
+  /** Extra marks for the left margin (a paper's claim marks, paper/usePaperMode). */
+  margin?: ReactNode;
 }
 
 export const TEXT_KINDS = new Set(['paragraph', 'list', 'quote', 'aside']);
@@ -210,7 +212,7 @@ function body(node: TreeNode, marks: readonly Mark[], salient: readonly Salient[
   }
 }
 
-function SourceBlockImpl({ node, marks, salient = NO_SALIENT, page, codeHtml, hasBlockNote, level }: SourceBlockProps) {
+function SourceBlockImpl({ node, marks, salient = NO_SALIENT, page, codeHtml, hasBlockNote, level, margin }: SourceBlockProps) {
   const role = roleOf(node);
   return (
     <div
@@ -229,6 +231,7 @@ function SourceBlockImpl({ node, marks, salient = NO_SALIENT, page, codeHtml, ha
           p. {page}
         </span>
       ) : null}
+      {margin}
       {body(node, marks, salient, codeHtml, level)}
       <button type="button" className={styles.handle} data-copy-anchor={node.anchor} aria-label={`Copy link to ${node.anchor}`}>
         #

@@ -4,7 +4,8 @@
  * anchor (the first real chapter when there is none), its artifacts, the book's notes
  * and vocabulary (concepts and glossary, for the what-matters marks), pre-renders code
  * and math, the chapter's recalls and whether it was ever opened (for the prediction
- * card), and hands everything to the reader island.
+ * card), and hands everything to the reader island. A paper also brings its passes, unit
+ * roles, claim marks, notation and review questions (components/reader/paper/load.ts).
  */
 import BaseLayout from '../../../../layouts/BaseLayout.astro';
 import Reader from '../../../../components/reader/Reader';
@@ -22,6 +23,8 @@ import { getArtifacts, getDocument, getOutline, load } from '../../../../lib/doc
 import { defaultUnit, flatten, readingUnits, unitFor } from '../../../../lib/documents/tree';
 import { highlightCode } from '../../../../lib/highlight';
 import { prepareBlocks } from '../../../../lib/prepare';
+import { renderInlineMath } from '../../../../lib/katex';
+import { loadPaperReading } from '../../../../components/reader/paper/load';
 
 export const prerender = false;
 
@@ -36,7 +39,7 @@ const loaded = await load(async () => {
   if (!unit) return { doc, units, missing: true as const };
   const api = serverApi();
   const recallsPath = `documents/${encodeURIComponent(doc.slug)}/recalls`;
-  const [subtree, artifacts, notes, conceptLinks, glossary, recalls, positions] = await Promise.all([
+  const [subtree, artifacts, notes, conceptLinks, glossary, recalls, positions, paper] = await Promise.all([
     api.get<NodeSubtree>(`nodes/${doc.slug}/${unit.anchor}`),
     getArtifacts(doc.id, { anchor_prefix: unit.anchor }),
     // The whole book's notes: the chapter's are shown in place, all of them in the notes list.
@@ -46,6 +49,9 @@ const loaded = await load(async () => {
     // Remembering it: best effort, the chapter reads without them.
     api.get<RecallPublic[]>(recallsPath, { query: { unit: unit.anchor } }).catch(() => []),
     api.get<ReadingPosition[]>(`documents/${encodeURIComponent(doc.slug)}/reading`).catch(() => null),
+    doc.genre === 'paper'
+      ? loadPaperReading({ api, slug: doc.slug, unit: unit.anchor, units, artifactsOf: (type) => getArtifacts(doc.id, { type }), renderMath: renderInlineMath })
+      : Promise.resolve(null),
   ]);
   // Unknown (the call failed) counts as read: better no prediction card than a wrong one.
   const unread = positions !== null && !positions.some((p) => p.unit === unit.anchor);
@@ -70,7 +76,7 @@ const loaded = await load(async () => {
         if (html) codeHtml[node.anchor] = html;
       }),
   );
-  return { doc, units, missing: false as const, unit: subtree.node, truncated: subtree.truncated, panes, notes: notes.items, codeHtml, lexicon, modelMarks, recalls, unread };
+  return { doc, units, missing: false as const, unit: subtree.node, truncated: subtree.truncated, panes, notes: notes.items, codeHtml, lexicon, modelMarks, recalls, unread, paper };
 });
 
 if (!loaded.ok && loaded.notFound) Astro.response.status = 404;
@@ -118,6 +124,7 @@ const title = data && !data.missing ? `${data.unit.heading ?? data.unit.anchor},
         unread={data.unread}
         initialAnchor={requested}
         truncated={data.truncated}
+        paper={data.paper}
       />
     )
   }

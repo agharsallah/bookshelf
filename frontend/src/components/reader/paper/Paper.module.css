@@ -1,0 +1,515 @@
+/*
+ * The reader's paper layer: the three-pass control, folded sections, the end-of-pass
+ * card, the notation drawer and the claim marks with their popover. Only tokens.
+ * The pass number is the one loud element (the end card's numeral); the rest stays
+ * quiet so the paper's own text leads.
+ */
+
+/* ── Toolbar control ── */
+.passOff {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.ticks {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.ticks > span {
+  inline-size: 0.4rem;
+  block-size: 0.9rem;
+  border: 1px solid var(--rule-strong);
+  border-radius: 1px;
+}
+
+.ticks > span[data-done] {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.passControl {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.passSteps {
+  display: inline-flex;
+}
+
+.passSteps button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-inline-size: 2rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.passSteps button:not(:first-child) {
+  margin-inline-start: -1px;
+}
+
+.passSteps button:first-child {
+  border-start-end-radius: 0;
+  border-end-end-radius: 0;
+}
+
+.passSteps button:last-child {
+  border-start-start-radius: 0;
+  border-end-start-radius: 0;
+}
+
+.passSteps button:not(:first-child, :last-child) {
+  border-radius: 0;
+}
+
+/* The pass being read: filled, like a step you are standing on. */
+.passSteps button[aria-pressed='true'] {
+  z-index: 1;
+  border-color: var(--accent) !important;
+  background: var(--accent);
+  color: var(--on-accent) !important;
+}
+
+/* A done pass: a short rule under its number. */
+.passSteps button[data-done]::after {
+  content: '';
+  position: absolute;
+  inset-inline: 30%;
+  inset-block-end: 3px;
+  block-size: 2px;
+  border-radius: 1px;
+  background: currentcolor;
+}
+
+.passName {
+  font-weight: 500;
+}
+
+.passLeave {
+  inline-size: 2rem;
+  padding: 0 !important;
+  font-size: var(--text-md);
+  line-height: 1;
+}
+
+/* ── Folded sections ── */
+.fold {
+  position: relative;
+  padding: 0.1rem 2.25rem 0.1rem 3.25rem;
+  scroll-margin-block: 7rem 3rem;
+}
+
+.fold + *,
+* + .fold {
+  margin-block-start: var(--reader-gap, var(--space-4));
+}
+
+.fold:focus {
+  outline: none;
+}
+
+.foldHeading {
+  color: var(--ink-2);
+  font-size: 1.444em;
+  font-weight: 520;
+}
+
+h3.foldHeading {
+  font-size: 1.167em;
+}
+
+h4.foldHeading {
+  font-size: 1em;
+}
+
+.fold[data-folded] .foldHeading::after {
+  content: '';
+  display: block;
+  inline-size: 3rem;
+  block-size: 0;
+  margin-block-start: var(--space-2);
+  border-block-start: 2px dotted var(--rule-strong);
+}
+
+.foldMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-3);
+  margin-block-start: var(--space-2);
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.foldOpen,
+.linkButton {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+}
+
+.foldOpen:hover,
+.linkButton:hover {
+  color: var(--accent-strong);
+}
+
+/* Passes 1 and 2 put the pictures forward: figures and tables sit on a raised leaf. */
+:global([data-passes='1']) [data-source-anchor][data-kind='figure'] > figure,
+:global([data-passes='1']) [data-source-anchor][data-kind='table'] > figure,
+:global([data-passes='2']) [data-source-anchor][data-kind='figure'] > figure,
+:global([data-passes='2']) [data-source-anchor][data-kind='table'] > figure {
+  padding: var(--space-3);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-m);
+  background: var(--paper-raised);
+  box-shadow: var(--shadow-lift);
+}
+
+:global([data-passes='1']) [data-source-anchor][data-kind='figure'] figcaption,
+:global([data-passes='1']) [data-source-anchor][data-kind='table'] figcaption,
+:global([data-passes='2']) [data-source-anchor][data-kind='figure'] figcaption,
+:global([data-passes='2']) [data-source-anchor][data-kind='table'] figcaption {
+  color: var(--ink);
+}
+
+/* ── End of a pass ── */
+.endCard {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    'n title'
+    'n lede'
+    'n body';
+  gap: var(--space-2) var(--space-5);
+  margin-block: var(--space-7) var(--space-5);
+  padding: var(--space-5) var(--space-5) var(--space-5) var(--space-4);
+  border-block-start: 2px solid var(--ink);
+  font-family: var(--font-ui);
+  text-align: start;
+}
+
+.endCard > :not(.endStep, .endTitle, .endLede) {
+  grid-column: 2;
+}
+
+.endStep {
+  grid-area: n;
+  color: var(--accent);
+  font-family: var(--font-read);
+  font-size: var(--text-3xl);
+  font-weight: 600;
+  line-height: 0.85;
+  font-variant-numeric: lining-nums;
+}
+
+.endTitle {
+  grid-area: title;
+  font-family: var(--font-read);
+  font-size: var(--text-lg);
+  line-height: var(--leading-tight);
+}
+
+.endLede {
+  grid-area: lede;
+  color: var(--ink-2);
+  font-size: var(--text-ui);
+}
+
+.skimForm {
+  display: grid;
+  gap: var(--space-4);
+  margin-block-start: var(--space-3);
+}
+
+.field {
+  display: grid;
+  gap: var(--space-2);
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+}
+
+.field input,
+.field textarea {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-m);
+  background: var(--paper-raised);
+  color: var(--ink);
+  font-family: var(--font-read);
+  font-size: var(--text-base);
+}
+
+.field textarea {
+  resize: vertical;
+  line-height: var(--leading-read);
+}
+
+.field input:focus-visible,
+.field textarea:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+.worth {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font-size: var(--text-sm);
+}
+
+.worth legend {
+  margin-block-end: var(--space-2);
+  color: var(--ink-2);
+}
+
+.worth label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-pill);
+  background: var(--paper-raised);
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+.worth label[data-checked] {
+  border-color: var(--accent);
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.worth input {
+  accent-color: var(--accent);
+}
+
+.worth label:has(input:focus-visible) {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+.cardActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin-block-start: var(--space-3);
+}
+
+.doneStamp {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.doneStamp::before {
+  content: '✓';
+}
+
+.prompts {
+  margin-block-start: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-inline-start: 3px solid var(--tone-question);
+  background: color-mix(in oklab, var(--tone-question) 7%, var(--paper));
+}
+
+.prompts h3 {
+  margin-block-end: var(--space-2);
+  color: var(--tone-question);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.prompts ol {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding-inline-start: 1.25rem;
+  font-family: var(--font-read);
+  font-size: var(--text-base);
+  line-height: var(--leading-read);
+}
+
+.error {
+  color: var(--tone-important);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.quiet {
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+/* ── Notation drawer ── */
+.notation {
+  position: fixed;
+  inset-block: calc(var(--masthead, 3.5rem) + var(--toolbar, 4.5rem)) 0;
+  inset-inline-end: 0;
+  z-index: 20;
+  overflow-y: auto;
+  inline-size: min(22rem, 100vw);
+  padding: var(--space-4) var(--space-5) var(--space-6);
+  border-inline-start: 1px solid var(--rule);
+  background: var(--paper-raised);
+  box-shadow: var(--shadow-pop);
+  font-family: var(--font-ui);
+}
+
+.notationHead {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  margin-block-end: var(--space-4);
+}
+
+.notationHead h2 {
+  font-family: var(--font-read);
+  font-size: var(--text-md);
+}
+
+.draft {
+  color: var(--tone-caution);
+  font-size: var(--text-xs);
+}
+
+.close {
+  margin-inline-start: auto;
+  inline-size: 2rem;
+  block-size: 2rem;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-m);
+  background: var(--paper);
+  color: var(--ink-2);
+  font-size: var(--text-md);
+  line-height: 1;
+  cursor: pointer;
+}
+
+/* ── Claim marks ── */
+.claimMark {
+  position: absolute;
+  inset-block-start: 1.5rem;
+  inset-inline-start: 0;
+  display: grid;
+  justify-items: start;
+  gap: 1px;
+  max-inline-size: 3rem;
+  padding: 2px 4px;
+  border: 0;
+  border-inline-start: 2px solid var(--ink-3);
+  border-radius: 0;
+  background: none;
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.claimMark:hover,
+.claimMark[aria-expanded='true'] {
+  border-inline-start-color: var(--accent);
+  background: var(--accent-wash);
+  color: var(--ink);
+}
+
+.claimMark:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+.claimKeys {
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.claimTally {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 3px;
+  font-weight: 600;
+}
+
+.claimTally [data-relation='supports'] {
+  --relation: var(--accent);
+}
+
+.claimTally [data-relation='contradicts'] {
+  --relation: var(--tone-important);
+}
+
+.claimTally [data-relation='extends'] {
+  --relation: var(--tone-remember);
+}
+
+.claimTally > span {
+  color: var(--relation);
+}
+
+.claimPopover {
+  position: fixed;
+  z-index: 40;
+  overflow-y: auto;
+  max-block-size: min(32rem, 70vh);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-m);
+  background: var(--paper-raised);
+  box-shadow: var(--shadow-pop);
+  font-family: var(--font-ui);
+}
+
+.claimPopover:focus {
+  outline: none;
+}
+
+.claim + .claim {
+  margin-block-start: var(--space-4);
+  padding-block-start: var(--space-3);
+  border-block-start: 1px solid var(--rule);
+}
+
+.claimText {
+  margin-block: var(--space-2);
+  color: var(--ink);
+  font-family: var(--font-read);
+  font-size: var(--text-base);
+  line-height: var(--leading-read);
+}
+
+@media (max-width: 40rem) {
+  .endCard {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: 'n' 'title' 'lede' 'body';
+    padding-inline: var(--space-3);
+  }
+
+  .endCard > :not(.endStep, .endTitle, .endLede) {
+    grid-column: 1;
+  }
+
+  .endStep {
+    font-size: var(--text-xl);
+  }
+}

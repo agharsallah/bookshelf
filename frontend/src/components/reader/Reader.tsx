@@ -48,6 +48,8 @@ import { useFollowUrl } from './useFollowUrl';
 import { useReaderEvents } from './useReaderEvents';
 import { useSalienceMode } from './useSalienceMode';
 import { useSavePosition } from './useSavePosition';
+import { activePass, usePaperMode } from './paper/usePaperMode';
+import type { PaperReading } from './paper/types';
 import { useAttention } from '../../lib/activity/useAttention';
 import { useAutoHide, useFocusChrome, useFullscreen, useMediaQuery } from './useReaderLayout';
 import styles from './Reader.module.css';
@@ -70,6 +72,8 @@ export interface ReaderProps {
   unread?: boolean;
   initialAnchor: string | null;
   truncated: boolean;
+  /** A paper's passes, unit roles, claim marks, notation and review questions; absent for books. */
+  paper?: PaperReading | null;
 }
 
 /** Where the contents rail fits beside the text, and where one pane shows at a time (Reader.module.css). */
@@ -86,7 +90,7 @@ function firstTab(panes: Panes): Tab {
 const NO_TERMS: LexTerm[] = [];
 const NO_RECALLS: RecallPublic[] = [];
 
-export function Reader({ document: doc, unit, units, panes, notes: initialNotes, codeHtml, lexicon = NO_TERMS, modelMarks = null, recalls = NO_RECALLS, unread = false, initialAnchor, truncated }: ReaderProps) {
+export function Reader({ document: doc, unit, units, panes, notes: initialNotes, codeHtml, lexicon = NO_TERMS, modelMarks = null, recalls = NO_RECALLS, unread = false, initialAnchor, truncated, paper: paperData = null }: ReaderProps) {
   const sourceRef = useRef<HTMLDivElement>(null);
   const paneRef = useRef<HTMLDivElement>(null);
   const [tab, setTab] = useState<Tab>(() => firstTab(panes));
@@ -165,7 +169,8 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
     sectionHeadings: navSections.filter((s) => s.level === 1).map((s) => s.heading),
     recalls,
     gradable: canGrade(panes, modelMarks),
-    askPrediction: unread && prefs.predict,
+    // Three-pass mode asks its own questions (pass 1's card): no chapter prediction meanwhile.
+    askPrediction: unread && prefs.predict && activePass(paperData, prefs, doc.id) === null,
     nodes,
     onShowGaps: () => setPrefs({ salience: true }),
   });
@@ -201,6 +206,8 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
   const index = units.findIndex((u) => u.anchor === unit.anchor);
   const prev = units[index - 1] ?? null;
   const next = units[index + 1] ?? null;
+  // Papers only: three-pass mode and claim marks (paper/usePaperMode); inert for a book.
+  const paper = usePaperMode({ paper: paperData, document: doc, unit, flat, prefs, setPrefs, sourceRef, readHref, onCite: (a) => onCite(a), initialAnchor });
 
   useFollowUrl(active, readHref, initialAnchor);
   useSavePosition(doc.slug, unit.anchor, active, progress);
@@ -215,9 +222,10 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
   const onCite = useCallback(
     (anchor: string) => {
       setView('source');
+      if (paper.reveal(anchor)) return;
       if (!sourceRef.current || !revealBlock(sourceRef.current, anchor)) void navigate(readHref(anchor));
     },
-    [readHref],
+    [readHref, paper.reveal],
   );
   const { openFigure, openDrawing, open: lightboxOpen, lightbox } = useFigureLightbox(figures, onCite);
 
@@ -251,7 +259,7 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
   useReaderEvents({
     sourceRef,
     paneRef,
-    anchors,
+    anchors: paper.anchors(anchors),
     activeAnchor: active,
     linkFor: readHref,
     prevHref: prev ? readHref(prev.anchor) : null,
@@ -315,6 +323,9 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
         break;
       case 'recall':
         recall.open();
+        break;
+      case 'passes':
+        paper.toggle();
         break;
       case 'help':
         setHelpOpen(true);
@@ -382,6 +393,7 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
       data-salience={prefs.salience ? '' : undefined}
       data-spotlight={prefs.spotlight ? '' : undefined}
       data-recall={recall.hidden ? '' : undefined}
+      data-passes={paper.pass ?? undefined}
       style={prefsVars(prefs, canDragMeasure(layout)) as CSSProperties}
     >
       <ReaderToolbar
@@ -420,6 +432,7 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
         progress={progress}
         timeLeft={timeLeft}
         onHelp={() => setHelpOpen(true)}
+        extra={paper.toolbar}
       />
 
       <div className={styles.columns} inert={recall.hidden}>
@@ -428,7 +441,7 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
         <article className={styles.source} ref={sourceRef} aria-label="Text">
           {truncated ? <p className={styles.notice}>This chapter is very long; only its first 2,000 blocks are shown.</p> : null}
           {flat.length === 0 ? <p className={styles.notice}>This chapter has no text blocks.</p> : null}
-          {flat.map(({ node }, i) => (
+          {paper.render(({ node }, i) => (
             <SourceBlock
               key={node.anchor}
               node={node}
@@ -438,6 +451,7 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
               codeHtml={codeHtml[node.anchor]}
               hasBlockNote={blockNotes.has(node.anchor)}
               level={node.depth - unit.depth}
+              margin={paper.margin(node.anchor)}
             />
           ))}
           {canDragMeasure(layout) ? (
@@ -451,6 +465,7 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
           ) : null}
           {salience.meter}
           <footer className={styles.end}>
+            {paper.footer}
             {recall.footer}
             {next ? (
               <a href={readHref(next.anchor)}>Next: {next.heading}</a>
@@ -498,6 +513,7 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
       {lightbox}
       {salience.card}
       {recall.overlay}
+      {paper.overlay}
       {listening ? (
         <ChapterListen
           documentId={doc.id}
@@ -512,7 +528,7 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
         />
       ) : null}
 
-      <ShortcutHelp open={helpOpen} shortcuts={READER_SHORTCUTS} onClose={() => setHelpOpen(false)} />
+      <ShortcutHelp open={helpOpen} shortcuts={paper.shortcuts(READER_SHORTCUTS)} onClose={() => setHelpOpen(false)} />
 
       <div ref={composerHost}>
       {composer ? (

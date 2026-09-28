@@ -40,10 +40,12 @@ export interface ReaderToolbarProps {
   progress: number;
   timeLeft: string;
   onHelp: () => void;
+  /** A document-specific control at the head of the controls (a paper's passes). */
+  extra?: ReactNode;
 }
 
 export function ReaderToolbar(props: ReaderToolbarProps) {
-  const { book, chapter, prev, next, readHref, view, onView, locked, onLock, contents, settings, listen, layout, hidden, progress, timeLeft, onHelp } = props;
+  const { book, chapter, prev, next, readHref, view, onView, locked, onLock, contents, settings, listen, layout, hidden, progress, timeLeft, onHelp, extra } = props;
   const { fullscreen } = layout;
   return (
     <div className={styles.toolbar} data-hidden={hidden ? '' : undefined}>
@@ -57,6 +59,7 @@ export function ReaderToolbar(props: ReaderToolbarProps) {
         <h1 className={styles.chapter}>{chapter}</h1>
       </div>
       <div className={styles.controls}>
+        {extra}
         <button ref={contents.button} type="button" className={styles.contentsButton} aria-expanded={contents.open} onClick={contents.onToggle}>
           Contents
         </button>

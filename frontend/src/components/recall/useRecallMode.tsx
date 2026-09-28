@@ -33,7 +33,7 @@ export interface RecallModeOptions {
   recalls: RecallPublic[];
   /** It has marks or a distillation to grade against. */
   gradable: boolean;
-  /** Offer a prediction: the chapter is unread and the reader wants to be asked. */
+  /** Offer a prediction: the chapter is unread and the reader wants to be asked (read on every render). */
   askPrediction: boolean;
   nodes: readonly TreeNode[];
   /** The gaps were asked for: turn the what-matters marks on. */
@@ -59,7 +59,9 @@ type Phase =
 export function useRecallMode(options: RecallModeOptions): RecallMode {
   const { document: doc, unit, sectionHeadings, gradable, askPrediction, nodes, onShowGaps, api = browserApi } = options;
   const [recalls, setRecalls] = useState(options.recalls);
-  const [predicting, setPredicting] = useState(() => askPrediction && gradable && !hasPrediction(options.recalls));
+  const [offered, setPredicting] = useState(() => askPrediction && gradable && !hasPrediction(options.recalls));
+  // Read live: a caller may stop asking while the card is up (a paper's three-pass mode turned on).
+  const predicting = offered && askPrediction;
   const [prediction, setPrediction] = useState('');
   const [savingPrediction, setSavingPrediction] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);

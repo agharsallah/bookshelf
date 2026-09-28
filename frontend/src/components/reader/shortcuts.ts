@@ -18,6 +18,7 @@ export type ReaderAction =
   | 'smaller'
   | 'listen'
   | 'recall'
+  | 'passes'
   | 'help';
 
 const ACTION_KEYS: Readonly<Record<string, ReaderAction>> = {
@@ -34,6 +35,8 @@ const ACTION_KEYS: Readonly<Record<string, ReaderAction>> = {
   '-': 'smaller',
   l: 'listen',
   r: 'recall',
+  // Papers only (paper/usePaperMode): three-pass mode on or off.
+  p: 'passes',
   '?': 'help',
 };
 

@@ -45,6 +45,8 @@ export interface ReaderPrefs {
   spotlight: boolean;
   /** Before an unread chapter, guess what it argues from its headings. */
   predict: boolean;
+  /** Papers read in three-pass mode: document id → the pass on (absent: the mode is off). */
+  paperPasses: Readonly<Record<string, 1 | 2 | 3>>;
 }
 
 export const DEFAULT_PREFS: Readonly<ReaderPrefs> = Object.freeze({
@@ -63,7 +65,11 @@ export const DEFAULT_PREFS: Readonly<ReaderPrefs> = Object.freeze({
   salience: false,
   spotlight: false,
   predict: true,
+  paperPasses: Object.freeze({}),
 });
+
+/** At most this many papers remember their pass; the oldest entries go first. */
+export const MAX_PAPER_PASSES = 200;
 
 export const PREFS_STORAGE_KEY = 'bookshelf:reader';
 
@@ -94,6 +100,15 @@ export function clampSize(size: number): number {
   return Math.min(SIZES.length - 1, Math.max(0, Math.round(size)));
 }
 
+/** A stored document id → pass map, keeping only sane entries (and the newest `MAX_PAPER_PASSES`). */
+function paperPasses(value: unknown): Record<string, 1 | 2 | 3> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  const entries = Object.entries(value as Record<string, unknown>).filter(
+    (entry): entry is [string, 1 | 2 | 3] => entry[1] === 1 || entry[1] === 2 || entry[1] === 3,
+  );
+  return Object.fromEntries(entries.slice(-MAX_PAPER_PASSES));
+}
+
 /** Stored JSON → preferences; anything missing or invalid takes its default. */
 export function parsePrefs(raw: string | null): ReaderPrefs {
   let data: Record<string, unknown> = {};
@@ -120,6 +135,7 @@ export function parsePrefs(raw: string | null): ReaderPrefs {
     salience: flag(data.salience, d.salience),
     spotlight: flag(data.spotlight, d.spotlight),
     predict: flag(data.predict, d.predict),
+    paperPasses: paperPasses(data.paperPasses),
   };
 }
 
