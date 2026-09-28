@@ -17,6 +17,7 @@ export type ReaderAction =
   | 'bigger'
   | 'smaller'
   | 'listen'
+  | 'recall'
   | 'help';
 
 const ACTION_KEYS: Readonly<Record<string, ReaderAction>> = {
@@ -32,6 +33,7 @@ const ACTION_KEYS: Readonly<Record<string, ReaderAction>> = {
   '=': 'bigger',
   '-': 'smaller',
   l: 'listen',
+  r: 'recall',
   '?': 'help',
 };
 
@@ -55,6 +57,7 @@ export const READER_SHORTCUTS: readonly Shortcut[] = [
   { keys: ['s'], label: 'Spotlight the block being read' },
   { keys: ['+', '−'], label: 'Larger / smaller text' },
   { keys: ['l'], label: 'Listen: the chapter read aloud' },
+  { keys: ['r'], label: 'Recall the chapter with the text out of sight' },
   { keys: ['?'], label: 'Show these shortcuts' },
   { keys: ['Esc'], label: 'Close, or leave focus mode' },
 ];

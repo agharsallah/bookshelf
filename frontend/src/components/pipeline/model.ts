@@ -115,4 +115,5 @@ export const KIND_LABELS: Record<JobKind, string> = {
   derive: 'Derive',
   export: 'Export',
   narrate: 'Record audio',
+  grade_recall: 'Grade recall',
 };

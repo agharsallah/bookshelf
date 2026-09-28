@@ -406,3 +406,8 @@
     --masthead: 4.85rem;
   }
 }
+
+/* Recall and prediction: the text is out of sight (and out of reach) under the sheet. */
+.reader[data-recall] .columns {
+  visibility: hidden;
+}

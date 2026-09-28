@@ -43,6 +43,8 @@ export interface ReaderPrefs {
   salience: boolean;
   /** Dim every block but the one being read. */
   spotlight: boolean;
+  /** Before an unread chapter, guess what it argues from its headings. */
+  predict: boolean;
 }
 
 export const DEFAULT_PREFS: Readonly<ReaderPrefs> = Object.freeze({
@@ -60,6 +62,7 @@ export const DEFAULT_PREFS: Readonly<ReaderPrefs> = Object.freeze({
   semantic: false,
   salience: false,
   spotlight: false,
+  predict: true,
 });
 
 export const PREFS_STORAGE_KEY = 'bookshelf:reader';
@@ -116,6 +119,7 @@ export function parsePrefs(raw: string | null): ReaderPrefs {
     semantic: flag(data.semantic, d.semantic),
     salience: flag(data.salience, d.salience),
     spotlight: flag(data.spotlight, d.spotlight),
+    predict: flag(data.predict, d.predict),
   };
 }
 

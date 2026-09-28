@@ -1,0 +1,205 @@
+/*
+ * Closed-book recall and predictions. The sheet covers the reader completely (the text
+ * underneath is also hidden and inert, Reader.module.css): what you write comes from
+ * memory. Statuses are told apart by label and edge weight, not colour alone.
+ */
+
+.sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  overflow-y: auto;
+  padding: var(--space-7) var(--space-4);
+  background: var(--paper);
+}
+
+.inner {
+  display: grid;
+  gap: var(--space-5);
+  max-inline-size: 44rem;
+  margin-inline: auto;
+}
+
+.eyebrow {
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.title {
+  font-family: var(--font-read);
+  font-size: var(--text-2xl);
+  line-height: var(--leading-tight);
+}
+
+.lede {
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  line-height: var(--leading-ui);
+}
+
+.sections {
+  display: grid;
+  gap: var(--space-1);
+  padding-inline-start: var(--space-5);
+  color: var(--ink-2);
+  font-family: var(--font-read);
+}
+
+.field {
+  display: grid;
+  gap: var(--space-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+}
+
+.field textarea {
+  min-block-size: 16rem;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-m);
+  background: var(--paper-raised);
+  color: var(--ink);
+  font-family: var(--font-read);
+  font-size: var(--text-md);
+  line-height: var(--leading-read);
+  resize: vertical;
+}
+
+.field textarea:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+.compact textarea {
+  min-block-size: 7rem;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.spacer {
+  flex: 1;
+}
+
+.hint {
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.status {
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+}
+
+.problem {
+  color: var(--tone-important);
+  font-family: var(--font-ui);
+}
+
+/* The result */
+
+.score {
+  font-family: var(--font-read);
+  font-size: var(--text-lg);
+}
+
+.panel {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-l);
+  background: var(--paper-raised);
+}
+
+.panelLabel {
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.panel p {
+  font-family: var(--font-read);
+  line-height: var(--leading-read);
+}
+
+.group {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.groupTitle {
+  font-family: var(--font-ui);
+  font-size: var(--text-md);
+  font-weight: 650;
+}
+
+.ideas {
+  display: grid;
+  gap: var(--space-3);
+  padding: 0;
+  list-style: none;
+}
+
+.idea {
+  display: grid;
+  gap: var(--space-1);
+  padding-inline-start: var(--space-3);
+  border-inline-start: 3px solid var(--rule);
+}
+
+.idea[data-status='missed'] {
+  border-inline-start: 5px solid var(--sal-core);
+}
+
+.idea[data-status='partial'] {
+  border-inline-start-style: dashed;
+  border-inline-start-color: var(--sal-key);
+}
+
+.feedback {
+  font-family: var(--font-ui);
+  line-height: var(--leading-ui);
+}
+
+.passage {
+  color: var(--ink-2);
+  font-family: var(--font-read);
+  font-size: var(--text-sm);
+  line-height: var(--leading-read);
+}
+
+/* The reader's end-of-chapter offer */
+
+.offer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+  margin-block-end: var(--space-4);
+}
+
+.last {
+  color: var(--ink-3);
+  font-size: var(--text-sm);
+}
+
+.link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}

@@ -38,7 +38,8 @@ export interface Salient {
   why: string;
   /** A definition or blurb (terms). */
   gloss: string | null;
-  source: 'heuristic' | 'model';
+  /** Inferred here, chosen by mark-salience, or an idea your last recall missed. */
+  source: 'heuristic' | 'model' | 'recall';
 }
 
 /** How much the chapter's notes lean on each passage. */

@@ -139,6 +139,12 @@ export function ReadingSettings({ prefs, onChange, onClose, opener }: ReadingSet
           on={prefs.spotlight}
           onToggle={() => onChange((p) => ({ spotlight: !p.spotlight }))}
         />
+        <AidSwitch
+          label="Predict before reading"
+          hint="Guess what an unread chapter argues, from its headings"
+          on={prefs.predict}
+          onToggle={() => onChange((p) => ({ predict: !p.predict }))}
+        />
       </div>
       <div className={styles.footer}>
         <button
@@ -184,7 +190,7 @@ function TierLegend() {
 }
 
 /** A labelled on/off switch for the reading aids. */
-function AidSwitch({ label, hint, shortcut, on, onToggle }: { label: string; hint: string; shortcut: string; on: boolean; onToggle: () => void }) {
+function AidSwitch({ label, hint, shortcut, on, onToggle }: { label: string; hint: string; shortcut?: string; on: boolean; onToggle: () => void }) {
   return (
     <button type="button" role="switch" aria-checked={on} className={styles.switch} onClick={onToggle}>
       <span className={styles.track} aria-hidden="true" />
@@ -192,7 +198,7 @@ function AidSwitch({ label, hint, shortcut, on, onToggle }: { label: string; hin
         <span>{label}</span>
         <small>{hint}</small>
       </span>
-      <kbd aria-hidden="true">{shortcut}</kbd>
+      {shortcut ? <kbd aria-hidden="true">{shortcut}</kbd> : null}
     </button>
   );
 }

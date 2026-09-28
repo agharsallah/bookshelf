@@ -20,6 +20,12 @@ export interface SalienceCardProps {
   onClose: () => void;
 }
 
+const SOURCE_LABELS: Record<Salient['source'], string> = {
+  model: 'Chosen by Claude for this chapter',
+  heuristic: 'Inferred from what the notes cite',
+  recall: 'From your last recall of this chapter',
+};
+
 const WIDTH = 320;
 const GAP = 12;
 
@@ -62,7 +68,7 @@ export function SalienceCard({ salient, x, y, kept, saving, onKeep, onNext, onCl
       {salient.tier === 'term' ? <p className={styles.cardTitle}>{salient.title}</p> : null}
       {salient.gloss ? <p className={styles.cardGloss}>{salient.gloss}</p> : null}
       {salient.why ? <p className={styles.cardWhy}>{salient.why}</p> : null}
-      <p className={styles.cardSource}>{salient.source === 'model' ? 'Chosen by Claude for this chapter' : 'Inferred from what the notes cite'}</p>
+      <p className={styles.cardSource}>{SOURCE_LABELS[salient.source]}</p>
       <div className={styles.cardActions}>
         {kept ? (
           <span className={styles.kept}>In your highlights</span>

@@ -17,6 +17,7 @@ export const JOB_KINDS = [
   'derive',
   'export',
   'narrate',
+  'grade_recall',
 ] as const;
 export type JobKind = (typeof JOB_KINDS)[number];
 

@@ -6,9 +6,12 @@
  * or annotate it; your notes list covers the chapter or the whole book. The URL follows the block in
  * view so any position can be shared, and your place in the chapter is saved as you read.
  * Listen (l) opens a player that reads the chapter aloud and marks the passage it is on.
+ * Recall (r, or at the chapter's end) hides the text while you write what you remember,
+ * and an unread chapter first asks what you expect it to argue (components/recall).
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import type { NoteDetail } from '../../lib/api/types/notes';
+import type { RecallPublic } from '../../lib/api/types/recalls';
 import type { TreeNode } from '../../lib/api/types/documents';
 import type { HighlightColor } from '../../lib/contract';
 import { toCodePointRange, toUtf16Range } from '../../lib/codepoints';
@@ -17,6 +20,8 @@ import { useAnchorSync } from '../../lib/hooks/useAnchorSync';
 import { ChapterListen } from '../listen/ChapterListen';
 import { NoteComposer, type ComposerTarget } from '../notes/NoteComposer';
 import { NotesPanel, type NotesScope } from '../notes/NotesPanel';
+import { canGrade } from '../recall/grade';
+import { useRecallMode } from '../recall/useRecallMode';
 import { useNotes } from '../notes/useNotes';
 import { DistillPane, type Tab } from './DistillPane';
 import { markSpeaking, revealBlock, sourceBlock, SOURCE_ATTR } from './dom';
@@ -57,6 +62,10 @@ export interface ReaderProps {
   lexicon?: LexTerm[];
   /** The mark-salience skill's marks for this chapter, placed on the text; null when it has not run. */
   modelMarks?: Salient[] | null;
+  /** The chapter's recalls and predictions, newest first. */
+  recalls?: RecallPublic[];
+  /** Never opened before: an unread chapter may ask for a prediction first. */
+  unread?: boolean;
   initialAnchor: string | null;
   truncated: boolean;
 }
@@ -73,8 +82,9 @@ function firstTab(panes: Panes): Tab {
 }
 
 const NO_TERMS: LexTerm[] = [];
+const NO_RECALLS: RecallPublic[] = [];
 
-export function Reader({ document: doc, unit, units, panes, notes: initialNotes, codeHtml, lexicon = NO_TERMS, modelMarks = null, initialAnchor, truncated }: ReaderProps) {
+export function Reader({ document: doc, unit, units, panes, notes: initialNotes, codeHtml, lexicon = NO_TERMS, modelMarks = null, recalls = NO_RECALLS, unread = false, initialAnchor, truncated }: ReaderProps) {
   const sourceRef = useRef<HTMLDivElement>(null);
   const paneRef = useRef<HTMLDivElement>(null);
   const [tab, setTab] = useState<Tab>(() => firstTab(panes));
@@ -147,14 +157,25 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
   const figures = useMemo(() => figureItems(nodes), [nodes]);
   const words = useMemo(() => flat.map(({ node }) => wordCount(node.text ?? '')), [flat]);
   const timeLeft = timeLeftLabel(minutesLeft(words, active ? (order.get(active) ?? 0) : 0));
+  const recall = useRecallMode({
+    document: doc,
+    unit: { anchor: unit.anchor, heading: unit.heading ?? unit.anchor },
+    sectionHeadings: navSections.filter((s) => s.level === 1).map((s) => s.heading),
+    recalls,
+    gradable: canGrade(panes, modelMarks),
+    askPrediction: unread && prefs.predict,
+    nodes,
+    onShowGaps: () => setPrefs({ salience: true }),
+  });
   const salience = useSalienceMode({
     sourceRef,
     nodes,
     panes,
     lexicon,
-    modelMarks,
+    modelMarks: recall.gaps ?? modelMarks,
+    exclusive: recall.gaps !== null,
     enabled: prefs.salience,
-    storageKey: `${doc.slug}:${unit.anchor}`,
+    storageKey: `${doc.slug}:${unit.anchor}${recall.gaps ? ':gaps' : ''}`,
     order,
     activeAnchor: active,
     onKeep: async (s) => {
@@ -243,7 +264,7 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
       setSettingsOpen(false);
     },
     onAction: (event) => {
-      const action = helpOpen || lightboxOpen ? null : actionFor(event);
+      const action = helpOpen || lightboxOpen || recall.hidden ? null : actionFor(event);
       if (action) runAction(action);
       return action !== null;
     },
@@ -287,6 +308,9 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
         break;
       case 'listen':
         setListening((l) => !l);
+        break;
+      case 'recall':
+        recall.open();
         break;
       case 'help':
         setHelpOpen(true);
@@ -353,6 +377,7 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
       data-semantic={prefs.semantic ? '' : undefined}
       data-salience={prefs.salience ? '' : undefined}
       data-spotlight={prefs.spotlight ? '' : undefined}
+      data-recall={recall.hidden ? '' : undefined}
       style={prefsVars(prefs, canDragMeasure(layout)) as CSSProperties}
     >
       <ReaderToolbar
@@ -393,7 +418,7 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
         onHelp={() => setHelpOpen(true)}
       />
 
-      <div className={styles.columns}>
+      <div className={styles.columns} inert={recall.hidden}>
         <aside className={styles.navColumn}>{navigator}</aside>
 
         <article className={styles.source} ref={sourceRef} aria-label="Text">
@@ -422,6 +447,7 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
           ) : null}
           {salience.meter}
           <footer className={styles.end}>
+            {recall.footer}
             {next ? (
               <a href={readHref(next.anchor)}>Next: {next.heading}</a>
             ) : (
@@ -467,6 +493,7 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
 
       {lightbox}
       {salience.card}
+      {recall.overlay}
       {listening ? (
         <ChapterListen
           documentId={doc.id}

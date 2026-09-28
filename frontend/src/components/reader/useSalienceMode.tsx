@@ -22,6 +22,8 @@ export interface SalienceModeOptions {
   lexicon: readonly LexTerm[];
   /** Marks from the mark-salience skill, placed on the text; null when it has not run on this chapter. */
   modelMarks: readonly Salient[] | null;
+  /** Show `modelMarks` alone, without the inferred ones (the gaps of a recall). */
+  exclusive?: boolean;
   enabled: boolean;
   /** Where seen ideas are remembered: one key per chapter. */
   storageKey: string;
@@ -43,13 +45,14 @@ export interface SalienceMode {
 const PICKED_ATTR = 'data-picked';
 
 export function useSalienceMode(options: SalienceModeOptions): SalienceMode {
-  const { sourceRef, nodes, panes, lexicon, modelMarks, enabled, storageKey, order, activeAnchor, onKeep } = options;
+  const { sourceRef, nodes, panes, lexicon, modelMarks, exclusive = false, enabled, storageKey, order, activeAnchor, onKeep } = options;
   const salients = useMemo(() => {
+    if (exclusive && modelMarks) return [...modelMarks];
     const inferred = buildSalience(nodes, lexicon, citeWeights(panes));
     if (!modelMarks) return inferred;
     const at = (s: Salient) => order.get(s.anchor) ?? 0;
     return mergeMarks(modelMarks, inferred).sort((a, b) => at(a) - at(b) || a.start - b.start);
-  }, [nodes, lexicon, panes, modelMarks, order]);
+  }, [nodes, lexicon, panes, modelMarks, exclusive, order]);
   const byAnchor = useMemo(() => groupSalience(salients), [salients]);
   const byId = useMemo(() => new Map(salients.map((s) => [s.id, s])), [salients]);
   const { ideas, seen, nextIdea } = useSalience(sourceRef, salients, enabled, storageKey);

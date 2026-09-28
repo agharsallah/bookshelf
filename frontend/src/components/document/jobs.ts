@@ -23,6 +23,7 @@ export const JOB_LABELS: Partial<Record<JobKind, string>> = {
   describe_math: 'Describe formula',
   export: 'Export',
   narrate: 'Record audio',
+  grade_recall: 'Grade recall',
 };
 
 export function jobLabel(kind: JobKind): string {

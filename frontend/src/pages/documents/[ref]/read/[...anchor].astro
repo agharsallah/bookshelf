@@ -3,7 +3,8 @@
  * Reader: `/documents/{ref}/read/{anchor?}`. Loads the chapter that contains the
  * anchor (the first real chapter when there is none), its artifacts, the book's notes
  * and vocabulary (concepts and glossary, for the what-matters marks), pre-renders code
- * and math, and hands everything to the reader island.
+ * and math, the chapter's recalls and whether it was ever opened (for the prediction
+ * card), and hands everything to the reader island.
  */
 import BaseLayout from '../../../../layouts/BaseLayout.astro';
 import Reader from '../../../../components/reader/Reader';
@@ -12,7 +13,8 @@ import { lexiconFromArtifacts } from '../../../../components/reader/lexicon';
 import { marksFromBody } from '../../../../components/reader/modelMarks';
 import { buildPanes, paneEntries } from '../../../../components/reader/panes';
 import { serverApi } from '../../../../lib/api/server';
-import type { NodeSubtree } from '../../../../lib/api/types/documents';
+import type { NodeSubtree, ReadingPosition } from '../../../../lib/api/types/documents';
+import type { RecallPublic } from '../../../../lib/api/types/recalls';
 import type { NoteDetail } from '../../../../lib/api/types/notes';
 import { fetchAll } from '../../../../lib/api/fetch-all';
 import { pickBest } from '../../../../lib/documents/artifacts';
@@ -33,14 +35,20 @@ const loaded = await load(async () => {
   const unit = requested ? unitFor(units, requested) : defaultUnit(units);
   if (!unit) return { doc, units, missing: true as const };
   const api = serverApi();
-  const [subtree, artifacts, notes, conceptLinks, glossary] = await Promise.all([
+  const recallsPath = `documents/${encodeURIComponent(doc.slug)}/recalls`;
+  const [subtree, artifacts, notes, conceptLinks, glossary, recalls, positions] = await Promise.all([
     api.get<NodeSubtree>(`nodes/${doc.slug}/${unit.anchor}`),
     getArtifacts(doc.id, { anchor_prefix: unit.anchor }),
     // The whole book's notes: the chapter's are shown in place, all of them in the notes list.
     fetchAll<NoteDetail>(api, 'notes', { document_id: doc.id }),
     getArtifacts(doc.id, { type: 'concept_links' }),
     getArtifacts(doc.id, { type: 'glossary' }),
+    // Remembering it: best effort, the chapter reads without them.
+    api.get<RecallPublic[]>(recallsPath, { query: { unit: unit.anchor } }).catch(() => []),
+    api.get<ReadingPosition[]>(`documents/${encodeURIComponent(doc.slug)}/reading`).catch(() => null),
   ]);
+  // Unknown (the call failed) counts as read: better no prediction card than a wrong one.
+  const unread = positions !== null && !positions.some((p) => p.unit === unit.anchor);
   const lexicon = lexiconFromArtifacts([...conceptLinks, ...glossary]);
   const flat = flatten(subtree.node);
   const headings = Object.fromEntries(
@@ -62,7 +70,7 @@ const loaded = await load(async () => {
         if (html) codeHtml[node.anchor] = html;
       }),
   );
-  return { doc, units, missing: false as const, unit: subtree.node, truncated: subtree.truncated, panes, notes: notes.items, codeHtml, lexicon, modelMarks };
+  return { doc, units, missing: false as const, unit: subtree.node, truncated: subtree.truncated, panes, notes: notes.items, codeHtml, lexicon, modelMarks, recalls, unread };
 });
 
 if (!loaded.ok && loaded.notFound) Astro.response.status = 404;
@@ -106,6 +114,8 @@ const title = data && !data.missing ? `${data.unit.heading ?? data.unit.anchor},
         codeHtml={data.codeHtml}
         lexicon={data.lexicon}
         modelMarks={data.modelMarks}
+        recalls={data.recalls}
+        unread={data.unread}
         initialAnchor={requested}
         truncated={data.truncated}
       />
