@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { marksKey } from './deck';
 import { CARDS } from './fixtures';
 import { Flashcards } from './Flashcards';
@@ -10,7 +10,29 @@ const face = (text: string) => screen.getAllByText(text).map((el) => el.closest(
 /** True when the card's answer face is the one showing (not inert). */
 const answerShowing = () => screen.getByText(/^Future performance/).closest('[inert]') === null;
 
-beforeEach(() => localStorage.clear());
+/** The review queue, in memory: marks per artifact, as `PUT` left them. */
+const server = vi.hoisted(() => ({ marks: {} as Record<string, Record<string, string>> }));
+const api = vi.hoisted(() => ({
+  get: vi.fn((path: string) => Promise.resolve({ marks: server.marks[path.split('/').pop()!] ?? {} })),
+  put: vi.fn((path: string, body: { mark: string }) => {
+    const [, , artifact, card] = path.split('/');
+    server.marks[artifact!] = { ...server.marks[artifact!], [card!]: body.mark };
+    return Promise.resolve({ marks: server.marks[artifact!] });
+  }),
+  delete: vi.fn((path: string) => {
+    server.marks = Object.fromEntries(Object.entries(server.marks).filter(([artifact]) => artifact !== path.split('/').pop()));
+    return Promise.resolve(null);
+  }),
+  post: vi.fn(),
+  patch: vi.fn(),
+  url: (p: string) => p,
+}));
+vi.mock('../../lib/api/client', () => ({ browserApi: api }));
+
+beforeEach(() => {
+  localStorage.clear();
+  server.marks = {};
+});
 
 describe('Flashcards', () => {
   it('turns the card to show the cited answer, with a cite into the reader', async () => {
@@ -50,15 +72,24 @@ describe('Flashcards', () => {
     expect(screen.getAllByText('What does CARL stand for?').length).toBeGreaterThan(0);
   });
 
-  it('remembers marks per artifact across visits', async () => {
+  it('keeps marks in the review queue, per artifact, across visits', async () => {
     const { unmount } = render(<Flashcards slug="book" artifactId="a1" cards={CARDS} />);
     fireEvent.keyDown(document.body, { key: ' ' });
     fireEvent.keyDown(document.body, { key: 'k' });
-    expect(JSON.parse(localStorage.getItem(marksKey('a1')) ?? '{}')).toEqual({ 0: 'knew' });
+    expect(api.put).toHaveBeenCalledWith('reviews/flashcards/a1/0', { mark: 'knew' });
+    expect(localStorage.getItem(marksKey('a1'))).toBeNull();
     unmount();
     render(<Flashcards slug="book" artifactId="a1" cards={CARDS} />);
     expect(await screen.findByText('Card 1 of 3, 1 known')).toBeTruthy();
     expect(screen.getAllByText('You knew this').length).toBeGreaterThan(0);
+  });
+
+  it('moves marks this browser kept to the review queue, once', async () => {
+    localStorage.setItem(marksKey('a1'), JSON.stringify({ 1: 'learning' }));
+    render(<Flashcards slug="book" artifactId="a1" cards={CARDS} />);
+    expect(await screen.findByText('Card 1 of 3')).toBeTruthy();
+    await vi.waitFor(() => expect(server.marks.a1).toEqual({ 1: 'learning' }));
+    expect(localStorage.getItem(marksKey('a1'))).toBeNull();
   });
 
   it('narrows the deck to one topic', async () => {

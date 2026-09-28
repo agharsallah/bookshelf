@@ -3,27 +3,30 @@
  * marking moves to the next card. A pass can be narrowed to one topic or shuffled, and
  * ends with how many you knew and the option to study only the ones you missed.
  *
- * Keys: Space/Enter turns, ←/→ move, K "I knew it", L "Still learning". Marks are kept
- * per artifact in localStorage when it is available, so they survive a reload.
+ * Keys: Space/Enter turns, ←/→ move, K "I knew it", L "Still learning". Each mark is a
+ * self-rating kept in the review queue (./marks.ts): it survives a reload, and the card
+ * comes back on the Desk when it is due.
  */
-import { useEffect, useReducer, useRef, useState, type RefObject } from 'react';
+import { useCallback, useEffect, useReducer, useRef, useState, type RefObject } from 'react';
+import { browserApi } from '../../lib/api/client';
+import { problemOf } from '../common/Problem';
+import { toast } from '../document/toast';
+import { forgetFlashcards, markFlashcard, type RecallApi } from '../recall/api';
 import {
   currentCard,
   deckReducer,
   isFinished,
   missedIn,
   orderFor,
-  readMarks,
   shuffle,
   startDeck,
   tally,
   topicsOf,
-  writeMarks,
   type DeckAction,
-  type Marks,
 } from './deck';
 import { Card, Progress, Summary } from './DeckParts';
 import { shortcutApplies } from './keys';
+import { loadMarks } from './marks';
 import { Kbd, ReaderCites } from './ReaderCites';
 import { plainText, type Flashcard } from './study-body';
 import styles from './Flashcards.module.css';
@@ -34,6 +37,7 @@ export interface FlashcardsProps {
   /** Marks are remembered per artifact version. */
   artifactId: string;
   cards: Flashcard[];
+  api?: RecallApi;
 }
 
 function storage(): Storage | undefined {
@@ -44,11 +48,10 @@ function storage(): Storage | undefined {
   }
 }
 
-export function Flashcards({ slug, artifactId, cards }: FlashcardsProps) {
-  const [state, dispatch] = useReducer(deckReducer, cards, (c) => startDeck(orderFor(c)));
+export function Flashcards({ slug, artifactId, cards, api = browserApi }: FlashcardsProps) {
+  const [state, rawDispatch] = useReducer(deckReducer, cards, (c) => startDeck(orderFor(c)));
   const [topic, setTopic] = useState<string | null>(null);
   const [shuffled, setShuffled] = useState(false);
-  const initialMarks = useRef<Marks>(state.marks);
   const turnButton = useRef<HTMLButtonElement>(null);
   const topics = topicsOf(cards);
   const index = currentCard(state);
@@ -57,12 +60,26 @@ export function Flashcards({ slug, artifactId, cards }: FlashcardsProps) {
   const counts = tally(state.order, state.marks);
 
   useEffect(() => {
-    dispatch({ type: 'restore', marks: readMarks(storage(), artifactId, cards.length) });
-  }, [artifactId, cards.length]);
+    let live = true;
+    loadMarks(api, storage(), artifactId, cards.length)
+      .then((marks) => live && rawDispatch({ type: 'restore', marks }))
+      .catch(() => undefined); // The deck works the same unmarked.
+    return () => {
+      live = false;
+    };
+  }, [api, artifactId, cards.length]);
 
-  useEffect(() => {
-    if (state.marks !== initialMarks.current) writeMarks(storage(), artifactId, state.marks);
-  }, [artifactId, state.marks]);
+  /** Marks and forgetting also go to the review queue; everything else is local to the pass. */
+  const dispatch = useCallback(
+    (action: DeckAction) => {
+      const saveFailed = (error: unknown) => toast(`Your mark was not saved: ${problemOf(error).message}`, 'bad');
+      const card = currentCard(state);
+      if (action.type === 'mark' && card !== null) void markFlashcard(api, artifactId, card, action.mark).catch(saveFailed);
+      if (action.type === 'forget') void forgetFlashcards(api, artifactId).catch(saveFailed);
+      rawDispatch(action);
+    },
+    [api, artifactId, state],
+  );
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -74,7 +91,7 @@ export function Flashcards({ slug, artifactId, cards }: FlashcardsProps) {
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [state.turned]);
+  }, [state.turned, dispatch]);
 
   const begin = (order: readonly number[]) => {
     dispatch({ type: 'begin', order });

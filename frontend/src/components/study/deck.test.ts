@@ -3,7 +3,6 @@ import {
   currentCard,
   deckReducer,
   isFinished,
-  marksKey,
   missedIn,
   orderFor,
   parseMarks,
@@ -12,7 +11,6 @@ import {
   startDeck,
   tally,
   topicsOf,
-  writeMarks,
   type DeckAction,
   type DeckState,
 } from './deck';
@@ -101,34 +99,13 @@ describe('remembered marks', () => {
     expect(parseMarks(null, 5)).toEqual({});
   });
 
-  it('round-trips through storage per artifact and clears when empty', () => {
-    const store = new Map<string, string>();
-    const storage = {
-      getItem: (k: string) => store.get(k) ?? null,
-      setItem: (k: string, v: string) => void store.set(k, v),
-      removeItem: (k: string) => void store.delete(k),
-    };
-    writeMarks(storage, 'a1', { 1: 'knew' });
-    expect(readMarks(storage, 'a1', 3)).toEqual({ 1: 'knew' });
-    expect(readMarks(storage, 'other', 3)).toEqual({});
-    writeMarks(storage, 'a1', {});
-    expect(store.has(marksKey('a1'))).toBe(false);
-  });
-
   it('works without storage, or when it throws', () => {
     const broken = {
       getItem: () => {
         throw new Error('blocked');
       },
-      setItem: () => {
-        throw new Error('blocked');
-      },
-      removeItem: () => {
-        throw new Error('blocked');
-      },
     };
     expect(readMarks(broken, 'a1', 3)).toEqual({});
-    expect(() => writeMarks(broken, 'a1', { 0: 'knew' })).not.toThrow();
     expect(readMarks(undefined, 'a1', 3)).toEqual({});
   });
 });

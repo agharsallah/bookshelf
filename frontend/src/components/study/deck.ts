@@ -1,8 +1,9 @@
 /**
  * The flashcard deck as plain state: which cards this pass goes through (`order`, card
  * indexes), where you are, whether the card is turned, and what you marked. Marks
- * outlive a pass (and the page, via `readMarks` / `writeMarks`); a pass is restarted with
- * `begin`, e.g. with only the cards you missed.
+ * outlive a pass (and the page: they are kept in the review queue, ./marks.ts); a pass
+ * is restarted with `begin`, e.g. with only the cards you missed. `readMarks` reads the
+ * marks a browser kept before they moved to the server.
  */
 
 export type Mark = 'knew' | 'learning';
@@ -127,21 +128,11 @@ export function parseMarks(raw: string | null, cardCount: number): Marks {
   return marks;
 }
 
-/** Marks saved for an artifact; empty when storage is blocked or holds nothing usable. */
+/** Marks a browser saved for an artifact; empty when storage is blocked or holds nothing usable. */
 export function readMarks(storage: Pick<Storage, 'getItem'> | undefined, artifactId: string, cardCount: number): Marks {
   try {
     return parseMarks(storage?.getItem(marksKey(artifactId)) ?? null, cardCount);
   } catch {
     return {};
-  }
-}
-
-/** Best effort: the deck works the same when storage is unavailable. */
-export function writeMarks(storage: Pick<Storage, 'setItem' | 'removeItem'> | undefined, artifactId: string, marks: Marks): void {
-  try {
-    if (Object.keys(marks).length === 0) storage?.removeItem(marksKey(artifactId));
-    else storage?.setItem(marksKey(artifactId), JSON.stringify(marks));
-  } catch {
-    // Storage blocked or full: the marks last for this visit only.
   }
 }
