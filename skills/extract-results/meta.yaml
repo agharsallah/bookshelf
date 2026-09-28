@@ -1,0 +1,14 @@
+name: extract-results
+version: 1
+description: Extract every quantitative result a paper reports — method, dataset, metric, value, unit, direction and whether it is the paper's own method — from its results and experiments sections, tables and charts, one cited row per number, so results compare across papers.
+tier: distil
+job_kind: derive
+artifact_type: results_table
+scope: document
+selector: paper_results
+vision: false
+genre: paper   # a paper skill (docs/PAPERS.md P2); queued on card approval (PAPER_DERIVES)
+gates:
+  # Rows carry no prose spans: every row must cite (schema), and the selector only accepts
+  # anchors in a results/experiments unit or a table or figure block (hard gate, retried).
+  grounding_min: 0.9

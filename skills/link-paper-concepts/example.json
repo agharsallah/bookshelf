@@ -1,0 +1,153 @@
+{
+  "concepts": [
+    {
+      "canonical": "transformer",
+      "aliases": [
+        "transformer (big)",
+        "transformer (base)"
+      ],
+      "kind": "method",
+      "blurb": [
+        {
+          "text": "An encoder-decoder built only from attention and feed-forward layers, with no recurrence.",
+          "cites": [
+            "ch02/p001"
+          ]
+        }
+      ]
+    },
+    {
+      "canonical": "wmt 2014 english-german",
+      "aliases": [
+        "wmt14 en-de"
+      ],
+      "kind": "dataset",
+      "blurb": [
+        {
+          "text": "The translation benchmark the paper reports its main results on.",
+          "cites": [
+            "ch05/p001"
+          ]
+        }
+      ]
+    },
+    {
+      "canonical": "bleu",
+      "aliases": [],
+      "kind": "metric",
+      "blurb": [
+        {
+          "text": "The translation quality score every result is reported in.",
+          "cites": [
+            "ch06/t001"
+          ]
+        }
+      ]
+    },
+    {
+      "canonical": "machine translation",
+      "aliases": [],
+      "kind": "task",
+      "blurb": [
+        {
+          "text": "The task the model is trained and evaluated on.",
+          "cites": [
+            "ch01/p001"
+          ]
+        }
+      ]
+    },
+    {
+      "canonical": "attention",
+      "aliases": [
+        "attention mechanism"
+      ],
+      "kind": "concept",
+      "blurb": [
+        {
+          "text": "Relating positions of a sequence to compute a representation, the model's only mixing operation.",
+          "cites": [
+            "ch02/s02/p001"
+          ]
+        }
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "src": {
+        "kind": "node",
+        "ref": "ch02/p001"
+      },
+      "dst": {
+        "kind": "concept",
+        "ref": "transformer"
+      },
+      "relation": "defines",
+      "weight": 1,
+      "evidence": [
+        "ch02/p001"
+      ]
+    },
+    {
+      "src": {
+        "kind": "concept",
+        "ref": "transformer"
+      },
+      "dst": {
+        "kind": "concept",
+        "ref": "attention"
+      },
+      "relation": "extends",
+      "weight": 0.8,
+      "evidence": [
+        "ch02/s02/p001"
+      ]
+    },
+    {
+      "src": {
+        "kind": "node",
+        "ref": "ch06/t001"
+      },
+      "dst": {
+        "kind": "concept",
+        "ref": "transformer"
+      },
+      "relation": "supports",
+      "weight": 0.9,
+      "evidence": [
+        "ch06/t001"
+      ]
+    },
+    {
+      "src": {
+        "kind": "node",
+        "ref": "ch06/t001"
+      },
+      "dst": {
+        "kind": "concept",
+        "ref": "wmt 2014 english-german"
+      },
+      "relation": "mentions",
+      "weight": 0.7,
+      "evidence": [
+        "ch06/t001"
+      ]
+    },
+    {
+      "src": {
+        "kind": "node",
+        "ref": "ch01/p001"
+      },
+      "dst": {
+        "kind": "concept",
+        "ref": "machine translation"
+      },
+      "relation": "mentions",
+      "weight": 0.6,
+      "evidence": [
+        "ch01/p001"
+      ]
+    }
+  ]
+}

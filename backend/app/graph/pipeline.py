@@ -2,10 +2,11 @@
 
     link_concepts job done · concept_links approved / edited / rejected
       → refresh_document: sync the document's effective concept_links (`apply`),
-        re-seed its diagram edges and its mention edges (every other document's too
-        when concepts came or went), and hand back a dedup job for the concepts it created
-        and, when concepts came or went, an embed that re-runs the semantic pass and a
-        bridge job that asks how the new concepts relate to other books'
+        re-seed its diagram edges, its mention edges (every other document's too
+        when concepts came or went) and, for papers, its cites edges; and hand back a
+        dedup job for the concepts it created and, when concepts came or went, an
+        embed that re-runs the semantic pass and a bridge job that asks how the new
+        concepts relate to other books'
 
 Dedup is a job, not inline work: it embeds concepts and calls the model once per
 candidate pair, which must never run inside an HTTP request (an approval) or hold up the
@@ -30,6 +31,7 @@ from app.jobs.queue import JobSpec
 from app.jobs.registry import HandlerResult, PermanentJobError
 from app.models import Document, Job
 from app.models.enums import JobKind, JobState
+from app.papers import cites
 from app.pipeline import ceiling
 from app.pipeline.hashing import input_hash
 from app.pipeline.runner import ModelRunner
@@ -83,6 +85,7 @@ def refresh_document(session: Session, document_id: uuid.UUID) -> list[JobSpec]:
     applied = apply.sync_document(session, document_id)
     diagram_seeds.seed_document(session, document_id)
     mentions.seed_document(session, document_id)
+    cites.refresh(session, document_id)  # papers: document —cites→ document (app.papers.cites)
     specs = [spec] if (spec := dedup_spec(document_id, applied.created)) is not None else []
     if applied.created or applied.removed:  # other books may name the new concepts
         mentions.seed_all(session, exclude=document_id)

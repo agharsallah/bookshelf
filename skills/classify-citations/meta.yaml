@@ -1,0 +1,14 @@
+name: classify-citations
+version: 1
+description: Classify why a paper cites each work in its bibliography — background, uses, extends, compares or contradicts — from the sentences around each in-text citation marker, each verdict cited to the sentence that shows it.
+tier: explore
+job_kind: derive
+artifact_type: citation_intents   # approved → paper_references.intent (app.papers.materialize)
+scope: document
+selector: paper_citations
+vision: false
+genre: paper   # a paper skill (docs/PAPERS.md P2); queued on card approval (PAPER_DERIVES)
+gates:
+  # Verdicts carry no prose spans: every item must cite (schema), and only the anchors of
+  # in-text citations are accepted (hard gate, retried).
+  grounding_min: 0.9

@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bookshelf.local/skills/classify-citations/schema.json",
+  "title": "classify-citations output",
+  "description": "Why the paper cites each bibliography entry it cites in the text: one intent per ordinal, cited to the passages whose citation sentence shows it.",
+  "type": "object",
+  "required": ["citations"],
+  "additionalProperties": false,
+  "properties": {
+    "citations": {
+      "type": "array",
+      "maxItems": 500,
+      "items": {
+        "type": "object",
+        "required": ["ordinal", "intent", "cites"],
+        "additionalProperties": false,
+        "properties": {
+          "ordinal": {"type": "integer", "minimum": 1, "description": "The reference's ordinal, as given in the input."},
+          "intent": {"enum": ["background", "uses", "extends", "compares", "contradicts"]},
+          "cites": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 3,
+            "uniqueItems": true,
+            "items": {"$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/anchor"}
+          }
+        }
+      }
+    }
+  }
+}

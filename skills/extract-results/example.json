@@ -1,0 +1,8 @@
+{
+  "rows": [
+    {"method": "Transformer (big)", "dataset": "WMT 2014 English-German", "metric": "BLEU", "value": 28.4, "unit": null, "higher_is_better": true, "is_proposed": true, "setting": null, "cites": ["ch06/t001"]},
+    {"method": "GNMT + RL", "dataset": "WMT 2014 English-German", "metric": "BLEU", "value": 24.6, "unit": null, "higher_is_better": true, "is_proposed": false, "cites": ["ch06/t001"]},
+    {"method": "Transformer (big)", "dataset": "WMT 2014 English-German", "metric": "training cost", "value": 2.3e19, "unit": "FLOPs", "higher_is_better": false, "is_proposed": true, "setting": null, "cites": ["ch06/t001"]},
+    {"method": "Transformer (base)", "dataset": "newstest2013", "metric": "perplexity", "value": 4.92, "unit": null, "higher_is_better": false, "is_proposed": true, "setting": "ablation (A): 1 head", "cites": ["ch06/s02/t001", "ch06/s02/p002"]}
+  ]
+}

@@ -1,0 +1,12 @@
+name: link-paper-concepts
+version: 1
+description: Extract a paper's concepts — its methods, datasets, metrics and tasks, plus the ideas, frameworks, terms, people and works it treats — reusing the shelf's canonical names, and propose evidence-backed edges between concepts and passages for the idea graph.
+tier: reason
+job_kind: link_paper_concepts   # queued after a paper's embed (app.papers.profile)
+artifact_type: concept_links    # the book type: app.graph.apply projects it unchanged
+scope: document
+selector: paper_concepts
+vision: false
+genre: paper   # a paper skill (docs/PAPERS.md P2)
+gates:
+  grounding_min: 0.9    # concept blurbs are spans; every edge's evidence array is anchor-checked too

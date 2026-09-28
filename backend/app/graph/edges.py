@@ -5,9 +5,11 @@ apart (§11):
 
     human                                 curated by hand; never touched by automation
     skill:link-concepts@<v>#<artifact>    from a `concept_links` artifact (`apply`)
+    skill:link-paper-concepts@<v>#<art.>  the same, for a paper (docs/PAPERS.md §4)
     human:concept_links#<artifact>        from a human-authored/edited `concept_links`
     seed:diagram@<v>#<artifact>           from a diagram in a `figure_description`
     seed:mentions@<v>                     a section naming a known concept (`mentions`)
+    seed:cites@<v>                        a paper citing a paper on the shelf (`papers.cites`)
     seed:semantic@<v>                     Qdrant: echoing chapters, paraphrasing passages
     skill:confirm-merge@<v>               a dedup verdict on a `same_as` pair
 
@@ -32,7 +34,7 @@ from app.models import Artifact, Edge
 from app.models.enums import EdgeStatus, EntityKind, Origin, Relation
 
 HUMAN = "human"
-LINK_ORIGINS = ("skill:link-concepts@%", "human:concept_links#%")
+LINK_ORIGINS = ("skill:link-concepts@%", "skill:link-paper-concepts@%", "human:concept_links#%")
 DIAGRAM_ORIGINS = ("seed:diagram@%",)
 MENTION_ORIGINS = ("seed:mentions@%",)
 SEMANTIC_ORIGINS = ("seed:semantic@%",)

@@ -1,0 +1,9 @@
+{
+  "citations": [
+    {"ordinal": 1, "intent": "background", "cites": ["ch01/p002"]},
+    {"ordinal": 5, "intent": "uses", "cites": ["ch03/s02/p001"]},
+    {"ordinal": 9, "intent": "extends", "cites": ["ch02/p003", "ch03/p001"]},
+    {"ordinal": 14, "intent": "compares", "cites": ["ch05/p004"]},
+    {"ordinal": 21, "intent": "contradicts", "cites": ["ch06/p002"]}
+  ]
+}
