@@ -8,7 +8,7 @@
   "additionalProperties": false,
   "properties": {
     "kind": { "enum": ["chart", "diagram", "table", "photo"] },
-    "caption": { "type": "string", "minLength": 1, "maxLength": 500 },
+    "caption": { "type": "string", "minLength": 1, "maxLength": 1500 },
     "alt": { "type": "string", "minLength": 1, "maxLength": 600 },
     "blocks": {
       "type": "array",
