@@ -29,6 +29,7 @@ from app.api.routes import (
     recalls,
     reviews,
     search,
+    settings,
     skills,
     stats,
 )
@@ -57,6 +58,7 @@ api_router.include_router(media.router)
 api_router.include_router(audio.router)
 api_router.include_router(artifacts.router)
 api_router.include_router(skills.router)
+api_router.include_router(settings.router)
 api_router.include_router(search.router)
 api_router.include_router(concepts.router)
 api_router.include_router(graph.router)

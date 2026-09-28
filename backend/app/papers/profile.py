@@ -31,6 +31,9 @@ import uuid
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 
+from sqlmodel import Session
+
+from app.core.config import get_settings
 from app.jobs.queue import JobSpec
 from app.models import Artifact, Job
 from app.models.enums import ArtifactType, DocumentStatus, JobKind, JobState, Review
@@ -53,7 +56,9 @@ from app.pipeline.orchestrator import (
     element_job,
     guide_approved,
 )
+from app.pipeline.skills import load_catalogue
 from app.pipeline.tree import Tree
+from app.services import app_settings
 
 # By-products run as `derive` jobs once the card is approved, at the book guide's priority:
 # they read the unit distillations and the approved card, not the index.
@@ -179,8 +184,27 @@ def card_finished(state: State, job: Job) -> Plan:
 def card_approved(state: State, artifact: Artifact) -> Plan:
     """The card is the paper's brief: the paper is distilled, indexed next, and its
     by-products are written from the distillations and the approved card."""
-    derives = [d.spec(state.document.id) for d in PAPER_DERIVES if d.applies(state.tree)]
-    return Plan(jobs=[state.spec(JobKind.EMBED), *derives], status=DocumentStatus.DISTILLED)
+    document, tree = state.document, state.tree
+
+    def derives(session: Session) -> list[JobSpec]:
+        """`PAPER_DERIVES` until the settings choose: then a listed by-product keeps its
+        params and `when`, and any other eligible skill runs as it is."""
+        known = {d.skill: d for d in PAPER_DERIVES}
+        chosen = app_settings.stored_auto_derive(session).get("paper")
+        if chosen is None:
+            return [d.spec(document.id) for d in PAPER_DERIVES if d.applies(tree)]
+        allowed = app_settings.eligible(load_catalogue(get_settings().skills_dir), "paper")
+        return [
+            known[name].spec(document.id)
+            if name in known
+            else app_settings.derive_spec(allowed[name], document.id)
+            for name in chosen
+            if name in allowed and (name not in known or known[name].applies(tree))
+        ]
+
+    return Plan(
+        jobs=[state.spec(JobKind.EMBED)], status=DocumentStatus.DISTILLED, effects=[derives]
+    )
 
 
 def distillation_approved(state: State, artifact: Artifact) -> Plan:

@@ -33,6 +33,7 @@ from dataclasses import dataclass, field
 from sqlmodel import Session, col, func, select
 
 from app.audio import narration
+from app.core.config import get_settings
 from app.graph import pipeline as graph
 from app.jobs import queue
 from app.jobs.queue import JobSpec
@@ -47,8 +48,10 @@ from app.models.enums import (
     Review,
 )
 from app.pipeline import artifacts
+from app.pipeline.skills import load_catalogue
 from app.pipeline.tree import Tree
 from app.retrieval.points import INDEXED_TYPES
+from app.services import app_settings
 
 logger = logging.getLogger(__name__)
 
@@ -286,8 +289,28 @@ def chapter_approved(state: State, artifact: Artifact) -> Plan:
     return _brief_if_complete(state)
 
 
+def _auto_derive(document: Document) -> Effect:
+    """The study material the settings ask a distilled book to make on its own."""
+
+    def specs(session: Session) -> list[JobSpec]:
+        catalogue = load_catalogue(get_settings().skills_dir)
+        allowed = app_settings.eligible(catalogue, app_settings.group_of(document.genre))
+        chosen = app_settings.stored_auto_derive(session).get("book", [])
+        return [
+            app_settings.derive_spec(allowed[name], document.id)
+            for name in chosen
+            if name in allowed
+        ]
+
+    return specs
+
+
 def brief_approved(state: State, artifact: Artifact) -> Plan:
-    return Plan(jobs=[state.spec(JobKind.EMBED)], status=DocumentStatus.DISTILLED)
+    return Plan(
+        jobs=[state.spec(JobKind.EMBED)],
+        status=DocumentStatus.DISTILLED,
+        effects=[_auto_derive(state.document)],
+    )
 
 
 def guide_approved(state: State, artifact: Artifact) -> Plan:
