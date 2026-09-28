@@ -211,6 +211,7 @@ export function ChapterListen(props: ChapterListenProps) {
             sections={render.sections}
             duration={render.duration}
             storageKey={positionKey(render)}
+            activity={{ document: documentId, unit: anchor, detail: 'chapter' }}
             onTime={onTime}
             shortcuts={false}
           />

@@ -11,6 +11,8 @@
  * what is playing (Media Session: lock screen, headphone buttons, media keys), whichever
  * page you are on.
  */
+import type { Where } from '../../lib/activity/log';
+import { activityTracker } from '../../lib/activity/tracker';
 import type { Mark } from '../../lib/api/types/audio';
 import { browserStorage, readPosition, sectionJump, SKIP_AHEAD, SKIP_BACK, writePosition } from './listening';
 
@@ -26,6 +28,8 @@ export interface Track {
   storageKey: string;
   /** The page it was started on, to go back to. */
   href: string;
+  /** What listening counts toward in your reading statistics (the book, the chapter). */
+  activity?: Omit<Where, 'surface'>;
 }
 
 export interface NowPlayingState {
@@ -41,6 +45,11 @@ export interface NowPlayingState {
 }
 
 const SAVE_EVERY = 5; // seconds of playback between saves of your place
+const MAX_HEARD_STEP_MS = 2000; // longer between time updates: the tab slept, not listening
+
+/** Where listening time goes: the app's attention clock. */
+export type ListenCounter = (where: Where, seconds: number) => void;
+const countListening: ListenCounter = (where, seconds) => activityTracker()?.count(where, seconds);
 /** Nothing loaded: also what the server renders, where there is no `<audio>`. */
 export const IDLE: NowPlayingState = { track: null, playing: false, started: false, time: 0, duration: 0, rate: 1, viewed: false };
 
@@ -53,20 +62,35 @@ export class NowPlaying {
   /** Where to start once the recording's length is known (instead of your saved place). */
   private startAt: number | null = null;
   private saved = 0;
+  /** When the last time update came while playing (ms), to count time actually heard. */
+  private heardAt: number | null = null;
+  private readonly counter: ListenCounter;
 
-  constructor(element: HTMLAudioElement = document.createElement('audio'), storage: () => Storage | undefined = browserStorage) {
+  constructor(
+    element: HTMLAudioElement = document.createElement('audio'),
+    storage: () => Storage | undefined = browserStorage,
+    counter: ListenCounter = countListening,
+  ) {
     this.element = element;
     this.storage = storage;
+    this.counter = counter;
     element.preload = 'metadata';
     element.addEventListener('loadedmetadata', () => this.onLoaded());
     element.addEventListener('timeupdate', () => this.onTimeUpdate());
-    element.addEventListener('play', () => this.set({ playing: true, started: true }));
+    element.addEventListener('play', () => {
+      this.heardAt = Date.now();
+      this.set({ playing: true, started: true });
+    });
     element.addEventListener('pause', () => {
+      this.countHeard();
+      this.heardAt = null;
       this.set({ playing: false });
       // Switching recordings pauses too, at 0 of the new one: that must not forget its place.
       if (element.currentTime > 0) this.remember(element.currentTime);
     });
     element.addEventListener('ended', () => {
+      this.countHeard();
+      this.heardAt = null;
       this.set({ playing: false });
       this.remember(null);
     });
@@ -176,7 +200,18 @@ export class NowPlaying {
     this.set({ duration, time: el.currentTime });
   }
 
+  /** Wall-clock time since the last update, while playing, goes to the track's book. */
+  private countHeard(): void {
+    const track = this.state.track;
+    if (this.heardAt === null || !track?.activity) return;
+    const now = Date.now();
+    const step = Math.min(now - this.heardAt, MAX_HEARD_STEP_MS);
+    this.heardAt = now;
+    if (step > 0) this.counter({ surface: 'listen', ...track.activity }, step / 1000);
+  }
+
   private onTimeUpdate(): void {
+    if (!this.element.paused) this.countHeard();
     const time = this.element.currentTime;
     this.set({ time });
     if (Math.abs(time - this.saved) >= SAVE_EVERY) {

@@ -48,6 +48,7 @@ import { useFollowUrl } from './useFollowUrl';
 import { useReaderEvents } from './useReaderEvents';
 import { useSalienceMode } from './useSalienceMode';
 import { useSavePosition } from './useSavePosition';
+import { useAttention } from '../../lib/activity/useAttention';
 import { useAutoHide, useFocusChrome, useFullscreen, useMediaQuery } from './useReaderLayout';
 import styles from './Reader.module.css';
 
@@ -203,6 +204,8 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
 
   useFollowUrl(active, readHref, initialAnchor);
   useSavePosition(doc.slug, unit.anchor, active, progress);
+  // Reading time goes to the block being read; with the text hidden, it is recall time.
+  useAttention(recall.hidden ? { surface: 'recall', document: doc.slug, unit: unit.anchor } : { surface: 'read', document: doc.slug, unit: unit.anchor, anchor: active ?? undefined });
 
   // Land on the anchor from the URL.
   useEffect(() => {

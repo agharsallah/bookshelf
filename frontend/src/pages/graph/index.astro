@@ -5,6 +5,7 @@
  * (`/map`) for the whole shelf at chapter grain. In workshop mode the merge queue sits
  * beside the index, where proposed `same_as` merges wait for a human decision.
  */
+import { ActivityBeacon } from '../../lib/activity/ActivityBeacon';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import ConceptBrowser from '../../components/concepts/ConceptBrowser';
 import MergeQueue from '../../components/concepts/MergeQueue';
@@ -27,6 +28,7 @@ const queueProblem: ProblemInfo | null = proposals.status === 'rejected' ? probl
 ---
 
 <BaseLayout title="Concepts" description="The ideas, people and terms your books share, and how they connect.">
+  <ActivityBeacon client:load surface="explore" detail="concepts" />
   <div class="page">
     <header class="head">
       <h1>Concepts</h1>

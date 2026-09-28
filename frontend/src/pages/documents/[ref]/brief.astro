@@ -3,6 +3,7 @@
  * The book brief: the latest approved `book_brief`, typeset as one printable page.
  * Without an approved brief, says why and points to the review queue.
  */
+import { ActivityBeacon } from '../../../lib/activity/ActivityBeacon';
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import BriefSheet from '../../../components/brief/BriefSheet.astro';
 import { parseBrief, type ReadNextItem } from '../../../components/brief/brief';
@@ -58,6 +59,7 @@ const data = loaded.ok ? loaded.value : null;
 ---
 
 <BaseLayout title={data ? `Brief: ${data.doc.title}` : 'Brief'} width="wide">
+  {data && <ActivityBeacon client:load surface="distill" document={data.doc.slug} detail="brief" />}
   {
     !data ? (
       !loaded.ok && loaded.notFound ? (

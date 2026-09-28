@@ -193,6 +193,7 @@ export function Listen({ slug, bookTitle, documentId, shelf: initial, catalogue,
               sections={render.sections}
               duration={render.duration}
               storageKey={positionKey(render)}
+              activity={{ document: slug, detail: 'episode' }}
               onTime={onTime}
             />
           ) : (

@@ -5,6 +5,7 @@
  * neighbourhood is loaded here so the canvas draws on arrival; the island takes over
  * re-focusing, depth and the evidence panel.
  */
+import { ActivityBeacon } from '../../lib/activity/ActivityBeacon';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import GraphExplorer from '../../components/graph/GraphExplorer';
 import { Problem, problemOf, type ProblemInfo } from '../../components/common/Problem';
@@ -35,6 +36,7 @@ const label = hood?.nodes.find((n) => n.id === hood?.focus)?.label ?? 'Graph';
 ---
 
 <BaseLayout title={label} description="One idea and what it connects to across your books.">
+  <ActivityBeacon client:load surface="explore" detail="graph" />
   {
     hood ? (
       <GraphExplorer client:load focus={hood.focus} view={view} initial={hood} />

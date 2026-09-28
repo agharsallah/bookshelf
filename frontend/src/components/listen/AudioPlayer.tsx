@@ -39,6 +39,8 @@ export interface AudioPlayerProps {
   storageKey: string;
   /** The time heard, while this recording is the one loaded (else 0). */
   onTime: (seconds: number) => void;
+  /** What listening counts toward in your reading statistics. */
+  activity?: Track['activity'];
   /** Take the page's keys (default); false where the page has shortcuts of its own. */
   shortcuts?: boolean;
   ref?: Ref<PlayerHandle>;
@@ -54,11 +56,15 @@ function browserPlayer(): NowPlaying | null {
 const here = () => `${window.location.pathname}${window.location.search}${window.location.hash}`;
 
 export function AudioPlayer(props: AudioPlayerProps) {
-  const { src, downloadHref, downloadName, title, bookTitle, sections, duration, storageKey, onTime, shortcuts = true, ref } = props;
+  const { src, downloadHref, downloadName, title, bookTitle, sections, duration, storageKey, activity, onTime, shortcuts = true, ref } = props;
   const player = props.player ?? browserPlayer();
   const state = useNowPlaying(player);
   const [savedAt, setSavedAt] = useState(0);
-  const track = useMemo<Omit<Track, 'href'>>(() => ({ src, title, bookTitle, sections, duration, storageKey }), [src, title, bookTitle, sections, duration, storageKey]);
+  const { document: activityDocument, unit: activityUnit, detail: activityDetail } = activity ?? {};
+  const track = useMemo<Omit<Track, 'href'>>(
+    () => ({ src, title, bookTitle, sections, duration, storageKey, activity: activityDocument ? { document: activityDocument, unit: activityUnit, detail: activityDetail } : undefined }),
+    [src, title, bookTitle, sections, duration, storageKey, activityDocument, activityUnit, activityDetail],
+  );
   const active = state.track?.src === src;
   const playing = active && state.playing;
   const time = active ? state.time : savedAt;

@@ -5,6 +5,7 @@
  * back. Ctrl/⌘+Enter reveals; 1–4 rate once it is revealed. Renders nothing when nothing
  * is due.
  */
+import { useAttention } from '../../lib/activity/useAttention';
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { browserApi } from '../../lib/api/client';
 import type { DueCard, DueCards, Rating, Revealed, ReviewSource } from '../../lib/api/types/recalls';
@@ -40,6 +41,7 @@ export function DueToday({ initial, api = browserApi }: DueTodayProps) {
   const [attempt, setAttempt] = useState('');
   const [revealed, setRevealed] = useState<Revealed | null>(null);
   const [busy, setBusy] = useState(false);
+  useAttention(cards.length > 0 ? { surface: 'review' } : null);
   const good = useRef<HTMLButtonElement>(null);
   const field = useRef<HTMLTextAreaElement>(null);
   const card = cards[0] ?? null;

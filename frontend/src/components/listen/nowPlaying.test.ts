@@ -46,4 +46,27 @@ describe('NowPlaying', () => {
     player.load(track('a'));
     expect(player.element.playbackRate).toBe(1.5);
   });
+
+  it('counts the time heard toward the book, only while playing', () => {
+    vi.useFakeTimers();
+    const counted: [string, number][] = [];
+    const listening = new NowPlaying(document.createElement('audio'), () => localStorage, (where, seconds) => counted.push([`${where.surface}:${where.document}:${where.unit}`, seconds]));
+    Object.defineProperty(listening.element, 'paused', { configurable: true, get: () => !listening.getState().playing });
+    listening.load({ ...track('a'), activity: { document: 'book', unit: 'ch01' } });
+
+    listening.element.dispatchEvent(new Event('play'));
+    vi.advanceTimersByTime(1000);
+    listening.element.dispatchEvent(new Event('timeupdate'));
+    vi.advanceTimersByTime(60_000); // the tab slept: at most a couple of seconds count
+    listening.element.dispatchEvent(new Event('timeupdate'));
+    listening.element.dispatchEvent(new Event('pause'));
+    vi.advanceTimersByTime(5000);
+    listening.element.dispatchEvent(new Event('timeupdate'));
+
+    expect(counted).toEqual([
+      ['listen:book:ch01', 1],
+      ['listen:book:ch01', 2],
+    ]);
+    vi.useRealTimers();
+  });
 });

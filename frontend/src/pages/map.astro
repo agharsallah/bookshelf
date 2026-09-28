@@ -4,6 +4,7 @@
  * they discuss — as a live force layout with a lens. The atlas is loaded here so the map
  * draws on arrival; the island owns the view, which lives in the query string.
  */
+import { ActivityBeacon } from '../lib/activity/ActivityBeacon';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import AtlasExplorer from '../components/atlas/AtlasExplorer';
 import { lensFromParams } from '../components/atlas/lens';
@@ -24,6 +25,7 @@ try {
 ---
 
 <BaseLayout title="Map" description="Your books, their chapters and the ideas they share, as one map.">
+  <ActivityBeacon client:load surface="explore" detail="map" />
   {
     atlas ? (
       <AtlasExplorer client:load initial={atlas} lens={lens} />

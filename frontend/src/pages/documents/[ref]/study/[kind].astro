@@ -5,6 +5,7 @@
  * the approved version, else the newest draft, badged as one. Without any, says so and,
  * in workshop mode, where to make it.
  */
+import { ActivityBeacon } from '../../../../lib/activity/ActivityBeacon';
 import BaseLayout from '../../../../layouts/BaseLayout.astro';
 import { Problem } from '../../../../components/common/Problem';
 import Faq from '../../../../components/study/Faq';
@@ -66,6 +67,7 @@ const artifact = data?.best?.artifact;
 ---
 
 <BaseLayout title={data ? `${material.label}: ${data.doc.title}` : 'Study'} width="wide">
+  {data && <ActivityBeacon client:load surface="study" document={data.doc.slug} unit={chapter ?? undefined} detail={kind} />}
   {
     !data ? (
       !known || (!loaded.ok && loaded.notFound) ? (

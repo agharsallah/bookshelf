@@ -5,6 +5,7 @@
  * loaded here only to offer book and tag filters, and the most connected concepts to
  * suggest before the first query.
  */
+import { ActivityBeacon } from '../lib/activity/ActivityBeacon';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import SearchPage from '../components/search/SearchPage';
 import { tagCloud } from '../components/library/filters';
@@ -39,6 +40,7 @@ const title = initial.q ? `“${initial.q}”` : 'Search';
 ---
 
 <BaseLayout title={title} description="Search what you have read, or ask for a cited answer.">
+  <ActivityBeacon client:load surface="explore" detail="search" />
   <div class="page">
     <header class="head">
       <h1>Search</h1>

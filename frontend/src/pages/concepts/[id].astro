@@ -4,6 +4,7 @@
  * each book contributes, then every relation, grouped and strongest first, with evidence
  * across books linking into the reader. Server-rendered; the graph island is one link away.
  */
+import { ActivityBeacon } from '../../lib/activity/ActivityBeacon';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { ConceptRelations } from '../../components/concepts/ConceptRelations';
 import { PassageList } from '../../components/concepts/PassageList';
@@ -30,6 +31,7 @@ const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? o
 ---
 
 <BaseLayout title={concept?.canonical ?? 'Concept'} width="reading" description={concept?.blurb ?? 'A concept and its evidence.'}>
+  <ActivityBeacon client:load surface="explore" detail="concept" />
   {
     concept && detail ? (
       <article class="concept">
