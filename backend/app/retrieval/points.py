@@ -58,6 +58,7 @@ INDEXED_TYPES = frozenset(
         ArtifactType.PAPER_REVIEW,
         ArtifactType.NOTATION_TABLE,
         ArtifactType.JOURNAL_CLUB,
+        ArtifactType.MATH_EXPLAINER,  # app.papers.render_math
     }
 )
 

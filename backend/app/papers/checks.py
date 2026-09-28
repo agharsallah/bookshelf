@@ -15,6 +15,8 @@ model. Human edits keep D15's bypass (schema only). A new paper skill adds one e
     extract-results    values finite, one row per (method, dataset, metric, setting)
     classify-citations ordinals offered and unique, each cites its own citing passages
                        (both app.papers.extraction_checks)
+    explain-math       formulas from the input with their LaTeX, every symbol explained,
+                       the worked arithmetic right, diagrams whole (app.papers.math_checks)
 """
 
 import re
@@ -23,6 +25,7 @@ from typing import Any
 
 from app.papers.claims import check_claims
 from app.papers.extraction_checks import check_citations, check_results
+from app.papers.math_checks import check_math_explainer
 from app.pipeline.bodies import cited_anchors
 from app.pipeline.selectors import Selection
 
@@ -112,6 +115,7 @@ CHECKS: dict[str, Check] = {
     "extract-claims": check_claims,  # app.papers.claims
     "extract-results": check_results,  # app.papers.extraction_checks
     "classify-citations": check_citations,
+    "explain-math": check_math_explainer,  # app.papers.math_checks
 }
 
 

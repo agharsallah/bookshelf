@@ -98,6 +98,7 @@ PAPER_DERIVES: list[Derive] = [
     Derive("assess-paper"),
     Derive("review-paper"),
     Derive("make-notation", when=has_math),
+    Derive("explain-math", when=has_math),
     Derive("make-journal-club"),
     Derive("extract-claims"),  # claim_set → claims (papers.materialize)
     Derive("extract-results"),
@@ -112,6 +113,7 @@ INDEXED_DERIVES = frozenset(
         ArtifactType.PAPER_REVIEW,
         ArtifactType.NOTATION_TABLE,
         ArtifactType.JOURNAL_CLUB,
+        ArtifactType.MATH_EXPLAINER,
     }
 )
 # Independent jobs queued next to the element jobs once structure is known (per document).

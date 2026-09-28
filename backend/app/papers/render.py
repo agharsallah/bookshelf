@@ -19,11 +19,16 @@ _SETUP = (("datasets", "Datasets"), ("baselines", "Baselines"), ("metrics", "Met
 
 def paper_blocks(body: dict[str, Any]) -> list[Block]:
     """Blocks for a `paper_card` (it has `tldr`), a `paper_explainer` (it has
-    `walkthrough`) or a study body (`render_study`); nothing for any other body."""
+    `walkthrough`), a `math_explainer` (`render_math`) or a study body (`render_study`);
+    nothing for any other body."""
     if "tldr" in body:
         return _card(body)
     if "walkthrough" in body:
         return _explainer(body)
+    if "big_picture" in body and "formulas" in body:
+        from app.papers.render_math import math_blocks  # builds on the helpers here
+
+        return math_blocks(body)
     # Assessment, review, notation, journal club: their renderers build on the helpers
     # here, so the module is imported on use.
     from app.papers.render_study import study_blocks

@@ -235,12 +235,13 @@ def test_a_derive_whose_condition_fails_is_not_queued(session):
     skills = {j.skill for j in enqueued if j.kind is JobKind.DERIVE}
     assert "make-journal-club" in skills
     assert "make-notation" not in skills  # no formula, no notation table
+    assert "explain-math" not in skills  # nor maths to explain
 
 
 @pytest.mark.parametrize(
     "kind",
     [ArtifactType.PAPER_REVIEW, ArtifactType.PAPER_ASSESSMENT, ArtifactType.NOTATION_TABLE,
-     ArtifactType.JOURNAL_CLUB, ArtifactType.PAPER_EXPLAINER],
+     ArtifactType.JOURNAL_CLUB, ArtifactType.PAPER_EXPLAINER, ArtifactType.MATH_EXPLAINER],
 )  # fmt: skip
 def test_approving_a_by_product_of_an_indexed_paper_reindexes_it(session, kind):
     paper = add_paper(session, status=DocumentStatus.INDEXED)

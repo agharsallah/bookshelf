@@ -50,6 +50,7 @@ SELECTORS = {
     "paper_results",
     "paper_citations",
     "paper_concepts",
+    "paper_math",
 }
 REQUIRED_META = {
     "name",

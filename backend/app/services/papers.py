@@ -40,6 +40,7 @@ PAPER_ARTIFACT_TYPES = (
     ArtifactType.PAPER_REVIEW,
     ArtifactType.NOTATION_TABLE,
     ArtifactType.JOURNAL_CLUB,
+    ArtifactType.MATH_EXPLAINER,
 )
 SORTS = ("recent", "title", "year", "stars", "cited_by")
 

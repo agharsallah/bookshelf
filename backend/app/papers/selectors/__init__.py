@@ -12,11 +12,12 @@ module here and one line below; nothing in `app/pipeline` changes.
     results.py  paper_results (extract-results)
     citing.py   paper_citations (classify-citations)
     linking.py  paper_concepts (link-paper-concepts)
+    explain_math.py  paper_math (explain-math)
 """
 
 from collections.abc import Callable
 
-from app.papers.selectors import citing, claims, core, linking, results, study
+from app.papers.selectors import citing, claims, core, explain_math, linking, results, study
 from app.pipeline.selectors import Context, Selection
 
 SELECTORS: dict[str, Callable[[Context], Selection]] = {
@@ -26,4 +27,5 @@ SELECTORS: dict[str, Callable[[Context], Selection]] = {
     **results.SELECTORS,
     **citing.SELECTORS,
     **linking.SELECTORS,
+    **explain_math.SELECTORS,
 }
