@@ -18,6 +18,10 @@ Three promises, in priority order:
 3. **See the connections.** Concepts link across books, so the shelf behaves like one corpus
    rather than a stack of isolated files.
 
+Scientific papers have a dedicated mode on the same infrastructure (own pipeline profile,
+skills, tables and pages: claims, results, citations, ratings, reading recommendations). Its
+design lives in [PAPERS.md](PAPERS.md); this document covers what both share.
+
 ### Explicit non-goals
 
 Named so they stop showing up in scope discussions:
@@ -167,6 +171,7 @@ Each decision states the call, the reason, and what it costs.
 | D15 | **Humans and skills author the same artifact types** | You can write a chapter distillation by hand; the system treats it like an approved skill output | `artifacts.origin` = `human` \| `skill:<name>@<v>`; human artifacts skip the grounding gate but still carry `cites` |
 | D16 | **Model ladder: cheapest model that passes the gates** | Exploration and classification are high-volume, low-stakes; briefs and concept linking are the opposite | Every skill declares its tier in `meta.yaml`; `artifacts.model` records what actually ran, so quality vs. cost is measurable per skill |
 | D18 | **Claude Code CLI is the model runtime; no API key in the backend** | Skills already run there; subscription covers the cost; interactive exploration is free-form | Worker shells out to `claude -p`; structured output enforced by post-validation; concurrency capped; a `ModelRunner` seam keeps the API swap possible |
+| D19 | **Papers are a document genre with their own pipeline profile** (`documents.genre`) | Reuses tree, anchors, artifacts, gates, search, graph and FSRS; a paper still needs its own ranks, skills and atoms (claims, results, references) | Orchestrator rules are chosen per genre (`rules_for`); see [PAPERS.md](PAPERS.md) P1–P9 |
 | D17 | **Non-prose content is parsed, not skipped** | Charts, diagrams, tables, code, and formulas often carry the argument; a distillation that ignores them is of a weaker book | Region classifier at parse time; per-kind skills (`describe-figure`, `explain-code`, `describe-math`, `explain-table`) emit structured, cited blocks; one call per element, never per page |
 
 ---
@@ -1169,6 +1174,7 @@ Keep Astro as the shell and routing layer; add React islands only where interact
 | **Map** | React island | The atlas as a live force layout: books, chapters and concepts; select to read, double-click to open. A lens mode filters and highlights by connection type, kind and book, dims or hides the rest, groups by book, and shows proposed bridges to accept or reject. A path finder traces the strongest chain between two marks, hop by hop, each hop opening its evidence |
 | **Listen** | Astro + one React island | Audio summaries: pick an episode and cast, a player (skip, speed, parts, download, resume where you stopped, Media Session and keys), a transcript that follows the audio and links each line to its passage, and the form that makes an episode |
 | **Review queue** | React island | Draft artifacts, diff against the previous version, approve / edit / reject / re-run |
+| **Papers** | Astro + islands | Paper shelf, paper tabs (card · explain · claims · results · references · notation · review · club), reading queue, compare, sets, three-pass reader mode ([PAPERS.md](PAPERS.md) §8) |
 | **You** | Astro + React islands | Reader statistics (§12 "Reader statistics"): `/you` for the shelf, `/you/{slug}` for one book, with a window (7 / 30 / 90 days, a year, all time) |
 
 ### Reader statistics
@@ -1300,6 +1306,7 @@ GET    /stats                          pipeline statistics for every book, skill
 GET    /documents/{ref}/stats          one book: passes, stages, chapters, skills, insights
 ```
 
+Paper endpoints (`/papers…`, `/claims…`, `/paper-sets…`) are listed in [PAPERS.md](PAPERS.md) §7.
 All of it sits behind the existing `/api/v1` prefix, error envelope, and API-key guard on writes.
 Ingest and job endpoints return `202` with a job id; the frontend polls `/jobs`.
 
