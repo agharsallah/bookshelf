@@ -6,8 +6,10 @@ from typing import Annotated, Literal
 import httpx
 from fastapi import APIRouter, Depends, Query, Response, status
 from fastapi import Path as PathParam
+from fastapi.responses import FileResponse
 
 from app.api.deps import LimitDep, OffsetDep, SessionDep, SettingsDep
+from app.api.routes.media import MEDIA_HEADERS
 from app.core.security import require_api_key
 from app.models import Document
 from app.models.enums import DocumentStatus, Genre
@@ -26,7 +28,8 @@ from app.schemas.document import (
 )
 from app.schemas.job import JobPublic
 from app.schemas.node import ANCHOR_PATTERN, DocumentTree, NodePublic, TreeNode
-from app.services import documents, fetch, ingest, tree
+from app.services import covers, documents, fetch, ingest, tree
+from app.services.media import IMAGE_TYPES
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
@@ -111,6 +114,31 @@ def _detail(session: SessionDep, document: Document) -> DocumentDetail:
 @router.get("/{ref}", response_model=DocumentDetail, summary="Get a document and pipeline state")
 def get_document(ref: DocumentRef, session: SessionDep) -> DocumentDetail:
     return _detail(session, documents.get_document(session, ref))
+
+
+# A cover is remade when its book is re-parsed: revalidate daily (ETag), not yearly.
+COVER_HEADERS = MEDIA_HEADERS | {"Cache-Control": "public, max-age=86400"}
+
+
+@router.get(
+    "/{ref}/cover",
+    response_class=FileResponse,
+    responses={
+        200: {"content": {t: {} for t in sorted(set(IMAGE_TYPES.values()))}},
+        404: {"description": "Not a book, or a book without a cover"},
+    },
+    summary="A book's cover image",
+    description=(
+        "The EPUB's cover image, or the PDF's first page rendered, made on first request and "
+        "cached in the media folder. Papers and articles have none."
+    ),
+)
+def get_cover(ref: DocumentRef, session: SessionDep, settings: SettingsDep) -> FileResponse:
+    document = documents.get_document(session, ref)
+    file, media_type = covers.cover_file(
+        document, library_dir=settings.library_dir, media_dir=settings.media_dir
+    )
+    return FileResponse(file, media_type=media_type, headers=COVER_HEADERS)
 
 
 @router.post(

@@ -141,8 +141,13 @@ def _manifest(package: Package, opf_path: str, opf: Element) -> dict[str, tuple[
             package.cover = path
     if package.cover is None:  # EPUB 2: <meta name="cover" content="item-id"/>
         for meta in _find(opf, "meta"):
-            if attr(meta, "name") == "cover" and (item_id := attr(meta, "content")) in items:
-                package.cover = items[item_id][0]
+            if attr(meta, "name") != "cover" or not (content := attr(meta, "content")):
+                continue
+            if content in items:
+                package.cover = items[content][0]
+            # Some tools write the image's path instead of its id, even for an unlisted file.
+            elif package.has(path := resolve(opf_path, content)[0]):
+                package.cover = path
     return items
 
 
