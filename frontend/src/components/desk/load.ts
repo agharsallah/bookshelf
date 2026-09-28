@@ -8,6 +8,7 @@ import { loadNavCounts, type NavCounts } from '../shell/nav';
 import { fetchAll } from '../../lib/api/fetch-all';
 import { serverApi } from '../../lib/api/server';
 import type { DocumentSummary, ReadingPosition } from '../../lib/api/types/documents';
+import type { DueCards } from '../../lib/api/types/recalls';
 import { getArtifacts, getOutline } from '../../lib/documents/server';
 import { availableMaterials } from '../../lib/documents/study';
 import { readingUnits } from '../../lib/documents/tree';
@@ -34,6 +35,13 @@ export async function loadDesk(): Promise<DeskBook[]> {
   const recent = [...items].sort((a, b) => b.updated_at.localeCompare(a.updated_at));
   const head = await Promise.all(recent.slice(0, DETAIL_CAP).map(detailed));
   return [...head, ...recent.slice(DETAIL_CAP).map((doc) => deskBook(doc, [], []))];
+}
+
+/** Review cards due across every book; null when they could not be loaded. */
+export async function loadDue(): Promise<DueCards | null> {
+  return await serverApi()
+    .get<DueCards>('reviews/due')
+    .catch(() => null);
 }
 
 export async function loadNeeds(): Promise<NavCounts | null> {

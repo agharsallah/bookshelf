@@ -1,8 +1,8 @@
 ---
 /**
- * The Desk, the home page: back into the book you are in, the study material the
- * library has made, every book with how far you read it, pages read at a glance, and
- * in workshop mode what waits for you. Each part degrades alone when its data fails.
+ * The Desk, the home page: back into the book you are in, what is due for review
+ * across every book, the study material the library has made, every book with how far
+ * you read it, pages read at a glance, and in workshop mode what waits for you. Each part degrades alone when its data fails.
  */
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { Problem } from '../components/common/Problem';
@@ -12,12 +12,13 @@ import PagesRead from '../components/desk/PagesRead.astro';
 import StudyDesk from '../components/desk/StudyDesk.astro';
 import YourShelf from '../components/desk/YourShelf.astro';
 import { pagesChart, pickHero, shelfOrder, studyGroups } from '../components/desk/desk';
-import { loadDesk, loadNeeds } from '../components/desk/load';
+import { loadDesk, loadDue, loadNeeds } from '../components/desk/load';
+import DueToday from '../components/recall/DueToday';
 import { load } from '../lib/documents/server';
 
 export const prerender = false;
 
-const [loaded, needs] = await Promise.all([load(loadDesk), loadNeeds()]);
+const [loaded, needs, due] = await Promise.all([load(loadDesk), loadNeeds(), loadDue()]);
 const books = loaded.ok ? loaded.value : [];
 const hero = pickHero(books);
 const shelf = shelfOrder(books);
@@ -40,6 +41,7 @@ const chart = pagesChart(books);
           {books.length > 0 && (
             <div class="columns">
               <div class="main">
+                {due && due.total > 0 && <DueToday client:load initial={due} />}
                 <StudyDesk groups={groups} />
                 <YourShelf books={shelf} />
               </div>

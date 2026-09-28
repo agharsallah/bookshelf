@@ -1,0 +1,102 @@
+/* The Desk's review session: one card at a time, retrieval before the reveal. */
+
+.due {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2) var(--space-4);
+}
+
+.title {
+  font-size: var(--text-lg);
+}
+
+.count {
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.card {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-l);
+  background: var(--paper-raised);
+  box-shadow: var(--shadow-lift);
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.meta a {
+  color: inherit;
+}
+
+.prompt {
+  font-family: var(--font-read);
+  font-size: var(--text-lg);
+  line-height: var(--leading-tight);
+}
+
+.field {
+  display: grid;
+  gap: var(--space-2);
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.field textarea {
+  min-block-size: 5.5rem;
+  padding: var(--space-3);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-m);
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-read);
+  font-size: var(--text-md);
+  resize: vertical;
+}
+
+.field textarea:read-only {
+  border-style: dashed;
+  color: var(--ink-2);
+}
+
+.answer {
+  padding-inline-start: var(--space-3);
+  border-inline-start: 3px solid var(--accent);
+  font-family: var(--font-read);
+  line-height: var(--leading-read);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.ask {
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.done {
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+}
