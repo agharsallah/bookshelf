@@ -23,6 +23,7 @@ from app.db.session import release
 from app.jobs.registry import HandlerResult, PermanentJobError
 from app.models import Artifact, Document, Job
 from app.models.enums import ArtifactType, JobKind, JobState, Origin, RunMode, Tier
+from app.papers import checks
 from app.pipeline import artifacts, ceiling, gates
 from app.pipeline.bodies import plain_text
 from app.pipeline.hashing import input_hash
@@ -55,6 +56,9 @@ SKILL_JOB_KINDS = frozenset(
         JobKind.STRUCTURE_NOTE,
         JobKind.LINK_CONCEPTS,
         JobKind.DERIVE,
+        JobKind.DISTIL_PAPER_SECTION,  # papers (app.papers.profile)
+        JobKind.DISSECT_PAPER,
+        JobKind.LINK_PAPER_CONCEPTS,
     }
 )
 
@@ -152,7 +156,14 @@ def sibling_texts(session: Session, prepared: Prepared) -> dict[str, str]:
 
 
 def output_problems(prepared: Prepared, output: dict[str, Any]) -> list[str]:
-    return gates.output_problems(prepared.skill.schema, output, prepared.selection.valid_anchors)
+    """Hard gates: schema and anchors, then (once the shape holds) the skill's cross-field
+    rules (`app.papers.checks`)."""
+    problems = gates.output_problems(
+        prepared.skill.schema, output, prepared.selection.valid_anchors
+    )
+    if problems:
+        return problems
+    return checks.problems(prepared.skill.name, output, prepared.selection)
 
 
 def build_artifact(

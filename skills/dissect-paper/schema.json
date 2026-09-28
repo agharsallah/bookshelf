@@ -1,0 +1,323 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bookshelf.local/skills/dissect-paper/schema.json",
+  "title": "dissect-paper output",
+  "description": "The paper card: one fixed shape for every paper, so cards compare side by side. Every key is always present; lists a paper has nothing for are empty. Structured fields hold cited spans; method and results hold render blocks.",
+  "type": "object",
+  "required": [
+    "tldr",
+    "question",
+    "contributions",
+    "method",
+    "setup",
+    "results",
+    "limitations",
+    "assumptions",
+    "future_work",
+    "numbers"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "tldr": {
+      "description": "What the paper does and what it finds, in one or two sentences (at most 60 words).",
+      "allOf": [
+        {
+          "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/spans"
+        },
+        {
+          "maxItems": 3
+        }
+      ]
+    },
+    "question": {
+      "description": "The research question or problem the paper answers.",
+      "allOf": [
+        {
+          "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/spans"
+        },
+        {
+          "maxItems": 3
+        }
+      ]
+    },
+    "contributions": {
+      "type": "array",
+      "description": "What the paper adds, as the authors claim it, each typed.",
+      "minItems": 1,
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "required": [
+          "kind",
+          "spans"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "enum": [
+              "method",
+              "result",
+              "theory",
+              "dataset",
+              "benchmark",
+              "position"
+            ]
+          },
+          "spans": {
+            "allOf": [
+              {
+                "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/spans"
+              },
+              {
+                "maxItems": 3
+              }
+            ]
+          }
+        }
+      }
+    },
+    "method": {
+      "type": "array",
+      "description": "How it works: an overview paragraph, the architecture or pipeline as a diagram, the key equations, the procedure.",
+      "minItems": 1,
+      "maxItems": 30,
+      "items": {
+        "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/block"
+      }
+    },
+    "setup": {
+      "type": "object",
+      "description": "The experimental setup; all three lists are empty for a paper without experiments.",
+      "required": [
+        "datasets",
+        "baselines",
+        "metrics"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "datasets": {
+          "type": "array",
+          "description": "Datasets or benchmarks, as the paper names them.",
+          "maxItems": 20,
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "spans"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120
+              },
+              "spans": {
+                "allOf": [
+                  {
+                    "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/spans"
+                  },
+                  {
+                    "maxItems": 3
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "baselines": {
+          "type": "array",
+          "description": "Methods compared against.",
+          "maxItems": 20,
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "spans"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120
+              },
+              "spans": {
+                "allOf": [
+                  {
+                    "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/spans"
+                  },
+                  {
+                    "maxItems": 3
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "metrics": {
+          "type": "array",
+          "description": "How results are measured.",
+          "maxItems": 20,
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "spans"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120
+              },
+              "spans": {
+                "allOf": [
+                  {
+                    "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/spans"
+                  },
+                  {
+                    "maxItems": 3
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "results": {
+      "type": "array",
+      "description": "The headline results: tables and charts copied from the distillations, the comparisons the authors draw, and the caveats.",
+      "minItems": 1,
+      "maxItems": 30,
+      "items": {
+        "anyOf": [
+          {
+            "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/table"
+          },
+          {
+            "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/chart"
+          },
+          {
+            "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/paragraph"
+          },
+          {
+            "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/bullets"
+          },
+          {
+            "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/callout"
+          },
+          {
+            "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/heading"
+          }
+        ]
+      }
+    },
+    "limitations": {
+      "type": "object",
+      "required": [
+        "stated",
+        "unstated"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "stated": {
+          "type": "array",
+          "description": "Limitations the authors state.",
+          "minItems": 0,
+          "maxItems": 10,
+          "items": {
+            "allOf": [
+              {
+                "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/spans"
+              },
+              {
+                "maxItems": 3
+              }
+            ]
+          }
+        },
+        "unstated": {
+          "type": "array",
+          "description": "Gaps the paper's own setup shows but the authors do not state, each citing the passage that shows it.",
+          "minItems": 0,
+          "maxItems": 8,
+          "items": {
+            "allOf": [
+              {
+                "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/spans"
+              },
+              {
+                "maxItems": 3
+              }
+            ]
+          }
+        }
+      }
+    },
+    "assumptions": {
+      "type": "array",
+      "description": "Premises the method or the evaluation relies on.",
+      "minItems": 0,
+      "maxItems": 10,
+      "items": {
+        "allOf": [
+          {
+            "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/spans"
+          },
+          {
+            "maxItems": 3
+          }
+        ]
+      }
+    },
+    "future_work": {
+      "type": "array",
+      "description": "Directions the authors name.",
+      "minItems": 0,
+      "maxItems": 10,
+      "items": {
+        "allOf": [
+          {
+            "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/spans"
+          },
+          {
+            "maxItems": 3
+          }
+        ]
+      }
+    },
+    "numbers": {
+      "type": "array",
+      "description": "Headline figures, as the paper states them.",
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "required": [
+          "value",
+          "label"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "value": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 24
+          },
+          "label": {
+            "allOf": [
+              {
+                "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/spans"
+              },
+              {
+                "maxItems": 2
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

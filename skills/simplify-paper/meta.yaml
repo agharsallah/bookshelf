@@ -1,0 +1,23 @@
+name: simplify-paper
+version: 2  # v2: a gain keeps its reference point
+description: Explain a paper at the reader's level — newcomer, practitioner or expert — with the prerequisites it assumes (linked to the shelf's concepts), the intuition, a walkthrough of what it does and finds, an analogy, and its key equations read in plain words, all cited.
+tier: distil
+job_kind: derive
+artifact_type: paper_explainer
+scope: document
+selector: paper_explainer
+vision: false
+genre: paper   # a paper skill (docs/PAPERS.md P2)
+# Chosen per run (POST /jobs `params`); each level is its own explainer (`variant`). The
+# approved card queues the default level (app.papers.profile PAPER_DERIVES).
+params:
+  level:
+    choices: [newcomer, practitioner, expert]
+    default: practitioner
+    description: Who reads it — no background in the field, works in it, or researches it.
+variant: "{level}"
+gates:
+  grounding_min: 0.9
+  # An explainer's length follows the level (a newcomer needs more words), not the paper's.
+  max_words: 3500
+  coverage_min: 0.5  # the walkthrough must reach the method and the results

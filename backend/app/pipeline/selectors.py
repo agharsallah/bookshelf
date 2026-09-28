@@ -409,6 +409,14 @@ SELECTORS: dict[str, Callable[[Context], Selection]] = {
 }
 
 
+def registry() -> dict[str, Callable[[Context], Selection]]:
+    """`SELECTORS` plus the paper skills' (`app.papers.selectors`), imported on first use
+    because they build on this module's `Context` and `Selection`."""
+    from app.papers.selectors import SELECTORS as PAPER_SELECTORS
+
+    return {**SELECTORS, **PAPER_SELECTORS}
+
+
 def select_inputs(
     session: Session,
     selector: str,
@@ -424,7 +432,7 @@ def select_inputs(
     `section_scope`: the skill distils one section scope (`meta.scope: section`), so a
     chapter anchor with sections means the chapter's intro leaves only.
     """
-    fn = SELECTORS.get(selector)
+    fn = registry().get(selector)
     if fn is None:
         raise SelectorError(f"unknown selector {selector!r}")
     tree = Tree.load(session, document)

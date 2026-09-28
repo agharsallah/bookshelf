@@ -1,0 +1,19 @@
+name: dissect-paper
+version: 2  # v2: number labels say what is measured, not where it was read
+description: Dissect a whole paper into its fixed-shape paper card — TL;DR, research question, typed contributions, the method, the experimental setup, the results as tables and charts, stated and unstated limitations, assumptions, future work and headline numbers — from its unit distillations and abstract.
+tier: reason
+job_kind: dissect_paper
+artifact_type: paper_card   # approving it moves the paper to `distilled` (app.papers.profile)
+scope: document
+selector: paper_distillations
+vision: false
+genre: paper   # a paper skill (docs/PAPERS.md P2)
+gates:
+  grounding_min: 0.9
+  # A card, not a summary of every section: comparable across papers and read in five
+  # minutes. Its length follows the paper's contributions and results, not its word count,
+  # so there is no compression band.
+  max_words: 2500
+  # Units offered = every unit distillation. A card that never cites the method or the
+  # results sections is missing the paper; related work and appendix may go uncited.
+  coverage_min: 0.5

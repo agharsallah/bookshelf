@@ -19,7 +19,7 @@ import yaml
 from jsonschema import Draft202012Validator
 from referencing import Registry, Resource
 
-from app.models.enums import ArtifactType, ConceptKind, JobKind, Relation, Tier
+from app.models.enums import ArtifactType, ConceptKind, Genre, JobKind, Relation, Tier
 
 ROOT = Path(__file__).resolve().parents[2]
 SKILLS_DIR = ROOT / "skills"
@@ -38,6 +38,18 @@ SELECTORS = {
     "chapter_distillation",
     "chapter_salience",
     "note_context",
+    # Papers (app/papers/selectors/)
+    "paper_unit_blocks",
+    "paper_distillations",
+    "paper_explainer",
+    "paper_claims",
+    "paper_assessment",
+    "paper_review",
+    "paper_notation",
+    "paper_journal_club",
+    "paper_results",
+    "paper_citations",
+    "paper_concepts",
 }
 REQUIRED_META = {
     "name",
@@ -59,7 +71,19 @@ PYTHON_JOBS = {
     JobKind.EXPORT,
     JobKind.NARRATE,
     JobKind.GRADE_RECALL,
+    # Papers (docs/PAPERS.md §3-§5): Python jobs; the last three run a utility skill inline.
+    JobKind.PAPER_STRUCTURE,
+    JobKind.PAPER_ENRICH,
+    JobKind.PAPER_CANDIDATES,
+    JobKind.PAPER_WATCH,
+    JobKind.PAPER_FETCH,
+    JobKind.RELATE_CLAIMS,
+    JobKind.RECOMMEND_NEXT,
+    JobKind.SYNTHESIZE_PAPERS,
 }
+# Skill-backed kinds whose skill package is not written yet. The paper-skills stage removes
+# each entry as it adds the package (and adds the kind to `SKILL_JOB_KINDS`); keep it empty.
+PENDING_SKILL_JOBS: set[JobKind] = set()
 OUTPUT_LINE = "Output only the JSON object. No prose, no code fences."
 INTERACTIVE = re.compile(r"<!-- interactive:start -->.*?<!-- interactive:end -->\n?", re.S)
 FRONTMATTER = re.compile(r"\A---\n(.*?)\n---\n", re.S)
@@ -120,13 +144,28 @@ def test_catalogue_is_not_empty() -> None:
 
 def test_every_skill_backed_job_kind_has_a_skill() -> None:
     covered = {_meta(name)["job_kind"] for name in SKILL_NAMES}
-    assert set(JobKind) - PYTHON_JOBS <= covered
+    assert set(JobKind) - PYTHON_JOBS - PENDING_SKILL_JOBS <= covered
     assert not covered & PYTHON_JOBS
+    assert not covered & PENDING_SKILL_JOBS, "a pending kind now has a skill: drop it"
 
 
-def test_each_artifact_type_is_produced_by_one_skill() -> None:
-    types = [_meta(name)["artifact_type"] for name in CONTENT_SKILLS]
-    assert len(types) == len(set(types))
+def test_each_artifact_type_is_produced_by_one_skill_per_genre() -> None:
+    """A paper skill may write a book type (distil-paper-section → chapter_distillation):
+    `skill_for_artifact_type` picks by genre, so the pair (type, genre) must be unique."""
+    produced = [(_meta(n)["artifact_type"], _meta(n).get("genre")) for n in CONTENT_SKILLS]
+    assert len(produced) == len(set(produced))
+    for name in CONTENT_SKILLS:
+        Genre(_meta(name).get("genre") or "book")
+
+
+def test_paper_skills_that_write_book_types_are_marked_as_paper_skills() -> None:
+    by_type: dict[str, list[str]] = {}
+    for name in CONTENT_SKILLS:
+        by_type.setdefault(_meta(name)["artifact_type"], []).append(name)
+    shared = {t: names for t, names in by_type.items() if len(names) > 1}
+    assert "chapter_distillation" in shared
+    for names in shared.values():
+        assert sum(_meta(n).get("genre") is None for n in names) == 1
 
 
 @pytest.mark.parametrize("name", SKILL_NAMES)
@@ -337,5 +376,5 @@ def test_link_concepts_vocabularies_match_the_database_enums() -> None:
     props = _json("link-concepts", "schema.json")["properties"]
     kinds = props["concepts"]["items"]["properties"]["kind"]["enum"]
     relations = props["edges"]["items"]["properties"]["relation"]["enum"]
-    assert set(kinds) == set(ConceptKind)
+    assert set(kinds) == {k for k in ConceptKind if not k.is_paper_only}
     assert set(relations) == {r for r in Relation if not r.is_derived}

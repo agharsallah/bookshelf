@@ -21,7 +21,7 @@ from jsonschema import Draft202012Validator
 from jsonschema.exceptions import SchemaError
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
-from app.models.enums import ArtifactType, JobKind, Tier
+from app.models.enums import ArtifactType, Genre, JobKind, Tier
 
 logger = logging.getLogger(__name__)
 
@@ -112,6 +112,10 @@ class SkillMeta(BaseModel):
     variant: str | None = None
     # The artifact is a script to be spoken: storing one queues a `narrate` job (app/audio).
     narrate: bool = False
+    # The genre the skill is written for (docs/PAPERS.md P2). None: books, and any genre
+    # without a skill of its own. A paper skill may write a book type (distil-paper-section
+    # → chapter_distillation): `skill_for_artifact_type` then picks by the document's genre.
+    genre: Genre | None = None
 
     @model_validator(mode="after")
     def _variant_names_params(self) -> "SkillMeta":
@@ -241,8 +245,17 @@ def skill_for_job_kind(catalogue: dict[str, Skill], kind: JobKind) -> Skill | No
     return matches[0] if matches else None
 
 
-def skill_for_artifact_type(catalogue: Mapping[str, Skill], kind: ArtifactType) -> Skill | None:
-    return next((s for s in catalogue.values() if s.meta.artifact_type is kind), None)
+def skill_for_artifact_type(
+    catalogue: Mapping[str, Skill], kind: ArtifactType, *, genre: Genre | None = None
+) -> Skill | None:
+    """The skill that produces `kind` (its schema checks human edits). A type two skills
+    share goes to the one written for `genre`, else to the genre-neutral (book) one."""
+    producers = [s for s in catalogue.values() if s.meta.artifact_type is kind]
+    for wanted in dict.fromkeys((genre, None)):
+        found = next((s for s in producers if s.meta.genre == wanted), None)
+        if found is not None:
+            return found
+    return producers[0] if producers else None
 
 
 def batch_prompt(skill_md: str) -> str:

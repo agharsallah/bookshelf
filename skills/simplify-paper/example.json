@@ -1,0 +1,132 @@
+{
+  "prerequisites": [
+    {
+      "concept": "Attention",
+      "shelf_concept": "attention",
+      "why": [
+        {
+          "text": "The reader decides how much each passage counts through attention, and the gate works by scaling it.",
+          "cites": [
+            "ch03/s01/p003"
+          ]
+        }
+      ]
+    },
+    {
+      "concept": "Exact match (EM)",
+      "shelf_concept": null,
+      "why": [
+        {
+          "text": "Every result is reported as the share of questions whose predicted answer matches exactly.",
+          "cites": [
+            "ch04/p001"
+          ]
+        }
+      ]
+    }
+  ],
+  "intuition": [
+    {
+      "type": "paragraph",
+      "spans": [
+        {
+          "text": "A question-answering system first fetches passages that might hold the answer, then reads them. Until now the reader treated every fetched passage as equally trustworthy, so a few irrelevant ones could drown out the one that mattered. ",
+          "cites": [
+            "ch01/p002"
+          ]
+        },
+        {
+          "text": "This paper adds a small gate that scores each passage against the question first, so the reader listens mostly to the passages that look relevant.",
+          "cites": [
+            "ch03/p001",
+            "ch03/s01/p002"
+          ]
+        }
+      ]
+    }
+  ],
+  "walkthrough": [
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "How it works"
+    },
+    {
+      "type": "steps",
+      "items": [
+        [
+          {
+            "text": "A retriever fetches candidate passages for the question.",
+            "cites": [
+              "ch03/p001"
+            ]
+          }
+        ],
+        [
+          {
+            "text": "The gate gives each passage a score between 0 and 1 from the question and the passage together.",
+            "cites": [
+              "ch03/s01/p002",
+              "ch03/s01/m001"
+            ]
+          }
+        ],
+        [
+          {
+            "text": "The reader weights its attention to each passage by that score, then writes the answer.",
+            "cites": [
+              "ch03/s01/p003"
+            ]
+          }
+        ]
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "What it found"
+    },
+    {
+      "type": "paragraph",
+      "spans": [
+        {
+          "text": "Exact match rose by 2.1 points on Natural Questions and 3.4 on HotpotQA compared with FiD-base, the strongest reader it was tested against.",
+          "cites": [
+            "ch04/s02/p001"
+          ]
+        }
+      ]
+    }
+  ],
+  "analogy": [
+    {
+      "text": "Like an editor who skims a pile of clippings and marks the relevant ones before the writer starts: the writer still reads everything, but pays most attention to what was marked. ",
+      "cites": [
+        "ch03/p001",
+        "ch03/s01/p003"
+      ]
+    },
+    {
+      "text": "Where it breaks: the editor can only mark clippings that are in the pile — if the retriever missed the right passage, the gate cannot bring it back.",
+      "cites": [
+        "ch03/p001"
+      ]
+    }
+  ],
+  "equations": [
+    {
+      "latex": "g_i = \\sigma(w^\\top [q; p_i])",
+      "cites": [
+        "ch03/s01/m001"
+      ],
+      "plain": [
+        {
+          "text": "Put the question and passage i side by side, turn them into one relevance number with learned weights, and squash that number into a score between 0 and 1.",
+          "cites": [
+            "ch03/s01/m001"
+          ]
+        }
+      ]
+    }
+  ]
+}

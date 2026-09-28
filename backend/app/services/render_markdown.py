@@ -13,6 +13,8 @@ and `markdown_table` / `fence` are shared with the tree export.
 from collections.abc import Callable, Iterable, Sequence
 from typing import Any
 
+from app.papers.render import paper_blocks
+
 Block = dict[str, Any]
 
 _MARKS = {"strong": ("**", "**"), "em": ("*", "*"), "highlight": ("<mark>", "</mark>")}
@@ -240,7 +242,8 @@ def render_blocks(blocks: Iterable[Block]) -> str:
 def body_blocks(body: dict[str, Any]) -> list[Block]:
     """Every renderable block in an artifact body, in reading order.
 
-    Handles `{blocks}`, brief and guide `{sections: [{title, blocks}]}`, the guide's
+    Handles `{blocks}`, brief and guide `{sections: [{title, blocks}]}`, the paper card and
+    explainer (`app.papers.render`), the guide's
     `journey` / `themes` / `numbers`, a `takeaway` span, and the item-list bodies of FAQ
     (`question`/`answer`), quiz (`choices`/`explanation`) and flashcards (`front`/`back`).
     """
@@ -249,6 +252,7 @@ def body_blocks(body: dict[str, Any]) -> list[Block]:
         if section.get("title"):
             blocks.append({"type": "heading", "level": 3, "text": section["title"]})
         blocks.extend(section.get("blocks", []))
+    blocks.extend(paper_blocks(body))  # paper card / explainer fields (app.papers.render)
     blocks.extend(_guide_blocks(body))
     for item in body.get("items", []):
         blocks.extend(_item_blocks(item))

@@ -1,0 +1,21 @@
+name: distil-paper-section
+version: 1
+description: Distil one top-level section of a scientific paper into a cited, role-aware study note — the problem, gap and contributions of an introduction; the setup, datasets, baselines, metrics, hyperparameters and equations of a method; every number and table of a results section; a positioning map of related work.
+tier: distil
+job_kind: distil_paper_section
+artifact_type: chapter_distillation   # the reader's distillation pane works unchanged
+scope: chapter                        # a unit: a top-level section (docs/PAPERS.md P3)
+selector: paper_unit_blocks
+vision: false
+genre: paper   # a paper skill (docs/PAPERS.md P2)
+gates:
+  grounding_min: 0.9
+  # output words / the unit's source words (every leaf block under it). Papers are dense:
+  # a book section says a thing three ways, a paper says it once and moves on, so there is
+  # less to drop. The prompt aims by role — related work 20-40%, introduction 25-45%,
+  # method 40-70%, results 45-80% (numbers and transcribed tables are kept, not condensed).
+  # Below 20% a setting, baseline or number was dropped; above 95% the note copies prose.
+  compression: [0.20, 0.95]
+  # A section this short (a 70-word conclusion) is kept nearly whole by a faithful note, so
+  # only the band's lower edge applies to it.
+  compression_min_source: 150

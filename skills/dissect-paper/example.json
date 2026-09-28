@@ -1,0 +1,311 @@
+{
+  "tldr": [
+    {
+      "text": "Gated retrieval adapters score each retrieved passage before the reader sees it, improving exact match over FiD-base by 2.1 points on NQ and 3.4 on HotpotQA with a 40% smaller adapter.",
+      "cites": [
+        "fm01/p002",
+        "ch04/s02/p001"
+      ]
+    }
+  ],
+  "question": [
+    {
+      "text": "Can an open-domain QA reader stop irrelevant retrieved passages from diluting its evidence, without a larger model?",
+      "cites": [
+        "ch01/p002"
+      ]
+    }
+  ],
+  "contributions": [
+    {
+      "kind": "method",
+      "spans": [
+        {
+          "text": "A learned gate that weights each passage by its relevance to the question before reading.",
+          "cites": [
+            "ch01/p004",
+            "ch03/s01/p002"
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "result",
+      "spans": [
+        {
+          "text": "State-of-the-art EM among the compared readers on NQ and HotpotQA at a smaller adapter size.",
+          "cites": [
+            "ch01/p004",
+            "ch04/s02/t001"
+          ]
+        }
+      ]
+    }
+  ],
+  "method": [
+    {
+      "type": "paragraph",
+      "spans": [
+        {
+          "text": "A retriever returns passages; a small gate scores each one against the question; the reader attends to passages in proportion to their gate score.",
+          "cites": [
+            "ch03/p001",
+            "ch03/s01/p002"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "diagram",
+      "direction": "LR",
+      "nodes": [
+        {
+          "id": "q",
+          "label": "Question"
+        },
+        {
+          "id": "ret",
+          "label": "Retriever"
+        },
+        {
+          "id": "gate",
+          "label": "Passage gate"
+        },
+        {
+          "id": "rd",
+          "label": "Reader"
+        }
+      ],
+      "edges": [
+        {
+          "from": "q",
+          "to": "ret"
+        },
+        {
+          "from": "ret",
+          "to": "gate",
+          "label": "passages"
+        },
+        {
+          "from": "gate",
+          "to": "rd",
+          "label": "weighted passages"
+        }
+      ],
+      "cites": [
+        "ch03/p001",
+        "ch03/s01/p002"
+      ]
+    },
+    {
+      "type": "math",
+      "latex": "g_i = \\sigma(w^\\top [q; p_i])",
+      "meaning": [
+        {
+          "text": "The gate score of passage i is a sigmoid of a learned projection of the question and passage encodings, concatenated.",
+          "cites": [
+            "ch03/s01/m001"
+          ]
+        }
+      ],
+      "cites": [
+        "ch03/s01/m001"
+      ]
+    }
+  ],
+  "setup": {
+    "datasets": [
+      {
+        "name": "Natural Questions",
+        "spans": [
+          {
+            "text": "Open-domain QA, development set.",
+            "cites": [
+              "ch04/p001"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "HotpotQA",
+        "spans": [
+          {
+            "text": "Multi-hop QA needing evidence from two passages, development set.",
+            "cites": [
+              "ch04/p001",
+              "ch04/s02/p001"
+            ]
+          }
+        ]
+      }
+    ],
+    "baselines": [
+      {
+        "name": "FiD-base",
+        "spans": [
+          {
+            "text": "Re-run with the authors' released code.",
+            "cites": [
+              "ch04/s01/p002"
+            ]
+          }
+        ]
+      }
+    ],
+    "metrics": [
+      {
+        "name": "EM",
+        "spans": [
+          {
+            "text": "Exact match of the predicted answer.",
+            "cites": [
+              "ch04/p001"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "results": [
+    {
+      "type": "table",
+      "caption": "EM on the development sets",
+      "header": [
+        "Model",
+        "NQ",
+        "HotpotQA"
+      ],
+      "rows": [
+        [
+          {
+            "text": "FiD-base",
+            "cites": [
+              "ch04/s02/t001"
+            ]
+          },
+          {
+            "text": "48.2",
+            "cites": [
+              "ch04/s02/t001"
+            ]
+          },
+          {
+            "text": "44.7",
+            "cites": [
+              "ch04/s02/t001"
+            ]
+          }
+        ],
+        [
+          {
+            "text": "GRA (ours)",
+            "cites": [
+              "ch04/s02/t001"
+            ]
+          },
+          {
+            "text": "50.3",
+            "cites": [
+              "ch04/s02/t001"
+            ]
+          },
+          {
+            "text": "48.1",
+            "cites": [
+              "ch04/s02/t001"
+            ]
+          }
+        ]
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "caution",
+      "spans": [
+        {
+          "text": "On TriviaQA the 0.3 EM lead is within the ±0.4 standard deviation over three seeds.",
+          "cites": [
+            "ch04/s02/p002"
+          ]
+        }
+      ]
+    }
+  ],
+  "limitations": {
+    "stated": [
+      [
+        {
+          "text": "The gate is trained separately for each benchmark.",
+          "cites": [
+            "ch05/p002"
+          ]
+        }
+      ]
+    ],
+    "unstated": [
+      [
+        {
+          "text": "All results are on development sets; no test-set numbers are reported.",
+          "cites": [
+            "ch04/p001"
+          ]
+        }
+      ]
+    ]
+  },
+  "assumptions": [
+    [
+      {
+        "text": "Relevant passages are among those the retriever returns: the gate can only down-weight, not recover, evidence.",
+        "cites": [
+          "ch03/p001"
+        ]
+      }
+    ]
+  ],
+  "future_work": [
+    [
+      {
+        "text": "Sharing one gate across tasks.",
+        "cites": [
+          "ch05/p003"
+        ]
+      }
+    ]
+  ],
+  "numbers": [
+    {
+      "value": "+2.1 EM",
+      "label": [
+        {
+          "text": "Gain over FiD-base on Natural Questions",
+          "cites": [
+            "ch04/s02/p001"
+          ]
+        }
+      ]
+    },
+    {
+      "value": "+3.4 EM",
+      "label": [
+        {
+          "text": "Gain over FiD-base on HotpotQA",
+          "cites": [
+            "ch04/s02/p001"
+          ]
+        }
+      ]
+    },
+    {
+      "value": "40% fewer",
+      "label": [
+        {
+          "text": "Adapter parameters, compared with FiD-base",
+          "cites": [
+            "ch04/s02/p001"
+          ]
+        }
+      ]
+    }
+  ]
+}

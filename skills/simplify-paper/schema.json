@@ -1,0 +1,147 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bookshelf.local/skills/simplify-paper/schema.json",
+  "title": "simplify-paper output",
+  "description": "A paper explained at one level (the artifact's variant: newcomer, practitioner or expert): what to know first, the intuition, a walkthrough, an analogy and the key equations in words. Every key is always present.",
+  "type": "object",
+  "required": [
+    "prerequisites",
+    "intuition",
+    "walkthrough",
+    "analogy",
+    "equations"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "prerequisites": {
+      "type": "array",
+      "description": "Concepts the paper assumes the reader knows, most basic first.",
+      "maxItems": 10,
+      "items": {
+        "type": "object",
+        "required": [
+          "concept",
+          "shelf_concept",
+          "why"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "concept": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "shelf_concept": {
+            "description": "The canonical name of the same concept in existing_concepts, exactly as given, or null.",
+            "type": [
+              "string",
+              "null"
+            ],
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "why": {
+            "allOf": [
+              {
+                "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/spans"
+              },
+              {
+                "maxItems": 2
+              }
+            ]
+          }
+        }
+      }
+    },
+    "intuition": {
+      "type": "array",
+      "description": "The core idea in plain words, before any detail.",
+      "minItems": 1,
+      "maxItems": 8,
+      "items": {
+        "anyOf": [
+          {
+            "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/paragraph"
+          },
+          {
+            "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/callout"
+          },
+          {
+            "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/bullets"
+          },
+          {
+            "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/diagram"
+          }
+        ]
+      }
+    },
+    "walkthrough": {
+      "type": "array",
+      "description": "What the paper does and finds, step by step, at the level's depth.",
+      "minItems": 2,
+      "maxItems": 60,
+      "items": {
+        "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/block"
+      }
+    },
+    "analogy": {
+      "description": "One analogy for the mechanism and where it breaks down; null when the level does not need one.",
+      "oneOf": [
+        {
+          "allOf": [
+            {
+              "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/spans"
+            },
+            {
+              "maxItems": 4
+            }
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "equations": {
+      "type": "array",
+      "description": "The key equations, each read in plain words.",
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "required": [
+          "latex",
+          "plain",
+          "cites"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "latex": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          },
+          "plain": {
+            "allOf": [
+              {
+                "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/spans"
+              },
+              {
+                "maxItems": 4
+              }
+            ]
+          },
+          "cites": {
+            "allOf": [
+              {
+                "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/cites"
+              },
+              {
+                "minItems": 1
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

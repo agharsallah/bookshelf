@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bookshelf.local/skills/distil-paper-section/schema.json",
+  "title": "distil-paper-section output",
+  "description": "A paper unit's distillation (stored as chapter_distillation): render blocks from the closed contract, every leaf span cited. Empty blocks only for a unit with nothing legible (the compression gate then flags it).",
+  "type": "object",
+  "required": ["blocks"],
+  "additionalProperties": false,
+  "properties": {
+    "blocks": {
+      "allOf": [
+        { "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/blocks" },
+        { "maxItems": 120 }
+      ]
+    }
+  }
+}

@@ -52,6 +52,12 @@ INDEXED_TYPES = frozenset(
         ArtifactType.QUOTE_SET,
         ArtifactType.FAQ,
         ArtifactType.GLOSSARY,
+        ArtifactType.PAPER_CARD,  # papers: the card is the paper's brief
+        ArtifactType.PAPER_EXPLAINER,
+        ArtifactType.PAPER_ASSESSMENT,  # app.papers.render_study flattens these four
+        ArtifactType.PAPER_REVIEW,
+        ArtifactType.NOTATION_TABLE,
+        ArtifactType.JOURNAL_CLUB,
     }
 )
 

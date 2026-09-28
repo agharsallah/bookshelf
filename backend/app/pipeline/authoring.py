@@ -14,7 +14,7 @@ from sqlmodel import Session
 
 from app.core.config import get_settings
 from app.models import Artifact, Document, Note
-from app.models.enums import ArtifactType, Origin, Review
+from app.models.enums import ArtifactType, Genre, Origin, Review
 from app.pipeline import artifacts, gates, orchestrator
 from app.pipeline.runner import OutputError
 from app.pipeline.selectors import SelectorError
@@ -27,9 +27,13 @@ class ReviewStateError(ValueError):
     """The action does not apply to the artifact's current review state."""
 
 
-def schema_for_type(kind: ArtifactType, skills_dir: Path | None = None) -> dict[str, Any]:
-    """The schema of the skill that produces `kind`, else the bare render contract."""
-    skill = skill_for_artifact_type(load_catalogue(skills_dir or get_settings().skills_dir), kind)
+def schema_for_type(
+    kind: ArtifactType, skills_dir: Path | None = None, *, genre: Genre | None = None
+) -> dict[str, Any]:
+    """The schema of the skill that produces `kind` (for this genre), else the bare render
+    contract."""
+    catalogue = load_catalogue(skills_dir or get_settings().skills_dir)
+    skill = skill_for_artifact_type(catalogue, kind, genre=genre)
     return skill.schema if skill is not None else gates.RENDER_BODY_SCHEMA
 
 
@@ -43,7 +47,9 @@ def check_human_body(
 ) -> dict[str, Any]:
     """Hard gates only (D15 human bypass). Returns the gate record; raises `OutputError`."""
     anchors = artifacts.document_anchors(session, document_id)
-    problems = gates.output_problems(schema_for_type(kind, skills_dir), body, anchors)
+    document = session.get(Document, document_id)
+    schema = schema_for_type(kind, skills_dir, genre=document.genre if document else None)
+    problems = gates.output_problems(schema, body, anchors)
     if problems:
         raise OutputError(problems)
     report = gates.evaluate(

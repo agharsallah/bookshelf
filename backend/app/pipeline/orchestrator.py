@@ -20,11 +20,14 @@ Pipeline order per document:
           → human approves the brief → embed
           → link_concepts → linked
           → (concept_links applied to the idea graph) dedup: link_concepts, mode=dedup
+
+A paper (`genre = paper`) runs its own profile, `app.papers.profile` (docs/PAPERS.md §3):
+`rules_for(document)` picks the tables, so book rules stay as they are.
 """
 
 import logging
 import uuid
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 
 from sqlmodel import Session, col, func, select
@@ -34,7 +37,15 @@ from app.graph import pipeline as graph
 from app.jobs import queue
 from app.jobs.queue import JobSpec
 from app.models import Artifact, Document, Job, Node
-from app.models.enums import ArtifactType, DocumentStatus, JobKind, JobState, NodeKind, Review
+from app.models.enums import (
+    ArtifactType,
+    DocumentStatus,
+    Genre,
+    JobKind,
+    JobState,
+    NodeKind,
+    Review,
+)
 from app.pipeline import artifacts
 from app.pipeline.tree import Tree
 from app.retrieval.points import INDEXED_TYPES
@@ -56,6 +67,11 @@ PRIORITY: dict[JobKind, int] = {
     JobKind.BRIEF: 100,
     JobKind.EMBED: 110,
     JobKind.LINK_CONCEPTS: 120,
+    # Papers (app.papers.profile): structure, then the unit, card and link stages.
+    JobKind.PAPER_STRUCTURE: 30,
+    JobKind.DISTIL_PAPER_SECTION: 80,
+    JobKind.DISSECT_PAPER: 100,
+    JobKind.LINK_PAPER_CONCEPTS: 120,
 }
 # The in-depth book guide reads what the brief reads; it runs as a `derive` job, right after.
 GUIDE_SKILL = "write-guide"
@@ -326,6 +342,30 @@ AFTER_REJECTION: dict[ArtifactType, ReviewRule] = {
 }
 
 
+@dataclass(frozen=True, slots=True)
+class Rules:
+    """A pipeline profile (Papers P2): how a parsed document starts, and the tables.
+    `after_reopen` runs when an approved or rejected verdict is undone (`on_reopen`)."""
+
+    start: Callable[[State], Plan]
+    after_job: Mapping[JobKind, JobRule]
+    after_approval: Mapping[ArtifactType, ReviewRule]
+    after_rejection: Mapping[ArtifactType, ReviewRule]
+    after_reopen: Mapping[ArtifactType, ReviewRule] = field(default_factory=dict)
+
+
+BOOK_RULES = Rules(start_distillation, AFTER_JOB, AFTER_APPROVAL, AFTER_REJECTION)
+
+
+def rules_for(document: Document) -> Rules:
+    """The document's profile: a paper's lives in `app.papers.profile`."""
+    if document.genre is not Genre.PAPER:
+        return BOOK_RULES
+    from app.papers.profile import RULES  # lazy: the profile is built on State and Plan
+
+    return RULES
+
+
 # --- Entry points ---------------------------------------------------------------------
 
 
@@ -365,12 +405,13 @@ def _apply(state: State, plan: Plan) -> list[Job]:
 
 def on_job_done(session: Session, job: Job) -> list[Job]:
     """Advance the document after a terminal job. Returns the jobs it enqueued."""
-    rule = AFTER_JOB.get(job.kind)
+    document = session.get(Document, job.document_id) if job.document_id is not None else None
+    rule = rules_for(document).after_job.get(job.kind) if document is not None else None
     # A job cancelled by a person produced nothing: like a failure, it only releases barriers
     # (a cancelled embed must not make the document `indexed`, nor queue linking).
     cancelled = job.state is JobState.SKIPPED and job.error == queue.CANCELLED
     finished = job.state is JobState.DONE or (job.state is JobState.SKIPPED and not cancelled)
-    if rule is None or job.document_id is None:
+    if rule is None:
         return []
     if not finished and not (
         (job.state is JobState.FAILED or cancelled) and job.kind in ON_FAILURE
@@ -383,7 +424,9 @@ def on_job_done(session: Session, job: Job) -> list[Job]:
 def on_review(session: Session, artifact: Artifact) -> list[Job]:
     """Propagate a review: an approval (approve, edit, or a human-authored artifact) moves
     the pipeline upward (§7); a rejection lets the rules that consumed the artifact undo it."""
-    tables = {Review.APPROVED: AFTER_APPROVAL, Review.REJECTED: AFTER_REJECTION}
+    document = session.get(Document, artifact.document_id)
+    rules = rules_for(document) if document is not None else BOOK_RULES
+    tables = {Review.APPROVED: rules.after_approval, Review.REJECTED: rules.after_rejection}
     rule = tables[artifact.review].get(artifact.type) if artifact.review in tables else None
     if rule is None:
         return []
@@ -409,10 +452,15 @@ def on_reopen(session: Session, artifact: Artifact, *, was_approved: bool) -> li
     indexed = _RANK.get(state.document.status, -1) >= _RANK[DocumentStatus.INDEXED]
     if was_approved and indexed and artifact.type in INDEXED_TYPES:
         plan.jobs.append(state.spec(JobKind.EMBED))
+    rule = rules_for(state.document).after_reopen.get(artifact.type)
+    if rule is not None:  # a profile's own reaction (papers: re-materialize the claims)
+        extra = rule(state, artifact)
+        plan.jobs.extend(extra.jobs)
+        plan.effects.extend(extra.effects)
     return _apply(state, plan)
 
 
 def on_document_parsed(session: Session, document: Document) -> list[Job]:
     """Start the pipeline for a `parsed` document (e.g. after a human fixed the outline)."""
     state = _state(session, document.id)
-    return _apply(state, start_distillation(state)) if state is not None else []
+    return _apply(state, rules_for(document).start(state)) if state is not None else []

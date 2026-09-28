@@ -1,0 +1,314 @@
+{
+  "blocks": [
+    {
+      "type": "callout",
+      "tone": "important",
+      "spans": [
+        {
+          "text": "GRA beats every baseline on all three benchmarks, clearly on NQ (+2.1 EM) and HotpotQA (+3.4 EM) over FiD-base, with a 40% smaller adapter.",
+          "cites": [
+            "ch04/s02/p001",
+            "ch04/s02/t001"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Setup"
+    },
+    {
+      "type": "bullets",
+      "items": [
+        [
+          {
+            "text": "Datasets: ",
+            "cites": [
+              "ch04/p001"
+            ],
+            "mark": "strong"
+          },
+          {
+            "text": "Natural Questions (NQ), TriviaQA and HotpotQA, open-domain QA, evaluated on the development sets.",
+            "cites": [
+              "ch04/p001"
+            ]
+          }
+        ],
+        [
+          {
+            "text": "Metric: ",
+            "cites": [
+              "ch04/p001"
+            ],
+            "mark": "strong"
+          },
+          {
+            "text": "exact match (EM).",
+            "cites": [
+              "ch04/p001"
+            ]
+          }
+        ],
+        [
+          {
+            "text": "Baselines: ",
+            "cites": [
+              "ch04/s01/p002"
+            ],
+            "mark": "strong"
+          },
+          {
+            "text": "BM25+Reader, DPR and FiD-base (Izacard and Grave, EACL 2021), all re-run with the authors' released code.",
+            "cites": [
+              "ch04/s01/p002"
+            ]
+          }
+        ]
+      ]
+    },
+    {
+      "type": "table",
+      "caption": "Training configuration",
+      "header": [
+        "Setting",
+        "Value"
+      ],
+      "rows": [
+        [
+          {
+            "text": "Reader encoder",
+            "cites": [
+              "ch04/s01/p001"
+            ]
+          },
+          {
+            "text": "12 layers, hidden size 768",
+            "cites": [
+              "ch04/s01/p001"
+            ]
+          }
+        ],
+        [
+          {
+            "text": "Optimiser",
+            "cites": [
+              "ch04/s01/p001"
+            ]
+          },
+          {
+            "text": "AdamW, learning rate 3e-5, linear decay",
+            "cites": [
+              "ch04/s01/p001"
+            ]
+          }
+        ],
+        [
+          {
+            "text": "Steps / batch size",
+            "cites": [
+              "ch04/s01/p001"
+            ]
+          },
+          {
+            "text": "40k / 64",
+            "cites": [
+              "ch04/s01/p001"
+            ]
+          }
+        ],
+        [
+          {
+            "text": "Hardware / time",
+            "cites": [
+              "ch04/s01/p001"
+            ]
+          },
+          {
+            "text": "8 A100 GPUs, about 11 hours",
+            "cites": [
+              "ch04/s01/p001"
+            ]
+          }
+        ]
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Main results"
+    },
+    {
+      "type": "table",
+      "caption": "EM on the development sets",
+      "header": [
+        "Model",
+        "NQ",
+        "TriviaQA",
+        "HotpotQA"
+      ],
+      "rows": [
+        [
+          {
+            "text": "BM25+Reader",
+            "cites": [
+              "ch04/s02/t001"
+            ]
+          },
+          {
+            "text": "32.6",
+            "cites": [
+              "ch04/s02/t001"
+            ]
+          },
+          {
+            "text": "52.4",
+            "cites": [
+              "ch04/s02/t001"
+            ]
+          },
+          {
+            "text": "38.1",
+            "cites": [
+              "ch04/s02/t001"
+            ]
+          }
+        ],
+        [
+          {
+            "text": "DPR",
+            "cites": [
+              "ch04/s02/t001"
+            ]
+          },
+          {
+            "text": "41.5",
+            "cites": [
+              "ch04/s02/t001"
+            ]
+          },
+          {
+            "text": "56.8",
+            "cites": [
+              "ch04/s02/t001"
+            ]
+          },
+          {
+            "text": "40.2",
+            "cites": [
+              "ch04/s02/t001"
+            ]
+          }
+        ],
+        [
+          {
+            "text": "FiD-base",
+            "cites": [
+              "ch04/s02/t001"
+            ]
+          },
+          {
+            "text": "48.2",
+            "cites": [
+              "ch04/s02/t001"
+            ]
+          },
+          {
+            "text": "65.0",
+            "cites": [
+              "ch04/s02/t001"
+            ]
+          },
+          {
+            "text": "44.7",
+            "cites": [
+              "ch04/s02/t001"
+            ]
+          }
+        ],
+        [
+          {
+            "text": "GRA (ours)",
+            "cites": [
+              "ch04/s02/t001"
+            ]
+          },
+          {
+            "text": "50.3",
+            "cites": [
+              "ch04/s02/t001"
+            ]
+          },
+          {
+            "text": "65.3",
+            "cites": [
+              "ch04/s02/t001"
+            ]
+          },
+          {
+            "text": "48.1",
+            "cites": [
+              "ch04/s02/t001"
+            ]
+          }
+        ]
+      ]
+    },
+    {
+      "type": "chart",
+      "kind": "bar",
+      "title": "EM on HotpotQA",
+      "x": {
+        "label": "Model",
+        "values": [
+          "BM25+Reader",
+          "DPR",
+          "FiD-base",
+          "GRA"
+        ]
+      },
+      "y": {
+        "label": "EM"
+      },
+      "series": [
+        {
+          "name": "HotpotQA",
+          "values": [
+            38.1,
+            40.2,
+            44.7,
+            48.1
+          ]
+        }
+      ],
+      "cites": [
+        "ch04/s02/t001"
+      ]
+    },
+    {
+      "type": "paragraph",
+      "spans": [
+        {
+          "text": "The largest gain is on HotpotQA, the benchmark that needs evidence from two passages.",
+          "cites": [
+            "ch04/s02/p001"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "caution",
+      "title": "TriviaQA is a tie",
+      "spans": [
+        {
+          "text": "On TriviaQA GRA leads FiD-base by 0.3 EM, within the ±0.4 standard deviation over three seeds.",
+          "cites": [
+            "ch04/s02/p002"
+          ]
+        }
+      ]
+    }
+  ]
+}
