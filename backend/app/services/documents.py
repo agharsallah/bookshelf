@@ -18,6 +18,7 @@ from app.core.errors import ConflictError, NotFoundError
 from app.jobs.queue import JobSpec
 from app.models import Artifact, Document, Job, Node, Note
 from app.models.enums import DocumentStatus, Genre, JobKind, JobState, NodeKind, Review
+from app.pipeline import catalogue
 from app.pipeline.hashing import input_hash
 from app.services.blurbs import blurbs
 from app.services.errors import InvalidInputError
@@ -85,10 +86,12 @@ class DocumentStats:
     artifacts: dict[str, int] = field(default_factory=dict)
     latest_job: Job | None = None
     blurb: str | None = None
+    catalogue: dict[str, Any] | None = None
 
 
 def document_stats(session: Session, ids: Sequence[uuid.UUID]) -> dict[uuid.UUID, DocumentStats]:
-    """Node, note, artifact, latest-job and blurb stats for many documents in five queries."""
+    """Node, note, artifact, latest-job, blurb and library-card stats for many documents in
+    seven queries."""
     stats = {doc_id: DocumentStats() for doc_id in ids}
     if not ids:
         return stats
@@ -141,6 +144,8 @@ def document_stats(session: Session, ids: Sequence[uuid.UUID]) -> dict[uuid.UUID
 
     for doc_id, blurb in blurbs(session, ids).items():
         stats[doc_id].blurb = blurb
+    for doc_id, card in catalogue.cards(session, ids).items():
+        stats[doc_id].catalogue = card
     return stats
 
 

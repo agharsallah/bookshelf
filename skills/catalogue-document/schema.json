@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bookshelf.local/skills/catalogue-document/schema.json",
+  "title": "catalogue-document output",
+  "description": "A document's library card: the shelf-wide theme it is shelved under, what it covers and for whom, and the publication facts its own pages state, each cited.",
+  "type": "object",
+  "required": ["theme", "subjects", "form", "audience", "level", "description", "facts", "cites"],
+  "additionalProperties": false,
+  "properties": {
+    "theme": {
+      "type": "object",
+      "required": ["name", "new"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string", "minLength": 3, "maxLength": 48, "description": "A broad shelf section, sentence case: one of existing_themes verbatim when it fits."},
+        "new": {"type": "boolean", "description": "True only when no existing theme fits."}
+      }
+    },
+    "subjects": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 6,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 2, "maxLength": 48}
+    },
+    "form": {"enum": ["textbook", "practical guide", "handbook", "reference", "narrative", "essays", "research paper", "survey", "tutorial", "article", "other"]},
+    "audience": {"type": "string", "minLength": 3, "maxLength": 120},
+    "level": {"enum": ["introductory", "intermediate", "advanced"]},
+    "description": {"type": "string", "minLength": 10, "maxLength": 240},
+    "facts": {
+      "type": "object",
+      "required": ["publisher", "published", "edition", "isbn", "language", "series"],
+      "additionalProperties": false,
+      "properties": {
+        "publisher": {"type": ["string", "null"], "maxLength": 120},
+        "published": {"type": ["integer", "null"], "minimum": 1400, "maximum": 2100},
+        "edition": {"type": ["string", "null"], "maxLength": 60},
+        "isbn": {"type": ["string", "null"], "pattern": "^(97[89])?[0-9]{9}[0-9X]$"},
+        "language": {"type": ["string", "null"], "pattern": "^[a-z]{2,3}(-[A-Z]{2})?$"},
+        "series": {"type": ["string", "null"], "maxLength": 120}
+      }
+    },
+    "cites": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8,
+      "uniqueItems": true,
+      "items": {"$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/anchor"},
+      "description": "The passages the description and facts rest on: front matter, takeaways or the abstract."
+    }
+  }
+}

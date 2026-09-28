@@ -16,15 +16,18 @@ from sqlmodel import Session, col, select
 
 from app.core.config import get_settings
 from app.models import Artifact, Concept, Document, Node, Note
-from app.models.enums import ArtifactType, NodeKind, Review
+from app.models.enums import ArtifactType, Genre, NodeKind, Review
 from app.pipeline import artifacts
 from app.pipeline.bodies import count_words, plain_text
 from app.pipeline.book_inputs import book_synthesis, key_passages, quote_blocks
+from app.pipeline.catalogue import shelf_themes
 from app.pipeline.tree import Tree, block, document_envelope, scope_envelope
 
 _OUTLINE_PAGES, _OUTLINE_LINES = 30, 25
 _CONTEXT_BLOCKS = 2
 _MAX_CONCEPTS = 500
+# The library card reads the front matter: title, copyright and preface pages.
+_FRONT_PAGES, _FRONT_BLOCKS, _FRONT_CHARS = 12, 40, 600
 _SECTION_KINDS = frozenset({NodeKind.SECTION, NodeKind.CHAPTER})
 
 
@@ -395,6 +398,59 @@ def note_context(ctx: Context) -> Selection:
     )
 
 
+def _front_matter(tree: Tree) -> list[dict[str, Any]]:
+    """The first pages' blocks (the first blocks, for a book without pages): where the
+    publisher, edition, ISBN and the book's own pitch are printed."""
+    leaves = [n for n in tree.leaves() if n.text]
+    paged = [n for n in leaves if n.page_from is not None]
+    front = [n for n in paged if (n.page_from or 0) <= _FRONT_PAGES] if paged else leaves
+    return [
+        {"anchor": n.anchor, "page": n.page_from, "text": (n.text or "")[:_FRONT_CHARS]}
+        for n in front[:_FRONT_BLOCKS]
+    ]
+
+
+def document_catalogue(ctx: Context) -> Selection:
+    """The library card (`catalogue-document`): the front matter, the contents, what the
+    pipeline already knows (its synthesis, a paper's abstract) and the shelf's themes.
+    Works right after parse; the synthesis joins once the book is distilled."""
+    document = ctx.tree.document
+    takeaways = []
+    kind = ArtifactType.CHAPTER_DISTILLATION
+    found = artifacts.preferred(ctx.session, document.id, [kind])
+    for chapter in ctx.tree.chapters():
+        distillation = found.get((kind, chapter.anchor))
+        if distillation is not None and distillation.body.get("takeaway"):
+            takeaways.append({"anchor": chapter.anchor, "takeaway": distillation.body["takeaway"]})
+    extra: dict[str, Any] = {}
+    if document.genre is Genre.PAPER:
+        from app.papers.selectors.common import abstract, paper_meta  # lazy, as in registry()
+
+        extra = {
+            "abstract": abstract(ctx.session, ctx.tree),
+            "paper_meta": paper_meta(ctx.session, ctx.tree),
+        }
+    front = _front_matter(ctx.tree)
+    return ctx.selection(
+        {
+            "known": {
+                "genre": document.genre.value,
+                "format": document.kind.value,
+                "language": document.language,
+                "pages": document.page_count,
+                "tags": list(document.tags),
+            },
+            "front_matter": front,
+            "contents": [{"anchor": c.anchor, "heading": c.heading} for c in ctx.tree.chapters()],
+            "chapter_takeaways": takeaways,
+            **book_synthesis(ctx.session, document),
+            **extra,
+            "existing_themes": shelf_themes(ctx.session, exclude=document.id),
+        },
+        source_words=sum(count_words(b["text"]) for b in front),
+    )
+
+
 SELECTORS: dict[str, Callable[[Context], Selection]] = {
     "outline_pages": outline_pages,
     "element_context": element_context,
@@ -406,6 +462,7 @@ SELECTORS: dict[str, Callable[[Context], Selection]] = {
     "chapter_distillation": chapter_distillation,
     "chapter_salience": chapter_salience,
     "note_context": note_context,
+    "document_catalogue": document_catalogue,
 }
 
 

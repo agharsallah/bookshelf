@@ -1,0 +1,10 @@
+{
+  "theme": {"name": "Software architecture", "new": false},
+  "subjects": ["Enterprise architecture", "Architecture decisions", "Governance"],
+  "form": "practical guide",
+  "audience": "Architects and senior engineers who shape systems across teams",
+  "level": "intermediate",
+  "description": "A working method for making, recording and governing architecture decisions across an enterprise, from strategy down to the systems teams build.",
+  "facts": {"publisher": "O'Reilly Media", "published": 2024, "edition": "First edition", "isbn": "9781098152871", "language": "en", "series": null},
+  "cites": ["ch00/p003", "ch00/p004", "ch01/p001"]
+}

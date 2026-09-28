@@ -38,6 +38,7 @@ SELECTORS = {
     "chapter_distillation",
     "chapter_salience",
     "note_context",
+    "document_catalogue",
     # Papers (app/papers/selectors/)
     "paper_unit_blocks",
     "paper_distillations",

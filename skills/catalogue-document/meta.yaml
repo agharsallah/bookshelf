@@ -1,0 +1,12 @@
+name: catalogue-document
+version: 1
+description: A library card for a document — the shelf-wide theme it belongs to (reusing the shelf's themes), its subjects, form, audience and level, a one-line description, and the publication facts its front matter prints — so the library can group, colour and describe it.
+tier: explore
+job_kind: derive
+artifact_type: catalogue_entry   # read where shown (app.pipeline.catalogue), never copied onto documents
+scope: document
+selector: document_catalogue
+vision: false
+gates:
+  # The card carries no prose spans; every fact and the description cite front matter (schema).
+  grounding_min: 0.9

@@ -149,6 +149,27 @@ class JobBrief(BaseModel):
     finished_at: datetime | None
 
 
+class CatalogueCard(BaseModel):
+    """What `catalogue-document` says the document is (app/pipeline/catalogue.py): the
+    preferred `catalogue_entry`, `draft` until a human approves it. Unknowns are null."""
+
+    theme: Annotated[
+        str | None, Field(description="The shelf-wide section it is shelved under.")
+    ] = None
+    subjects: list[str] = []
+    form: str | None = None
+    audience: str | None = None
+    level: str | None = None
+    description: Annotated[str | None, Field(description="One sentence: what it offers.")] = None
+    publisher: str | None = None
+    published: int | None = None
+    edition: str | None = None
+    isbn: str | None = None
+    language: str | None = None
+    series: str | None = None
+    draft: bool
+
+
 class PausedState(BaseModel):
     """Why the pipeline stopped spending model runs on this document (§14 run ceiling)."""
 
@@ -175,6 +196,10 @@ class DocumentSummary(DocumentPublic):
         PausedState | None,
         Field(description="Set when the run ceiling paused the document; clear it via resume."),
     ] = None
+    catalogue: Annotated[
+        CatalogueCard | None,
+        Field(description="The library card (theme, subjects, facts), once one was written."),
+    ] = None
 
     @classmethod
     def build(cls, document: Document, stats: DocumentStats, **extra: Any) -> Self:
@@ -193,6 +218,7 @@ class DocumentSummary(DocumentPublic):
                 else None,
                 "paused": document.meta.get("paused"),
                 "blurb": stats.blurb,
+                "catalogue": stats.catalogue,
                 **extra,
             }
         )
