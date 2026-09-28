@@ -57,9 +57,34 @@ SCHEMA = {"type": "object", "required": ["blocks"], "properties": {"blocks": BLO
             {"type": "table", "header": ["Story", "Result"], "rows": []},
             "table: header spans → strings",
         ),
+        (
+            {"type": "diagram", "cites": ["ch03/f001"], "nodes": [{"id": "a", "label": "A"},
+             {"id": "b", "label": "B"}], "edges": [{"source": "a", "target": "b", "label": "x"}]},
+            {"type": "diagram", "cites": ["ch03/f001"], "nodes": [{"id": "a", "label": "A"},
+             {"id": "b", "label": "B"}], "edges": [{"from": "a", "to": "b", "label": "x"}]},
+            "diagram: source/target → from/to",
+        ),
+        (
+            {"type": "steps", "cites": ["ch04/s01/p002"],
+             "items": [[span("Mask 15% of tokens")], [span("Predict them", "ch04/s01/p003")]]},
+            {"type": "steps", "items": [[span("Mask 15% of tokens", "ch04/s01/p002")],
+                                        [span("Predict them", "ch04/s01/p003")]]},
+            "steps: block cites → its spans",
+        ),
+        (
+            {"type": "heading", "level": 3, "text": "Pre-training", "cites": ["ch04/s01"]},
+            {"type": "heading", "level": 3, "text": "Pre-training"},
+            "heading: block cites → its spans",
+        ),
+        (
+            {"type": "heading", "level": 2, "spans": [span("Pre-training", "ch04/s01")]},
+            {"type": "heading", "level": 2, "text": "Pre-training"},
+            "heading: spans → text",
+        ),
     ],
     ids=["paragraph-text", "bullet-items", "paragraph-items", "table-cells", "tone-as-type",
-         "bullets-with-spans", "header-spans"],
+         "bullets-with-spans", "header-spans", "diagram-edge-aliases", "steps-block-cites",
+         "heading-cites", "heading-spans"],
 )  # fmt: skip
 def test_slips_are_repaired_into_valid_blocks(slipped, repaired, fix):
     output = {"blocks": [slipped]}

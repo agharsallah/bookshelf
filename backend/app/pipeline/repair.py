@@ -72,6 +72,30 @@ def _as_cell(cell: Any) -> Any:
     return cell
 
 
+_EDGE_ALIASES = {"source": "from", "target": "to"}  # the graph-library spelling of an edge
+
+
+def _as_edge(edge: Any) -> Any:
+    """A diagram edge is `{from, to}`; accept `{source, target}` when that is unambiguous."""
+    if not isinstance(edge, dict) or any(v in edge for v in _EDGE_ALIASES.values()):
+        return edge
+    if not all(k in edge for k in _EDGE_ALIASES):
+        return edge
+    return {_EDGE_ALIASES.get(k, k): v for k, v in edge.items()}
+
+
+def _push_block_cites(block: dict[str, Any], cites: list[Any]) -> None:
+    """Cites set on a block whose contract keeps them on its spans (a `steps` or `bullets`
+    block cited as a whole, like a `math` one): each span without cites of its own takes
+    them. A heading has no spans, and a heading is not a claim, so its cites are dropped."""
+    spans: list[Any] = list(block.get("spans") or [])
+    for item in block.get("items") or []:
+        spans.extend(item if isinstance(item, list) else [item])
+    for span in spans:
+        if isinstance(span, dict) and isinstance(span.get("text"), str) and not span.get("cites"):
+            span["cites"] = list(cites)
+
+
 def _repair_block(block: dict[str, Any], fixes: list[str]) -> None:
     kind = block["type"]
     if kind in _callout_tones() and kind not in _allowed_keys():
@@ -80,6 +104,13 @@ def _repair_block(block: dict[str, Any], fixes: list[str]) -> None:
     if kind == "paragraph" and "spans" not in block and isinstance(block.get("items"), list):
         block["type"] = kind = "bullets"
         fixes.append("paragraph with items → bullets")
+    spans = block.get("spans")
+    if kind == "heading" and "text" not in block and isinstance(spans, list):
+        merged = _merged(spans)
+        if merged is not None:
+            del block["spans"]
+            block["text"] = merged["text"]  # a heading is a label, not a claim: no cites
+            fixes.append("heading: spans → text")
     if kind in _SPANS_BLOCKS and "spans" not in block and isinstance(block.get("text"), str):
         block["spans"] = [_span(block.pop("text"), block.pop("cites", None))]
         fixes.append(f"{kind}: text → spans")
@@ -103,7 +134,15 @@ def _repair_block(block: dict[str, Any], fixes: list[str]) -> None:
         if header != block["header"]:
             block["header"] = header
             fixes.append("table: header spans → strings")
+    if kind == "diagram" and isinstance(block.get("edges"), list):
+        edges = [_as_edge(e) for e in block["edges"]]
+        if edges != block["edges"]:
+            block["edges"] = edges
+            fixes.append("diagram: source/target → from/to")
     allowed = _allowed_keys().get(kind)
+    if allowed is not None and "cites" not in allowed and isinstance(block.get("cites"), list):
+        _push_block_cites(block, block.pop("cites"))
+        fixes.append(f"{kind}: block cites → its spans")
     for key in _DROPPABLE:
         if allowed is not None and key in block and key not in allowed:
             del block[key]
