@@ -66,6 +66,9 @@
   font-family: var(--reader-font, var(--font-read));
   font-size: calc(var(--reader-size, 1.125rem) * 0.915);
   line-height: var(--reader-leading, var(--leading-read));
+  /* The reader sets this leaf's width with the drag handle, so its prose
+     fills whatever it is given instead of stopping at the page measure. */
+  --measure: none;
 }
 
 .scroll:focus-visible {
