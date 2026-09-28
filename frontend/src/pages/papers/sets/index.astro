@@ -1,0 +1,137 @@
+---
+/**
+ * Every paper set, newest first: its papers and the state of its synthesis. A set is made
+ * from the compare page ("Save as set and synthesize").
+ */
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import { Problem } from '../../../components/common/Problem';
+import { REVIEW_WORDS } from '../../../components/papers/sets/set';
+import { serverApi } from '../../../lib/api/server';
+import { load } from '../../../lib/documents/server';
+import { getPaperSet, listPaperSets } from '../../../lib/papers/shelf-api';
+
+export const prerender = false;
+
+const loaded = await load(async () => {
+  const page = await listPaperSets(serverApi(), { limit: 50 });
+  const sets = await Promise.all(page.items.map((s) => getPaperSet(serverApi(), s.id).catch(() => null)));
+  return { total: page.total, sets: sets.filter((s) => s !== null) };
+});
+const data = loaded.ok ? loaded.value : null;
+const when = (at: string) => new Date(at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+---
+
+<BaseLayout title="Paper sets" description="Papers kept together, with a synthesis written across them.">
+  <div class="sets">
+    <header class="head">
+      <p class="crumbs"><a href="/papers">Papers</a></p>
+      <h1>Paper sets</h1>
+      <p class="lede">Papers you compared and kept together, each with a short synthesis that cites them all.</p>
+    </header>
+    {
+      !data ? (
+        !loaded.ok && <Problem title="The sets could not be loaded." problem={loaded.problem} />
+      ) : data.sets.length === 0 ? (
+        <section class="empty">
+          <h2>No sets yet</h2>
+          <p>
+            <a href="/papers/compare">Compare two papers or more</a>, then save the comparison as a set to have a synthesis written across them.
+          </p>
+        </section>
+      ) : (
+        <ul class="list">
+          {data.sets.map((s) => (
+            <li>
+              <h2>
+                <a href={`/papers/sets/${s.id}`}>{s.name}</a>
+              </h2>
+              <p class="members">{s.members.map((m) => m.title).join('; ')}</p>
+              <p class="meta">
+                {s.document_ids.length} papers, made {when(s.created_at)}.{' '}
+                <span class="state" data-review={s.synthesis?.review ?? 'none'}>
+                  {s.synthesis ? `Synthesis v${s.synthesis.version}: ${REVIEW_WORDS[s.synthesis.review].toLowerCase()}` : 'No synthesis yet'}
+                </span>
+              </p>
+            </li>
+          ))}
+        </ul>
+      )
+    }
+  </div>
+</BaseLayout>
+
+<style>
+  .sets {
+    display: grid;
+    gap: var(--space-5);
+    max-inline-size: 52rem;
+  }
+
+  .head {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .crumbs,
+  .meta {
+    color: var(--ink-2);
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+  }
+
+  h1 {
+    font-size: var(--text-2xl);
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+
+  .lede {
+    color: var(--ink-2);
+    font-family: var(--font-read);
+  }
+
+  .members {
+    color: var(--ink-2);
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+  }
+
+  .list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    border-block-start: 1px solid var(--rule);
+  }
+
+  .list li {
+    display: grid;
+    gap: var(--space-1);
+    padding-block: var(--space-4);
+    border-block-end: 1px solid var(--rule);
+  }
+
+  .list h2 {
+    font-family: var(--font-read);
+    font-size: var(--text-md);
+    font-weight: 500;
+  }
+
+  .state {
+    font-weight: 600;
+  }
+
+  .state[data-review='approved'] {
+    color: var(--accent);
+  }
+
+  .empty {
+    display: grid;
+    gap: var(--space-2);
+    font-family: var(--font-read);
+  }
+
+  .empty h2 {
+    font-size: var(--text-xl);
+    font-weight: 500;
+  }
+</style>

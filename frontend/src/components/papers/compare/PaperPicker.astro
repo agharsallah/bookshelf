@@ -1,0 +1,124 @@
+---
+/**
+ * Which papers to compare, as a plain GET form: the papers already picked stay ticked,
+ * a search of the shelf offers more. Submitting sends `ids` (repeated) and `q`.
+ */
+import type { PaperSummary } from '../../../lib/api/types/papers';
+import { venueLine } from '../labels';
+
+interface Props {
+  picked: PaperSummary[];
+  found: PaperSummary[];
+  q: string;
+}
+
+const { picked, found, q } = Astro.props;
+const pickedIds = new Set(picked.map((p) => p.id));
+const offered = found.filter((p) => !pickedIds.has(p.id));
+---
+
+<form method="get" action="/papers/compare" class="picker">
+  <fieldset>
+    <legend>Papers to compare</legend>
+    {picked.length === 0 && <p class="hint">Tick two papers or more, then compare their results.</p>}
+    <ul class="choices">
+      {
+        [...picked, ...offered].map((p) => (
+          <li>
+            <label>
+              <input type="checkbox" name="ids" value={p.id} checked={pickedIds.has(p.id)} />
+              <span class="name">{p.title}</span>
+              <span class="where">{venueLine(p.venue, p.year)}</span>
+            </label>
+          </li>
+        ))
+      }
+    </ul>
+    {found.length === 0 && q && <p class="hint">No paper on the shelf matches “{q}”.</p>}
+  </fieldset>
+  <div class="bar">
+    <label class="search">
+      <span class="visually-hidden">Search the paper shelf</span>
+      <input type="search" name="q" value={q} placeholder="Search the paper shelf" maxlength="200" autocomplete="off" />
+    </label>
+    <button type="submit" class="btn">Search</button>
+    <button type="submit" class="btn btn-primary">Compare</button>
+  </div>
+</form>
+
+<style>
+  .picker {
+    display: grid;
+    gap: var(--space-3);
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+  }
+
+  fieldset {
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  legend {
+    margin-block-end: var(--space-2);
+    color: var(--ink-2);
+    font-weight: 600;
+  }
+
+  .choices {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr));
+    gap: var(--space-1) var(--space-4);
+    max-block-size: 16rem;
+    margin: 0;
+    padding: 0;
+    overflow-y: auto;
+    list-style: none;
+  }
+
+  .choices label {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 0 var(--space-2);
+    padding: var(--space-1) 0;
+    cursor: pointer;
+  }
+
+  .choices input {
+    grid-row: span 2;
+    margin-block-start: 0.2rem;
+  }
+
+  .name {
+    color: var(--ink);
+    font-family: var(--font-read);
+    font-size: var(--text-ui);
+  }
+
+  .where,
+  .hint {
+    color: var(--ink-3);
+  }
+
+  .bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .search {
+    flex: 1 1 16rem;
+  }
+
+  .search input {
+    inline-size: 100%;
+    min-block-size: 2.5rem;
+    padding: 0 var(--space-3);
+    border: 1px solid var(--rule-strong);
+    border-radius: var(--radius-m);
+    background: var(--paper-raised);
+    color: var(--ink);
+    font: inherit;
+  }
+</style>

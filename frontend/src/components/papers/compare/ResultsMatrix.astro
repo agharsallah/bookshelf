@@ -1,0 +1,231 @@
+---
+/**
+ * The results matrix: a method per row, a (dataset, metric) per column, grouped by
+ * dataset. The best comparable value of a column is set bold on the marker; a value in
+ * another unit than its column's is greyed (not ranked); a paper's own method carries a
+ * "proposed" mark. Each value names its paper by colour key and links its cites.
+ */
+import type { MatrixView } from './matrix';
+
+interface Props {
+  view: MatrixView;
+}
+
+const { view } = Astro.props;
+---
+
+<div class="scroll" role="region" aria-label="Results matrix" tabindex="0">
+  <table class="matrix">
+    <thead>
+      <tr>
+        <th rowspan="2" scope="col" class="corner">Method</th>
+        {view.groups.map((g) => <th colspan={g.span} scope="colgroup" class="dataset">{g.dataset}</th>)}
+      </tr>
+      <tr>
+        {
+          view.columns.map((c) => (
+            <th scope="col" class="metric">
+              {c.metric}
+              <span class="dir" title={c.higherIsBetter ? 'Higher is better' : 'Lower is better'}>
+                {c.higherIsBetter ? '↑' : '↓'}
+                {c.unit ? ` ${c.unit}` : ''}
+              </span>
+            </th>
+          ))
+        }
+      </tr>
+    </thead>
+    <tbody>
+      {
+        view.rows.map((row) => (
+          <tr data-proposed={row.proposed ? '' : undefined}>
+            <th scope="row" class="method">
+              {row.method}
+              {row.proposed && <span class="proposed">proposed</span>}
+            </th>
+            {row.cells.map((cells) => (
+              <td>
+                {cells.length === 0 ? (
+                  <span class="none" aria-label="Not reported">
+                    –
+                  </span>
+                ) : (
+                  <ul class="values">
+                    {cells.map((cell) => (
+                      <li
+                        data-best={cell.best ? '' : undefined}
+                        data-incomparable={cell.comparable ? undefined : ''}
+                        title={cell.comparable ? undefined : `In ${cell.unit ?? 'no unit'}, not the column’s unit: not ranked`}
+                      >
+                        {cell.paper && <span class="key" style={`background:${cell.paper.color}`} title={cell.paper.title} aria-hidden="true" />}
+                        <span class="value">
+                          {cell.text}
+                          {!cell.comparable && cell.unit ? ` ${cell.unit}` : ''}
+                        </span>
+                        {cell.best && <span class="visually-hidden"> (best)</span>}
+                        {cell.setting && <span class="setting">{cell.setting}</span>}
+                        {cell.paper && <span class="visually-hidden">, {cell.paper.title}</span>}
+                        {cell.cites.map((cite) =>
+                          cite.href ? (
+                            <a class="cite" href={cite.href} title={`Open the passage: ${cite.title}`}>
+                              {cite.label}
+                            </a>
+                          ) : (
+                            <span class="cite" title={cite.title}>
+                              {cite.label}
+                            </span>
+                          ),
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </td>
+            ))}
+          </tr>
+        ))
+      }
+    </tbody>
+  </table>
+</div>
+
+<style>
+  .scroll {
+    position: relative; /* clips the visually-hidden cell labels with the table */
+    overflow-x: auto;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-m);
+    background: var(--paper-raised);
+  }
+
+  .scroll:focus-visible {
+    outline: 2px solid var(--focus);
+  }
+
+  .matrix {
+    inline-size: 100%;
+    border-collapse: collapse;
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+    font-variant-numeric: tabular-nums;
+  }
+
+  th,
+  td {
+    padding: var(--space-2) var(--space-3);
+    border-block-end: 1px solid var(--rule);
+    text-align: start;
+    vertical-align: top;
+  }
+
+  thead th {
+    background: var(--paper-sunken);
+    color: var(--ink-2);
+    font-weight: 600;
+  }
+
+  .dataset {
+    border-inline-start: 1px solid var(--rule-strong);
+    color: var(--ink);
+  }
+
+  .metric {
+    white-space: nowrap;
+  }
+
+  .dir {
+    margin-inline-start: var(--space-1);
+    color: var(--ink-3);
+    font-weight: 400;
+  }
+
+  .corner,
+  .method {
+    position: sticky;
+    inset-inline-start: 0;
+    z-index: 1;
+    min-inline-size: 10rem;
+    background: var(--paper-raised);
+  }
+
+  thead .corner {
+    background: var(--paper-sunken);
+  }
+
+  .method {
+    font-family: var(--font-read);
+    font-size: var(--text-ui);
+    font-weight: 500;
+  }
+
+  .proposed {
+    display: block;
+    color: var(--accent);
+    font-family: var(--font-ui);
+    font-size: var(--text-xs);
+    font-weight: 600;
+  }
+
+  tr[data-proposed] .method {
+    box-shadow: inset 3px 0 0 var(--accent);
+  }
+
+  .values {
+    display: grid;
+    gap: var(--space-1);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .values li {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 var(--space-1);
+    align-items: baseline;
+  }
+
+  .key {
+    display: inline-block;
+    inline-size: 0.5rem;
+    block-size: 0.5rem;
+    border-radius: 2px;
+  }
+
+  .value {
+    color: var(--ink);
+  }
+
+  li[data-best] .value {
+    padding: 0 0.2rem;
+    border-radius: var(--radius-s);
+    background: var(--marker);
+    color: var(--marker-ink);
+    font-weight: 700;
+  }
+
+  li[data-incomparable] .value {
+    color: var(--ink-3);
+    font-style: italic;
+  }
+
+  .setting {
+    color: var(--ink-3);
+    font-size: var(--text-xs);
+  }
+
+  .cite {
+    color: var(--accent);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    text-decoration: none;
+  }
+
+  a.cite:hover {
+    text-decoration: underline;
+  }
+
+  .none {
+    color: var(--ink-3);
+  }
+</style>

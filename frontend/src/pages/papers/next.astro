@@ -1,0 +1,262 @@
+---
+/**
+ * What to read next (docs/PAPERS.md §5, §8): the reading queue, ranked by a deterministic
+ * score whose terms each candidate explains, with the model's reason citing the shelf
+ * passage that leads to it. Filters (status, source) are links, so the page is
+ * server-rendered and shareable; the list and the two refresh jobs are islands.
+ */
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { Problem } from '../../components/common/Problem';
+import NextQueue from '../../components/papers/next/NextQueue';
+import RefreshJobs from '../../components/papers/next/RefreshJobs';
+import {
+  bySource,
+  candidatesQuery,
+  nextHref,
+  parseNextFilters,
+  SOURCE_LABELS,
+  STATUS_FILTERS,
+  STATUS_LABELS,
+  type ShelfIndex,
+  type StatusFilter,
+} from '../../components/papers/next/candidates';
+import { fetchAll } from '../../lib/api/fetch-all';
+import { serverApi } from '../../lib/api/server';
+import type { Page } from '../../lib/api/types';
+import type { JobKind, JobPublic } from '../../lib/api/types/jobs';
+import { CANDIDATE_SOURCES, type PaperSummary } from '../../lib/api/types/papers';
+import { load } from '../../lib/documents/server';
+import { listCandidates } from '../../lib/papers/api';
+
+export const prerender = false;
+
+const filters = parseNextFilters(Astro.url.searchParams);
+
+async function liveJob(kind: JobKind): Promise<JobPublic | null> {
+  try {
+    const { items } = await serverApi().get<Page<JobPublic>>('jobs', { query: { kind, limit: 5 } });
+    return items.find((j) => j.state === 'queued' || j.state === 'running') ?? null;
+  } catch {
+    return null;
+  }
+}
+
+const loaded = await load(async () => {
+  const [page, papers, refreshing, watching] = await Promise.all([
+    listCandidates(serverApi(), candidatesQuery(filters)),
+    fetchAll<PaperSummary>(serverApi(), 'papers', {}, 5)
+      .then((r) => r.items)
+      .catch(() => []),
+    liveJob('paper_candidates'),
+    liveJob('paper_watch'),
+  ]);
+  const shelf: ShelfIndex = Object.fromEntries(papers.map((p) => [p.id, { slug: p.slug, title: p.title }]));
+  return { page, shelf, papers: papers.length, refreshing, watching };
+});
+const data = loaded.ok ? loaded.value : null;
+const items = data ? bySource(data.page.items, filters.source) : [];
+const unfiltered = filters.status === 'live' && filters.source === null;
+
+const STATUS_WORDS: Record<StatusFilter, string> = { live: 'To read', ...STATUS_LABELS };
+---
+
+<BaseLayout title="Next paper" description="What to read next, ranked from the papers on your shelf." width="wide">
+  <div class="next">
+    <header class="head">
+      <div class="heading">
+        <p class="crumbs"><a href="/papers">Papers</a></p>
+        <h1>What to read next</h1>
+        <p class="lede">
+          Papers your shelf points to: in its bibliographies, citing it, or like the ones you rated highly. The order is a plain sum of
+          reasons you can open under each paper.
+        </p>
+      </div>
+      {data && <RefreshJobs client:load refreshing={data.refreshing} watching={data.watching} />}
+    </header>
+
+    {
+      !data ? (
+        !loaded.ok && <Problem title="The reading queue could not be loaded." problem={loaded.problem} />
+      ) : (
+        <>
+          <nav class="filters" aria-label="Filter the queue">
+            <ul class="segments" aria-label="Status">
+              {STATUS_FILTERS.map((s) => (
+                <li>
+                  <a href={nextHref({ ...filters, status: s })} aria-current={filters.status === s ? 'page' : undefined}>
+                    {STATUS_WORDS[s]}
+                  </a>
+                </li>
+              ))}
+            </ul>
+            <ul class="sources" aria-label="Found through">
+              <li>
+                <a href={nextHref({ ...filters, source: null })} aria-current={filters.source === null ? 'page' : undefined}>
+                  Any source
+                </a>
+              </li>
+              {CANDIDATE_SOURCES.map((k) => (
+                <li>
+                  <a href={nextHref({ ...filters, source: k })} aria-current={filters.source === k ? 'page' : undefined} title={SOURCE_LABELS[k].hint}>
+                    {SOURCE_LABELS[k].name}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </nav>
+
+          {items.length > 0 ? (
+            <>
+              <NextQueue client:load candidates={items} shelf={data.shelf} />
+              {data.page.total > data.page.items.length && (
+                <p class="more">
+                  The best {data.page.items.length} of {data.page.total} are shown.
+                </p>
+              )}
+            </>
+          ) : unfiltered ? (
+            <section class="empty" aria-labelledby="empty-title">
+              <h2 id="empty-title">No suggestions yet</h2>
+              <p>Suggestions come from the papers already on your shelf, so they grow as it does:</p>
+              <ul>
+                <li>the works a shelf paper cites that you do not have yet;</li>
+                <li>newer papers that cite yours, and works OpenAlex lists as related;</li>
+                <li>
+                  papers whose abstracts read like the ones you rated <strong>4 stars or more</strong>. Those papers are also watched:
+                  "Check watched papers" looks for new work citing them.
+                </li>
+              </ul>
+              <p>
+                {data.papers === 0 ? (
+                  <>
+                    Start by <a href="/library?add=paper">adding a paper</a>, then rate it on its page.
+                  </>
+                ) : (
+                  <>Rate a few papers on the <a href="/papers">shelf</a>, then refresh the suggestions.</>
+                )}
+              </p>
+            </section>
+          ) : (
+            <p class="no-match">
+              Nothing {filters.status === 'live' ? 'to read' : STATUS_WORDS[filters.status].toLowerCase()}
+              {filters.source ? ` found as ${SOURCE_LABELS[filters.source].name.toLowerCase()}` : ''}.{' '}
+              <a href={nextHref({ status: 'live', source: null })}>Show the whole queue</a>
+            </p>
+          )}
+        </>
+      )
+    }
+  </div>
+</BaseLayout>
+
+<style>
+  .next {
+    display: grid;
+    gap: var(--space-5);
+  }
+
+  .head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--space-4) var(--space-6);
+  }
+
+  .heading {
+    display: grid;
+    gap: var(--space-2);
+    max-inline-size: 44rem;
+  }
+
+  .crumbs {
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+  }
+
+  h1 {
+    font-size: var(--text-2xl);
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+
+  .lede {
+    color: var(--ink-2);
+    font-family: var(--font-read);
+  }
+
+  .filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3) var(--space-6);
+    align-items: center;
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+  }
+
+  .segments,
+  .sources {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .segments a,
+  .sources a {
+    display: inline-block;
+    padding: var(--space-1) var(--space-3);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-pill);
+    color: var(--ink-2);
+    text-decoration: none;
+  }
+
+  .segments a:hover,
+  .sources a:hover {
+    border-color: var(--ink);
+    color: var(--ink);
+  }
+
+  .segments a[aria-current],
+  .sources a[aria-current] {
+    border-color: var(--ink);
+    background: var(--ink);
+    color: var(--paper);
+    font-weight: 600;
+  }
+
+  .more,
+  .no-match {
+    color: var(--ink-2);
+    font-family: var(--font-ui);
+    font-size: var(--text-ui);
+  }
+
+  .empty {
+    display: grid;
+    gap: var(--space-3);
+    max-inline-size: 40rem;
+    padding-block: var(--space-4);
+    font-family: var(--font-read);
+  }
+
+  .empty h2 {
+    font-size: var(--text-xl);
+    font-weight: 500;
+  }
+
+  .empty ul {
+    display: grid;
+    gap: var(--space-2);
+    padding-inline-start: var(--space-5);
+  }
+
+  @media (max-width: 40rem) {
+    h1 {
+      font-size: var(--text-xl);
+    }
+  }
+</style>

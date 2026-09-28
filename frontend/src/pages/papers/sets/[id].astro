@@ -1,0 +1,329 @@
+---
+/**
+ * One paper set (docs/PAPERS.md §5, §8): its papers, and the synthesis written across
+ * them, drawn with `<Blocks>`. Its cites are `<slug>:<anchor>` resolved through
+ * `sources` into the right paper's reader, lettered A, B, C… by first cite. The version
+ * on show is the default (latest approved, else the latest draft) or `?version=`; drafts
+ * can be approved or rejected here, and the synthesis written again.
+ */
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import { Blocks } from '../../../components/blocks';
+import { Problem } from '../../../components/common/Problem';
+import { authorLine, venueLine } from '../../../components/papers/labels';
+import SynthesisActions from '../../../components/papers/sets/SynthesisActions';
+import { knownVersions, liveSetJob, REVIEW_WORDS, synthesisBlocks, synthesisCites, versionParam } from '../../../components/papers/sets/set';
+import { ApiError } from '../../../lib/api/errors';
+import { serverApi } from '../../../lib/api/server';
+import type { Page } from '../../../lib/api/types';
+import type { JobPublic } from '../../../lib/api/types/jobs';
+import { load } from '../../../lib/documents/server';
+import { prepareBlocks } from '../../../lib/prepare';
+import { getPaperSet, getSynthesis } from '../../../lib/papers/shelf-api';
+
+export const prerender = false;
+
+const id = Astro.params.id ?? '';
+const asked = versionParam(Astro.url.searchParams.get('version'));
+
+const loaded = await load(async () => {
+  const set = await getPaperSet(serverApi(), id);
+  const [synthesis, jobs] = await Promise.all([
+    set.synthesis || asked !== null
+      ? getSynthesis(serverApi(), id, asked ?? undefined).catch((e: unknown) => {
+          if (e instanceof ApiError && e.status === 404) return null;
+          throw e;
+        })
+      : Promise.resolve(null),
+    serverApi()
+      .get<Page<JobPublic>>('jobs', { query: { kind: 'synthesize_papers', limit: 20 } })
+      .then((p) => p.items)
+      .catch(() => []),
+  ]);
+  const versions = synthesis
+    ? await knownVersions(synthesis.version, (v) =>
+        getSynthesis(serverApi(), id, v).then(
+          () => true,
+          () => false,
+        ),
+      )
+    : [];
+  const blocks = synthesis ? await prepareBlocks(synthesisBlocks(synthesis.body)) : [];
+  return { set, synthesis, versions, blocks, job: liveSetJob(jobs, id) };
+});
+if (!loaded.ok && loaded.notFound) Astro.response.status = 404;
+const data = loaded.ok ? loaded.value : null;
+const synthesis = data?.synthesis ?? null;
+const cites = synthesis && data ? synthesisCites(synthesis, data.set.members.map((m) => m.slug)) : null;
+const siglum = new Map(cites?.documents.map((d) => [d.document.id, d.siglum]) ?? []);
+const when = (at: string) => new Date(at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+---
+
+<BaseLayout title={data?.set.name ?? 'Paper set'} description="A set of papers and the synthesis written across them." width="wide">
+  <div class="set">
+    <p class="crumbs"><a href="/papers">Papers</a> / <a href="/papers/sets">Sets</a></p>
+    {
+      !data ? (
+        !loaded.ok && loaded.notFound ? (
+          <section class="missing">
+            <h1>No such set</h1>
+            <p>
+              It may have been deleted. <a href="/papers/sets">See every set</a>
+            </p>
+          </section>
+        ) : (
+          !loaded.ok && <Problem title="The set could not be loaded." problem={loaded.problem} />
+        )
+      ) : (
+        <>
+          <header class="head">
+            <h1>{data.set.name}</h1>
+            <p class="meta">
+              {data.set.document_ids.length} papers, made {when(data.set.created_at)}.{' '}
+              <a href={`/papers/compare?ids=${data.set.document_ids.join(',')}`}>Compare their results</a>
+            </p>
+          </header>
+
+          <div class="columns">
+            <section class="synthesis" aria-labelledby="synthesis-title">
+              <div class="synthesis-head">
+                <h2 id="synthesis-title">Synthesis</h2>
+                {synthesis && (
+                  <span class="review" data-review={synthesis.review}>
+                    {REVIEW_WORDS[synthesis.review]}
+                  </span>
+                )}
+                {data.versions.length > 1 && (
+                  <nav class="versions" aria-label="Versions">
+                    {data.versions.map((v) => (
+                      <a href={`/papers/sets/${id}?version=${v}`} aria-current={synthesis?.version === v ? 'page' : undefined}>
+                        v{v}
+                      </a>
+                    ))}
+                  </nav>
+                )}
+              </div>
+
+              {synthesis && synthesis.review !== 'approved' && (
+                <p class="draft">
+                  {synthesis.review === 'rejected'
+                    ? 'You rejected this version. Approve it after all, or write the synthesis again.'
+                    : 'A draft nobody has reviewed yet: check its cites against the papers before you rely on it.'}
+                </p>
+              )}
+
+              <SynthesisActions
+                client:load
+                setId={id}
+                version={synthesis?.version ?? null}
+                review={synthesis?.review ?? null}
+                canWrite={data.set.members.length >= 2}
+                initialJob={data.job}
+              />
+
+              {synthesis && cites ? (
+                <article class="body">
+                  <Blocks blocks={data.blocks} citeHref={cites.href} citeLabel={cites.label} citeTitle={cites.title} />
+                  <p class="stamp">
+                    Version {synthesis.version}, written {when(synthesis.created_at)}
+                    {synthesis.model ? ` by ${synthesis.model}` : ''}.
+                  </p>
+                </article>
+              ) : (
+                <p class="none">
+                  {data.set.members.length < 2
+                    ? 'A synthesis needs two papers or more in the set.'
+                    : asked !== null
+                      ? `There is no version ${asked}.`
+                      : 'Not written yet. It reads the papers’ cards, claims and results, and writes a short essay across them that cites each one.'}
+                </p>
+              )}
+            </section>
+
+            <aside class="members" aria-labelledby="members-title">
+              <h2 id="members-title">Papers</h2>
+              <ol>
+                {data.set.members.map((p) => (
+                  <li>
+                    {siglum.get(p.id) && (
+                      <span class="siglum" title="How the synthesis cites it">
+                        {siglum.get(p.id)}
+                      </span>
+                    )}
+                    <a href={`/documents/${p.slug}/paper`}>{p.title}</a>
+                    <span class="by">{[authorLine(p.authors, 2), venueLine(p.venue, p.year)].filter(Boolean).join(', ')}</span>
+                  </li>
+                ))}
+              </ol>
+              {data.set.members.length < data.set.document_ids.length && (
+                <p class="none">{data.set.document_ids.length - data.set.members.length} papers of this set are no longer on the shelf.</p>
+              )}
+            </aside>
+          </div>
+        </>
+      )
+    }
+  </div>
+</BaseLayout>
+
+<style>
+  .set {
+    display: grid;
+    gap: var(--space-5);
+  }
+
+  .crumbs,
+  .meta,
+  .none,
+  .stamp,
+  .by {
+    color: var(--ink-2);
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+  }
+
+  .head {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  h1 {
+    max-inline-size: 40ch;
+    font-size: var(--text-xl);
+    letter-spacing: -0.015em;
+    line-height: var(--leading-tight);
+    text-wrap: balance;
+  }
+
+  h2 {
+    font-size: var(--text-md);
+    font-weight: 600;
+  }
+
+  .columns {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 18rem;
+    gap: var(--space-7);
+    align-items: start;
+  }
+
+  .synthesis {
+    display: grid;
+    gap: var(--space-4);
+  }
+
+  .synthesis-head {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-4);
+    align-items: baseline;
+  }
+
+  .review {
+    padding: 0.1rem var(--space-2);
+    border: 1px solid var(--rule-strong);
+    border-radius: var(--radius-pill);
+    color: var(--ink-2);
+    font-family: var(--font-ui);
+    font-size: var(--text-xs);
+    font-weight: 600;
+  }
+
+  .review[data-review='approved'] {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .versions {
+    display: flex;
+    gap: var(--space-1);
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .versions a {
+    padding: 0 var(--space-2);
+    border-radius: var(--radius-s);
+    color: var(--ink-2);
+    text-decoration: none;
+  }
+
+  .versions a[aria-current] {
+    background: var(--ink);
+    color: var(--paper);
+    font-weight: 600;
+  }
+
+  .draft {
+    padding: var(--space-2) var(--space-4);
+    border-inline-start: 3px solid var(--tone-caution);
+    background: var(--paper-raised);
+    color: var(--ink-2);
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+  }
+
+  .body {
+    display: grid;
+    gap: var(--space-4);
+    max-inline-size: var(--measure);
+    padding: var(--space-5) var(--space-6);
+    border-radius: var(--radius-l);
+    background: var(--paper-raised);
+    box-shadow: var(--shadow-lift);
+  }
+
+  .members {
+    position: sticky;
+    inset-block-start: var(--space-5);
+    display: grid;
+    gap: var(--space-3);
+  }
+
+  .members ol {
+    display: grid;
+    gap: var(--space-3);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .members li {
+    display: grid;
+    grid-template-columns: 1.5rem minmax(0, 1fr);
+    gap: 0 var(--space-2);
+  }
+
+  .members li > a,
+  .members li > .by {
+    grid-column: 2;
+  }
+
+  .members li > a {
+    font-family: var(--font-read);
+  }
+
+  .siglum {
+    grid-row: span 2;
+    color: var(--accent);
+    font-family: var(--font-mono);
+    font-weight: 600;
+  }
+
+  @media (max-width: 60rem) {
+    .columns {
+      grid-template-columns: minmax(0, 1fr);
+      gap: var(--space-6);
+    }
+
+    .members {
+      position: static;
+    }
+  }
+
+  @media (max-width: 40rem) {
+    .body {
+      padding: var(--space-4);
+    }
+  }
+</style>

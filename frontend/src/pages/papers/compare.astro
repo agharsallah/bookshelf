@@ -1,0 +1,252 @@
+---
+/**
+ * Compare papers' results (docs/PAPERS.md §5, §8): pick papers from the shelf, then read
+ * their approved results tables side by side as a matrix (method × dataset/metric, best
+ * per column marked) and as one bar chart per metric. The comparison can be kept as a
+ * paper set with a written synthesis. `?ids=` takes ids or slugs, comma-separated or repeated.
+ */
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { HBars } from '../../components/charts/HBars';
+import { Problem } from '../../components/common/Problem';
+import PaperPicker from '../../components/papers/compare/PaperPicker.astro';
+import ResultsMatrix from '../../components/papers/compare/ResultsMatrix.astro';
+import SaveAsSet from '../../components/papers/compare/SaveAsSet';
+import { buildMatrix, formatValue, metricCharts, parseIds, setName } from '../../components/papers/compare/matrix';
+import { serverApi } from '../../lib/api/server';
+import type { PaperSummary } from '../../lib/api/types/papers';
+import { load } from '../../lib/documents/server';
+import { getPaper, listPapers } from '../../lib/papers/api';
+import { comparePapers } from '../../lib/papers/shelf-api';
+
+export const prerender = false;
+
+const ids = parseIds(Astro.url.searchParams);
+const q = (Astro.url.searchParams.get('q') ?? '').trim().slice(0, 200);
+
+const loaded = await load(async () => {
+  const [picked, found] = await Promise.all([
+    Promise.all(ids.map((id) => getPaper(serverApi(), id).catch(() => null))),
+    listPapers(serverApi(), { ...(q ? { q } : {}), sort: 'title', limit: 60 }).then((p) => p.items),
+  ]);
+  const papers = picked.filter((p): p is NonNullable<typeof p> => p !== null) as PaperSummary[];
+  const comparison = papers.length ? await comparePapers(serverApi(), papers.map((p) => p.id)) : null;
+  return { papers, found, comparison, missing: ids.length - papers.length };
+});
+const data = loaded.ok ? loaded.value : null;
+const view = data?.comparison ? buildMatrix(data.comparison) : null;
+const charts = data?.comparison ? metricCharts(data.comparison) : [];
+const withoutResults = view?.papers.filter((p) => !p.hasResults) ?? [];
+---
+
+<BaseLayout title="Compare papers" description="Results of papers on your shelf, side by side." width="wide">
+  <div class="compare">
+    <header class="head">
+      <p class="crumbs"><a href="/papers">Papers</a></p>
+      <h1>Compare results</h1>
+      <p class="lede">
+        Each paper’s approved results table, pivoted to one row per method and one column per dataset and metric. Names are matched through
+        the concepts on your shelf.
+      </p>
+    </header>
+
+    {
+      !data ? (
+        !loaded.ok && <Problem title="The comparison could not be loaded." problem={loaded.problem} />
+      ) : (
+        <>
+          <PaperPicker picked={data.papers} found={data.found} q={q} />
+          {data.missing > 0 && <p class="note">{data.missing === 1 ? 'One paper' : `${data.missing} papers`} in the link are not on the paper shelf and were left out.</p>}
+
+          {view && (
+            <section class="results" aria-labelledby="matrix-title">
+              <div class="section-head">
+                <h2 id="matrix-title">Results</h2>
+                <ul class="key" aria-label="Papers">
+                  {view.papers.map((p) => (
+                    <li>
+                      <span class="swatch" style={`background:${p.color}`} aria-hidden="true" />
+                      <a href={`/documents/${p.slug}/paper`}>{p.title}</a>
+                      {p.year && <span class="year">{p.year}</span>}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              {withoutResults.length > 0 && (
+                <p class="note">
+                  No approved results table yet for{' '}
+                  {withoutResults.map((p, i) => (
+                    <>
+                      {i > 0 && ', '}
+                      <a href={`/documents/${p.slug}/paper/results`}>{p.title}</a>
+                    </>
+                  ))}
+                  : extract and approve it on the paper’s Results tab to bring its numbers in.
+                </p>
+              )}
+              {view.rows.length > 0 ? (
+                <>
+                  <ResultsMatrix view={view} />
+                  <p class="legend-note">
+                    <mark>Bold on the marker</mark>: the best comparable value in its column. Grey italics: reported in another unit than the column,
+                    so not ranked. ↑ higher is better, ↓ lower is better.
+                  </p>
+                </>
+              ) : (
+                <p class="note">None of these papers has results to compare yet.</p>
+              )}
+            </section>
+          )}
+
+          {charts.length > 0 && (
+            <section class="charts" aria-labelledby="charts-title">
+              <h2 id="charts-title">By metric</h2>
+              <div class="chart-grid">
+                {charts.map((c) => (
+                  <div class="chart">
+                    <h3>{c.title}</h3>
+                    <p class="chart-meta">
+                      {c.higherIsBetter ? 'Higher is better' : 'Lower is better (shortest bar wins)'}
+                      {c.unit ? `, in ${c.unit}` : ''}
+                      {c.leftOut > 0 ? `. ${c.leftOut} value${c.leftOut === 1 ? '' : 's'} in another unit or below zero left out.` : '.'}
+                    </p>
+                    <HBars rows={c.rows} series={c.series} format={formatValue} label={c.title} />
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {data.papers.length > 0 && (
+            <section class="keep" aria-labelledby="keep-title">
+              <h2 id="keep-title">Keep this comparison</h2>
+              <p class="lede">A set keeps these papers together; its synthesis is a short essay across them, citing each paper’s passages.</p>
+              <SaveAsSet client:load documentIds={data.papers.map((p) => p.id)} defaultName={setName(data.papers.map((p) => p.title))} />
+            </section>
+          )}
+        </>
+      )
+    }
+  </div>
+</BaseLayout>
+
+<style>
+  .compare {
+    display: grid;
+    gap: var(--space-6);
+  }
+
+  .head {
+    display: grid;
+    gap: var(--space-2);
+    max-inline-size: 48rem;
+  }
+
+  .crumbs,
+  .note,
+  .legend-note,
+  .chart-meta {
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+  }
+
+  .note,
+  .legend-note,
+  .chart-meta {
+    color: var(--ink-2);
+  }
+
+  mark {
+    padding: 0 0.2rem;
+    border-radius: var(--radius-s);
+    background: var(--marker);
+    color: var(--marker-ink);
+    font-weight: 700;
+  }
+
+  h1 {
+    font-size: var(--text-2xl);
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+
+  h2 {
+    font-size: var(--text-lg);
+    font-weight: 600;
+  }
+
+  h3 {
+    font-family: var(--font-ui);
+    font-size: var(--text-ui);
+    font-weight: 600;
+  }
+
+  .lede {
+    max-inline-size: var(--measure);
+    color: var(--ink-2);
+    font-family: var(--font-read);
+  }
+
+  .results,
+  .charts,
+  .keep {
+    display: grid;
+    gap: var(--space-3);
+  }
+
+  .section-head {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-5);
+    align-items: baseline;
+  }
+
+  .key {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-4);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+  }
+
+  .key li {
+    display: inline-flex;
+    gap: var(--space-2);
+    align-items: center;
+  }
+
+  .swatch {
+    inline-size: 0.75rem;
+    block-size: 0.75rem;
+    border-radius: 2px;
+  }
+
+  .year {
+    color: var(--ink-3);
+  }
+
+  .chart-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 26rem), 1fr));
+    gap: var(--space-5) var(--space-6);
+  }
+
+  .chart {
+    display: grid;
+    gap: var(--space-2);
+    align-content: start;
+  }
+
+  .keep {
+    padding-block-start: var(--space-5);
+    border-block-start: 1px solid var(--rule);
+  }
+
+  @media (max-width: 40rem) {
+    h1 {
+      font-size: var(--text-xl);
+    }
+  }
+</style>

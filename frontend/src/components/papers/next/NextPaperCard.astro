@@ -1,0 +1,69 @@
+---
+/**
+ * The Desk's one "Next paper" card: the top of the reading queue and why, with a way
+ * into the whole queue. The Desk renders it only when there is a candidate.
+ */
+import type { ReadingCandidatePublic } from '../../../lib/api/types/papers';
+import { authorLine, venueLine } from '../labels';
+
+interface Props {
+  candidate: ReadingCandidatePublic;
+}
+
+const { candidate: c } = Astro.props;
+const byline = [authorLine(c.authors, 2), venueLine(c.venue, c.year)].filter(Boolean).join(', ');
+---
+
+<section class="next" aria-labelledby="next-paper-title">
+  <h2 id="next-paper-title" class="section-title">Next paper</h2>
+  <p class="title">{c.title}</p>
+  {byline && <p class="by">{byline}</p>}
+  {c.reason && <p class="reason">{c.reason}</p>}
+  <a class="more" href="/papers/next">See the reading queue</a>
+</section>
+
+<style>
+  .next {
+    display: grid;
+    gap: var(--space-2);
+    padding: var(--space-4);
+    border: 1px solid var(--rule);
+    border-inline-start: 3px solid var(--accent);
+    border-radius: var(--radius-m);
+    background: var(--paper-raised);
+  }
+
+  .section-title {
+    font-size: var(--text-md);
+  }
+
+  .title {
+    font-family: var(--font-read);
+    font-size: var(--text-ui);
+    font-weight: 600;
+    line-height: var(--leading-tight);
+  }
+
+  .by {
+    color: var(--ink-3);
+    font-family: var(--font-ui);
+    font-size: var(--text-xs);
+  }
+
+  .reason {
+    display: -webkit-box;
+    overflow: hidden;
+    color: var(--ink-2);
+    font-family: var(--font-read);
+    font-size: var(--text-sm);
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 5;
+    line-clamp: 5;
+  }
+
+  .more {
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+    font-weight: 600;
+  }
+</style>

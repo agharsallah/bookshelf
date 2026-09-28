@@ -14,11 +14,14 @@ import YourShelf from '../components/desk/YourShelf.astro';
 import { pagesChart, pickHero, shelfOrder, studyGroups } from '../components/desk/desk';
 import { loadDesk, loadDue, loadNeeds } from '../components/desk/load';
 import DueToday from '../components/recall/DueToday';
+import NextPaperCard from '../components/papers/next/NextPaperCard.astro';
+import { loadNextPaper } from '../components/papers/next/desk';
+import { serverApi } from '../lib/api/server';
 import { load } from '../lib/documents/server';
 
 export const prerender = false;
 
-const [loaded, needs, due] = await Promise.all([load(loadDesk), loadNeeds(), loadDue()]);
+const [loaded, needs, due, nextPaper] = await Promise.all([load(loadDesk), loadNeeds(), loadDue(), loadNextPaper(serverApi())]);
 const books = loaded.ok ? loaded.value : [];
 const hero = pickHero(books);
 const shelf = shelfOrder(books);
@@ -46,6 +49,7 @@ const chart = pagesChart(books);
                 <YourShelf books={shelf} />
               </div>
               <aside class="side" aria-label="At a glance">
+                {nextPaper && <NextPaperCard candidate={nextPaper} />}
                 <NeedsYou counts={needs} />
                 <PagesRead chart={chart} />
               </aside>
