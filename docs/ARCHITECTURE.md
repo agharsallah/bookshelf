@@ -882,6 +882,24 @@ media on disk (`.audio/<document>/<script>/<render key>.{mp3,json}`, key = cast 
 engine settings), never in Postgres; deleting a book deletes them. One narration holds
 the whole model in memory, so the API runs `narrate` jobs on a single slot of their own.
 
+**Chapters read aloud.** The same narration reads a chapter (or part, or section) as it is
+written: no skill and no rewriting. `app.audio.reading` turns the container's blocks into a
+one-reader script of the same shape, each turn citing the block it reads, so the player,
+the timeline and the transcript work unchanged. Every heading is said and starts a part;
+a part holds whole blocks up to ~220 words (one generation each, so the pace stays even
+and the turn times close to exact), and a longer block is split between sentences. Lists
+are said item by item, asides with their label, figures by their caption; tables, code,
+formulas and `skip` containers are left out, as are note markers, emoji and invisible
+characters, and a short paragraph with no closing punctuation (a heading the parser set as
+a paragraph) gets a full stop so the voice pauses. `app.audio.sources` is the seam: a
+narrate job voices a *source* (`artifact_id` → a summary script, `anchor` → a reading),
+each with its body, language, disclosure ("an AI-generated reading of …") and store folder
+(`<script id>` or `read~<anchor>`). A reading's render key also hashes its words, so a
+re-parse that changes the chapter records anew and only recordings of the current words
+are listed. In the reader, Listen (`l`) opens a dock with the player; the passage being
+read is marked in the text and followed (unless turned off), and "play from where I am"
+starts at the block you are on.
+
 ### Derived artifacts
 
 Once approved distillations exist, everything below is a cheap, separate skill over them. None of
@@ -1059,7 +1077,7 @@ Keep Astro as the shell and routing layer; add React islands only where interact
 | Surface | Tech | Why |
 |---|---|---|
 | **Library** | Astro, static | Shelf grid, filters, ingest status. No client state worth shipping JS for |
-| **Reader** | React island | Two panes — source blocks left, distillation right — anchor-synced scrolling, highlight/note creation. Reading settings (font, size, spacing, width), panes you can put away, focus mode and full screen, passages colour-coded by role (quote, example, exercise…), all kept per browser. "Mark what matters" (`h`) colours the source itself: core ideas, key points and defined terms, drawn in as each block scrolls into view, each opening a card with why it was marked, and a meter of the key ideas reached. The marks are `mark-salience`'s when that chapter has run it (a manual `derive` per chapter), otherwise inferred from what the distillation, notes and summary cite and from the book's concepts and glossary. Saves your place in the chapter as you read (server-side, so it follows you across devices); the document page offers "Continue reading" and shows progress per chapter and for the book. Genuinely interactive |
+| **Reader** | React island | Two panes — source blocks left, distillation right — anchor-synced scrolling, highlight/note creation. Reading settings (font, size, spacing, width), panes you can put away, focus mode and full screen, passages colour-coded by role (quote, example, exercise…), all kept per browser. "Mark what matters" (`h`) colours the source itself: core ideas, key points and defined terms, drawn in as each block scrolls into view, each opening a card with why it was marked, and a meter of the key ideas reached. The marks are `mark-salience`'s when that chapter has run it (a manual `derive` per chapter), otherwise inferred from what the distillation, notes and summary cite and from the book's concepts and glossary. Saves your place in the chapter as you read (server-side, so it follows you across devices); the document page offers "Continue reading" and shows progress per chapter and for the book. Listen (`l`) reads the chapter aloud as written, marking and following the passage being read. Genuinely interactive |
 | **Brief** | Astro, static | Renders one approved artifact. Server-rendered, instant, printable |
 | **Guide** | Astro + one React island | The book guide with its charts (arc strip, chapter rows, theme heatmap, stat tiles), server-rendered then hydrated: a cite, chapter title or heatmap cell opens the passage in place (a drawer with the whole chapter, the cited block marked, previous / next chapter, "Open in reader"; its left edge drags wider with the reader's own width grip, and its width and typography are the reader's saved preferences); diagrams and charts magnify in the reader's lightbox. ⌘/Ctrl/middle click still opens the reader |
 | **Search** | React island | Query box, intent badge, grouped results, cited answer with click-through |
@@ -1118,6 +1136,7 @@ POST   /graph/bridges                  queue relate-concepts bridge jobs {docume
 GET    /audio/voices                   voices to cast, speakers per format, default casts
 GET    /audio/voices/{id}/sample       hear a voice (its reference clip)
 GET    /documents/{ref}/audio          episodes: per variant, the script and its renders
+GET    /documents/{ref}/audio/read/{anchor}  a chapter read aloud: its script and recordings
 GET    /audio/files/{path}?download=   stream (byte ranges) or download a narration
 GET    /exports/{document_id}.md       Markdown bundle
 GET    /exports/{document_id}.json     tree + approved artifacts, render-contract JSON
