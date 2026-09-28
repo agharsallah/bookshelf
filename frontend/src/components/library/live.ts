@@ -6,7 +6,7 @@
  * GET form, tag links and dialog still work on their own.
  */
 import { bookFromData, type ShelfBook } from './book-data';
-import { hasFilters, libraryHref, matchesFilters, noMatchMessage, parseFilters, resultSummary, type LibraryFilters } from './filters';
+import { hasFilters, libraryHref, matchesFilters, NO_FILTERS, noMatchMessage, parseFilters, resultSummary, type LibraryFilters } from './filters';
 import { INGESTED_EVENT } from './ingest';
 import { ADD_BOOK_DIALOG } from './live-ids';
 import { parseSort, sortBy, type Sort } from './sort';
@@ -61,7 +61,7 @@ function wireFilters(root: HTMLElement): void {
     for (const el of root.querySelectorAll<HTMLElement>('[data-summary]')) el.textContent = resultSummary(shown, total, filtered);
     for (const el of root.querySelectorAll<HTMLAnchorElement>('[data-clear]')) {
       el.hidden = !filtered;
-      el.href = libraryHref({ tag: null, status: null, author: null, q: null }, sort);
+      el.href = libraryHref(NO_FILTERS, sort);
     }
     const none = root.querySelector<HTMLElement>('[data-no-match]');
     if (none) none.hidden = !(filtered && shown === 0 && total > 0);
@@ -110,7 +110,7 @@ function wireFilters(root: HTMLElement): void {
     if (chip && tagInput) {
       tagInput.value = tagInput.value === chip.dataset.tag ? '' : (chip.dataset.tag ?? '');
     } else if (clear) {
-      for (const name of ['q', 'author', 'status', 'tag']) {
+      for (const name of ['q', 'author', 'status', 'genre', 'tag']) {
         const field = form.elements.namedItem(name);
         if (field instanceof HTMLInputElement || field instanceof HTMLSelectElement) field.value = '';
       }
@@ -147,6 +147,8 @@ function wireDialog(root: HTMLElement, signal?: AbortSignal): void {
       button.addEventListener('click', () => dialog.showModal());
     }
   }
+  // `/library?add=…` arrives with the desk open.
+  if (dialog.dataset.openOnLoad !== undefined && !dialog.open) dialog.showModal();
   let added = false;
   window.addEventListener(INGESTED_EVENT, () => (added = true), { signal });
   dialog.addEventListener('close', () => {

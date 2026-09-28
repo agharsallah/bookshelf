@@ -5,6 +5,7 @@ export function summary(slug: string, over: Partial<DocumentSummary> = {}): Docu
   return {
     id: `id-${slug}`,
     kind: 'pdf',
+    genre: 'book',
     slug,
     title: `Title ${slug}`,
     authors: [],

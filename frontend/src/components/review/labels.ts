@@ -28,6 +28,15 @@ export const TYPE_LABELS: Record<ArtifactType, string> = {
   glossary: 'Glossary',
   audio_summary: 'Audio summary script',
   salience_marks: 'What matters (marks)',
+  paper_card: 'Paper card',
+  paper_explainer: 'Paper explainer',
+  claim_set: 'Claims',
+  results_table: 'Results table',
+  citation_intents: 'Citation intents',
+  paper_assessment: 'Paper assessment',
+  paper_review: 'Peer review',
+  notation_table: 'Notation',
+  journal_club: 'Journal club',
 };
 
 export const REVIEW_LABELS: Record<Review, string> = {
@@ -62,6 +71,15 @@ const PRODUCER: Partial<Record<ArtifactType, JobKind>> = {
   glossary: 'derive',
   audio_summary: 'derive',
   salience_marks: 'derive',
+  paper_card: 'dissect_paper',
+  paper_explainer: 'derive',
+  claim_set: 'derive',
+  results_table: 'derive',
+  citation_intents: 'derive',
+  paper_assessment: 'derive',
+  paper_review: 'derive',
+  notation_table: 'derive',
+  journal_club: 'derive',
 };
 
 /**
@@ -80,7 +98,12 @@ export function rerunRequest(
   if (kind === 'derive') {
     if (!artifact.skill) return null;
     // An episode re-runs as itself: the same length, format and language.
-    const params = artifact.type === 'audio_summary' ? paramsOfVariant(artifact.variant) : null;
+    const params =
+      artifact.type === 'audio_summary'
+        ? paramsOfVariant(artifact.variant)
+        : artifact.type === 'paper_explainer' && artifact.variant
+          ? { level: artifact.variant }
+          : null;
     return { ...scope, skill: artifact.skill, ...(params ? { params } : {}) };
   }
   if (kind === 'structure_note') return artifact.note_id ? { ...scope, note_id: artifact.note_id } : null;
@@ -96,6 +119,8 @@ export function propagationNote(type: ArtifactType): string | null {
       return 'Once every chapter is approved, the book brief is regenerated.';
     case 'book_brief':
       return 'The book is marked distilled and queued for indexing.';
+    case 'paper_card':
+      return 'The paper is marked distilled; its explainer and indexing are queued.';
     case 'figure_description':
     case 'code_explanation':
     case 'math_description':

@@ -16,7 +16,17 @@ import { loadRecent, RECENT_CONCEPTS_KEY, type RecentEntry } from '../search/rec
 import { connectionShare, KIND_NAMES, strongestOf } from './concept-stats';
 import styles from './Browser.module.css';
 
-const KIND_LABELS: Record<ConceptKind, string> = { concept: 'Concepts', framework: 'Frameworks', person: 'People', work: 'Works', term: 'Terms' };
+const KIND_LABELS: Record<ConceptKind, string> = {
+  concept: 'Concepts',
+  framework: 'Frameworks',
+  person: 'People',
+  work: 'Works',
+  term: 'Terms',
+  method: 'Methods',
+  dataset: 'Datasets',
+  metric: 'Metrics',
+  task: 'Tasks',
+};
 const SORT_LABELS: Record<ConceptSort, string> = { alpha: 'A to Z', connected: 'Most connected', recent: 'Newest' };
 const SORT_PHRASES: Record<ConceptSort, string> = { alpha: 'A to Z', connected: 'most connected first', recent: 'newest first' };
 const links = (n: number) => `${n} link${n === 1 ? '' : 's'}`;

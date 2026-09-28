@@ -4,7 +4,8 @@
  * ordered by query params (q, author, tag, status, sort). Every book is rendered and
  * the filters hide the rest, so the page's script can filter as you type; without
  * JavaScript the GET form does the same through the server. "Add a book" opens the
- * ingest desk in a dialog.
+ * ingest desk in a dialog; `?add=paper` (or `book`, `article`, `1`) opens it on arrival
+ * with that genre chosen.
  */
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import AddBookButton from '../../components/library/AddBookButton.astro';
@@ -14,12 +15,13 @@ import EmptyShelf from '../../components/library/EmptyShelf.astro';
 import FilterBar from '../../components/library/FilterBar.astro';
 import Shelf from '../../components/library/Shelf.astro';
 import ViewToggle from '../../components/library/ViewToggle.astro';
-import { hasFilters, libraryHref, noMatchMessage, parseFilters, resultSummary, tagCloud } from '../../components/library/filters';
+import { hasFilters, libraryHref, NO_FILTERS, noMatchMessage, parseFilters, resultSummary, tagCloud } from '../../components/library/filters';
 import { libraryItems } from '../../components/library/items';
 import { loadLibrary } from '../../components/library/load';
 import { parseSort } from '../../components/library/sort';
 import { DEFAULT_VIEW, viewBootstrapScript, viewClass } from '../../components/library/view';
 import { Problem } from '../../components/common/Problem';
+import { GENRES } from '../../lib/api/types/documents';
 
 export const prerender = false;
 
@@ -27,6 +29,9 @@ const params = Astro.url.searchParams;
 const filters = parseFilters(params);
 const sort = parseSort(params.get('sort'));
 const filtered = hasFilters(filters);
+const add = params.get('add');
+const addGenre = GENRES.find((g) => g === add) ?? null;
+const addOpen = add !== null;
 
 const { documents, problem, files, filesProblem, extras } = await loadLibrary();
 const items = libraryItems(documents, extras, filters, sort);
@@ -35,7 +40,7 @@ const shown = items.filter((item) => !item.hidden).length;
 const waiting = files?.length ?? 0;
 const tags = tagCloud(documents);
 const label = filtered ? 'Matching books' : 'All books';
-const clearHref = libraryHref({ tag: null, status: null, author: null, q: null }, sort);
+const clearHref = libraryHref(NO_FILTERS, sort);
 ---
 
 <BaseLayout title="Library" description="Every book and article on your shelf.">
@@ -83,7 +88,7 @@ const clearHref = libraryHref({ tag: null, status: null, author: null, q: null }
       </>
     )}
 
-    <AddBookDialog files={files} problem={filesProblem} />
+    <AddBookDialog files={files} problem={filesProblem} open={addOpen} genre={addGenre} />
   </div>
 </BaseLayout>
 

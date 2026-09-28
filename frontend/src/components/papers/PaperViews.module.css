@@ -1,0 +1,224 @@
+/*
+ * The paper tabs' bodies (card, explainer). Like the guide: one grid of parts, each
+ * headed by a ruled h2 in the reading face. The one loud thing is the lead: the tl;dr
+ * set large, as a paper's abstract would be if it were one honest sentence.
+ */
+.body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-7);
+}
+
+.part {
+  min-inline-size: 0;
+  scroll-margin-block-start: 3.5rem;
+}
+
+.part h2,
+.question h2 {
+  margin-block-end: var(--space-4);
+  padding-block-end: var(--space-2);
+  border-block-end: 1px solid var(--rule);
+  font-family: var(--font-read);
+  font-size: var(--text-lg);
+  font-weight: 560;
+  letter-spacing: -0.01em;
+}
+
+.part h3,
+.side h3,
+.setupColumn h3 {
+  margin-block-end: var(--space-2);
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+/* ── The lead ── */
+.lead {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: var(--space-6);
+  align-items: start;
+}
+
+.tldr {
+  margin: 0;
+  font-family: var(--font-read);
+  font-size: clamp(1.25rem, 2.4vw, 1.6rem);
+  font-weight: 420;
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+  text-wrap: pretty;
+}
+
+.question {
+  padding-inline-start: var(--space-4);
+  border-inline-start: 3px solid var(--accent);
+}
+
+.question h2 {
+  margin-block-end: var(--space-2);
+  padding: 0;
+  border: 0;
+  color: var(--accent);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.question p {
+  color: var(--ink-2);
+  font-family: var(--font-read);
+  font-size: var(--text-md);
+  font-style: italic;
+  line-height: 1.5;
+}
+
+/* ── Lists and named things ── */
+.list {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding-inline-start: 1.1em;
+  max-inline-size: var(--measure);
+  line-height: var(--leading-read);
+}
+
+.list li::marker {
+  color: var(--ink-3);
+}
+
+.none {
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.kinds {
+  display: grid;
+  gap: var(--space-4);
+  margin: 0;
+}
+
+.kind {
+  display: grid;
+  grid-template-columns: 8rem minmax(0, 1fr);
+  gap: var(--space-4);
+  padding-block-start: var(--space-3);
+  border-block-start: 1px solid var(--rule);
+}
+
+.kind:first-child {
+  padding-block-start: 0;
+  border: 0;
+}
+
+.kind dt {
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: var(--text-ui);
+  font-weight: 600;
+}
+
+.kind dd {
+  margin: 0;
+}
+
+.setup {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+  gap: var(--space-5);
+}
+
+.named {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.named[data-layout='grid'] {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  gap: var(--space-4) var(--space-5);
+}
+
+.named dt {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: baseline;
+  font-weight: 600;
+}
+
+.named dd {
+  margin: var(--space-1) 0 0;
+  color: var(--ink-2);
+  line-height: var(--leading-read);
+}
+
+.shelfLink {
+  padding: 0 var(--space-2);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-pill);
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.shelfLink:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ── Stated against unstated ── */
+.pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+  gap: var(--space-5);
+}
+
+.side {
+  padding: var(--space-4);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-m);
+  background: var(--paper);
+}
+
+.side[data-tone='caution'] {
+  border-color: color-mix(in oklab, var(--tone-caution) 45%, var(--rule));
+}
+
+.side[data-tone='caution'] h3 {
+  color: var(--tone-caution);
+}
+
+/* ── Explainer ── */
+.essay :global([data-block='paragraph'] p) {
+  max-width: var(--measure);
+  font-size: var(--text-md);
+  line-height: 1.55;
+}
+
+.analogy {
+  max-inline-size: var(--measure);
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-m);
+  background: var(--paper-sunken);
+  font-family: var(--font-read);
+  font-style: italic;
+  line-height: 1.55;
+}
+
+@media (max-width: 48rem) {
+  .lead {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .kind {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-1);
+  }
+}

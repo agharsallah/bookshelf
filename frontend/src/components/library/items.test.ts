@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { libraryItems } from './items';
 import { summary } from './test-books';
 
-const none = { tag: null, status: null, author: null, q: null };
+const none = { tag: null, status: null, genre: null, author: null, q: null };
 
 describe('libraryItems', () => {
   const documents = [

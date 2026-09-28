@@ -1,0 +1,343 @@
+/* The paper header's controls (rating, passes) and the "make it now" button. */
+.controlTitle {
+  margin-block-end: var(--space-2);
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.error {
+  display: block;
+  color: var(--tone-important);
+}
+
+/* ── Rating ── */
+.rating {
+  display: grid;
+  gap: var(--space-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.stars {
+  /* Lit stars: the marker's ink on paper, the marker itself on the dark desk. */
+  --star-on: light-dark(var(--marker-ink), var(--marker));
+  display: flex;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.star {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  inline-size: 2rem;
+  block-size: 2rem;
+  border-radius: var(--radius-m);
+  color: var(--rule-strong);
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: color var(--dur-1) var(--ease-out);
+}
+
+.star input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.star[data-on] {
+  color: var(--star-on);
+}
+
+.star:has(input:focus-visible) {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+/* Hovering previews: this star and the ones before it light up. */
+.stars:hover .star {
+  color: var(--rule-strong);
+}
+
+.stars .star:hover,
+.stars .star:has(~ .star:hover) {
+  color: var(--star-on);
+}
+
+.verdicts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.verdict {
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--ink-2);
+  font: inherit;
+  cursor: pointer;
+}
+
+.verdict:hover {
+  border-color: var(--ink-3);
+  color: var(--ink);
+}
+
+.verdict[aria-pressed='true'] {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.verdict[data-verdict='must_read'][aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.noteField textarea {
+  inline-size: 100%;
+  min-block-size: 3.5rem;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-m);
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  resize: vertical;
+}
+
+.formRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+
+.formStatus {
+  color: var(--ink-3);
+  font-size: var(--text-xs);
+}
+
+.lastNote {
+  color: var(--ink-2);
+  font-family: var(--font-read);
+  font-style: italic;
+}
+
+.history summary {
+  color: var(--ink-3);
+  cursor: pointer;
+}
+
+.history ol {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.history li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  align-items: baseline;
+  padding-block-start: var(--space-2);
+  border-block-start: 1px solid var(--rule);
+}
+
+.history li p {
+  flex-basis: 100%;
+  color: var(--ink-2);
+}
+
+.history time,
+.historyVerdict {
+  color: var(--ink-3);
+  font-size: var(--text-xs);
+}
+
+.starsShown {
+  color: light-dark(var(--marker-ink), var(--marker));
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.starsOff {
+  color: var(--rule-strong);
+}
+
+/* ── Passes: three joined steps ── */
+.passes {
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.step {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas: 'n name' 'n when';
+  gap: 0 var(--space-2);
+  align-items: center;
+  inline-size: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  background: var(--paper-sunken);
+  color: var(--ink-2);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease-out);
+}
+
+.steps li:first-child .step {
+  border-start-start-radius: var(--radius-m);
+  border-end-start-radius: var(--radius-m);
+}
+
+.steps li:last-child .step {
+  border-start-end-radius: var(--radius-m);
+  border-end-end-radius: var(--radius-m);
+}
+
+.step:hover:not(:disabled) {
+  background: var(--accent-wash);
+}
+
+.step:disabled {
+  cursor: progress;
+}
+
+.step[aria-pressed='true'] {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.stepNumber {
+  grid-area: n;
+  display: inline-grid;
+  place-items: center;
+  inline-size: 1.6rem;
+  block-size: 1.6rem;
+  border: 1.5px solid currentcolor;
+  border-radius: 50%;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.stepName {
+  grid-area: name;
+  font-weight: 600;
+}
+
+.stepWhen {
+  grid-area: when;
+  font-size: var(--text-xs);
+  opacity: 0.8;
+}
+
+.stepHint {
+  margin-block-start: var(--space-2);
+  color: var(--ink-3);
+  font-size: var(--text-xs);
+  line-height: var(--leading-ui);
+}
+
+/* ── Make it now ── */
+.queue {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.queueStatus {
+  color: var(--ink-2);
+}
+
+.spinner {
+  inline-size: 0.8em;
+  block-size: 0.8em;
+  margin-inline-end: var(--space-1);
+  border: 2px solid color-mix(in oklab, var(--on-accent) 40%, transparent);
+  border-top-color: var(--on-accent);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    rotate: 1turn;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: none;
+  }
+
+  .star,
+  .step {
+    transition: none;
+  }
+}
+
+/* ── Compare picker (results tab) ── */
+.compare {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-m);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.compare ul {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.compare label {
+  display: flex;
+  gap: var(--space-2);
+  align-items: baseline;
+  cursor: pointer;
+}
+
+.compare :global(.btn) {
+  justify-self: start;
+}
+
+.compareYear,
+.compareHint,
+.compareNone {
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}

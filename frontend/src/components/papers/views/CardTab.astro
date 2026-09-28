@@ -1,0 +1,59 @@
+---
+/**
+ * Card tab: the best `paper_card` (approved, else the newest draft, badged as one). The
+ * card is written once every section is distilled; without one, says so and offers to
+ * run dissect-paper now.
+ */
+import { Problem } from '../../common/Problem';
+import { pickBest } from '../../../lib/documents/artifacts';
+import { load } from '../../../lib/documents/server';
+import { prepareBlocks } from '../../../lib/prepare';
+import { parsePaperCard } from '../bodies';
+import DraftNote from '../DraftNote.astro';
+import { paperArtifacts, passageUnits, recentJobs } from '../load';
+import PaperCardBody from '../PaperCardBody';
+import QueueJob from '../QueueJob';
+import { liveJobFor } from '../queue';
+import TabEmpty from '../TabEmpty.astro';
+import type { TabViewProps } from '../tabs';
+
+type Props = TabViewProps;
+
+const { paper } = Astro.props;
+const request = { kind: 'dissect_paper' as const, document_id: paper.id };
+const loaded = await load(async () => {
+  const best = pickBest(await paperArtifacts(paper.id, 'paper_card'), 'paper_card', null);
+  if (!best) return { shown: null, job: liveJobFor(await recentJobs(paper.id), request) };
+  const card = parsePaperCard(best.artifact.body);
+  const [method, results, units] = await Promise.all([prepareBlocks(card.method), prepareBlocks(card.results), passageUnits(paper.slug)]);
+  return { shown: { best, card: { ...card, method, results }, units }, job: null };
+});
+const data = loaded.ok ? loaded.value : null;
+---
+
+{
+  !loaded.ok ? (
+    <Problem title="The paper card could not be loaded." problem={loaded.problem} />
+  ) : data?.shown ? (
+    <div class="card">
+      <DraftNote chosen={data.shown.best} what="Paper card" />
+      <PaperCardBody client:load slug={paper.slug} card={data.shown.card} units={data.shown.units} />
+    </div>
+  ) : (
+    <TabEmpty
+      title="No paper card yet"
+      body="The card sums the paper up on one page: its question, what it contributes, how it was tested, the results and what to be wary of, every line cited. It is written from the section distillations, once every section has one."
+    >
+      <QueueJob client:load request={request} label="Write the card now" initialJob={data?.job ?? null} />
+    </TabEmpty>
+  )
+}
+
+<style>
+  .card {
+    display: grid;
+    gap: var(--space-5);
+    max-width: 68rem;
+    margin-inline: auto;
+  }
+</style>

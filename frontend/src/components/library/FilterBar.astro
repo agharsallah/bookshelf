@@ -5,7 +5,7 @@
  * as you type, the tag chips toggle in place and the Filter button goes away. The
  * pipeline-state filter is for workshop mode only.
  */
-import { DOCUMENT_STATUSES } from '../../lib/api/types/documents';
+import { DOCUMENT_STATUSES, GENRE_LABELS, GENRES } from '../../lib/api/types/documents';
 import { pipelineProgress } from '../../lib/documents/pipeline';
 import { libraryHref, type LibraryFilters } from './filters';
 import { SORTS, type Sort } from './sort';
@@ -35,6 +35,13 @@ const { filters, sort, tags } = Astro.props;
     <label class="field">
       <span>Author</span>
       <input type="text" name="author" value={filters.author ?? ''} placeholder="Any author" maxlength="200" autocomplete="off" />
+    </label>
+    <label class="field">
+      <span>Kind</span>
+      <select name="genre">
+        <option value="">Any kind</option>
+        {GENRES.map((g) => <option value={g} selected={filters.genre === g}>{`${GENRE_LABELS[g]}s`}</option>)}
+      </select>
     </label>
     <label class="field workshop-only">
       <span>State</span>

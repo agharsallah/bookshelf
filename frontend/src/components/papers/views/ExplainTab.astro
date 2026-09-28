@@ -1,0 +1,142 @@
+---
+/**
+ * Explain tab: the paper explained at one of three levels (`?level=newcomer|practitioner|
+ * expert`), one `paper_explainer` variant each. The switch shows which levels exist; a
+ * missing one can be made here (a simplify-paper `derive` job with that level).
+ */
+import { Problem } from '../../common/Problem';
+import { load } from '../../../lib/documents/server';
+import { prepareBlocks } from '../../../lib/prepare';
+import { parseExplainer } from '../bodies';
+import DraftNote from '../DraftNote.astro';
+import { explainRequest, levelOptions } from '../explain';
+import ExplainerBody from '../ExplainerBody';
+import { paperArtifacts, passageUnits, recentJobs } from '../load';
+import QueueJob from '../QueueJob';
+import { liveJobFor } from '../queue';
+import TabEmpty from '../TabEmpty.astro';
+import type { TabViewProps } from '../tabs';
+
+type Props = TabViewProps;
+
+const { paper, url } = Astro.props;
+const loaded = await load(async () => {
+  const options = levelOptions(paper.slug, await paperArtifacts(paper.id, 'paper_explainer'), url.searchParams.get('level'));
+  const current = options.find((o) => o.current) ?? options[0];
+  if (!current) throw new Error('No explainer levels are defined.');
+  const request = explainRequest(paper.id, current.level);
+  if (!current.chosen) return { options, current, request, shown: null, job: liveJobFor(await recentJobs(paper.id), request) };
+  const explainer = parseExplainer(current.chosen.artifact.body);
+  const [intuition, walkthrough, equations, units] = await Promise.all([
+    prepareBlocks(explainer.intuition),
+    prepareBlocks(explainer.walkthrough),
+    prepareBlocks(explainer.equations),
+    passageUnits(paper.slug),
+  ]);
+  return { options, current, request, shown: { explainer: { ...explainer, intuition, walkthrough, equations }, units }, job: null };
+});
+const data = loaded.ok ? loaded.value : null;
+const levelWord = data ? data.current.name.toLowerCase() : '';
+---
+
+{
+  !data ? (
+    !loaded.ok && <Problem title="The explainer could not be loaded." problem={loaded.problem} />
+  ) : (
+    <div class="explain">
+      <nav class="levels" aria-label="Level">
+        {data.options.map((o) => (
+          <a href={o.href} aria-current={o.current ? 'true' : undefined} data-made={o.chosen ? '' : undefined} title={o.hint}>
+            <span class="level-name">{o.name}</span>
+            <span class="level-state">{o.chosen ? (o.chosen.standing === 'approved' ? 'Ready' : 'Draft') : 'Not made yet'}</span>
+          </a>
+        ))}
+      </nav>
+      <p class="level-hint">{data.current.hint}</p>
+      {data.shown && data.current.chosen ? (
+        <>
+          <DraftNote chosen={data.current.chosen} what="Explainer" />
+          <ExplainerBody client:load slug={paper.slug} explainer={data.shown.explainer} units={data.shown.units} />
+        </>
+      ) : (
+        <TabEmpty
+          title={`No explainer for ${levelWord}s yet`}
+          body={`Written for ${levelWord}s from the paper card and the section distillations: what you need to know first, the idea, a walkthrough, an analogy and the key equations in plain words. It takes a few minutes once the card exists.`}
+        >
+          <QueueJob client:load request={data.request} label={`Explain it for ${levelWord}s`} initialJob={data.job} />
+        </TabEmpty>
+      )}
+    </div>
+  )
+}
+
+<style>
+  .explain {
+    display: grid;
+    gap: var(--space-4);
+    max-width: 68rem;
+    margin-inline: auto;
+  }
+
+  .levels {
+    display: inline-grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    justify-self: start;
+    gap: 2px;
+    padding: 2px;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-m);
+    background: var(--paper-sunken);
+    font-family: var(--font-ui);
+  }
+
+  .levels a {
+    display: grid;
+    gap: 0;
+    padding: var(--space-2) var(--space-4);
+    border-radius: calc(var(--radius-m) - 2px);
+    color: var(--ink-2);
+    text-decoration: none;
+  }
+
+  .levels a:hover {
+    color: var(--ink);
+  }
+
+  .levels a[aria-current='true'] {
+    background: var(--paper-raised);
+    box-shadow: var(--shadow-lift);
+    color: var(--ink);
+  }
+
+  .level-name {
+    font-size: var(--text-ui);
+    font-weight: 600;
+  }
+
+  .level-state {
+    color: var(--ink-3);
+    font-size: var(--text-xs);
+  }
+
+  .levels a[data-made] .level-state {
+    color: var(--accent);
+  }
+
+  .level-hint {
+    color: var(--ink-3);
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+  }
+
+  @media (max-width: 36rem) {
+    .levels {
+      justify-self: stretch;
+    }
+
+    .levels a {
+      padding-inline: var(--space-2);
+    }
+  }
+</style>

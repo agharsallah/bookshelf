@@ -12,6 +12,8 @@ export interface NavItem {
   label: string;
   /** Other paths that belong to this item (a concept page belongs to Concepts). */
   also?: string[];
+  /** Pages of another item's `also` that belong to this one (a paper's pages under /documents). */
+  claims?: RegExp;
   workshop?: boolean;
   /** Which count the item wears, filled in by the browser after load. */
   count?: 'review' | 'pipeline';
@@ -20,6 +22,7 @@ export interface NavItem {
 export const NAV: readonly NavItem[] = [
   { href: '/', label: 'Desk' },
   { href: '/library', label: 'Library', also: ['/documents'] },
+  { href: '/papers', label: 'Papers', claims: /^\/documents\/[^/]+\/paper(\/|$)/ },
   { href: '/search', label: 'Search' },
   { href: '/graph', label: 'Concepts', also: ['/concepts'] },
   { href: '/map', label: 'Map' },
@@ -29,7 +32,9 @@ export const NAV: readonly NavItem[] = [
 ];
 
 /** Whether `path` is inside the item: its own path or one it owns, never "/" by prefix. */
-export function isCurrent(item: Pick<NavItem, 'href' | 'also'>, path: string): boolean {
+export function isCurrent(item: Pick<NavItem, 'href' | 'also' | 'claims'>, path: string): boolean {
+  if (item.claims?.test(path)) return true;
+  if (NAV.some((other) => other.href !== item.href && other.claims?.test(path))) return false;
   const under = (base: string) => (base === '/' ? path === '/' : path === base || path.startsWith(`${base}/`));
   return [item.href, ...(item.also ?? [])].some(under);
 }

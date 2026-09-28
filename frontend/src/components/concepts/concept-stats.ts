@@ -11,6 +11,10 @@ export const KIND_NAMES: Record<ConceptKind, string> = {
   person: 'Person',
   work: 'Work',
   term: 'Term',
+  method: 'Method',
+  dataset: 'Dataset',
+  metric: 'Metric',
+  task: 'Task',
 };
 
 /** The most links any concept in `items` has (0 when none are counted). */

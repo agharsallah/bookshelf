@@ -1,0 +1,193 @@
+---
+/**
+ * The paper shelf's filters as a plain GET form (server-rendered, shareable, no script
+ * needed). The page's script submits it as soon as a choice changes and hides the
+ * Filter button. Venues and years come from the facets, with how many papers each has.
+ */
+import { PAPER_SORTS, PAPER_VERDICTS, PASSES, type PaperFacets } from '../../lib/api/types/papers';
+import { VERDICT_LABELS } from './labels';
+import { activeFilters, passFilterLabel, SORT_LABELS, type ShelfFilters } from './shelf';
+
+interface Props {
+  filters: ShelfFilters;
+  facets: PaperFacets;
+}
+
+const { filters, facets } = Astro.props;
+const chips = activeFilters(filters);
+const venueKnown = filters.venue === null || facets.venues.some((v) => v.value.toLowerCase() === filters.venue?.toLowerCase());
+const yearKnown = filters.year === null || facets.years.some((y) => y.value === filters.year);
+---
+
+<search class="filters">
+  <form method="get" action="/papers" class="fields" data-shelf-filters>
+    <label class="field grow">
+      <span>Search</span>
+      <input type="search" name="q" value={filters.q ?? ''} placeholder="Words in the title or an author" maxlength="200" autocomplete="off" />
+    </label>
+    <label class="field">
+      <span>Venue</span>
+      <select name="venue">
+        <option value="">Any venue</option>
+        {!venueKnown && <option value={filters.venue} selected>{filters.venue}</option>}
+        {facets.venues.map((v) => <option value={v.value} selected={filters.venue?.toLowerCase() === v.value.toLowerCase()}>{`${v.value} (${v.count})`}</option>)}
+      </select>
+    </label>
+    <label class="field narrow">
+      <span>Year</span>
+      <select name="year">
+        <option value="">Any year</option>
+        {!yearKnown && <option value={filters.year} selected>{filters.year}</option>}
+        {facets.years.map((y) => <option value={y.value} selected={filters.year === y.value}>{`${y.value} (${y.count})`}</option>)}
+      </select>
+    </label>
+    <label class="field narrow">
+      <span>Your stars</span>
+      <select name="stars">
+        <option value="">Any</option>
+        {[5, 4, 3, 2, 1].map((n) => <option value={n} selected={filters.stars === n}>{n === 5 ? '5 stars' : `${n}+ stars`}</option>)}
+      </select>
+    </label>
+    <label class="field">
+      <span>Reading</span>
+      <select name="pass">
+        <option value="">Any pass</option>
+        {([0, ...PASSES] as const).map((p) => <option value={p} selected={filters.pass === p}>{passFilterLabel(p)}</option>)}
+      </select>
+    </label>
+    <label class="field narrow">
+      <span>Verdict</span>
+      <select name="verdict">
+        <option value="">Any verdict</option>
+        {PAPER_VERDICTS.map((v) => <option value={v} selected={filters.verdict === v}>{VERDICT_LABELS[v]}</option>)}
+      </select>
+    </label>
+    <label class="field">
+      <span>Sort by</span>
+      <select name="sort">
+        {PAPER_SORTS.map((s) => <option value={s} selected={filters.sort === s}>{SORT_LABELS[s]}</option>)}
+      </select>
+    </label>
+    <button type="submit" class="btn" data-apply>Filter</button>
+  </form>
+
+  {
+    chips.length > 0 && (
+      <ul class="chips" aria-label="Filters in force">
+        {chips.map((chip) => (
+          <li>
+            <a href={chip.clearHref} aria-label={`Remove the filter ${chip.label}`}>
+              {chip.label}
+              <span aria-hidden="true" class="x">
+                ×
+              </span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    )
+  }
+</search>
+
+<style>
+  .filters {
+    display: grid;
+    gap: var(--space-3);
+    font-family: var(--font-ui);
+    font-size: var(--text-ui);
+  }
+
+  .fields {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: var(--space-3);
+  }
+
+  .field {
+    display: grid;
+    flex: 0 1 11rem;
+    gap: var(--space-1);
+    min-width: 8rem;
+  }
+
+  .field.narrow {
+    flex-basis: 8rem;
+  }
+
+  .field.grow {
+    flex: 1 1 16rem;
+  }
+
+  .field span {
+    color: var(--ink-2);
+    font-size: var(--text-sm);
+  }
+
+  input,
+  select {
+    width: 100%;
+    min-width: 0;
+    height: 2.5rem;
+    padding: 0 var(--space-3);
+    border: 1px solid var(--rule-strong);
+    border-radius: var(--radius-m);
+    background: var(--paper-raised);
+    color: var(--ink);
+    font: inherit;
+  }
+
+  input:hover,
+  select:hover {
+    border-color: var(--ink-3);
+  }
+
+  input::placeholder {
+    color: var(--ink-3);
+  }
+
+  [data-apply][hidden] {
+    display: none;
+  }
+
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .chips a {
+    display: inline-flex;
+    gap: var(--space-2);
+    align-items: baseline;
+    padding: var(--space-1) var(--space-3);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius-pill);
+    background: var(--accent-wash);
+    color: var(--ink);
+    font-size: var(--text-sm);
+    text-decoration: none;
+  }
+
+  .x {
+    color: var(--ink-3);
+  }
+
+  .chips a:hover .x {
+    color: var(--ink);
+  }
+
+  @media (max-width: 40rem) {
+    .field,
+    .field.narrow {
+      flex: 1 1 8rem;
+    }
+
+    .field.grow {
+      flex-basis: 100%;
+    }
+  }
+</style>

@@ -1,0 +1,37 @@
+/* Small interactive pieces of the paper lists (the references table's candidate cell). */
+.candidate {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  align-items: baseline;
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.candidate[data-status='queued'] > span:first-child {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.linkButton {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+  cursor: pointer;
+}
+
+.linkButton:disabled {
+  color: var(--ink-3);
+  cursor: progress;
+}
+
+.error {
+  flex-basis: 100%;
+  color: var(--tone-important);
+  font-size: var(--text-xs);
+}

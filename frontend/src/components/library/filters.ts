@@ -1,22 +1,26 @@
 /**
- * Library filters live in the URL (`/library?tag=systems&status=parsed&author=&q=`),
+ * Library filters live in the URL (`/library?tag=systems&status=parsed&genre=paper&author=&q=`),
  * so the shelf is server-rendered, linkable and works without JavaScript. With
  * JavaScript the same matching runs in the browser as the reader types, and the URL
  * is kept in step (history.replaceState) so the view stays shareable.
  */
 import type { Query } from '../../lib/api/client';
-import { DOCUMENT_STATUSES, type DocumentStatus } from '../../lib/api/types/documents';
+import { DOCUMENT_STATUSES, GENRE_LABELS, GENRES, type DocumentStatus, type Genre } from '../../lib/api/types/documents';
 import { pipelineProgress } from '../../lib/documents/pipeline';
 import { DEFAULT_SORT, type Sort } from './sort';
 
 export interface LibraryFilters {
   tag: string | null;
   status: DocumentStatus | null;
+  /** Book, paper or article (`documents.genre`). */
+  genre: Genre | null;
   author: string | null;
   q: string | null;
 }
 
-export const FILTER_KEYS = ['tag', 'status', 'author', 'q'] as const satisfies readonly (keyof LibraryFilters)[];
+export const FILTER_KEYS = ['tag', 'status', 'genre', 'author', 'q'] as const satisfies readonly (keyof LibraryFilters)[];
+
+export const NO_FILTERS: LibraryFilters = { tag: null, status: null, genre: null, author: null, q: null };
 
 const MAX = { tag: 64, author: 200, q: 200 } as const;
 
@@ -29,12 +33,18 @@ function isStatus(value: string | null): value is DocumentStatus {
   return value !== null && (DOCUMENT_STATUSES as readonly string[]).includes(value);
 }
 
-/** Read filters from a URL's search params; unknown statuses and blanks are dropped. */
+function isGenre(value: string | null): value is Genre {
+  return value !== null && (GENRES as readonly string[]).includes(value);
+}
+
+/** Read filters from a URL's search params; unknown statuses, genres and blanks are dropped. */
 export function parseFilters(params: URLSearchParams): LibraryFilters {
   const status = params.get('status');
+  const genre = params.get('genre');
   return {
     tag: clean(params.get('tag'), MAX.tag),
     status: isStatus(status) ? status : null,
+    genre: isGenre(genre) ? genre : null,
     author: clean(params.get('author'), MAX.author),
     q: clean(params.get('q'), MAX.q),
   };
@@ -85,6 +95,7 @@ export interface Filterable {
   authors: readonly string[];
   tags: readonly string[];
   status: string;
+  genre: string;
 }
 
 const folded = (text: string) => text.toLocaleLowerCase();
@@ -96,6 +107,7 @@ const folded = (text: string) => text.toLocaleLowerCase();
 export function matchesFilters(book: Filterable, filters: LibraryFilters): boolean {
   if (filters.tag !== null && !book.tags.includes(filters.tag)) return false;
   if (filters.status !== null && book.status !== filters.status) return false;
+  if (filters.genre !== null && book.genre !== filters.genre) return false;
   if (filters.author !== null && !folded(book.authors.join(' ')).includes(folded(filters.author))) return false;
   if (filters.q !== null && !folded(book.title).includes(folded(filters.q))) return false;
   return true;
@@ -108,15 +120,17 @@ export function libraryHref(filters: LibraryFilters, sort: Sort, base = '/librar
   return `${href}${href.includes('?') ? '&' : '?'}sort=${sort}`;
 }
 
-/** "No books match “loops” by “Meadows”." for an empty result. */
+/** "No books match “loops” by “Meadows”." for an empty result; a genre names its own kind ("No papers …"). */
 export function noMatchMessage(filters: LibraryFilters): string {
+  const noun = filters.genre !== null ? `${GENRE_LABELS[filters.genre].toLowerCase()}s` : 'books';
   const parts = [
     filters.q !== null ? `match “${filters.q}”` : null,
     filters.author !== null ? `by “${filters.author}”` : null,
     filters.tag !== null ? `tagged “${filters.tag}”` : null,
     filters.status !== null ? `in the state “${pipelineProgress(filters.status).label}”` : null,
   ].filter(Boolean);
-  return parts.length ? `No books ${parts.join(' ')}.` : 'No books on the shelf yet.';
+  if (parts.length) return `No ${noun} ${parts.join(' ')}.`;
+  return filters.genre !== null ? `No ${noun} on the shelf yet.` : 'No books on the shelf yet.';
 }
 
 /** The line above the books: "2 books", or "1 of 2 books" while filtering. */

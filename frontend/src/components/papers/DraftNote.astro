@@ -1,0 +1,52 @@
+---
+/**
+ * Above a paper artifact that is not approved yet: it is a draft, and where to review it.
+ * Approved ones get a quiet stamp instead (version and date), in workshop mode only.
+ */
+import type { Chosen } from '../../lib/documents/artifacts';
+
+interface Props {
+  chosen: Chosen;
+  what: string;
+}
+
+const { chosen, what } = Astro.props;
+const { artifact, standing } = chosen;
+const at = artifact.reviewed_at ?? artifact.created_at;
+const when = new Date(at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+---
+
+{
+  standing === 'approved' ? (
+    <p class="stamp workshop-only">
+      {what}, version {artifact.version}, approved {when}
+    </p>
+  ) : (
+    <p class="draft">
+      This {what.toLowerCase()} is a draft nobody has reviewed yet: check its cites before you rely on it.{' '}
+      <a href={`/review/${artifact.id}`}>Review it</a>
+    </p>
+  )
+}
+
+<style>
+  .stamp {
+    color: var(--ink-3);
+    font-family: var(--font-ui);
+    font-size: var(--text-xs);
+  }
+
+  .draft {
+    padding: var(--space-2) var(--space-4);
+    border: 1px solid color-mix(in oklab, var(--tone-caution) 45%, var(--rule));
+    border-radius: var(--radius-m);
+    color: var(--ink-2);
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+  }
+
+  .draft a {
+    color: var(--tone-caution);
+    font-weight: 600;
+  }
+</style>

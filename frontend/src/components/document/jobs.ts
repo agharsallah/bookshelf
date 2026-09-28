@@ -46,6 +46,14 @@ const DERIVE_LABELS: Readonly<Record<string, string>> = {
   'write-guide': 'Write the book guide',
   'write-audio-summary': 'Make an audio summary',
   'mark-salience': 'Mark what matters',
+  'simplify-paper': 'Explain the paper',
+  'extract-claims': 'List the claims',
+  'extract-results': 'Extract the results',
+  'classify-citations': 'Classify the citations',
+  'assess-paper': 'Assess the paper',
+  'review-paper': 'Write a peer review',
+  'make-notation': 'Make a notation table',
+  'make-journal-club': 'Prepare a journal club',
 };
 
 export function deriveLabel(skill: Pick<SkillPublic, 'name'>): string {

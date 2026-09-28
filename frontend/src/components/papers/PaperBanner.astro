@@ -1,0 +1,57 @@
+---
+/**
+ * On a paper's document page: the way to its paper pages (card, explainer, references,
+ * your rating and passes). Books and articles do not show it.
+ */
+import { PAPER_TABS, paperHref } from './tabs';
+
+interface Props {
+  slug: string;
+}
+
+const { slug } = Astro.props;
+---
+
+<section class="banner" aria-labelledby="paper-banner-title">
+  <h2 id="paper-banner-title">This is a scientific paper</h2>
+  <p>Its card, explainer and references, with your rating and reading passes, are on the paper page.</p>
+  <nav aria-label="Paper pages">
+    <a class="btn btn-primary" href={paperHref(slug)}>Open the paper</a>
+    {PAPER_TABS.slice(1).map((tab) => <a href={paperHref(slug, tab.key)}>{tab.label}</a>)}
+  </nav>
+</section>
+
+<style>
+  .banner {
+    display: grid;
+    gap: var(--space-2);
+    padding: var(--space-4) var(--space-5);
+    border: 1px solid var(--rule);
+    border-inline-start: 3px solid var(--accent);
+    border-radius: var(--radius-m);
+    background: var(--paper-raised);
+  }
+
+  h2 {
+    font-family: var(--font-read);
+    font-size: var(--text-md);
+    font-weight: 560;
+  }
+
+  p {
+    color: var(--ink-2);
+  }
+
+  nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-4);
+    align-items: center;
+    font-family: var(--font-ui);
+    font-size: var(--text-ui);
+  }
+
+  nav a:not(.btn) {
+    color: var(--ink-2);
+  }
+</style>

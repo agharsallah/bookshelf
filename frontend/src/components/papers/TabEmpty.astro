@@ -1,0 +1,44 @@
+---
+/**
+ * A paper tab whose material does not exist yet: what it would show, why it is not
+ * there, and (in the default slot) the way to make it — usually a `QueueJob` button.
+ */
+interface Props {
+  title: string;
+  /** What the tab shows once it exists, and what it needs first. */
+  body: string;
+  /** The heading's id, when a tab shows more than one of these. */
+  headingId?: string;
+}
+
+const { title, body, headingId = 'tab-empty-title' } = Astro.props;
+---
+
+<section class="empty" aria-labelledby={headingId}>
+  <h2 id={headingId}>{title}</h2>
+  <p>{body}</p>
+  <div class="action"><slot /></div>
+</section>
+
+<style>
+  .empty {
+    display: grid;
+    gap: var(--space-3);
+    max-width: 40rem;
+    padding-block: var(--space-5);
+  }
+
+  h2 {
+    font-family: var(--font-read);
+    font-size: var(--text-xl);
+    font-weight: 500;
+  }
+
+  p {
+    color: var(--ink-2);
+  }
+
+  .action:empty {
+    display: none;
+  }
+</style>

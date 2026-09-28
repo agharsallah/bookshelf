@@ -4,6 +4,7 @@
  * its authors and year, how far you have read, and the study material it already
  * has (book-wide brief, guide, cards, quiz...). Workshop mode adds its pipeline state.
  */
+import { GENRE_LABELS } from '../../lib/api/types/documents';
 import { pipelineProgress } from '../../lib/documents/pipeline';
 import { bookAttributes } from './book-data';
 import type { LibraryItem } from './items';
@@ -20,7 +21,8 @@ const progress = pipelineProgress(doc.status);
 const waiting = waitingReview(doc);
 const href = `/documents/${doc.slug}`;
 const titleId = `row-${doc.id}`;
-const byline = [doc.authors.join(', '), doc.year].filter(Boolean).join(', ');
+// Books are the default; a paper or an article says so.
+const byline = [doc.genre !== 'book' ? GENRE_LABELS[doc.genre] : null, doc.authors.join(', '), doc.year].filter(Boolean).join(', ');
 const read = readingLabel(reading);
 ---
 

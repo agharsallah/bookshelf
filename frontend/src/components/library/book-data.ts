@@ -19,6 +19,7 @@ export function bookAttributes(doc: DocumentSummary, keys: SortKeys): Record<str
     'data-authors': JSON.stringify(doc.authors),
     'data-tags': JSON.stringify(doc.tags),
     'data-status': doc.status,
+    'data-genre': doc.genre,
     'data-title-key': keys.title,
     'data-author-key': keys.author,
     'data-added': keys.added,
@@ -37,7 +38,7 @@ function list(json: string | undefined): string[] {
 
 export function bookFromData(data: DOMStringMap): ShelfBook {
   return {
-    book: { title: data.title ?? '', authors: list(data.authors), tags: list(data.tags), status: data.status ?? '' },
+    book: { title: data.title ?? '', authors: list(data.authors), tags: list(data.tags), status: data.status ?? '', genre: data.genre ?? '' },
     keys: { title: data.titleKey ?? '', author: data.authorKey ?? '', added: data.added ?? '', read: data.read ?? '' },
   };
 }

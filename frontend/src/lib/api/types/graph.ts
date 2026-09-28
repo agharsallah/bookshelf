@@ -7,11 +7,14 @@
  * Evidence refs are qualified anchors, `<document_id>#<anchor>`.
  */
 import type { Origin } from './artifacts';
+import type { Genre } from './documents';
 
-export const CONCEPT_KINDS = ['concept', 'framework', 'person', 'work', 'term'] as const;
+/** The last four are paper-only (link-paper-concepts proposes them). */
+export const CONCEPT_KINDS = ['concept', 'framework', 'person', 'work', 'term', 'method', 'dataset', 'metric', 'task'] as const;
 export type ConceptKind = (typeof CONCEPT_KINDS)[number];
 
-export const ENTITY_KINDS = ['concept', 'node', 'document', 'artifact'] as const;
+/** `claim:<uuid>`: a claim of a paper (docs/PAPERS.md §5). */
+export const ENTITY_KINDS = ['concept', 'node', 'document', 'artifact', 'claim'] as const;
 export type EntityKind = (typeof ENTITY_KINDS)[number];
 
 export const RELATIONS = [
@@ -24,6 +27,8 @@ export const RELATIONS = [
   'same_as',
   /** Two chapters whose passages say similar things (embedding similarity). */
   'echoes',
+  /** A paper on the shelf cites another (derived from its bibliography). */
+  'cites',
 ] as const;
 export type Relation = (typeof RELATIONS)[number];
 
@@ -212,6 +217,8 @@ export interface AtlasNode {
   anchor: string | null;
   blurb: string | null;
   concept_kind: ConceptKind | null;
+  /** A book's or chapter's document genre (null for concepts; absent from older servers). */
+  genre?: Genre | null;
   /** Reading order within the book. */
   ordinal: number;
   /** Lines touching it in this atlas. */

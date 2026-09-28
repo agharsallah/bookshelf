@@ -1,0 +1,82 @@
+---
+/**
+ * The paper page's tab bar (from the registry in ./tabs). A tab whose material does not
+ * exist yet is quieter, one waiting for review carries a dot; every tab stays a link.
+ */
+import type { TabItem } from './tabs';
+
+interface Props {
+  items: TabItem[];
+}
+
+const { items } = Astro.props;
+const TITLES = { approved: undefined, data: undefined, draft: 'A draft is waiting for review', missing: 'Not made yet' } as const;
+---
+
+<nav class="tabs" aria-label="Paper">
+  <ul>
+    {
+      items.map((item) => (
+        <li>
+          <a href={item.href} aria-current={item.current ? 'page' : undefined} data-readiness={item.readiness} title={TITLES[item.readiness]}>
+            {item.label}
+            {item.readiness === 'draft' && <span class="dot" aria-label="draft" />}
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+</nav>
+
+<style>
+  .tabs {
+    max-width: 68rem;
+    margin: 0 auto var(--space-5);
+    border-block-end: 1px solid var(--rule);
+  }
+
+  ul {
+    display: flex;
+    gap: var(--space-1) var(--space-5);
+    margin: 0;
+    padding: 0;
+    overflow-x: auto;
+    list-style: none;
+    scrollbar-width: none;
+  }
+
+  a {
+    display: inline-flex;
+    gap: var(--space-2);
+    align-items: center;
+    padding: var(--space-2) 0;
+    border-block-end: 2px solid transparent;
+    margin-block-end: -1px;
+    color: var(--ink-2);
+    font-family: var(--font-ui);
+    font-size: var(--text-ui);
+    white-space: nowrap;
+    text-decoration: none;
+  }
+
+  a:hover {
+    color: var(--ink);
+  }
+
+  a[data-readiness='missing'] {
+    color: var(--ink-3);
+  }
+
+  a[aria-current='page'] {
+    border-block-end-color: var(--accent);
+    color: var(--ink);
+    font-weight: 600;
+  }
+
+  .dot {
+    inline-size: 0.45rem;
+    block-size: 0.45rem;
+    border-radius: 50%;
+    background: var(--tone-caution);
+  }
+</style>

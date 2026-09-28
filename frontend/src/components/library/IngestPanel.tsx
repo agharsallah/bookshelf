@@ -3,11 +3,13 @@
  * `library/` with one-click "Add to shelf", plus "Add an article by URL". Each
  * ingest's parse job is followed live over `/jobs/stream`; a duplicate (409) links to
  * the copy already on the shelf. An accepted ingest announces `INGESTED_EVENT`.
+ * "Add as" sets the genre (book, paper, article) sent with each ingest; left at "detect",
+ * a file starts as a book and a URL as an article until the paper detector says otherwise.
  */
 import { useCallback, useEffect, useMemo, useState, type SubmitEvent } from 'react';
 import { browserApi } from '../../lib/api/client';
 import type { Page } from '../../lib/api/types';
-import type { LibraryFile } from '../../lib/api/types/documents';
+import { GENRE_LABELS, GENRES, type Genre, type LibraryFile } from '../../lib/api/types/documents';
 import type { JobState } from '../../lib/api/types/jobs';
 import { useJobStream } from '../../lib/hooks/useJobStream';
 import { Problem, problemOf, type ProblemInfo } from '../common/Problem';
@@ -19,11 +21,14 @@ export interface IngestPanelProps {
   /** Files listed at render time; null when the server could not list them. */
   initialFiles: LibraryFile[] | null;
   initialProblem?: ProblemInfo | null;
+  /** The genre chosen when the desk opens (`/library?add=paper`); null detects it. */
+  initialGenre?: Genre | null;
 }
 
 type Pending = IngestOutcome | { kind: 'sending' };
 
-export function IngestPanel({ initialFiles, initialProblem = null }: IngestPanelProps) {
+export function IngestPanel({ initialFiles, initialProblem = null, initialGenre = null }: IngestPanelProps) {
+  const [genre, setGenre] = useState<Genre | null>(initialGenre);
   const [files, setFiles] = useState<LibraryFile[] | null>(initialFiles);
   const [problem, setProblem] = useState<ProblemInfo | null>(initialProblem);
   const [outcomes, setOutcomes] = useState<Record<string, Pending>>({});
@@ -54,7 +59,7 @@ export function IngestPanel({ initialFiles, initialProblem = null }: IngestPanel
 
   const add = async (key: string, body: { path: string } | { url: string }) => {
     setOutcomes((o) => ({ ...o, [key]: { kind: 'sending' } }));
-    const outcome = await ingest(browserApi, body);
+    const outcome = await ingest(browserApi, genre ? { ...body, genre } : body);
     if (outcome.kind === 'accepted') {
       track(outcome.job);
       window.dispatchEvent(new CustomEvent(INGESTED_EVENT, { detail: { slug: outcome.slug } }));
@@ -80,7 +85,7 @@ export function IngestPanel({ initialFiles, initialProblem = null }: IngestPanel
     <section className={styles.panel} aria-labelledby="ingest-title">
       <div className={styles.head}>
         <h2 id="ingest-title" className={styles.title}>
-          Add a book
+          {genre === 'paper' ? 'Add a paper' : genre === 'article' ? 'Add an article' : 'Add a book'}
         </h2>
         <p className={styles.sub}>
           {files === null
@@ -90,6 +95,18 @@ export function IngestPanel({ initialFiles, initialProblem = null }: IngestPanel
               : `${files.length} ${files.length === 1 ? 'file is' : 'files are'} waiting in library/.`}
         </p>
       </div>
+
+      <label className={styles.genre}>
+        <span>Add as</span>
+        <select value={genre ?? ''} onChange={(e) => setGenre((GENRES as readonly string[]).includes(e.target.value) ? (e.target.value as Genre) : null)}>
+          <option value="">Detect it (book or paper)</option>
+          {GENRES.map((g) => (
+            <option key={g} value={g}>
+              {GENRE_LABELS[g]}
+            </option>
+          ))}
+        </select>
+      </label>
 
       {problem ? <Problem inline title="The library folder could not be listed." problem={problem} /> : null}
 

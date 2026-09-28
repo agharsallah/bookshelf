@@ -18,6 +18,18 @@ export const JOB_KINDS = [
   'export',
   'narrate',
   'grade_recall',
+  // Papers: stage skills, then Python jobs (docs/PAPERS.md §2)
+  'distil_paper_section',
+  'dissect_paper',
+  'link_paper_concepts',
+  'paper_structure',
+  'paper_enrich',
+  'paper_candidates',
+  'paper_watch',
+  'paper_fetch',
+  'relate_claims',
+  'recommend_next',
+  'synthesize_papers',
 ] as const;
 export type JobKind = (typeof JOB_KINDS)[number];
 

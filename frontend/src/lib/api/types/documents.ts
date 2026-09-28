@@ -6,6 +6,13 @@ import type { JobPublic, JobKind, JobState } from './jobs';
 
 export type DocumentKind = 'pdf' | 'epub' | 'article';
 
+/** What the document is, apart from its file format (`documents.genre`): it picks the
+ * pipeline profile. A URL defaults to `article`, a file to `book` until detection. */
+export const GENRES = ['book', 'paper', 'article'] as const;
+export type Genre = (typeof GENRES)[number];
+
+export const GENRE_LABELS: Record<Genre, string> = { book: 'Book', paper: 'Paper', article: 'Article' };
+
 /** How a document's kind reads in the UI ("EPUB, 312 pages"). */
 export const KIND_LABELS: Record<DocumentKind, string> = { pdf: 'PDF', epub: 'EPUB', article: 'Article' };
 
@@ -44,6 +51,8 @@ export interface DocumentCreate {
   authors?: string[];
   year?: number;
   tags?: string[];
+  /** Omitted: detected (a URL is an article). Explicit: kept over detection. */
+  genre?: Genre;
 }
 
 /** `PATCH /documents/{ref}`: omitted fields are left alone; `year: null` clears it. */
@@ -53,11 +62,13 @@ export interface DocumentUpdate {
   year?: number | null;
   tags?: string[];
   language?: string;
+  genre?: Genre;
 }
 
 export interface DocumentPublic {
   id: string;
   kind: DocumentKind;
+  genre: Genre;
   slug: string;
   title: string;
   authors: string[];

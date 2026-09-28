@@ -1,0 +1,80 @@
+---
+/**
+ * A paper (docs/PAPERS.md §8): `/documents/{ref}/paper/{tab}`. The header (identity,
+ * your rating, your passes) and the tab bar are the same on every tab; the tab's own
+ * view comes from the registry (components/papers/tabs.ts + tab-views.ts) and loads
+ * what it shows. A document that is not a paper answers 404 with a way back to it.
+ */
+import { ActivityBeacon } from '../../../../lib/activity/ActivityBeacon';
+import BaseLayout from '../../../../layouts/BaseLayout.astro';
+import { Problem } from '../../../../components/common/Problem';
+import { loadPaper } from '../../../../components/papers/load';
+import PaperHeader from '../../../../components/papers/PaperHeader.astro';
+import PaperTabs from '../../../../components/papers/PaperTabs.astro';
+import { TAB_VIEWS } from '../../../../components/papers/tab-views';
+import { paperTab, tabItems } from '../../../../components/papers/tabs';
+import { getDocument, load } from '../../../../lib/documents/server';
+
+export const prerender = false;
+
+const ref = Astro.params.ref ?? '';
+const tab = paperTab(Astro.params.tab);
+const loaded = await load(() => loadPaper(ref));
+// Not a paper (or not there): say which, so a book's link does not dead-end.
+const other = !loaded.ok && loaded.notFound ? await getDocument(ref).catch(() => null) : null;
+if ((!loaded.ok && loaded.notFound) || !tab) Astro.response.status = 404;
+const data = loaded.ok ? loaded.value : null;
+const View = tab ? TAB_VIEWS[tab.key] : null;
+---
+
+<BaseLayout title={data ? `${tab?.label ?? 'Paper'}: ${data.paper.title}` : 'Paper'} width="wide">
+  {data && tab && <ActivityBeacon client:load surface="study" document={data.paper.slug} detail={`paper-${tab.key}`} />}
+  {
+    data && tab && View ? (
+      <>
+        <PaperHeader paper={data.paper} ratings={data.ratings} />
+        <PaperTabs items={tabItems(data.paper.slug, data.paper.artifacts, tab.key)} />
+        <View paper={data.paper} url={Astro.url} />
+      </>
+    ) : data ? (
+      <div class="missing">
+        <h1>No such tab</h1>
+        <p>
+          <a href={`/documents/${data.paper.slug}/paper/card`}>Open the paper card</a>
+        </p>
+      </div>
+    ) : other ? (
+      <div class="missing">
+        <h1>{other.title} is not a paper</h1>
+        <p>
+          The paper pages are for scientific papers. <a href={`/documents/${other.slug}`}>Open it as a {other.genre}</a>
+        </p>
+      </div>
+    ) : !loaded.ok && loaded.notFound ? (
+      <div class="missing">
+        <h1>Not on the shelf</h1>
+        <p>
+          No paper is called “{ref}”. <a href="/papers">Back to your papers</a>
+        </p>
+      </div>
+    ) : (
+      !loaded.ok && <Problem title="The paper could not be loaded." problem={loaded.problem} />
+    )
+  }
+</BaseLayout>
+
+<style>
+  .missing {
+    display: grid;
+    gap: var(--space-3);
+    max-width: 40rem;
+  }
+
+  .missing h1 {
+    font-size: var(--text-xl);
+  }
+
+  .missing p {
+    color: var(--ink-2);
+  }
+</style>

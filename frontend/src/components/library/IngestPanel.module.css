@@ -177,3 +177,27 @@
     justify-self: start;
   }
 }
+
+/* "Add as": the genre sent with each ingest. */
+.genre {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.genre span {
+  color: var(--ink-2);
+}
+
+.genre select {
+  height: 2.25rem;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-m);
+  background: var(--paper-raised);
+  color: var(--ink);
+  font: inherit;
+}

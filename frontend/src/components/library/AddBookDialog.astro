@@ -3,21 +3,25 @@
  * The ingest desk in a modal dialog, so the shelf is the first thing on every visit.
  * Esc or the close button closes it (a `method="dialog"` form: no script needed);
  * after a book was added, closing it reloads the page so the new book is on the shelf.
+ * `open` shows it on arrival (`/library?add=paper`, the paper shelf's "Add a paper"),
+ * with `genre` chosen.
  */
 import type { ProblemInfo } from '../common/Problem';
-import type { LibraryFile } from '../../lib/api/types/documents';
+import type { Genre, LibraryFile } from '../../lib/api/types/documents';
 import IngestPanel from './IngestPanel';
 import { ADD_BOOK_DIALOG } from './live-ids';
 
 interface Props {
   files: LibraryFile[] | null;
   problem: ProblemInfo | null;
+  open?: boolean;
+  genre?: Genre | null;
 }
 
-const { files, problem } = Astro.props;
+const { files, problem, open = false, genre = null } = Astro.props;
 ---
 
-<dialog id={ADD_BOOK_DIALOG} class="dialog" aria-labelledby="ingest-title" closedby="any">
+<dialog id={ADD_BOOK_DIALOG} class="dialog" aria-labelledby="ingest-title" closedby="any" data-open-on-load={open ? '' : undefined}>
   <form method="dialog" class="close">
     <button type="submit" class="btn btn-quiet" aria-label="Close">
       <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
@@ -25,7 +29,7 @@ const { files, problem } = Astro.props;
       </svg>
     </button>
   </form>
-  <IngestPanel client:idle initialFiles={files} initialProblem={problem} />
+  <IngestPanel client:idle initialFiles={files} initialProblem={problem} initialGenre={genre} />
 </dialog>
 
 <style>

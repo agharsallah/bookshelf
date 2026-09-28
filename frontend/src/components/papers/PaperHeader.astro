@@ -1,0 +1,154 @@
+---
+/**
+ * The paper page's header, the same on every tab: where it appeared, the title and
+ * authors, its identifiers (DOI, arXiv, citations, code), the way into the reader, and
+ * what is yours — your rating (with its history) and your three passes.
+ */
+import type { PaperDetail, PaperRatingPublic } from '../../lib/api/types/papers';
+import { authorLine, venueLine } from './labels';
+import PaperRating from './PaperRating';
+import PassTracker from './PassTracker';
+
+interface Props {
+  paper: PaperDetail;
+  ratings: PaperRatingPublic[];
+}
+
+const { paper, ratings } = Astro.props;
+const where = venueLine(paper.venue, paper.year);
+const cited = paper.cited_by_count !== null ? `Cited ${paper.cited_by_count.toLocaleString('en-GB')} times` : null;
+const code = paper.meta?.code_urls ?? [];
+const readHref = `/documents/${paper.slug}/read/`;
+---
+
+<header class="head">
+  <nav class="crumbs" aria-label="Breadcrumb">
+    <a href="/papers"><span aria-hidden="true">←</span> Papers</a>
+  </nav>
+
+  <div class="ident">
+    <p class="where">{where || 'Venue and year not known yet'}</p>
+    <h1>{paper.title}</h1>
+    {paper.authors.length > 0 && <p class="authors" title={paper.authors.join(', ')}>{authorLine(paper.authors, 8)}</p>}
+    <ul class="ids" aria-label="Identifiers">
+      {paper.doi && (
+        <li>
+          <a href={`https://doi.org/${paper.doi}`} rel="noopener noreferrer" target="_blank">DOI {paper.doi}</a>
+        </li>
+      )}
+      {paper.arxiv_id && (
+        <li>
+          <a href={`https://arxiv.org/abs/${paper.arxiv_id}`} rel="noopener noreferrer" target="_blank">arXiv {paper.arxiv_id}</a>
+        </li>
+      )}
+      {cited && <li>{cited}</li>}
+      {code.map((url) => (
+        <li>
+          <a href={url} rel="noopener noreferrer" target="_blank">Code</a>
+        </li>
+      ))}
+    </ul>
+    <p class="actions">
+      <a class="btn btn-primary" href={readHref}>Read the paper</a>
+      <a href={`/documents/${paper.slug}`}>Contents and details</a>
+    </p>
+  </div>
+
+  <aside class="yours" aria-label="Yours">
+    <PaperRating client:visible paperRef={paper.slug} history={ratings} />
+    <PassTracker client:visible paperRef={paper.slug} documentId={paper.id} passes={paper.passes} />
+  </aside>
+</header>
+
+<style>
+  .head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(18rem, 24rem);
+    gap: var(--space-4) var(--space-7);
+    align-items: start;
+    max-width: 68rem;
+    margin: 0 auto var(--space-5);
+  }
+
+  .crumbs {
+    grid-column: 1 / -1;
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+  }
+
+  .crumbs a {
+    color: var(--ink-3);
+  }
+
+  .ident {
+    display: grid;
+    gap: var(--space-2);
+    align-content: start;
+  }
+
+  .where {
+    color: var(--accent);
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+    font-weight: 600;
+  }
+
+  h1 {
+    font-family: var(--font-read);
+    font-size: clamp(1.75rem, 3.6vw, 2.6rem);
+    font-weight: 460;
+    line-height: 1.12;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+
+  .authors {
+    color: var(--ink-2);
+    font-style: italic;
+  }
+
+  .ids {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-4);
+    margin: 0;
+    padding: 0;
+    color: var(--ink-3);
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+    list-style: none;
+  }
+
+  .ids a {
+    color: var(--ink-2);
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3) var(--space-5);
+    align-items: center;
+    margin-block-start: var(--space-3);
+    font-family: var(--font-ui);
+    font-size: var(--text-ui);
+  }
+
+  .actions a:not(.btn) {
+    color: var(--ink-2);
+  }
+
+  .yours {
+    display: grid;
+    gap: var(--space-5);
+    padding: var(--space-4) var(--space-5);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-l);
+    background: var(--paper-raised);
+  }
+
+  @media (max-width: 56rem) {
+    .head {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+</style>

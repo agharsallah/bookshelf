@@ -21,14 +21,16 @@ export interface NumberTilesProps {
   citeHref?: (anchor: Anchor) => string;
   /** Open a passage in place instead of following the link (plain clicks only). */
   onCite?: ((anchor: Anchor) => void) | undefined;
+  /** The cite chips' text (e.g. a paper's own section numbers); the anchor label if unset. */
+  citeLabel?: ((anchor: Anchor) => string) | undefined;
   /** `quiet` for the header's facts: smaller, no frame. */
   variant?: 'framed' | 'quiet';
   label: string;
 }
 
-export function NumberTiles({ tiles, citeHref = defaultCiteHref, variant = 'framed', label, onCite }: NumberTilesProps) {
+export function NumberTiles({ tiles, citeHref = defaultCiteHref, variant = 'framed', label, onCite, citeLabel }: NumberTilesProps) {
   return (
-    <CiteProvider value={{ citeHref, onCite }}>
+    <CiteProvider value={{ citeHref, onCite, citeLabel }}>
       <ul className={styles.tiles} data-variant={variant} aria-label={label}>
         {tiles.map((tile, i) => (
           <li key={i} className={styles.tile}>

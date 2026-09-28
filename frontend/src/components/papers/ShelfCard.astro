@@ -1,0 +1,219 @@
+---
+/**
+ * One paper on the shelf: where and when it appeared, title and authors, the card's
+ * tl;dr when there is one, then what is yours (stars, verdict, how many passes) and what
+ * the pipeline has made of it (a chip per artifact, a draft outlined rather than solid).
+ */
+import type { PaperSummary } from '../../lib/api/types/papers';
+import { PASSES } from '../../lib/api/types/papers';
+import { authorLine, PASS_LABELS, starsLabel, VERDICT_LABELS, venueLine } from './labels';
+import { artifactChips } from './shelf';
+import { paperHref } from './tabs';
+
+interface Props {
+  paper: PaperSummary;
+  tldr: string | null;
+}
+
+const { paper, tldr } = Astro.props;
+const where = venueLine(paper.venue, paper.year);
+const chips = artifactChips(paper.artifacts);
+const rating = paper.rating;
+const passes = paper.highest_pass ?? 0;
+const passWords = passes === 0 ? 'Not started' : `Pass ${passes} of 3: ${PASS_LABELS[paper.highest_pass ?? 1].name.toLowerCase()}`;
+const titleId = `paper-${paper.id}`;
+---
+
+<article class="paper" aria-labelledby={titleId} data-verdict={rating?.verdict ?? undefined}>
+  <p class="where">{where || 'Venue not known'}</p>
+  <h2 id={titleId}><a href={paperHref(paper.slug)}>{paper.title}</a></h2>
+  {paper.authors.length > 0 && <p class="authors">{authorLine(paper.authors)}</p>}
+  {tldr ? <p class="tldr">{tldr}</p> : <p class="tldr none">No card yet.</p>}
+
+  <div class="yours">
+    {
+      rating ? (
+        <span class="stars" role="img" aria-label={starsLabel(rating.stars)}>
+          {'★'.repeat(rating.stars)}
+          <span class="off">{'★'.repeat(5 - rating.stars)}</span>
+        </span>
+      ) : (
+        <span class="unrated">Not rated</span>
+      )
+    }
+    {rating?.verdict && <span class="verdict">{VERDICT_LABELS[rating.verdict]}</span>}
+    <span class="passes" role="img" aria-label={passWords} title={passWords}>
+      {PASSES.map((n) => <span class="pass" data-done={n <= passes ? '' : undefined} />)}
+    </span>
+  </div>
+
+  {
+    chips.length > 0 && (
+      <ul class="made" aria-label="Made so far">
+        {chips.map((chip) => (
+          <li data-standing={chip.standing} title={chip.standing === 'draft' ? 'Draft, waiting for review' : undefined}>
+            {chip.label}
+          </li>
+        ))}
+      </ul>
+    )
+  }
+</article>
+
+<style>
+  .paper {
+    position: relative;
+    display: grid;
+    grid-template-rows: auto auto auto 1fr auto auto;
+    gap: var(--space-2);
+    padding: var(--space-4) var(--space-5) var(--space-4) var(--space-5);
+    border: 1px solid var(--rule);
+    border-inline-start: 3px solid var(--rule-strong);
+    border-radius: var(--radius-m);
+    background: var(--paper-raised);
+  }
+
+  /* Your verdict colours the spine: the one thing to see from across the room. */
+  .paper[data-verdict='must_read'] {
+    border-inline-start-color: var(--accent);
+  }
+
+  .paper[data-verdict='useful'] {
+    border-inline-start-color: var(--series-2);
+  }
+
+  .paper[data-verdict='skim'] {
+    border-inline-start-color: var(--ink-3);
+  }
+
+  .paper[data-verdict='skip'] {
+    border-inline-start-color: var(--rule);
+    border-inline-start-style: dashed;
+  }
+
+  .where {
+    color: var(--accent);
+    font-family: var(--font-ui);
+    font-size: var(--text-xs);
+    font-weight: 600;
+  }
+
+  h2 {
+    font-family: var(--font-read);
+    font-size: var(--text-md);
+    font-weight: 560;
+    line-height: 1.25;
+    text-wrap: balance;
+  }
+
+  h2 a {
+    color: var(--ink);
+    text-decoration: none;
+  }
+
+  h2 a:hover {
+    color: var(--accent);
+  }
+
+  /* The whole card is the link's hit area. */
+  h2 a::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+  }
+
+  .paper:has(h2 a:focus-visible) {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+
+  .authors {
+    color: var(--ink-2);
+    font-size: var(--text-sm);
+    font-style: italic;
+  }
+
+  .tldr {
+    color: var(--ink-2);
+    font-size: var(--text-sm);
+    line-height: 1.5;
+  }
+
+  .tldr.none {
+    color: var(--ink-3);
+    font-family: var(--font-ui);
+    font-size: var(--text-xs);
+  }
+
+  .yours {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-3);
+    align-items: center;
+    padding-block-start: var(--space-2);
+    border-block-start: 1px solid var(--rule);
+    font-family: var(--font-ui);
+    font-size: var(--text-xs);
+  }
+
+  .stars {
+    color: light-dark(var(--marker-ink), var(--marker));
+    font-size: var(--text-sm);
+    letter-spacing: 0.04em;
+  }
+
+  .off {
+    color: var(--rule-strong);
+  }
+
+  .unrated {
+    color: var(--ink-3);
+  }
+
+  .verdict {
+    color: var(--ink);
+    font-weight: 600;
+  }
+
+  .passes {
+    display: inline-flex;
+    gap: 2px;
+    margin-inline-start: auto;
+  }
+
+  .pass {
+    inline-size: 1.1rem;
+    block-size: 0.35rem;
+    border-radius: 1px;
+    background: var(--rule);
+  }
+
+  .pass[data-done] {
+    background: var(--accent);
+  }
+
+  .made {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1);
+    margin: 0;
+    padding: 0;
+    font-family: var(--font-ui);
+    font-size: var(--text-xs);
+    list-style: none;
+  }
+
+  .made li {
+    padding: 0 var(--space-2);
+    border: 1px solid var(--ink-3);
+    border-radius: var(--radius-pill);
+    background: var(--paper-sunken);
+    color: var(--ink-2);
+  }
+
+  .made li[data-standing='draft'] {
+    border-style: dashed;
+    background: transparent;
+    color: var(--ink-3);
+  }
+</style>

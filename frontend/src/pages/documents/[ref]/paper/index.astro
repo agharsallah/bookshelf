@@ -1,0 +1,8 @@
+---
+/** `/documents/{ref}/paper` opens the paper on its default tab. */
+import { DEFAULT_TAB, paperHref } from '../../../../components/papers/tabs';
+
+export const prerender = false;
+
+return Astro.redirect(paperHref(Astro.params.ref ?? '', DEFAULT_TAB), 302);
+---

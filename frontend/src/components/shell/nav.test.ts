@@ -24,6 +24,21 @@ describe('the navigation', () => {
     expect(isCurrent(item('/pipeline'), '/pipeline/stats/meadows-systems')).toBe(true);
   });
 
+  it('lists the paper shelf right after the library, reading-side', () => {
+    const reading = NAV.filter((i) => !i.workshop).map((i) => i.label);
+    expect(reading.slice(1, 3)).toEqual(['Library', 'Papers']);
+    expect(isCurrent(item('/papers'), '/papers')).toBe(true);
+    expect(isCurrent(item('/papers'), '/papers/next')).toBe(true);
+    expect(isCurrent(item('/papers'), '/paperstack')).toBe(false);
+  });
+
+  it('marks Papers, not the Library, on a paper’s own pages', () => {
+    expect(isCurrent(item('/papers'), '/documents/bert/paper/card')).toBe(true);
+    expect(isCurrent(item('/library'), '/documents/bert/paper/card')).toBe(false);
+    expect(isCurrent(item('/library'), '/documents/bert')).toBe(true);
+    expect(isCurrent(item('/papers'), '/documents/paperclip/read/ch01')).toBe(false);
+  });
+
   it('counts every book’s reader statistics as part of You', () => {
     expect(isCurrent(item('/you'), '/you/meadows-systems')).toBe(true);
   });

@@ -24,6 +24,16 @@ export const ARTIFACT_TYPES = [
   'glossary',
   'audio_summary',
   'salience_marks',
+  // Papers (docs/PAPERS.md §4)
+  'paper_card',
+  'paper_explainer',
+  'claim_set',
+  'results_table',
+  'citation_intents',
+  'paper_assessment',
+  'paper_review',
+  'notation_table',
+  'journal_club',
 ] as const;
 export type ArtifactType = (typeof ARTIFACT_TYPES)[number];
 

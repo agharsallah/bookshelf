@@ -10,6 +10,7 @@ import BaseLayout from '../../../layouts/BaseLayout.astro';
 import ChapterStrip from '../../../components/document/ChapterStrip';
 import DocumentActions from '../../../components/document/DocumentActions';
 import StudyShelf from '../../../components/document/StudyShelf.astro';
+import PaperBanner from '../../../components/papers/PaperBanner.astro';
 import DocumentHeader from '../../../components/document/DocumentHeader';
 import Outline from '../../../components/document/Outline';
 import OutlineEditor from '../../../components/document/OutlineEditor';
@@ -176,9 +177,11 @@ const added = data ? new Date(data.doc.created_at).toLocaleDateString('en-GB', {
           </div>
         </header>
 
+        {data.doc.genre === 'paper' && <PaperBanner slug={data.doc.slug} />}
+
         {parsed && (
           <section class="study" aria-labelledby="study-this-title">
-            <h2 id="study-this-title" class="section-title">Study this book</h2>
+            <h2 id="study-this-title" class="section-title">{data.doc.genre === 'paper' ? 'Study this paper' : 'Study this book'}</h2>
             <StudyShelf materials={study} />
           </section>
         )}
