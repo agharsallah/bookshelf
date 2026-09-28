@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bookshelf.local/skills/extract-claims/schema.json",
+  "title": "extract-claims output",
+  "description": "Every claim a paper makes, one self-contained sentence each, typed, graded by strength and cited. Keys are unique (C1, C2, ...); a measured claim cites a results or experiments passage, a table or a figure (checked by app.papers.checks).",
+  "type": "object",
+  "required": ["claims"],
+  "additionalProperties": false,
+  "properties": {
+    "claims": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 40,
+      "items": {
+        "type": "object",
+        "required": ["key", "text", "kind", "strength", "cites"],
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "description": "C1, C2, ... in reading order, unique within the set.",
+            "type": "string",
+            "pattern": "^C[1-9][0-9]{0,2}$"
+          },
+          "text": {
+            "description": "The claim as one self-contained sentence a reader of another paper can understand.",
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 600
+          },
+          "kind": {
+            "enum": ["method", "result", "theory", "dataset", "benchmark", "position"]
+          },
+          "strength": {
+            "description": "measured: backed by the paper's own experiments or data; argued: supported by reasoning, proof or citation; speculated: hedged, hypothesised or left to future work.",
+            "enum": ["measured", "argued", "speculated"]
+          },
+          "cites": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 8,
+            "uniqueItems": true,
+            "items": {
+              "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/anchor"
+            }
+          }
+        }
+      }
+    }
+  }
+}

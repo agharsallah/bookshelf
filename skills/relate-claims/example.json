@@ -1,0 +1,7 @@
+{
+  "relation": "contradicts",
+  "direction": "a_to_b",
+  "confidence": "medium",
+  "rationale": "A1 reports that the gated reader beats FiD-base on HotpotQA by 3.4 EM; B1 and B2 report that, re-run with five seeds on the same development set, gating gives no gain over FiD-base.",
+  "evidence": ["A1", "B1", "B2"]
+}

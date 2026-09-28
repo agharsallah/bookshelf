@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bookshelf.local/skills/relate-claims/schema.json",
+  "title": "relate-claims output",
+  "description": "A verdict on how two claims from different papers relate. Anything but `none` becomes a proposed claim-to-claim edge; it is never accepted by itself.",
+  "type": "object",
+  "required": ["relation", "direction", "confidence", "rationale", "evidence"],
+  "additionalProperties": false,
+  "properties": {
+    "relation": { "enum": ["supports", "contradicts", "extends", "none"] },
+    "direction": {
+      "description": "Which way the relation reads: `a_to_b` is 'a <relation> b'. `contradicts` and `none` use a_to_b.",
+      "enum": ["a_to_b", "b_to_a"]
+    },
+    "confidence": { "enum": ["high", "medium", "low"] },
+    "rationale": { "type": "string", "minLength": 1, "maxLength": 500 },
+    "evidence": {
+      "description": "Passage ids from the input (A1, B2, ...) that show the relation; at least one from each paper unless the relation is `none`.",
+      "type": "array",
+      "items": { "type": "string", "pattern": "^[AB][0-9]+$" },
+      "maxItems": 6,
+      "uniqueItems": true
+    }
+  }
+}

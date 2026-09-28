@@ -16,7 +16,7 @@ from sqlalchemy import tuple_
 from sqlmodel import Session, col, select
 
 from app.graph.refs import Ref, split_anchor
-from app.models import Artifact, Concept, Document, Node
+from app.models import Artifact, Claim, Concept, Document, Node
 from app.models.enums import EntityKind
 
 SNIPPET_CHARS = 240
@@ -120,9 +120,14 @@ def labels(session: Session, refs: Iterable[Ref]) -> dict[Ref, Label]:
     artifact_rows = session.exec(
         select(Artifact).where(col(Artifact.id).in_([r.uuid for r in by_kind[EntityKind.ARTIFACT]]))
     ).all()
-    doc_ids = {r.uuid for r in by_kind[EntityKind.DOCUMENT]} | {
-        a.document_id for a in artifact_rows
-    }
+    claim_rows = session.exec(
+        select(Claim).where(col(Claim.id).in_([r.uuid for r in by_kind[EntityKind.CLAIM]]))
+    ).all()
+    doc_ids = (
+        {r.uuid for r in by_kind[EntityKind.DOCUMENT]}
+        | {a.document_id for a in artifact_rows}
+        | {c.document_id for c in claim_rows}
+    )
     docs = documents(session, doc_ids)
     for ref in by_kind[EntityKind.DOCUMENT]:
         if (doc := docs.get(ref.uuid)) is not None:
@@ -133,6 +138,17 @@ def labels(session: Session, refs: Iterable[Ref]) -> dict[Ref, Label]:
         sub = f"{doc.title} · {scope}" if doc else scope
         out[Ref(EntityKind.ARTIFACT, str(a.id))] = Label(
             EntityKind.ARTIFACT, a.type.value.replace("_", " "), sub, doc, a.anchor
+        )
+
+    for claim in claim_rows:  # a paper claim: its sentence, landing on its first evidence
+        doc = docs.get(claim.document_id)
+        out[Ref.claim(claim.id)] = Label(
+            EntityKind.CLAIM,
+            clip(claim.text, LABEL_CHARS) or claim.key,
+            f"{doc.title} · {claim.key}" if doc else claim.key,
+            doc,
+            claim.evidence[0] if claim.evidence else None,
+            blurb=f"{claim.kind.value} · {claim.strength.value}: {claim.text}",
         )
 
     found = passages(session, [r.id for r in by_kind[EntityKind.NODE]])

@@ -24,6 +24,7 @@ from sqlmodel import Session
 
 from app.db.session import release
 from app.models import Document
+from app.papers.claim_points import CLAIMS_AVG_LEN, claim_points
 from app.pipeline.tree import Tree
 from app.retrieval.client import Collection, collection_name, get_client
 from app.retrieval.collections import DENSE, SPARSE, CollectionMismatchError, ensure_collections
@@ -160,7 +161,8 @@ def index_document(
     client: QdrantClient | None = None,
     force: bool = False,
 ) -> dict[str, Any]:
-    """Index one document: its blocks, its approved artifacts, its metadata point.
+    """Index one document: its blocks, its approved artifacts, its claims (papers), its
+    metadata point.
 
     Assumes the collections exist (`ensure_collections`). Returns per-collection counts.
     """
@@ -170,6 +172,7 @@ def index_document(
     distillations = distillation_points(
         tree, approved_artifacts(session, document.id), model_id=embedder.model_id
     )
+    claims = claim_points(session, document.id, model_id=embedder.model_id)  # papers only
     _upsert_document(client, document)
     document_id = document.id
     release(session)  # everything is read: no transaction open while embedding
@@ -185,11 +188,15 @@ def index_document(
         avg_len=DISTILLATIONS_AVG_LEN,
         **common,
     )
+    claim_counts = sync_points(
+        client, Collection.CLAIMS, document_id, claims, avg_len=CLAIMS_AVG_LEN, **common
+    )
     return {
         "document_id": str(document_id),
         "model_id": embedder.model_id,
         "blocks": asdict(block_counts),
         "distillations": asdict(distillation_counts),
+        "claims": asdict(claim_counts),
     }
 
 

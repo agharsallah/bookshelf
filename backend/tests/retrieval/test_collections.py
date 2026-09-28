@@ -11,7 +11,7 @@ def test_creates_blocks_and_distillations_with_named_dense_and_bm25_vectors(
 ) -> None:
     report = ensure_collections(dense_dim=384, client=qdrant)
 
-    assert sorted(report.created) == ["blocks", "distillations", "documents"]
+    assert sorted(report.created) == ["blocks", "claims", "distillations", "documents"]
     for name in ("blocks", "distillations"):
         params = qdrant.get_collection(name).config.params
         assert params.vectors == {
@@ -53,7 +53,7 @@ def test_second_call_keeps_collections_and_their_points(qdrant: QdrantClient) ->
     report = ensure_collections(dense_dim=384, client=qdrant)
 
     assert report.created == []
-    assert sorted(report.existing) == ["blocks", "distillations", "documents"]
+    assert sorted(report.existing) == ["blocks", "claims", "distillations", "documents"]
     assert qdrant.count("documents").count == 1
 
 
@@ -64,7 +64,7 @@ def test_a_dense_size_change_is_refused_unless_recreating(qdrant: QdrantClient) 
         ensure_collections(dense_dim=768, client=qdrant)
 
     report = ensure_collections(dense_dim=768, client=qdrant, recreate=True)
-    assert sorted(report.created) == ["blocks", "distillations"]
+    assert sorted(report.created) == ["blocks", "claims", "distillations"]
     vectors = qdrant.get_collection("blocks").config.params.vectors
     assert isinstance(vectors, dict)
     assert vectors["text"].size == 768

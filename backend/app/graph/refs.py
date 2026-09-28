@@ -5,7 +5,7 @@ for a node (`app.models.graph.node_ref`, stable across re-parses). The API and t
 neighborhood speak the same thing as one string, `<kind>:<id>`:
 
     concept:3f1c…            document:9a2e…            artifact:77b0…
-    node:9a2e…#ch03/s02/p014
+    node:9a2e…#ch03/s02/p014 claim:5d0c…               (a paper claim, docs/PAPERS.md P4)
 
 Evidence entries are *qualified anchors*, `<document_id>#<anchor>`, exactly a node id. A
 skill cites document-local anchors; `apply` qualifies them, so one concept can carry
@@ -19,7 +19,7 @@ from dataclasses import dataclass
 
 from sqlmodel import Session, select
 
-from app.models import Artifact, Concept, Document, Node, node_ref
+from app.models import Artifact, Claim, Concept, Document, Node, node_ref
 from app.models.enums import EntityKind
 
 ANCHOR = re.compile(r"^[a-z]+[0-9]+(/[a-z]+[0-9]+)*$")
@@ -40,6 +40,10 @@ class Ref:
     @classmethod
     def concept(cls, concept_id: uuid.UUID) -> "Ref":
         return cls(EntityKind.CONCEPT, str(concept_id))
+
+    @classmethod
+    def claim(cls, claim_id: uuid.UUID) -> "Ref":
+        return cls(EntityKind.CLAIM, str(claim_id))
 
     @classmethod
     def node(cls, document_id: uuid.UUID, anchor: str) -> "Ref":
@@ -92,7 +96,7 @@ def parse_ref(value: str) -> Ref | uuid.UUID:
     except ValueError as exc:
         raise RefError(
             f"{value!r} is not a graph ref (concept:<id>, node:<doc>#<anchor>, "
-            "document:<id>, artifact:<id>, or a bare id)"
+            "document:<id>, artifact:<id>, claim:<id>, or a bare id)"
         ) from exc
 
 
@@ -124,7 +128,12 @@ def resolve_ref(session: Session, value: str) -> Ref:
     candidates: list[EntityKind]
     if isinstance(parsed, uuid.UUID):
         row_id = parsed
-        candidates = [EntityKind.CONCEPT, EntityKind.DOCUMENT, EntityKind.ARTIFACT]
+        candidates = [
+            EntityKind.CONCEPT,
+            EntityKind.DOCUMENT,
+            EntityKind.ARTIFACT,
+            EntityKind.CLAIM,
+        ]
     else:
         row_id = parsed.uuid
         candidates = [parsed.kind]
@@ -134,6 +143,8 @@ def resolve_ref(session: Session, value: str) -> Ref:
         if kind is EntityKind.DOCUMENT and session.get(Document, row_id) is not None:
             return Ref(kind, str(row_id))
         if kind is EntityKind.ARTIFACT and session.get(Artifact, row_id) is not None:
+            return Ref(kind, str(row_id))
+        if kind is EntityKind.CLAIM and session.get(Claim, row_id) is not None:
             return Ref(kind, str(row_id))
         if kind is EntityKind.NODE and isinstance(parsed, Ref) and node_exists(session, parsed):
             return parsed

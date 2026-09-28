@@ -23,11 +23,13 @@ if TYPE_CHECKING:  # `import qdrant_client` also loads fastembed + onnxruntime: 
 
 
 class Collection(StrEnum):
-    """The three collections of §10. `name()` applies `qdrant_collection_prefix`."""
+    """The collections of §10 (plus the claim tracker's, docs/PAPERS.md §5).
+    `collection_name()` applies `qdrant_collection_prefix`."""
 
     BLOCKS = "blocks"
     DISTILLATIONS = "distillations"
     DOCUMENTS = "documents"
+    CLAIMS = "claims"  # one point per paper claim (app.papers.claim_points)
 
 
 def collection_name(collection: Collection) -> str:

@@ -1,0 +1,32 @@
+{
+  "claims": [
+    {
+      "key": "C1",
+      "text": "Gating each retrieved passage by its relevance to the question before reading stops irrelevant passages from diluting the reader's evidence.",
+      "kind": "method",
+      "strength": "argued",
+      "cites": ["ch01/p002", "ch03/s01/p002"]
+    },
+    {
+      "key": "C2",
+      "text": "Gated retrieval adapters improve exact match over FiD-base by 2.1 points on Natural Questions and 3.4 points on HotpotQA.",
+      "kind": "result",
+      "strength": "measured",
+      "cites": ["ch04/s02/t001", "ch04/s02/p001"]
+    },
+    {
+      "key": "C3",
+      "text": "On TriviaQA, the 0.3 EM gain of gated retrieval adapters over FiD-base is within the standard deviation over three seeds.",
+      "kind": "result",
+      "strength": "measured",
+      "cites": ["ch04/s02/p002"]
+    },
+    {
+      "key": "C4",
+      "text": "A single gate shared across tasks might remove the need to train one gate per benchmark.",
+      "kind": "method",
+      "strength": "speculated",
+      "cites": ["ch05/p003"]
+    }
+  ]
+}

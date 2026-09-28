@@ -4,7 +4,7 @@ Postgres stays the source of truth (D1); every point in Qdrant is rebuilt from i
 `embed` job. Modules, bottom up:
 
 * `client`      QdrantClient factory (remote cluster, or the embedded on-disk store).
-* `collections` the three collections and their payload indexes, created idempotently.
+* `collections` the collections and their payload indexes, created idempotently.
 * `embedding`   the `Embedder` seam: FastEmbed in production, a deterministic fake in tests.
 * `points`      nodes and approved artifacts → point payloads and texts.
 * `indexing`    sync one document's points: re-embed only what changed, drop what vanished.

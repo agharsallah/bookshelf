@@ -1,0 +1,16 @@
+name: extract-claims
+version: 2  # v2: appendix passages count as measurements (extra ablations live there)
+description: Extract every claim a paper makes — typed (method, result, theory, dataset, benchmark, position) and graded by strength (measured, argued, speculated) — each in one self-contained sentence citing the passages it rests on, so claims can be compared and related across papers.
+tier: distil
+job_kind: derive
+artifact_type: claim_set   # approving it projects the claims into `claims` (app.papers.materialize)
+scope: document
+selector: paper_claims
+vision: false
+genre: paper   # a paper skill (docs/PAPERS.md P2)
+gates:
+  grounding_min: 1.0   # every claim is one cited span: an uncited claim is not a claim
+  max_words: 2500
+  # Units offered = every unit distillation. A claim set that never reaches the method or
+  # the results is missing what the paper asserts.
+  coverage_min: 0.5

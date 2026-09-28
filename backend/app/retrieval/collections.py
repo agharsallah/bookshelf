@@ -1,4 +1,5 @@
-"""The Qdrant layout of §10: `blocks`, `distillations`, `documents`, created idempotently.
+"""The Qdrant layout of §10: `blocks`, `distillations`, `documents` (and the paper claims'
+`claims`, docs/PAPERS.md §5), created idempotently.
 
 Grounded in the current Qdrant guidance (loaded via the qdrant-advisor skill):
 
@@ -54,9 +55,19 @@ PAYLOAD_INDEXES: dict[Collection, dict[str, models.PayloadSchemaType]] = {
         "model_id": K,
     },
     Collection.DOCUMENTS: {"slug": K, "tags": K},
+    # Paper claims (docs/PAPERS.md §5): small, separate from `distillations` so a claim never
+    # competes with prose in search, and cross-paper neighbours filter on `document_id`.
+    Collection.CLAIMS: {
+        "document_id": K,
+        "claim_id": K,
+        "kind": K,
+        "strength": K,
+        "unit": K,
+        "model_id": K,
+    },
 }
 
-VECTOR_COLLECTIONS = (Collection.BLOCKS, Collection.DISTILLATIONS)
+VECTOR_COLLECTIONS = (Collection.BLOCKS, Collection.DISTILLATIONS, Collection.CLAIMS)
 
 
 class CollectionMismatchError(RuntimeError):
@@ -111,7 +122,7 @@ def _create_indexes(client: QdrantClient, collection: Collection, name: str) -> 
 def ensure_collections(
     *, dense_dim: int, client: QdrantClient | None = None, recreate: bool = False
 ) -> EnsureReport:
-    """Create the three collections and their payload indexes if missing. Idempotent.
+    """Create every collection and its payload indexes if missing. Idempotent.
 
     Raises `CollectionMismatchError` when an existing vector collection has another dense
     size, unless `recreate=True`, which drops and recreates it (its points are lost).

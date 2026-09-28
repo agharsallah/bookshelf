@@ -12,9 +12,10 @@ every live concept, and three kinds of line between them:
                                                  same concepts, strongest partners only
 
 **Folding.** An edge endpoint `node:<doc>#ch03/s02/p014` belongs to the nearest `chapter`
-above it (or its first anchor segment when the book has no chapters). Edges that fold
-onto the same `(chapter, concept, relation)` combine: the strongest one's weight, summed
-evidence, every underlying edge id, and a few evidence anchors to open.
+above it (or its first anchor segment when the book has no chapters); a paper claim
+(`claim:<id>`) belongs to its unit, so claim ↔ claim relations join the papers' sections.
+Edges that fold onto the same `(chapter, concept, relation)` combine: the strongest one's
+weight, summed evidence, every underlying edge id, and a few evidence anchors to open.
 
 **Sharing.** Two chapters share a concept when both link to it. A pair scores the sum of
 `1 / log2(1 + chapters naming it)` over the concepts they share, so a rare idea joins two
@@ -36,7 +37,7 @@ from sqlmodel import Session, col, select
 
 from app.graph.evidence import clip
 from app.graph.refs import Ref
-from app.models import Concept, Document, Edge, Node
+from app.models import Claim, Concept, Document, Edge, Node
 from app.models.enums import EdgeStatus, EntityKind, NodeKind
 
 CONCEPT_CAP = 400
@@ -116,6 +117,11 @@ class _Builder:
             str(c.id): c
             for c in session.exec(select(Concept).where(col(Concept.merged_into).is_(None))).all()
         }
+        # A paper claim folds to the unit it belongs to, like a passage to its chapter.
+        self.claims = {
+            str(c.id): (c.document_id, c.unit or (c.evidence[0] if c.evidence else ""))
+            for c in session.exec(select(Claim)).all()
+        }
         heads = session.exec(
             select(Node).where(col(Node.kind).in_([NodeKind.CHAPTER, NodeKind.PART]))
         ).all()
@@ -189,6 +195,8 @@ class _Builder:
         if kind is EntityKind.NODE:
             doc, _, anchor = ref_id.partition("#")
             return self._chapter(uuid.UUID(doc), anchor)
+        if kind is EntityKind.CLAIM and (claim := self.claims.get(ref_id)) and claim[1]:
+            return self._chapter(*claim)
         return None  # artifacts are not on the map
 
     # --- edges -----------------------------------------------------------------------------
