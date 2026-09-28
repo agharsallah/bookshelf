@@ -6,6 +6,7 @@ from app.models.graph import Concept, Edge, node_ref
 from app.models.job import Job
 from app.models.note import Note
 from app.models.reading import ReadingPosition
+from app.models.recall import Recall, RecallGrade, ReviewItem, ReviewLog
 from app.models.worker import WorkerRow
 
 __all__ = [
@@ -17,6 +18,10 @@ __all__ = [
     "Node",
     "Note",
     "ReadingPosition",
+    "Recall",
+    "RecallGrade",
+    "ReviewItem",
+    "ReviewLog",
     "WorkerRow",
     "node_ref",
 ]

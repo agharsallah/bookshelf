@@ -52,7 +52,14 @@ REQUIRED_META = {
     "gates",
 }
 # Jobs Python runs itself; every other JobKind must be backed by at least one skill.
-PYTHON_JOBS = {JobKind.PARSE, JobKind.EMBED, JobKind.EXPORT, JobKind.NARRATE}
+# `grade_recall` runs the grade-recall utility skill inline (app/recall/grading.py).
+PYTHON_JOBS = {
+    JobKind.PARSE,
+    JobKind.EMBED,
+    JobKind.EXPORT,
+    JobKind.NARRATE,
+    JobKind.GRADE_RECALL,
+}
 OUTPUT_LINE = "Output only the JSON object. No prose, no code fences."
 INTERACTIVE = re.compile(r"<!-- interactive:start -->.*?<!-- interactive:end -->\n?", re.S)
 FRONTMATTER = re.compile(r"\A---\n(.*?)\n---\n", re.S)

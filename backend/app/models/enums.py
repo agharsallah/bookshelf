@@ -63,6 +63,21 @@ class NoteTarget(StrEnum):
     CHAPTER_SUMMARY = "chapter_summary"
 
 
+class RecallKind(StrEnum):
+    """What a recall holds: the chapter from memory, or what you expected it to argue."""
+
+    RECALL = "recall"
+    PREDICTION = "prediction"
+
+
+class ReviewSource(StrEnum):
+    """Where a review item came from (its `source_key` is unique within the source)."""
+
+    RECALL = "recall"  # an idea a recall missed or half-recalled
+    QUESTION = "question"  # the "why is this true?" a graded recall asked
+    FLASHCARD = "flashcard"  # a flashcard you marked
+
+
 class ArtifactType(StrEnum):
     OUTLINE_OVERRIDE = "outline_override"
     FIGURE_DESCRIPTION = "figure_description"
@@ -166,6 +181,7 @@ class JobKind(StrEnum):
     DERIVE = "derive"
     EXPORT = "export"
     NARRATE = "narrate"
+    GRADE_RECALL = "grade_recall"
 
 
 class JobState(StrEnum):
