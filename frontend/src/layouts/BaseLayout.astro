@@ -2,9 +2,11 @@
 /**
  * App shell: head (fonts, theme and mode bootstraps), skip link, masthead with the
  * reading navigation and, in workshop mode, the review and pipeline pages with their
- * live counts; an `actions` slot for page-level controls, main content, footer.
+ * live counts; an `actions` slot for page-level controls, main content, footer, and the
+ * now-playing bar.
  *
- * Pages change without reloading (`ClientRouter`). Page scripts therefore run
+ * Pages change without reloading (`ClientRouter`), so audio started on one page keeps
+ * playing on the next (`NowPlayingBar`, kept across swaps). Page scripts therefore run
  * through `onPage` (lib/page.ts), and the theme and mode are written to `<html>` again
  * after each swap, which replaces its attributes with the new page's.
  */
@@ -16,6 +18,7 @@ import ApiStatus from '../components/shell/ApiStatus.astro';
 import ThemeToggle from '../components/shell/ThemeToggle.astro';
 import WorkshopToggle from '../components/shell/WorkshopToggle.astro';
 import CommandPalette from '../components/search/CommandPalette';
+import NowPlayingBar from '../components/listen/NowPlayingBar';
 import { NAV, isCurrent } from '../components/shell/nav';
 import { themeBootstrapScript } from '../lib/theme';
 import { workshopBootstrapScript } from '../lib/workshop';
@@ -105,6 +108,8 @@ const afterSwapScript = `document.addEventListener('astro:after-swap', () => { $
     <main id="main" class:list={['main', `main--${width}`]} tabindex="-1">
       <slot />
     </main>
+
+    <NowPlayingBar client:only="react" transition:persist="now-playing" />
 
     <footer class="colophon">
       <div class="colophon-inner">

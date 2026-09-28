@@ -1,0 +1,115 @@
+/*
+ * The now-playing bar: a slim card raised over the bottom of every page, its progress a
+ * hairline along the top edge. Buttons echo the full player's (Listen.module.css), smaller.
+ */
+.bar {
+  --played: 0%;
+
+  position: fixed;
+  inset-block-end: var(--space-3);
+  inset-inline: max(var(--space-4), 50% - 22rem);
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  overflow: hidden;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-l);
+  background: var(--paper-raised);
+  box-shadow: var(--shadow-pop);
+  font-family: var(--font-ui);
+}
+
+.progress {
+  position: absolute;
+  inset: 0 0 auto;
+  block-size: 3px;
+  background: linear-gradient(to right, var(--marker) var(--played), transparent var(--played));
+}
+
+.play,
+.icon {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  border: 1px solid var(--rule-strong);
+  border-radius: 50%;
+  background: var(--paper);
+  color: var(--ink);
+  cursor: pointer;
+  transition: border-color var(--dur-1) var(--ease-out);
+}
+
+.play {
+  inline-size: 2.5rem;
+  block-size: 2.5rem;
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.icon {
+  inline-size: 2.25rem;
+  block-size: 2.25rem;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.play:hover,
+.icon:hover {
+  border-color: var(--ink);
+}
+
+.play svg {
+  inline-size: 1.1rem;
+  block-size: 1.1rem;
+  fill: currentColor;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.what {
+  display: grid;
+  flex: 1;
+  min-inline-size: 0;
+  margin: 0;
+  line-height: var(--leading-tight);
+}
+
+.title,
+.meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.title {
+  color: var(--ink);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.title:hover {
+  text-decoration: underline;
+}
+
+.meta {
+  color: var(--ink-3);
+  font-size: var(--text-xs);
+}
+
+.clock {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Narrow screens: the skip buttons give way to the title. */
+@media (width < 30rem) {
+  .icon:not(:last-child) {
+    display: none;
+  }
+}

@@ -12,8 +12,9 @@ import type { AudioShelf, VoiceCatalogue } from '../../lib/api/types/audio';
 import type { SkillParam } from '../../lib/api/types/skills';
 import { useJobStream } from '../../lib/hooks/useJobStream';
 import { describeJob } from '../../lib/jobs/progress';
-import { AudioPlayer } from './AudioPlayer';
+import { AudioPlayer, type PlayerHandle } from './AudioPlayer';
 import { EpisodeMaker } from './EpisodeMaker';
+import type { NowPlaying } from './nowPlaying';
 import {
   apiPath,
   audioJobTitle,
@@ -41,16 +42,18 @@ export interface ListenProps {
   /** The audio skill's params, or null when the skill is not installed (nothing to make). */
   params: Record<string, SkillParam> | null;
   api?: Pick<ApiClient, 'get' | 'post' | 'delete'>;
+  /** The app's player by default (`nowPlaying`); tests pass their own. */
+  player?: NowPlaying;
 }
 
-export function Listen({ slug, bookTitle, documentId, shelf: initial, catalogue, params, api = browserApi }: ListenProps) {
+export function Listen({ slug, bookTitle, documentId, shelf: initial, catalogue, params, api = browserApi, player }: ListenProps) {
   const [shelf, setShelf] = useState(initial);
   const [variant, setVariant] = useState<string | null>(() => initial.episodes.find((e) => e.renders.length > 0)?.variant ?? initial.episodes[0]?.variant ?? null);
   const [versionId, setVersionId] = useState<string | null>(null);
   const [renderKey, setRenderKey] = useState<string | null>(null);
   const [time, setTime] = useState(0);
   const [making, setMaking] = useState(initial.episodes.length === 0);
-  const audio = useRef<HTMLAudioElement>(null);
+  const audio = useRef<PlayerHandle>(null);
   const { jobs, queue, track } = useJobStream({ documentId });
   const [now, setNow] = useState(() => Date.now());
 
@@ -84,12 +87,7 @@ export function Listen({ slug, bookTitle, documentId, shelf: initial, catalogue,
   }, [live.length]);
 
   const onTime = useCallback((seconds: number) => setTime(seconds), []);
-  const seek = (seconds: number) => {
-    const el = audio.current;
-    if (!el) return;
-    el.currentTime = seconds;
-    void el.play().catch(() => undefined);
-  };
+  const seek = (seconds: number) => audio.current?.playFrom(seconds);
 
   const speakers = script
     ? script.speakers.map((speaker, i) => {
@@ -185,7 +183,8 @@ export function Listen({ slug, bookTitle, documentId, shelf: initial, catalogue,
           {render ? (
             <AudioPlayer
               key={render.key}
-              audio={audio}
+              ref={audio}
+              player={player}
               src={apiPath(render.url)}
               downloadHref={apiPath(render.url, { download: downloadName(bookTitle, episode.params) })}
               downloadName={downloadName(bookTitle, episode.params)}

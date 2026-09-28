@@ -1,35 +1,31 @@
 /**
- * The audio player: a native `<audio>` (so the browser streams, seeks by byte range and
- * keeps playing in the background) under controls of our own — play, skip back 15 s and
- * ahead 30 s, a scrubber marked with the episode's sections, speed, previous and next
- * section, and download.
+ * The audio player: controls of our own — play, skip back 15 s and ahead 30 s, a scrubber
+ * marked with the episode's sections, speed, previous and next section, and download —
+ * over the app's one `<audio>` element (`nowPlaying`), so what you start keeps playing as
+ * you move to other pages (the layout's `NowPlayingBar` takes over there).
  *
- * It picks up where you stopped (per render, in localStorage), tells the operating system
- * what is playing (Media Session: lock screen, headphone buttons, media keys), and takes
- * keys: Space or K play/pause, ← → skip, [ ] slower/faster, P N previous/next section
- * (`shortcuts={false}` leaves the keys to the page, as the reader, which has its own).
- * The parent owns the `<audio>` element's ref, so the transcript can seek it too.
+ * On mount it takes the element for its recording, where you stopped, unless another one
+ * is playing; then it waits, showing your saved place, until you press play. Your place
+ * and the Media Session are the store's. It takes keys: Space or K play/pause, ← → skip,
+ * [ ] slower/faster, P N previous/next section (`shortcuts={false}` leaves the keys to the
+ * page, as the reader, which has its own). `ref` lets the page play from a moment (the
+ * transcript, "play from where I am").
  */
-import { useEffect, useState, type CSSProperties, type RefObject } from 'react';
+import { useEffect, useImperativeHandle, useMemo, useState, type CSSProperties, type Ref } from 'react';
 import type { Mark } from '../../lib/api/types/audio';
 import { shortcutApplies } from '../study/keys';
 import { Kbd } from '../study/ReaderCites';
-import {
-  browserStorage,
-  formatTime,
-  markAt,
-  readPosition,
-  sectionJump,
-  SKIP_AHEAD,
-  SKIP_BACK,
-  SPEEDS,
-  spokenTime,
-  writePosition,
-} from './listening';
+import { browserStorage, formatTime, markAt, readPosition, sectionJump, SKIP_AHEAD, SKIP_BACK, SPEEDS, spokenTime } from './listening';
+import { nowPlaying, type NowPlaying, type Track } from './nowPlaying';
+import { useNowPlaying } from './useNowPlaying';
 import styles from './Listen.module.css';
 
+export interface PlayerHandle {
+  /** Take the element if need be, and play from `seconds`. */
+  playFrom: (seconds: number) => void;
+}
+
 export interface AudioPlayerProps {
-  audio: RefObject<HTMLAudioElement | null>;
   src: string;
   downloadHref: string;
   downloadName: string;
@@ -41,118 +37,77 @@ export interface AudioPlayerProps {
   duration: number;
   /** Where to remember your place (`positionKey`). */
   storageKey: string;
+  /** The time heard, while this recording is the one loaded (else 0). */
   onTime: (seconds: number) => void;
   /** Take the page's keys (default); false where the page has shortcuts of its own. */
   shortcuts?: boolean;
+  ref?: Ref<PlayerHandle>;
+  /** The app's player by default; tests pass their own. */
+  player?: NowPlaying;
 }
 
-const SAVE_EVERY = 5; // seconds of playback between saves of your place
+/** The app's player, in the browser; none while rendering on the server. */
+function browserPlayer(): NowPlaying | null {
+  return typeof document === 'undefined' ? null : nowPlaying();
+}
 
-export function AudioPlayer({ audio, src, downloadHref, downloadName, title, bookTitle, sections, duration, storageKey, onTime, shortcuts = true }: AudioPlayerProps) {
-  const [playing, setPlaying] = useState(false);
-  const [time, setTime] = useState(0);
-  const [length, setLength] = useState(duration);
-  const [speed, setSpeed] = useState(1);
+const here = () => `${window.location.pathname}${window.location.search}${window.location.hash}`;
+
+export function AudioPlayer(props: AudioPlayerProps) {
+  const { src, downloadHref, downloadName, title, bookTitle, sections, duration, storageKey, onTime, shortcuts = true, ref } = props;
+  const player = props.player ?? browserPlayer();
+  const state = useNowPlaying(player);
+  const [savedAt, setSavedAt] = useState(0);
+  const track = useMemo<Omit<Track, 'href'>>(() => ({ src, title, bookTitle, sections, duration, storageKey }), [src, title, bookTitle, sections, duration, storageKey]);
+  const active = state.track?.src === src;
+  const playing = active && state.playing;
+  const time = active ? state.time : savedAt;
+  const length = (active && state.duration) || duration;
+  const speed = state.rate;
   const current = markAt(sections, time);
 
-  const seek = (seconds: number) => {
-    const el = audio.current;
-    if (!el) return;
-    el.currentTime = Math.min(Math.max(seconds, 0), Number.isFinite(el.duration) ? el.duration : length);
+  // Take the element for this recording, unless another one is playing.
+  useEffect(() => {
+    if (!player) return;
+    const now = player.getState();
+    if (!now.playing || now.track?.src === track.src) player.load({ ...track, href: here() });
+    return player.view(track.src);
+  }, [player, track]);
+
+  // Waiting while another recording plays: show where you stopped this one.
+  useEffect(() => {
+    if (!active) setSavedAt(readPosition(browserStorage(), storageKey) ?? 0);
+  }, [active, storageKey]);
+
+  useEffect(() => {
+    onTime(active ? state.time : 0);
+  }, [active, state.time, onTime]);
+
+  const claim = () => {
+    if (player && !active) player.load({ ...track, href: here() });
+    return player;
   };
+  const seek = (seconds: number) => claim()?.seek(seconds);
   const toggle = () => {
-    const el = audio.current;
-    if (!el) return;
-    if (el.paused) void el.play().catch(() => setPlaying(false));
-    else el.pause();
+    if (active) player?.toggle();
+    else claim()?.play();
   };
   const changeSpeed = (step: 1 | -1) => {
     const index = SPEEDS.indexOf(speed as (typeof SPEEDS)[number]);
-    const next = SPEEDS[Math.min(Math.max((index < 0 ? 1 : index) + step, 0), SPEEDS.length - 1)] ?? 1;
-    setSpeed(next);
+    player?.setRate(SPEEDS[Math.min(Math.max((index < 0 ? 1 : index) + step, 0), SPEEDS.length - 1)] ?? 1);
   };
   const jump = (direction: 1 | -1) => {
-    const to = sectionJump(sections, audio.current?.currentTime ?? time, direction);
+    const to = sectionJump(sections, time, direction);
     if (to !== null) seek(to);
   };
 
-  useEffect(() => {
-    if (audio.current) audio.current.playbackRate = speed;
-  }, [audio, speed]);
-
-  // Events of the element: time, play state, and your place, saved as you listen.
-  useEffect(() => {
-    const el = audio.current;
-    if (!el) return;
-    let saved = 0;
-    const onLoaded = () => {
-      if (Number.isFinite(el.duration)) setLength(el.duration);
-      const resume = readPosition(browserStorage(), storageKey);
-      if (resume !== null && resume < el.duration - 10) el.currentTime = resume;
-    };
-    const onTimeUpdate = () => {
-      setTime(el.currentTime);
-      onTime(el.currentTime);
-      if (Math.abs(el.currentTime - saved) >= SAVE_EVERY) {
-        saved = el.currentTime;
-        writePosition(browserStorage(), storageKey, el.currentTime);
-      }
-    };
-    const onPlay = () => setPlaying(true);
-    const onPause = () => {
-      setPlaying(false);
-      writePosition(browserStorage(), storageKey, el.currentTime);
-    };
-    const onEnded = () => {
-      setPlaying(false);
-      writePosition(browserStorage(), storageKey, null);
-    };
-    el.addEventListener('loadedmetadata', onLoaded);
-    el.addEventListener('timeupdate', onTimeUpdate);
-    el.addEventListener('play', onPlay);
-    el.addEventListener('pause', onPause);
-    el.addEventListener('ended', onEnded);
-    if (el.readyState >= 1) onLoaded();
-    return () => {
-      el.removeEventListener('loadedmetadata', onLoaded);
-      el.removeEventListener('timeupdate', onTimeUpdate);
-      el.removeEventListener('play', onPlay);
-      el.removeEventListener('pause', onPause);
-      el.removeEventListener('ended', onEnded);
-    };
-  }, [audio, storageKey, onTime]);
-
-  // The operating system's media controls.
-  useEffect(() => {
-    if (typeof navigator === 'undefined' || !('mediaSession' in navigator) || typeof MediaMetadata === 'undefined') return;
-    const session = navigator.mediaSession;
-    session.metadata = new MediaMetadata({ title, artist: bookTitle, album: 'Bookshelf' });
-    const handlers: [MediaSessionAction, MediaSessionActionHandler][] = [
-      ['play', () => void audio.current?.play()],
-      ['pause', () => audio.current?.pause()],
-      ['seekbackward', (d) => seek((audio.current?.currentTime ?? 0) - (d.seekOffset ?? SKIP_BACK))],
-      ['seekforward', (d) => seek((audio.current?.currentTime ?? 0) + (d.seekOffset ?? SKIP_AHEAD))],
-      ['seekto', (d) => d.seekTime !== undefined && seek(d.seekTime)],
-      ['previoustrack', () => jump(-1)],
-      ['nexttrack', () => jump(1)],
-    ];
-    for (const [action, handler] of handlers) {
-      try {
-        session.setActionHandler(action, handler);
-      } catch {
-        // An action this browser does not support.
-      }
-    }
-    return () => {
-      for (const [action] of handlers) {
-        try {
-          session.setActionHandler(action, null);
-        } catch {
-          // As above.
-        }
-      }
-    };
-  });
+  useImperativeHandle(ref, () => ({
+    playFrom: (seconds: number) => {
+      const p = claim();
+      p?.seek(seconds);
+      p?.play();
+    },
+  }));
 
   useEffect(() => {
     if (!shortcuts) return;
@@ -177,12 +132,11 @@ export function AudioPlayer({ audio, src, downloadHref, downloadName, title, boo
     return () => document.removeEventListener('keydown', onKey);
   });
 
-  const total = length || duration;
+  const total = length;
   const keys = (announce: string) => (shortcuts ? announce : undefined);
   const sectionTitle = sections[current]?.title ?? sections[0]?.title ?? '';
   return (
     <div className={styles.player}>
-      <audio ref={audio} src={src} preload="metadata" />
       <p className={styles.now} aria-live="polite">
         <span className={styles.nowLabel}>{current >= 0 ? `Part ${current + 1} of ${sections.length}` : 'Ready'}</span>
         <span className={styles.nowTitle}>{sectionTitle}</span>
@@ -230,7 +184,7 @@ export function AudioPlayer({ audio, src, downloadHref, downloadName, title, boo
       <div className={styles.extras}>
         <label className={styles.speed}>
           Speed
-          <select value={speed} onChange={(event) => setSpeed(Number(event.currentTarget.value))} aria-keyshortcuts={keys('[ ]')}>
+          <select value={speed} onChange={(event) => player?.setRate(Number(event.currentTarget.value))} aria-keyshortcuts={keys('[ ]')}>
             {SPEEDS.map((s) => (
               <option key={s} value={s}>
                 {s}×

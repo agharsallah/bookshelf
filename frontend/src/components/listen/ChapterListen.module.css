@@ -6,7 +6,7 @@
  */
 .dock {
   position: fixed;
-  inset-block-end: var(--space-4);
+  inset-block-end: calc(var(--space-4) + var(--now-playing-space, 0rem));
   inset-inline: max(var(--space-4), 50% - 22rem);
   z-index: 20;
   display: grid;

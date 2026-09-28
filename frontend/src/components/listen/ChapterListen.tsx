@@ -7,7 +7,8 @@
  * The same player, voices and timeline as the Listen page's summaries; only the script
  * differs: the chapter's own words (`GET /documents/{ref}/audio/read/{anchor}`), each turn
  * citing the block it reads. A recording in the works shows live; when it finishes, the
- * chapter's audio is fetched again so it plays in place.
+ * chapter's audio is fetched again so it plays in place. Closing the dock, or leaving the
+ * page, does not stop it: the layout's `NowPlayingBar` carries on.
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { browserApi, type ApiClient } from '../../lib/api/client';
@@ -16,7 +17,7 @@ import { useJobStream } from '../../lib/hooks/useJobStream';
 import { enqueueJob } from '../../lib/jobs/api';
 import { describeJob } from '../../lib/jobs/progress';
 import { problemOf } from '../common/Problem';
-import { AudioPlayer } from './AudioPlayer';
+import { AudioPlayer, type PlayerHandle } from './AudioPlayer';
 import {
   apiPath,
   audioJobTitle,
@@ -30,6 +31,7 @@ import {
   startFrom,
   voicesFor,
 } from './listening';
+import type { NowPlaying } from './nowPlaying';
 import { useVoicePreview, VoiceSelect } from './VoiceSelect';
 import styles from './ChapterListen.module.css';
 
@@ -47,6 +49,8 @@ export interface ChapterListenProps {
   onSpeaking: (anchor: string | null, follow: boolean) => void;
   onClose: () => void;
   api?: Pick<ApiClient, 'get' | 'post' | 'delete'>;
+  /** The app's player by default (`nowPlaying`); tests pass their own. */
+  player?: NowPlaying;
 }
 
 /** `ch01/s02` as a path under `audio/read/`, each segment escaped. */
@@ -55,7 +59,7 @@ function anchorPath(anchor: string): string {
 }
 
 export function ChapterListen(props: ChapterListenProps) {
-  const { documentId, bookTitle, anchor, chapter, language = 'en', activeAnchor, order, onSpeaking, onClose, api = browserApi } = props;
+  const { documentId, bookTitle, anchor, chapter, language = 'en', activeAnchor, order, onSpeaking, onClose, api = browserApi, player } = props;
   const [data, setData] = useState<ChapterAudio | null>(null);
   const [catalogue, setCatalogue] = useState<VoiceCatalogue | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
@@ -67,7 +71,7 @@ export function ChapterListen(props: ChapterListenProps) {
   const [follow, setFollow] = useState(true);
   const [time, setTime] = useState(0);
   const [now, setNow] = useState(() => Date.now());
-  const audio = useRef<HTMLAudioElement>(null);
+  const audio = useRef<PlayerHandle>(null);
   const spoken = useRef<string | null>(null);
   const preview = useVoicePreview();
   const { jobs, queue, track } = useJobStream({ documentId });
@@ -135,11 +139,8 @@ export function ChapterListen(props: ChapterListenProps) {
 
   const onTime = useCallback((seconds: number) => setTime(seconds), []);
   const playFromHere = () => {
-    const el = audio.current;
     const at = script && render && activeAnchor ? startFrom(script, render.turns, activeAnchor, order) : null;
-    if (!el || at === null) return;
-    el.currentTime = at;
-    void el.play().catch(() => undefined);
+    if (at !== null) audio.current?.playFrom(at);
   };
 
   const record = async (event: FormEvent) => {
@@ -200,7 +201,8 @@ export function ChapterListen(props: ChapterListenProps) {
           )}
           <AudioPlayer
             key={render.key}
-            audio={audio}
+            ref={audio}
+            player={player}
             src={apiPath(render.url)}
             downloadHref={apiPath(render.url, { download })}
             downloadName={download}

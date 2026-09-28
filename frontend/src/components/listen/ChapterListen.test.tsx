@@ -7,6 +7,7 @@ import type { ChapterAudio } from '../../lib/api/types/audio';
 import type { JobAccepted, JobPublic } from '../../lib/api/types/jobs';
 import { ChapterListen } from './ChapterListen';
 import { CATALOGUE, CHAPTER_AUDIO, READING_ORDER } from './fixtures';
+import { NowPlaying } from './nowPlaying';
 
 // The live job stream, as the test sets it (no EventSource in tests).
 const stream = vi.hoisted(() => ({ jobs: {} as Record<string, JobPublic>, track: vi.fn() }));
@@ -25,17 +26,22 @@ function setup({ chapter = CHAPTER_AUDIO, activeAnchor = null as string | null }
   const post = vi.fn().mockResolvedValue({ job: reading('queued'), deduplicated: false } as JobAccepted);
   const api = { get, post, delete: vi.fn() } as unknown as ApiClient;
   const onSpeaking = vi.fn();
-  const props = { documentId: 'doc', bookTitle: 'Thinking in Systems', anchor: 'ch01', chapter: 'Stocks and flows', activeAnchor, order: READING_ORDER, onSpeaking, onClose: vi.fn(), api };
+  const props = { documentId: 'doc', bookTitle: 'Thinking in Systems', anchor: 'ch01', chapter: 'Stocks and flows', activeAnchor, order: READING_ORDER, onSpeaking, onClose: vi.fn(), api, player };
   const view = render(<ChapterListen {...props} />);
   return { api, get, post, onSpeaking, props, chapters, unmount: view.unmount, rerender: () => view.rerender(<ChapterListen {...props} />) };
 }
 
-const audioElement = () => document.querySelector('audio')!;
+let player: NowPlaying;
+const audioElement = () => player.element;
 
 beforeEach(() => {
+  player = new NowPlaying(document.createElement('audio'), () => localStorage);
   stream.jobs = {};
   stream.track.mockReset();
-  vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
+  vi.spyOn(HTMLMediaElement.prototype, 'play').mockImplementation(function (this: HTMLMediaElement) {
+    this.dispatchEvent(new Event('play'));
+    return Promise.resolve();
+  });
   vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => undefined);
 });
 afterEach(() => vi.restoreAllMocks());
@@ -97,6 +103,15 @@ describe('ChapterListen', () => {
     expect(onSpeaking).toHaveBeenLastCalledWith(null, false);
   });
 
+  it('keeps playing once the dock is closed', async () => {
+    const { unmount } = setup();
+    await userEvent.click(await screen.findByRole('button', { name: 'Play' }));
+    unmount();
+    expect(player.element.pause).not.toHaveBeenCalled();
+    expect(player.getState()).toMatchObject({ playing: true, viewed: false });
+    expect(player.getState().track?.title).toBe('Stocks and flows');
+  });
+
   it('plays from the passage you are at (or the next one read)', async () => {
     setup({ activeAnchor: 'ch01/s01/c001' });
     await userEvent.click(await screen.findByRole('button', { name: 'Play from where I am' }));
@@ -121,7 +136,7 @@ describe('ChapterListen', () => {
   it('says so when the audio cannot be loaded', async () => {
     const { api, get } = setup();
     get.mockRejectedValue(new Error('offline'));
-    render(<ChapterListen documentId="doc" bookTitle="B" anchor="ch02" chapter="C" activeAnchor={null} order={READING_ORDER} onSpeaking={vi.fn()} onClose={vi.fn()} api={api} />);
+    render(<ChapterListen documentId="doc" bookTitle="B" anchor="ch02" chapter="C" activeAnchor={null} order={READING_ORDER} onSpeaking={vi.fn()} onClose={vi.fn()} api={api} player={player} />);
     await waitFor(() => expect(screen.getByRole('alert').textContent).toContain('could not be loaded'));
   });
 });

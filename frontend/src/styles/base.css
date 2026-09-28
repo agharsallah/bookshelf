@@ -111,6 +111,15 @@ samp {
 }
 
 /* Hidden outside workshop mode (lib/workshop.ts): re-runs, job history, gate scores. */
+/* Room at the bottom of the page for the now-playing bar (NowPlayingBar), while it shows. */
+html[data-now-playing] {
+  --now-playing-space: 4.5rem;
+}
+
+html[data-now-playing] body {
+  padding-block-end: var(--now-playing-space);
+}
+
 html:not([data-workshop]) .workshop-only {
   display: none !important;
 }
