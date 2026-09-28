@@ -1,7 +1,7 @@
 # Bookshelf
 
-Track your reads, learnings, briefs and distillations — and search them. Drop a PDF or an
-article into `library/`, and Bookshelf parses it into an anchored tree, distils it
+Track your reads, learnings, briefs and distillations — and search them. Drop a PDF, an EPUB or
+an article into `library/`, and Bookshelf parses it into an anchored tree, distils it
 bottom-up with Claude Code skills (section notes → chapter distillations → a one-page
 brief), puts every result through a human review queue, indexes what you approved for
 cited search, and links concepts across books into an idea graph.
@@ -39,7 +39,7 @@ pnpm dev                               # http://localhost:4321
 
 ## Adding books
 
-Put files in `library/` (PDF, `.html`, `.md`; originals are never modified). The library
+Put files in `library/` (PDF, EPUB, `.html`, `.md`; originals are never modified). The library
 page lists files not yet ingested; ingesting one (or `POST /api/v1/documents
 {"path": "library/x.pdf"}`, or `{"url": "https://…"}` for a web article) queues its parse.
 A PDF without an embedded outline lands in *needs review*: fix the chapters in the outline

@@ -29,7 +29,7 @@ Named so they stop showing up in scope discussions:
 | Mobile app | Responsive web is enough |
 | Real-time collaborative editing | No second user |
 | Web crawling / feed ingestion | Ingest is deliberate: you choose what enters the shelf |
-| EPUB, DOCX, audio | PDF and HTML cover the real corpus; the parser interface leaves the seam |
+| DOCX, audio | PDF, EPUB and HTML cover the real corpus; the parser interface leaves the seam |
 
 Quizzes, FAQs, flashcards, glossaries, and quote extraction **are** in scope, but last (§15) —
 they are cheap once the distillation layer exists and worthless before it.
@@ -181,7 +181,7 @@ migrations are the truth (they add check constraints, queue columns and RLS — 
 -- SOURCE ---------------------------------------------------------------
 create table documents (
   id            uuid primary key,
-  kind          text not null,              -- 'pdf' | 'article'
+  kind          text not null,              -- 'pdf' | 'epub' | 'article'
   slug          text not null unique,        -- 'meadows-systems'
   title         text not null,
   authors       text[] not null default '{}',
@@ -663,6 +663,7 @@ them; if they are dropped at parse time, the distillation is of a different, wea
 | Input | Path to blocks |
 |---|---|
 | PDF | tiers 1–3 above, plus region classifier |
+| EPUB (`.epub`, 2 and 3) | The book's own structure, no layout guessing (`parse/epub`): spine order; nav/NCX entries → tree at their `#fragment` targets (tier 1; none → `h1..h6` rank, tier 2); headings missing from the ToC nest under their entry; `<pre>`, `<table>`, `<figure>`/standalone images, `<blockquote>`, `<aside>` → their kinds; MathML → TeX; footnotes/endnotes lifted into the citing leaf's `meta.footnotes`; figures copied to `.media/` (SVG rasterised to PNG); EPUB 3 `pagebreak`s → print pages; DRM-encrypted content is a parse error |
 | HTML article | Readability extraction; `h1..h3` tree; `<img>`/`<figcaption>` → `figure`; `<table>` → `table`; `<pre><code>` → `code` with `class="language-*"`; MathML/`\( \)` → `math` |
 | Markdown / notebooks (`.md`, `.ipynb`) | headings → tree; fenced blocks → `code`; pipe tables → `table`; `$$` → `math`; notebook outputs → `figure` |
 | Slides (`.pdf` export) | one section per slide; title as heading; everything else through the region classifier |
@@ -1259,6 +1260,7 @@ The design above is a guideline. Where the build diverged, the reason is recorde
 | Qdrant runtime | cluster | `BOOKSHELF_QDRANT_URL` set → cluster; unset → embedded on-disk store in `.qdrant/` | Same code path for dev, tests and production |
 | Frontend writes | browser → API with key | browser → Astro same-origin proxy (`/api/*`) that injects `X-API-Key` server-side | The key never reaches the browser |
 
+| EPUB | out of scope | parsed from its XHTML and table of contents, not reflowed through the PDF pipeline; kind `epub`; no outline editor (the outline is the book's own, and overrides are page-based) | Reflowing through MuPDF gave synthetic pages and misread whole pages as boxes; the markup already says what every block is (`parse/epub`) |
 | Tier-3 detection | `text_chars_per_page < 200` → OCR | plus page-sized image coverage: a sparse page is OCR'd only when an image covers most of it | Slides and diagram pages are sparse but digital; OCR'ing them destroyed good text (`parse/pdf`) |
 | Outline override | stored override, re-parse | the override *replaces* detected boundaries and clears `needs_review` (a human has decided); one shape for API and parser (`app/schemas/outline.py`: `page_to` optional, `skip`, no overlapping chapters); the re-parse job's `input_hash` comes from the override, and a parse whose override changed meanwhile discards its tree; `POST /documents/{ref}/outline/confirm` accepts a guessed outline unedited | The fix-up loop had to be lossless under concurrency and not force an edit just to say "looks right" |
 | Back matter | — | text after the last override chapter's `page_to` becomes a trailing `Back matter` container marked `skip`; bibliography/index containers are `skip` too and invisible to every selector | Not distilled, not summarized, still readable in the reader |

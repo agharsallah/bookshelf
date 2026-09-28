@@ -70,8 +70,8 @@ POST /documents {path|url} → parse ─┬─ describe_figure · explain_code �
    (concepts created) → dedup (link_concepts, mode=dedup) → proposed same_as merges
 ```
 
-- **Parse** (Python): PDF tier ladder (outline → font headings → OCR), HTML via
-  trafilatura, Markdown. A guessed outline lands in `needs_review`: fix it with
+- **Parse** (Python): PDF tier ladder (outline → font headings → OCR), EPUB from its
+  spine and table of contents (lxml), HTML via trafilatura, Markdown. A guessed outline lands in `needs_review`: fix it with
   `PATCH /documents/{ref}/outline` or accept it with `POST /documents/{ref}/outline/confirm`.
 - **Skills** (model): every skill-backed job selects its inputs, hashes them, skips if a
   live artifact covers the hash, else renders `skills/<name>/SKILL.md` and runs
@@ -134,7 +134,7 @@ app/
 ├── api/                 deps (session, settings, pagination), router, routes/ per resource
 ├── jobs/                queue (jobs table), registry, worker CLI, in-API embed runner
 ├── pipeline/            orchestrator, execution, selectors, gates, runner, skills, ceiling,
-│   ├── parse/           PDF / HTML / Markdown parsers, anchors, override, tree upsert
+│   ├── parse/           PDF / EPUB / HTML / Markdown parsers, anchors, override, tree upsert
 │   └── handlers/        parse, skills (generic), embed, export
 ├── retrieval/           Qdrant client/collections, embedders, indexing, router, hybrid and
 │                        lexical search, relations, cited answers, suggest
