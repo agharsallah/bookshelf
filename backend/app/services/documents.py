@@ -17,7 +17,7 @@ from app.core.config import get_settings
 from app.core.errors import ConflictError, NotFoundError
 from app.jobs.queue import JobSpec
 from app.models import Artifact, Document, Job, Node, Note
-from app.models.enums import DocumentStatus, JobKind, JobState, NodeKind, Review
+from app.models.enums import DocumentStatus, Genre, JobKind, JobState, NodeKind, Review
 from app.pipeline.hashing import input_hash
 from app.services.blurbs import blurbs
 from app.services.errors import InvalidInputError
@@ -47,6 +47,7 @@ class DocumentFilters:
     status: DocumentStatus | None = None
     author: str | None = None
     q: str | None = None
+    genre: Genre | None = None
 
 
 def _filtered[Q: SelectOfScalar[Any]](query: Q, filters: DocumentFilters) -> Q:
@@ -54,6 +55,8 @@ def _filtered[Q: SelectOfScalar[Any]](query: Q, filters: DocumentFilters) -> Q:
         query = query.where(col(Document.tags).contains([filters.tag]))
     if filters.status:
         query = query.where(Document.status == filters.status)
+    if filters.genre:
+        query = query.where(Document.genre == filters.genre)
     if filters.author:
         authors = func.array_to_string(col(Document.authors), " ")
         query = query.where(authors.ilike(contains_pattern(filters.author), escape="\\"))
@@ -153,16 +156,25 @@ def job_summary(session: Session, document_id: uuid.UUID) -> dict[JobKind, dict[
     return dict(summary)
 
 
-_EDITABLE = frozenset({"title", "authors", "year", "tags", "language"})
+_EDITABLE = frozenset({"title", "authors", "year", "tags", "language", "genre"})
+# `documents.meta` key: set when a human chose the genre, so detection never overrides it.
+GENRE_SOURCE = "genre_source"
+
+
+def human_genre_meta(meta: dict[str, Any]) -> dict[str, Any]:
+    """`meta` marked as carrying a human-chosen genre (a new dict: jsonb needs reassigning)."""
+    return {**meta, GENRE_SOURCE: "human"}
 
 
 def update_document(session: Session, document: Document, changes: dict[str, Any]) -> Document:
-    """Apply metadata edits. Only title, authors, year, tags and language are editable."""
+    """Apply metadata edits: title, authors, year, tags, language and genre."""
     unknown = set(changes) - _EDITABLE
     if unknown:
         raise InvalidInputError(f"Not editable: {', '.join(sorted(unknown))}.")
     if "tags" in changes:
         changes["tags"] = list(dict.fromkeys(changes["tags"]))  # dedupe, keep order
+    if "genre" in changes:
+        document.meta = human_genre_meta(document.meta)
     for name, value in changes.items():
         setattr(document, name, value)
     session.add(document)
@@ -181,8 +193,10 @@ def delete_document(session: Session, document: Document) -> None:
     go with it.
     """
     from app.graph import pipeline as graph  # the graph imports services; keep this one-way
+    from app.papers.materialize import drop_document_claim_edges
 
     document_id = document.id
+    drop_document_claim_edges(session, document_id)  # claim edges have no foreign key
     session.delete(document)
     session.flush()  # the cascade is gone before the graph is re-synced without it
     graph.refresh_document(session, document_id)  # commits the delete with the withdrawal

@@ -6,7 +6,7 @@ from typing import Any
 
 from sqlalchemy import Column, DateTime, Text
 from sqlalchemy import Enum as SAEnum
-from sqlalchemy.dialects.postgresql import ARRAY, JSONB
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 
 
 def utcnow() -> datetime:
@@ -15,6 +15,10 @@ def utcnow() -> datetime:
 
 def text_array(*, nullable: bool = False) -> Any:
     return Column(ARRAY(Text), nullable=nullable, server_default="{}")
+
+
+def uuid_array(*, nullable: bool = False) -> Any:
+    return Column(ARRAY(UUID(as_uuid=True)), nullable=nullable)
 
 
 def jsonb(*, nullable: bool = False, server_default: str | None = "{}") -> Any:

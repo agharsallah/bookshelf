@@ -7,14 +7,15 @@ from typing import Any
 from sqlmodel import Field, SQLModel
 
 from app.models._columns import enum_type, jsonb, text_array, timestamptz, utcnow
-from app.models.enums import DocumentKind, DocumentStatus, NodeKind
+from app.models.enums import DocumentKind, DocumentStatus, Genre, NodeKind
 
 
 class Document(SQLModel, table=True):
     __tablename__ = "documents"
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    kind: DocumentKind = Field(sa_type=enum_type(DocumentKind))
+    kind: DocumentKind = Field(sa_type=enum_type(DocumentKind))  # the file format
+    genre: Genre = Field(default=Genre.BOOK, sa_type=enum_type(Genre))  # what the text is (P1)
     slug: str
     title: str
     authors: list[str] = Field(default_factory=list, sa_column=text_array())

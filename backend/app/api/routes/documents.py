@@ -10,7 +10,7 @@ from fastapi import Path as PathParam
 from app.api.deps import LimitDep, OffsetDep, SessionDep, SettingsDep
 from app.core.security import require_api_key
 from app.models import Document
-from app.models.enums import DocumentStatus
+from app.models.enums import DocumentStatus, Genre
 from app.schemas.common import Page
 from app.schemas.document import (
     DocumentAccepted,
@@ -61,7 +61,7 @@ def create_document(
     body: DocumentCreate, session: SessionDep, settings: SettingsDep, http: HttpClientDep
 ) -> DocumentAccepted:
     meta = ingest.IngestMetadata(
-        title=body.title, authors=body.authors, year=body.year, tags=body.tags
+        title=body.title, authors=body.authors, year=body.year, tags=body.tags, genre=body.genre
     )
     if body.path is not None:
         document, job = ingest.ingest_path(session, settings.library_dir, body.path, meta)
@@ -84,8 +84,9 @@ def list_documents(
     status_: Annotated[DocumentStatus | None, Query(alias="status")] = None,
     author: Annotated[str | None, Query(max_length=200, description="Substring match.")] = None,
     q: Annotated[str | None, Query(max_length=200, description="Title substring.")] = None,
+    genre: Annotated[Genre | None, Query(description="book | paper | article.")] = None,
 ) -> Page[DocumentSummary]:
-    filters = documents.DocumentFilters(tag=tag, status=status_, author=author, q=q)
+    filters = documents.DocumentFilters(tag=tag, status=status_, author=author, q=q, genre=genre)
     rows, total = documents.list_documents(session, filters, limit=limit, offset=offset)
     stats = documents.document_stats(session, [d.id for d in rows])
     return Page(

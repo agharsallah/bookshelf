@@ -98,6 +98,14 @@ AUTH = {"X-API-Key": API_KEY}
 # Children first, so plain DELETEs satisfy foreign keys. DELETE on a handful of rows is
 # ~10x cheaper than TRUNCATE, whose fixed per-table cost dominated the suite's runtime.
 _TABLES = (
+    "paper_syntheses",
+    "paper_sets",
+    "reading_candidates",
+    "paper_passes",
+    "paper_ratings",
+    "claims",
+    "paper_references",
+    "paper_meta",
     "activity_minutes",
     "review_logs",
     "review_items",

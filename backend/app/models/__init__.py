@@ -7,6 +7,16 @@ from app.models.graph import Concept, Edge, node_ref
 from app.models.job import Job
 from app.models.model_run import ModelRun
 from app.models.note import Note
+from app.models.paper import (
+    Claim,
+    PaperMeta,
+    PaperPass,
+    PaperRating,
+    PaperReference,
+    PaperSet,
+    PaperSynthesis,
+    ReadingCandidate,
+)
 from app.models.reading import ReadingPosition
 from app.models.recall import Recall, RecallGrade, ReviewItem, ReviewLog
 from app.models.worker import WorkerRow
@@ -14,6 +24,7 @@ from app.models.worker import WorkerRow
 __all__ = [
     "ActivityMinute",
     "Artifact",
+    "Claim",
     "Concept",
     "Document",
     "Edge",
@@ -21,6 +32,13 @@ __all__ = [
     "ModelRun",
     "Node",
     "Note",
+    "PaperMeta",
+    "PaperPass",
+    "PaperRating",
+    "PaperReference",
+    "PaperSet",
+    "PaperSynthesis",
+    "ReadingCandidate",
     "ReadingPosition",
     "Recall",
     "RecallGrade",

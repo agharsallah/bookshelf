@@ -14,7 +14,7 @@ from pydantic import (
 )
 
 from app.models import Document
-from app.models.enums import DocumentKind, DocumentStatus, JobKind, JobState
+from app.models.enums import DocumentKind, DocumentStatus, Genre, JobKind, JobState
 from app.schemas.job import JobPublic
 from app.schemas.outline import OverrideChapter, check_chapters
 from app.services.documents import DocumentStats
@@ -59,6 +59,14 @@ class DocumentCreate(BaseModel):
     authors: Annotated[list[Author] | None, Field(default=None, max_length=50)]
     year: Annotated[Year | None, Field(default=None)]
     tags: Annotated[list[Tag] | None, Field(default=None, max_length=50)]
+    genre: Annotated[
+        Genre | None,
+        Field(
+            default=None,
+            description="book | paper | article. Omitted: `article` for a URL, else guessed "
+            "after parsing (papers.detect) and `book` until then.",
+        ),
+    ]
 
     @model_validator(mode="after")
     def _exactly_one_source(self) -> Self:
@@ -78,6 +86,7 @@ class DocumentUpdate(BaseModel):
     year: Annotated[Year | None, Field(default=None)]
     tags: Annotated[list[Tag], Field(default=None, max_length=50)]
     language: Annotated[Language, Field(default=None, max_length=16)]
+    genre: Annotated[Genre, Field(default=None)]
 
 
 class OutlineUpdate(BaseModel):
@@ -96,6 +105,7 @@ class DocumentPublic(BaseModel):
 
     id: uuid.UUID
     kind: DocumentKind
+    genre: Genre
     slug: str
     title: str
     authors: list[str]

@@ -15,8 +15,9 @@ from sqlmodel import Session, select
 from app.core.errors import ConflictError
 from app.jobs.queue import JobSpec
 from app.models import Document, Job
-from app.models.enums import DocumentKind, JobKind
+from app.models.enums import DocumentKind, Genre, JobKind
 from app.services import fetch, library
+from app.services.documents import human_genre_meta
 from app.services.files import write_atomic
 from app.services.jobs import enqueue_or_live
 
@@ -31,6 +32,7 @@ class IngestMetadata:
     authors: list[str] | None = None
     year: int | None = None
     tags: list[str] | None = None
+    genre: Genre | None = None  # None: `book` until papers.detect guesses from the tree
 
 
 def ingest_path(
@@ -48,8 +50,10 @@ def ingest_path(
         authors=meta.authors or [],
         year=meta.year,
         tags=_tags(meta.tags),
+        genre=meta.genre or Genre.BOOK,
         source_path=library.display_path(library_dir, file),
         sha256=sha,
+        meta=human_genre_meta({}) if meta.genre else {},
     )
     return _register(session, document)
 
@@ -83,7 +87,8 @@ def ingest_url(
         source_uri=url,
         source_path=library.display_path(library_dir, target),
         sha256=sha,
-        meta={"final_url": page.url} if page.url != url else {},
+        genre=meta.genre or Genre.ARTICLE,
+        meta=_url_meta(url, page.url, genre_chosen=meta.genre is not None),
     )
     return _register(session, document)
 
@@ -108,6 +113,11 @@ def _register(session: Session, document: Document) -> tuple[Document, Job]:
     job, _ = enqueue_or_live(session, JobSpec(kind=JobKind.PARSE, document_id=document.id))
     session.refresh(document)
     return document, job
+
+
+def _url_meta(url: str, final_url: str, *, genre_chosen: bool) -> dict[str, str]:
+    meta = {"final_url": final_url} if final_url != url else {}
+    return human_genre_meta(meta) if genre_chosen else meta
 
 
 def _tags(tags: list[str] | None) -> list[str]:
