@@ -506,7 +506,8 @@ flowchart LR
 **Batch mode** is for bulk work: the worker shells out to `claude -p` with the rendered prompt on
 stdin, `--model` set from the tier alias, and `--output-format json`. The result text is parsed as
 JSON and pushed through the same gates as anything else. Concurrency is capped (2–3 processes);
-the CLI shares your subscription's rate limits, so `jobs` records duration rather than tokens.
+the CLI shares your subscription's rate limits. Every call still leaves a `model_runs` row
+(tokens, cache, reported cost, time) for the statistics in §14.
 
 **Interactive mode** is for exploration and hard cases: you open a Claude Code session in the
 repo and invoke a skill by name. The skill reads inputs from the local API, works with you, and
@@ -1235,6 +1236,8 @@ GET    /audio/files/{path}?download=   stream (byte ranges) or download a narrat
 GET    /exports/{document_id}.md       Markdown bundle
 GET    /exports/{document_id}.json     tree + approved artifacts, render-contract JSON
 GET    /exports/{document_id}/tables.csv  every table/chart block flattened
+GET    /stats                          pipeline statistics for every book, skill and model (§14)
+GET    /documents/{ref}/stats          one book: passes, stages, chapters, skills, insights
 ```
 
 All of it sits behind the existing `/api/v1` prefix, error envelope, and API-key guard on writes.
@@ -1261,6 +1264,55 @@ of the transport-level guardrails already in `backend/`.
 
 Grounding score is the important one: it turns "does the AI make things up?" from a vibe into a
 number you can watch across prompt versions.
+
+### Pipeline statistics
+
+The gates say whether one output is good; the statistics say where the pipeline spends its
+tokens and minutes, and which skill to improve next. `app/telemetry` captures, `app/stats`
+computes, and `/pipeline/stats` (library) and `/pipeline/stats/{slug}` (one book) in the workshop show it.
+
+```mermaid
+flowchart LR
+  classDef py fill:#eef5ee,stroke:#4f8a4f,color:#153515
+  classDef out fill:#e8f1fb,stroke:#3b6ea5,color:#0b2545
+
+  R["RecordingRunner<br/>wraps every job's ModelRunner"]:::py
+  MR[("model_runs<br/>one row per claude -p call")]:::out
+  J[("jobs · artifacts.gates · nodes")]:::out
+  C["collect<br/>(the only SQL)"]:::py
+  P["tokens · timeline · chapters · skills<br/>(pure: facts in, figures out)"]:::py
+  I["insights<br/>rules with thresholds"]:::py
+  API["GET /stats · /documents/{ref}/stats"]:::py
+
+  R --> MR --> C
+  J --> C --> P --> I --> API
+```
+
+- **Capture.** Handlers wrap the CLI runner in `recorded(...)`, so every call, including schema
+  retries, failed attempts and each dedup verdict, writes a `model_runs` row in its own short
+  session: input, output and cache tokens, the CLI's `total_cost_usd`, wall and API time, prompt
+  size (migration `20260928100300_model_runs`). A failed job still leaves the tokens it burned
+  on record. If a telemetry write fails, it is logged and dropped, never failing the job.
+- **History.** Jobs from before per-call telemetry still count, through `jobs.cost_tokens`,
+  `duration_ms` and `result.model`. Cache, cost and wasted tokens start with the first
+  recorded call (`telemetry_since`).
+- **Three clocks.** *Wall* (first job queued → last finished), *active* (at least one job
+  running), *compute* (sum of run times); compute / active is the parallelism the slots
+  achieved. A **pass** is a burst of jobs no more than 30 minutes apart. The first pass that
+  parsed the book is its end-to-end run, drawn stage by stage with the stretches each stage was
+  actually busy.
+- **Per chapter.** Any anchor belongs to its longest chapter prefix. Tokens and compute are
+  divided by the chapter's words and pages, so outliers show whatever the chapter length
+  (usually a mis-split outline or heavy figures).
+- **Per skill.** Failure rate and top error signature, second-try rate (`gates.schema_retry`),
+  repair rate, gate-flag rate and top flag, grounding mean and min, p50/p95 duration, tokens
+  per job and per output word, cache-hit rate (idempotent skips). These are the figures a
+  version bump should move.
+- **Insights** are rules (`app/stats/insights/`) over those figures with tunable
+  `Thresholds` and minimum samples: a failing or slow skill, frequent retries, repairs or
+  flags, weak grounding, a clean expensive skill that may hold up one tier cheaper (D16), a cost
+  driver, wasted tokens, low parallelism or long queue waits, and outlier chapters and books.
+  Each one carries the metric and value that triggered it.
 
 ---
 
@@ -1380,5 +1432,6 @@ The design above is a guideline. Where the build diverged, the reason is recorde
 | SSE lifetimes | poll `/jobs` | `/jobs/stream` and `/search/answer` end at once when shutdown begins (SIGINT/SIGTERM chained in the lifespan, `app/core/lifecycle.py`); streams are bounded (`max_seconds`, 180 s answer run) | A `fastapi dev` reload otherwise waits for every open stream |
 | URL ingest | fetch with limits | plus an SSRF guard: every request and redirect hop resolves the host and refuses loopback/private/link-local/multicast/reserved/unspecified addresses (IPv4, IPv6, IPv4-mapped) | Ingest by URL must not become a probe into the local network |
 | Re-parse media | — | a re-parse deletes files under `media_dir/<slug>/` no node references any more | Stale crops would otherwise accumulate forever |
+| Pipeline statistics | `jobs.cost_tokens` / `duration_ms` only | a `model_runs` row per CLI call (`app/telemetry/recorder.py`, migration `20260928100300_model_runs`), aggregated on request by `app/stats` into per-book, per-chapter, per-stage and per-skill figures plus rule-based insights (`GET /stats`, `GET /documents/{ref}/stats`, pages `/pipeline/stats`, `/pipeline/stats/{slug}`) | The job row keeps only the finishing attempt's input + output: retries, failed attempts, cache tokens and cost were invisible, so skills could not be compared or improved on evidence |
 | Remembering it | quizzes and flashcards only | recalls, predictions, grades and an FSRS review queue (migration `20260928085522_recall_and_reviews`); grading is a Python job (`grade_recall`, `app/recall/grading.py`) running the `grade-recall` utility skill, not an artifact, because a grade belongs to one recall rather than to a document scope; flashcard marks moved from localStorage to `review_items` (a browser's old marks are sent up once) | Recall has to be graded against the book with cites, reviews have to be due across every book, and a mark in one browser should not be lost in another |
 | Library cards | — | `DocumentSummary.blurb`: approved book summary's first paragraph, else the brief's thesis, else the first chapter summary (≤ 280 chars), one query per page | A shelf needs a line per book without N+1 queries |
