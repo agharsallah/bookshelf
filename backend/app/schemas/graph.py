@@ -11,7 +11,7 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
-from app.models.enums import ConceptKind, EdgeStatus, EntityKind, Origin, Relation
+from app.models.enums import ConceptKind, EdgeStatus, EntityKind, Genre, Origin, Relation
 
 GraphRef = Annotated[
     str,
@@ -246,6 +246,9 @@ class AtlasNode(BaseModel):
     anchor: Annotated[str | None, Field(description="A chapter's anchor, for the reader.")] = None
     blurb: str | None = None
     concept_kind: ConceptKind | None = None
+    genre: Annotated[
+        Genre | None, Field(description="A book's or chapter's document genre; null for concepts.")
+    ] = None
     ordinal: Annotated[int, Field(description="Reading order within the book.")] = 0
     degree: Annotated[int, Field(ge=0, description="Lines touching it in this atlas.")] = 0
     books: Annotated[int, Field(ge=0, description="Books it appears in.")] = 0

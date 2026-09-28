@@ -7,6 +7,7 @@ from sqlmodel import Session
 from app.graph import apply, merge
 from app.graph.atlas import atlas, chapter_anchor, share_weight
 from app.models import Document
+from app.models.enums import Genre
 from tests.graph.conftest import c, concept, concept_named, edge, links, n, store
 
 
@@ -116,3 +117,19 @@ def test_the_atlas_endpoint(client: TestClient, shelf):
     assert shares and all(e["concepts"] for e in shares)
     chapter = next(node for node in body["nodes"] if node["kind"] == "chapter")
     assert chapter["document"]["slug"] and chapter["anchor"]
+
+
+def test_books_and_chapters_carry_their_documents_genre(
+    client: TestClient, session, shelf, systems
+):
+    systems.genre = Genre.PAPER
+    session.add(systems)
+    session.commit()
+
+    body = client.get("/api/v1/graph/atlas").json()
+    genre = {(node["kind"], node["label"]): node["genre"] for node in body["nodes"]}
+    assert genre[("document", "Meadows Systems")] == "paper"
+    assert genre[("chapter", "Stocks")] == "paper"
+    assert genre[("document", "Okafor Queueing")] == "book"
+    assert genre[("chapter", "Queues")] == "book"
+    assert genre[("concept", "little's law")] is None

@@ -17,7 +17,7 @@ from app.graph.merge import concept_edges
 from app.graph.neighborhood import Neighborhood as Hood
 from app.graph.refs import Ref
 from app.models import Concept, Edge
-from app.models.enums import ConceptKind, EdgeStatus, EntityKind, Relation
+from app.models.enums import ConceptKind, EdgeStatus, EntityKind, Genre, Relation
 from app.schemas.graph import (
     Atlas,
     AtlasEdge,
@@ -279,6 +279,7 @@ def atlas_out(view: AtlasView) -> Atlas:
                 anchor=n.anchor,
                 blurb=n.blurb,
                 concept_kind=ConceptKind(n.concept_kind) if n.concept_kind else None,
+                genre=Genre(n.genre) if n.genre else None,
                 ordinal=n.ordinal,
                 degree=n.degree,
                 books=len(n.books),

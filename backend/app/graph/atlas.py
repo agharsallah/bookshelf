@@ -61,6 +61,7 @@ class AtlasNode:
     anchor: str | None = None
     blurb: str | None = None
     concept_kind: str | None = None
+    genre: str | None = None  # a book's or chapter's document genre (the map's genre lens)
     ordinal: int = 0
     degree: int = 0
     books: set[uuid.UUID] = field(default_factory=set)
@@ -150,6 +151,7 @@ class _Builder:
                 sublabel=self.docs[document_id].title,
                 document_id=document_id,
                 anchor=chapter,
+                genre=self.docs[document_id].genre.value,
                 ordinal=head.ordinal if head else 0,
                 books={document_id},
             )
@@ -167,6 +169,7 @@ class _Builder:
                 label=doc.title,
                 sublabel=", ".join(doc.authors) or None,
                 document_id=doc.id,
+                genre=doc.genre.value,
                 books={doc.id},
             )
         return self.nodes[ref]
