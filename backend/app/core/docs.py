@@ -51,6 +51,11 @@ TAGS_METADATA: list[dict[str, object]] = [
     {"name": "audio", "description": "Audio: voices, episodes, chapters read aloud, narrations."},
     {"name": "skills", "description": "Skill packages and interactive-mode inputs."},
     {
+        "name": "stats",
+        "description": "Pipeline statistics: tokens, time and quality per book, chapter, "
+        "stage and skill, with insights on what to improve.",
+    },
+    {
         "name": "health",
         "description": "Liveness and readiness probes for deployment tooling.",
     },

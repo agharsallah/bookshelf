@@ -23,10 +23,12 @@ from app.api.routes import (
     reviews,
     search,
     skills,
+    stats,
 )
 
 api_router = APIRouter()
 api_router.include_router(library.router)
+api_router.include_router(stats.router)  # before documents: /documents/{ref}/stats
 api_router.include_router(documents.router)
 api_router.include_router(nodes.router)
 api_router.include_router(notes.router)
