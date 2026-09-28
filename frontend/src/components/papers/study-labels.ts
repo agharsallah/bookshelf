@@ -59,6 +59,7 @@ export const STUDY_SKILLS = {
   review: 'review-paper',
   notation: 'make-notation',
   club: 'make-journal-club',
+  math: 'explain-math',
 } as const;
 
 export function deriveRequest(documentId: string, skill: string): JobCreate {

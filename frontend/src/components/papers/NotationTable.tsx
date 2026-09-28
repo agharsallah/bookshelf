@@ -12,6 +12,7 @@ import { useEffect, useId, useState } from 'react';
 import { anchorLabel } from '../../lib/anchors';
 import { CiteMarks, SourceLink } from '../blocks/CiteChip';
 import { useCite } from '../blocks/CiteContext';
+import { formulaAnchorOf } from './math-explainer';
 import { filterSymbols, type PreparedSymbol } from './notation';
 import styles from './Notation.module.css';
 
@@ -21,6 +22,8 @@ export interface NotationTableProps {
   compact?: boolean;
   /** Hide the search box (a very short table). */
   searchable?: boolean;
+  /** The "Math, explained" link of a symbol used in a formula (`mathHref`); none without. */
+  explainHref?: (formula: string) => string;
 }
 
 /** Renders any symbol that came without HTML, once, in the browser. */
@@ -45,7 +48,17 @@ function useRendered(symbols: PreparedSymbol[]): PreparedSymbol[] {
   return rendered;
 }
 
-export function NotationTable({ symbols, compact = false, searchable = true }: NotationTableProps) {
+function ExplainLink({ symbol, href }: { symbol: PreparedSymbol; href: NotationTableProps['explainHref'] }) {
+  const formula = href ? formulaAnchorOf(symbol) : null;
+  if (!href || !formula) return null;
+  return (
+    <a className={styles.explain} href={href(formula)}>
+      Explain this math
+    </a>
+  );
+}
+
+export function NotationTable({ symbols, compact = false, searchable = true, explainHref }: NotationTableProps) {
   const label = useCite().citeLabel ?? anchorLabel;
   const [query, setQuery] = useState('');
   const id = useId();
@@ -78,6 +91,7 @@ export function NotationTable({ symbols, compact = false, searchable = true }: N
                     </SourceLink>
                   ) : null}
                   {!compact ? <CiteMarks anchors={s.cites.filter((c) => c !== s.firstAnchor)} /> : null}
+                  <ExplainLink symbol={s} href={explainHref} />
                 </span>
               </dd>
             </div>

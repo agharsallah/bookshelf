@@ -30,6 +30,7 @@ describe('the study artifacts in the review queue', () => {
     ['claim_set', 'extract-claims'],
     ['results_table', 'extract-results'],
     ['citation_intents', 'classify-citations'],
+    ['math_explainer', 'explain-math'],
   ];
 
   it.each(cases)('draws %s from its skill’s example, keeping every cite', (type, skill) => {

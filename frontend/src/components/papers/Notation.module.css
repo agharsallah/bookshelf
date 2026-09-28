@@ -123,3 +123,22 @@
     gap: var(--space-3);
   }
 }
+
+/* "Explain this math": to the formula's card on the Math, explained tab. */
+.explain {
+  color: var(--accent-strong);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+}
+
+.explainAll {
+  margin-block-end: var(--space-3);
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.explainAll a {
+  color: var(--accent-strong);
+  font-weight: 600;
+}

@@ -513,3 +513,12 @@ h4.foldHeading {
     font-size: var(--text-xl);
   }
 }
+
+.explainMath {
+  display: inline-block;
+  margin-block-end: var(--space-3);
+  color: var(--accent-strong);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}

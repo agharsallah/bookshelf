@@ -1,0 +1,259 @@
+/*
+ * "Math, explained": a patient page. The big picture reads like an essay; each formula is
+ * a card with the formula set large, its symbols as chips, and the worked example on a
+ * sunken slate so it reads as "your turn". Every color is a token (light-dark pairs), and
+ * the printout keeps the cards whole and shows the answers.
+ */
+.math {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-7);
+}
+
+.math h2 {
+  margin-block-end: var(--space-4);
+  padding-block-end: var(--space-2);
+  border-block-end: 1px solid var(--rule);
+  font-family: var(--font-read);
+  font-size: var(--text-lg);
+  font-weight: 560;
+  letter-spacing: -0.01em;
+}
+
+.problem {
+  max-inline-size: var(--measure);
+  font-family: var(--font-read);
+  font-size: clamp(1.1rem, 2vw, 1.3rem);
+  line-height: 1.5;
+  text-wrap: pretty;
+}
+
+.map {
+  margin: var(--space-4) 0 0;
+}
+
+.map figcaption,
+.total {
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  font-weight: 400;
+}
+
+.total {
+  margin-inline-start: var(--space-2);
+}
+
+/* ── A formula card ── */
+.formulas {
+  display: grid;
+  gap: var(--space-6);
+}
+
+.card {
+  display: grid;
+  gap: var(--space-4);
+  min-inline-size: 0;
+  padding: var(--space-5);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-l);
+  background: var(--paper-raised);
+  scroll-margin-block-start: 4rem;
+}
+
+.card:target {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-wash);
+}
+
+.cardHead {
+  display: flex;
+  gap: var(--space-3);
+  align-items: baseline;
+}
+
+.cardHead h3 {
+  font-family: var(--font-read);
+  font-size: var(--text-xl);
+  font-weight: 520;
+}
+
+.number {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  inline-size: 1.8em;
+  block-size: 1.8em;
+  border-radius: var(--radius-pill);
+  background: var(--accent-wash);
+  color: var(--accent-strong);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: 700;
+}
+
+.label,
+.tryLabel {
+  margin-inline-end: var(--space-1);
+  color: var(--accent-strong);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.aloud {
+  font-family: var(--font-read);
+  font-size: var(--text-md);
+  line-height: var(--leading-read);
+}
+
+.symbols {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr));
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.chip {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-3);
+  align-items: baseline;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-m);
+  background: var(--paper);
+}
+
+.chip dt {
+  color: var(--ink);
+  font-size: var(--text-md);
+}
+
+.chip dd {
+  margin: 0;
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+}
+
+.part h4 {
+  margin-block-end: var(--space-2);
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.part p {
+  line-height: var(--leading-read);
+}
+
+.example {
+  padding: var(--space-4);
+  border-radius: var(--radius-m);
+  background: var(--paper-sunken);
+}
+
+.result {
+  margin-block-start: var(--space-2);
+  font-weight: 560;
+}
+
+.pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  gap: var(--space-4);
+}
+
+/* ── Try it ── */
+.tryIt {
+  display: grid;
+  gap: var(--space-2);
+  justify-items: start;
+  padding: var(--space-3) var(--space-4);
+  border-inline-start: 3px solid var(--tone-question);
+}
+
+.tryAnswer {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-s);
+  background: var(--paper-sunken);
+}
+
+.explore ul {
+  display: grid;
+  gap: var(--space-1);
+  padding-inline-start: 1.2em;
+  color: var(--ink-2);
+}
+
+.explore a {
+  color: var(--accent-strong);
+}
+
+/* ── Path, glossary, love note ── */
+.path {
+  display: grid;
+  gap: var(--space-2);
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+}
+
+.path li {
+  display: grid;
+  grid-template-columns: 4.5rem minmax(0, 1fr);
+  gap: 0 var(--space-3);
+  padding-block: var(--space-2);
+  border-block-end: 1px solid var(--rule);
+}
+
+.minutes {
+  grid-row: span 2;
+  color: var(--accent-strong);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.stepTitle {
+  font-weight: 600;
+}
+
+.stepTitle a {
+  color: inherit;
+}
+
+.goal {
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+}
+
+@media (max-width: 36rem) {
+  .card {
+    padding: var(--space-4);
+  }
+}
+
+@media print {
+  .card {
+    break-inside: avoid;
+    border-color: var(--rule-strong);
+    background: none;
+  }
+
+  .tryIt button {
+    display: none;
+  }
+
+  .tryAnswer[hidden] {
+    display: block;
+  }
+
+  .explore a::after {
+    content: none;
+  }
+}

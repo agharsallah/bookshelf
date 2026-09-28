@@ -54,6 +54,7 @@ const DERIVE_LABELS: Readonly<Record<string, string>> = {
   'review-paper': 'Write a peer review',
   'make-notation': 'Make a notation table',
   'make-journal-club': 'Prepare a journal club',
+  'explain-math': 'Explain the maths',
 };
 
 export function deriveLabel(skill: Pick<SkillPublic, 'name'>): string {

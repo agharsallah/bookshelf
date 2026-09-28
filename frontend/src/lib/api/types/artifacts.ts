@@ -34,6 +34,7 @@ export const ARTIFACT_TYPES = [
   'paper_review',
   'notation_table',
   'journal_club',
+  'math_explainer',
 ] as const;
 export type ArtifactType = (typeof ARTIFACT_TYPES)[number];
 

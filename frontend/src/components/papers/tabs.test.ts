@@ -11,7 +11,7 @@ describe('the paper tab registry', () => {
   });
 
   it('has every tab of docs/PAPERS.md §8, in its order', () => {
-    expect(PAPER_TABS.map((t) => t.key)).toEqual(['card', 'explain', 'claims', 'results', 'references', 'notation', 'review', 'club']);
+    expect(PAPER_TABS.map((t) => t.key)).toEqual(['card', 'explain', 'math', 'claims', 'results', 'references', 'notation', 'review', 'club']);
   });
 
   it('shows the review tab ready once either the assessment or the peer review is approved', () => {
@@ -24,7 +24,7 @@ describe('the paper tab registry', () => {
   it('shows every study artifact type on exactly one tab', () => {
     const types = PAPER_TABS.flatMap((t) => [...t.types]);
     expect(new Set(types).size).toBe(types.length);
-    for (const type of ['claim_set', 'results_table', 'notation_table', 'paper_assessment', 'paper_review', 'journal_club'] as const) {
+    for (const type of ['claim_set', 'results_table', 'notation_table', 'paper_assessment', 'paper_review', 'journal_club', 'math_explainer'] as const) {
       expect(types).toContain(type);
     }
   });
@@ -64,6 +64,7 @@ describe('tabItems', () => {
     expect(items.map((i) => [i.key, i.readiness, i.current])).toEqual([
       ['card', 'missing', false],
       ['explain', 'draft', true],
+      ['math', 'missing', false],
       ['claims', 'missing', false],
       ['results', 'missing', false],
       ['references', 'data', false],
@@ -71,6 +72,6 @@ describe('tabItems', () => {
       ['review', 'missing', false],
       ['club', 'missing', false],
     ]);
-    expect(items[4]?.href).toBe('/documents/bert/paper/references');
+    expect(items[5]?.href).toBe('/documents/bert/paper/references');
   });
 });

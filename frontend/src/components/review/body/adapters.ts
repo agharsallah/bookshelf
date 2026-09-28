@@ -11,6 +11,7 @@ import type { ArtifactType } from '../../../lib/api/types/artifacts';
 import type { Confidence, RenderBlock, Spans } from '../../../lib/contract';
 import { ROLE_LABELS, parseGuide, type GuideKey } from '../../guide/guide';
 import { explainerBlocks, paperCardBlocks, parseExplainer, parsePaperCard } from '../../papers/bodies';
+import { mathExplainerBlocks, parseMathExplainer } from '../../papers/math-explainer';
 import { claimSetBlocks, intentsBlocks, parseClaimSet, parseIntents, parseResults, resultsBlocks } from '../../papers/extract-bodies';
 import {
   assessmentBlocks,
@@ -251,6 +252,8 @@ export function adaptBody(type: ArtifactType, raw: unknown): AdaptedBody {
     }
     case 'notation_table':
       return { blocks: notationBlocks(parseNotation(body)), facts: [], confidence };
+    case 'math_explainer':
+      return { blocks: mathExplainerBlocks(parseMathExplainer(body)), facts: [], confidence };
     case 'journal_club':
       return { blocks: journalClubBlocks(parseJournalClub(body)), facts: [], confidence };
     case 'outline_override':

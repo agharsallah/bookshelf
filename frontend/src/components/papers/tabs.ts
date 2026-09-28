@@ -29,6 +29,7 @@ export interface TabViewProps {
 export const PAPER_TABS = [
   { key: 'card', label: 'Card', types: ['paper_card'] },
   { key: 'explain', label: 'Explain', types: ['paper_explainer'] },
+  { key: 'math', label: 'Math, explained', types: ['math_explainer'] },
   { key: 'claims', label: 'Claims', types: ['claim_set'] },
   { key: 'results', label: 'Results', types: ['results_table'] },
   { key: 'references', label: 'References', types: [] },

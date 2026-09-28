@@ -232,7 +232,7 @@ export function usePaperMode(options: PaperModeOptions): PaperMode {
       ) : null,
     overlay: (
       <>
-        {notation && notationOpen ? <NotationPanel notation={notation} onCite={cite} citeHref={readHref} onClose={() => setNotationOpen(false)} /> : null}
+        {notation && notationOpen ? <NotationPanel slug={doc.slug} notation={notation} onCite={cite} citeHref={readHref} onClose={() => setNotationOpen(false)} /> : null}
         {popover && popBlock ? <ClaimPopover block={popBlock} document={doc} opener={popover.opener} onCite={cite} onClose={closeMark} api={api} /> : null}
       </>
     ),

@@ -1,0 +1,105 @@
+---
+/**
+ * Math, explained tab: explain-math's `math_explainer`, the paper's load-bearing formulas
+ * taught to someone with no maths background. Formulas are set in KaTeX here (display and
+ * symbol chips pre-rendered, so KaTeX never ships for the tab); a `#formula-…` hash (from
+ * the notation table's "Explain this math") scrolls to that formula's card. The pipeline
+ * makes it only for papers with mathematics; any paper can ask.
+ */
+import { Problem } from '../../common/Problem';
+import { load } from '../../../lib/documents/server';
+import { renderInlineMath } from '../../../lib/katex';
+import { prepareBlocks } from '../../../lib/prepare';
+import DraftNote from '../DraftNote.astro';
+import { passageUnits } from '../load';
+import { parseMathExplainer, renderSymbols } from '../math-explainer';
+import MathExplainerBody from '../MathExplainerBody';
+import QueueJob from '../QueueJob';
+import { loadStudyArtifact } from '../study-load';
+import { STUDY_SKILLS } from '../study-labels';
+import TabEmpty from '../TabEmpty.astro';
+import { paperHref, type TabViewProps } from '../tabs';
+
+type Props = TabViewProps;
+
+const { paper } = Astro.props;
+const loaded = await load(async () => {
+  const study = await loadStudyArtifact(paper.id, 'math_explainer', STUDY_SKILLS.math);
+  if (!study.best) return { study, shown: null };
+  const explainer = await renderSymbols(parseMathExplainer(study.best.artifact.body), renderInlineMath);
+  const [formulas, units] = await Promise.all([
+    Promise.all(
+      explainer.formulas.map(async (f) => {
+        const [display] = f.latex ? await prepareBlocks([{ type: 'math', latex: f.latex, cites: f.anchor ? [f.anchor] : [] }]) : [];
+        return { ...f, display: display ?? null };
+      }),
+    ),
+    passageUnits(paper.slug),
+  ]);
+  return { study, shown: { explainer: { ...explainer, formulas }, units } };
+});
+const data = loaded.ok ? loaded.value : null;
+const shown = data?.shown ?? null;
+---
+
+{
+  !data ? (
+    !loaded.ok && <Problem title="The math explainer could not be loaded." problem={loaded.problem} />
+  ) : shown && data.study.best ? (
+    <div class="math-tab">
+      <div class="bar">
+        <DraftNote chosen={data.study.best} what="Math explainer" />
+        <a class="notation-link" href={paperHref(paper.slug, 'notation')}>
+          The notation table
+        </a>
+      </div>
+      {shown.explainer.formulas.length === 0 ? (
+        <p class="none">The explainer picked no formulas.</p>
+      ) : (
+        <MathExplainerBody client:load slug={paper.slug} explainer={shown.explainer} units={shown.units} />
+      )}
+    </div>
+  ) : (
+    <TabEmpty
+      title="No math explainer yet"
+      body="The paper’s key formulas for someone with no maths background: what problem the maths solves, then each formula read aloud, every symbol as an everyday thing, a picture of it, a worked example with tiny numbers, why the paper needs it, and a small exercise to try. Made by itself for papers with equations; ask for one here for any other."
+    >
+      <QueueJob client:load request={data.study.request} label="Explain the maths now" initialJob={data.study.job} />
+    </TabEmpty>
+  )
+}
+
+<style>
+  .math-tab {
+    display: grid;
+    gap: var(--space-5);
+    max-width: 68rem;
+    margin-inline: auto;
+  }
+
+  .bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-4);
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .notation-link {
+    color: var(--accent-strong);
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+  }
+
+  .none {
+    color: var(--ink-3);
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+  }
+
+  @media print {
+    .bar {
+      display: none;
+    }
+  }
+</style>

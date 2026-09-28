@@ -8,6 +8,7 @@ import CardTab from './views/CardTab.astro';
 import ClaimsTab from './views/ClaimsTab.astro';
 import ClubTab from './views/ClubTab.astro';
 import ExplainTab from './views/ExplainTab.astro';
+import MathTab from './views/MathTab.astro';
 import NotationTab from './views/NotationTab.astro';
 import ReferencesTab from './views/ReferencesTab.astro';
 import ResultsTab from './views/ResultsTab.astro';
@@ -19,6 +20,7 @@ type TabView = (props: TabViewProps) => unknown;
 export const TAB_VIEWS: Record<PaperTabKey, TabView> = {
   card: CardTab,
   explain: ExplainTab,
+  math: MathTab,
   claims: ClaimsTab,
   results: ResultsTab,
   references: ReferencesTab,
