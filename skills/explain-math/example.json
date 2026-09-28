@@ -1,0 +1,668 @@
+{
+  "big_picture": {
+    "problem": [
+      {
+        "text": "A question-answering system fetches a pile of passages and then reads them all as if each were equally trustworthy, so a few off-topic passages can drown out the one that holds the answer. ",
+        "cites": [
+          "ch01/p002"
+        ]
+      },
+      {
+        "text": "The paper's maths does one job: give every passage a trust score, then let the reader listen to each passage in proportion to that score.",
+        "cites": [
+          "ch03/s01/p001",
+          "ch03/s01/p003"
+        ]
+      }
+    ],
+    "map": {
+      "type": "diagram",
+      "direction": "LR",
+      "nodes": [
+        {
+          "id": "inputs",
+          "label": "Question q and passage p_i"
+        },
+        {
+          "id": "gate",
+          "label": "Gate score g_i (formula 1)"
+        },
+        {
+          "id": "attn",
+          "label": "Re-weighted attention (formula 2)"
+        },
+        {
+          "id": "answer",
+          "label": "The answer: +2.1 exact match"
+        }
+      ],
+      "edges": [
+        {
+          "from": "inputs",
+          "to": "gate",
+          "label": "compared"
+        },
+        {
+          "from": "gate",
+          "to": "attn",
+          "label": "scales"
+        },
+        {
+          "from": "attn",
+          "to": "answer",
+          "label": "reads"
+        }
+      ],
+      "cites": [
+        "ch03/s01/m001",
+        "ch03/s01/m002",
+        "ch04/s02/p001"
+      ]
+    }
+  },
+  "formulas": [
+    {
+      "anchor": "ch03/s01/m001",
+      "latex": "g_i = \\sigma(w^\\top [q; p_i])",
+      "name": "The trust score",
+      "in_plain_words": [
+        {
+          "text": "The trust score of passage i equals: glue the question and the passage together, turn them into one number with a set of learned weights, then squash that number so it lands between 0 and 1.",
+          "cites": [
+            "ch03/s01/m001",
+            "ch03/s01/p002"
+          ]
+        }
+      ],
+      "symbols": [
+        {
+          "symbol": "g_i",
+          "everyday": [
+            {
+              "text": "The trust score of passage number i: 0 means ignore it, 1 means trust it fully.",
+              "cites": [
+                "ch03/s01/p002"
+              ]
+            }
+          ]
+        },
+        {
+          "symbol": "q",
+          "everyday": [
+            {
+              "text": "The question, written as a list of numbers the computer can compare.",
+              "cites": [
+                "ch03/s01/p001"
+              ]
+            }
+          ]
+        },
+        {
+          "symbol": "p_i",
+          "everyday": [
+            {
+              "text": "Passage number i, also written as a list of numbers.",
+              "cites": [
+                "ch03/s01/p001"
+              ]
+            }
+          ]
+        },
+        {
+          "symbol": "w",
+          "everyday": [
+            {
+              "text": "A set of volume knobs, one per number, that the system tunes while it learns.",
+              "cites": [
+                "ch03/s01/p002"
+              ]
+            }
+          ]
+        },
+        {
+          "symbol": "\\sigma",
+          "everyday": [
+            {
+              "text": "A squashing machine: whatever number goes in, a number between 0 and 1 comes out.",
+              "cites": [
+                "ch03/s01/p002"
+              ]
+            }
+          ]
+        }
+      ],
+      "intuition": [
+        {
+          "text": "Think of a judge with a scoring sheet: each line of the sheet (a knob in w) says how much one feature of the question-and-passage pair matters. Adding up the weighted lines gives a raw score; the squashing machine turns it into a percentage, so scores are always comparable.",
+          "cites": [
+            "ch03/s01/m001",
+            "ch03/s01/p002"
+          ]
+        }
+      ],
+      "diagram": {
+        "type": "diagram",
+        "direction": "LR",
+        "nodes": [
+          {
+            "id": "pair",
+            "label": "Question and passage side by side"
+          },
+          {
+            "id": "dot",
+            "label": "Weigh each number and add up"
+          },
+          {
+            "id": "squash",
+            "label": "Squash into 0 to 1"
+          },
+          {
+            "id": "score",
+            "label": "Trust score g_i"
+          }
+        ],
+        "edges": [
+          {
+            "from": "pair",
+            "to": "dot"
+          },
+          {
+            "from": "dot",
+            "to": "squash"
+          },
+          {
+            "from": "squash",
+            "to": "score"
+          }
+        ],
+        "cites": [
+          "ch03/s01/m001",
+          "ch03/s01/p002"
+        ]
+      },
+      "worked_example": {
+        "setup": [
+          {
+            "text": "Pretend the glued question-and-passage is just two numbers, 1 and 2, and the knobs are 0.5 and 1.",
+            "cites": [
+              "ch03/s01/m001"
+            ]
+          }
+        ],
+        "steps": {
+          "type": "steps",
+          "items": [
+            [
+              {
+                "text": "Weigh each number by its knob and add: 0.5 × 1 + 1 × 2 = 2.5.",
+                "cites": [
+                  "ch03/s01/m001"
+                ]
+              }
+            ],
+            [
+              {
+                "text": "Squash it: σ(2.5) = 1 / (1 + e^(−2.5)), and e^(−2.5) is about 0.08.",
+                "cites": [
+                  "ch03/s01/m001",
+                  "ch03/s01/p002"
+                ]
+              }
+            ],
+            [
+              {
+                "text": "So the score is 1 / (1 + 0.08) ≈ 0.93.",
+                "cites": [
+                  "ch03/s01/m001"
+                ]
+              }
+            ]
+          ]
+        },
+        "result": [
+          {
+            "text": "A trust score of about 0.93: this passage will count for a lot when the reader writes the answer.",
+            "cites": [
+              "ch03/s01/m001",
+              "ch03/s01/p003"
+            ]
+          }
+        ],
+        "extra": {
+          "type": "table",
+          "caption": "The squashing machine at three raw scores",
+          "header": [
+            "Raw score",
+            "Trust score"
+          ],
+          "rows": [
+            [
+              {
+                "text": "−2",
+                "cites": [
+                  "ch03/s01/m001"
+                ]
+              },
+              {
+                "text": "0.12",
+                "cites": [
+                  "ch03/s01/m001"
+                ]
+              }
+            ],
+            [
+              {
+                "text": "0",
+                "cites": [
+                  "ch03/s01/m001"
+                ]
+              },
+              {
+                "text": "0.5",
+                "cites": [
+                  "ch03/s01/m001"
+                ]
+              }
+            ],
+            [
+              {
+                "text": "2",
+                "cites": [
+                  "ch03/s01/m001"
+                ]
+              },
+              {
+                "text": "0.88",
+                "cites": [
+                  "ch03/s01/m001"
+                ]
+              }
+            ]
+          ]
+        }
+      },
+      "why_here": [
+        {
+          "text": "The reader needs a number per passage that says how relevant it looks before reading it closely; the gate is where that number comes from.",
+          "cites": [
+            "ch03/s01/p001",
+            "ch03/s01/p002"
+          ]
+        }
+      ],
+      "added_value": [
+        {
+          "text": "Without the gate every passage counts the same, which is exactly the failure the paper starts from: irrelevant passages dilute the evidence.",
+          "cites": [
+            "ch01/p002",
+            "ch03/s01/p003"
+          ]
+        }
+      ],
+      "common_confusion": {
+        "type": "callout",
+        "tone": "caution",
+        "title": "A score is not a probability of being right",
+        "spans": [
+          {
+            "text": "A trust score of 0.9 does not mean the passage is correct 90% of the time; it only says how much the reader should listen to it.",
+            "cites": [
+              "ch03/s01/p002",
+              "ch03/s01/p003"
+            ]
+          }
+        ]
+      },
+      "try_it": {
+        "question": [
+          {
+            "text": "If the raw score is exactly 0, what trust score comes out?",
+            "cites": [
+              "ch03/s01/m001"
+            ]
+          }
+        ],
+        "answer": [
+          {
+            "text": "σ(0) = 1 / (1 + e^0) = 1 / (1 + 1) = 0.5: an undecided, middle score.",
+            "cites": [
+              "ch03/s01/m001"
+            ]
+          }
+        ]
+      },
+      "explore_further": {
+        "prerequisites": [
+          {
+            "concept": "Dot product",
+            "shelf_concept": null
+          },
+          {
+            "concept": "Sigmoid function",
+            "shelf_concept": null
+          }
+        ],
+        "search_terms": [
+          "dot product intuition",
+          "logistic sigmoid"
+        ],
+        "next_question": [
+          {
+            "text": "Why squash the score at all, instead of using the raw number directly?",
+            "cites": [
+              "ch03/s01/m001",
+              "ch03/s01/p002"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "anchor": "ch03/s01/m002",
+      "latex": "\\alpha_i' = \\frac{g_i \\alpha_i}{\\sum_j g_j \\alpha_j}",
+      "name": "Listening in proportion to trust",
+      "in_plain_words": [
+        {
+          "text": "The new share of attention for passage i is its old share multiplied by its trust score, divided by the same product added up over every passage, so all the shares still add up to one.",
+          "cites": [
+            "ch03/s01/m002",
+            "ch03/s01/p003"
+          ]
+        }
+      ],
+      "symbols": [
+        {
+          "symbol": "\\alpha_i",
+          "everyday": [
+            {
+              "text": "How much of its attention the reader already gave passage i, as a share of the whole.",
+              "cites": [
+                "ch03/s01/p003"
+              ]
+            }
+          ]
+        },
+        {
+          "symbol": "\\alpha_i'",
+          "everyday": [
+            {
+              "text": "That share after the trust scores have had their say.",
+              "cites": [
+                "ch03/s01/p003"
+              ]
+            }
+          ]
+        },
+        {
+          "symbol": "g_i",
+          "everyday": [
+            {
+              "text": "The trust score from the first formula.",
+              "cites": [
+                "ch03/s01/m002"
+              ]
+            }
+          ]
+        }
+      ],
+      "intuition": [
+        {
+          "text": "Like splitting a pizza: everyone's slice is scaled by how hungry they are, and dividing by the total makes sure the slices still add up to exactly one pizza.",
+          "cites": [
+            "ch03/s01/m002",
+            "ch03/s01/p003"
+          ]
+        }
+      ],
+      "diagram": {
+        "type": "diagram",
+        "direction": "LR",
+        "nodes": [
+          {
+            "id": "old",
+            "label": "Old attention share"
+          },
+          {
+            "id": "trust",
+            "label": "Trust score"
+          },
+          {
+            "id": "times",
+            "label": "Multiply"
+          },
+          {
+            "id": "total",
+            "label": "Divide by the total"
+          },
+          {
+            "id": "new",
+            "label": "New share"
+          }
+        ],
+        "edges": [
+          {
+            "from": "old",
+            "to": "times"
+          },
+          {
+            "from": "trust",
+            "to": "times"
+          },
+          {
+            "from": "times",
+            "to": "total"
+          },
+          {
+            "from": "total",
+            "to": "new"
+          }
+        ],
+        "cites": [
+          "ch03/s01/m002"
+        ]
+      },
+      "worked_example": {
+        "setup": [
+          {
+            "text": "Two passages share the reader's attention half and half, and their trust scores are 0.9 and 0.1.",
+            "cites": [
+              "ch03/s01/m002"
+            ]
+          }
+        ],
+        "steps": {
+          "type": "steps",
+          "items": [
+            [
+              {
+                "text": "Multiply each share by its trust: 0.9 × 0.5 = 0.45 and 0.1 × 0.5 = 0.05.",
+                "cites": [
+                  "ch03/s01/m002"
+                ]
+              }
+            ],
+            [
+              {
+                "text": "Add them up: 0.45 + 0.05 = 0.5.",
+                "cites": [
+                  "ch03/s01/m002"
+                ]
+              }
+            ],
+            [
+              {
+                "text": "Divide each by the total: 0.45 / 0.5 = 0.9 and 0.05 / 0.5 = 0.1.",
+                "cites": [
+                  "ch03/s01/m002"
+                ]
+              }
+            ]
+          ]
+        },
+        "result": [
+          {
+            "text": "The trusted passage now gets 90% of the attention and the doubtful one 10%, instead of half each.",
+            "cites": [
+              "ch03/s01/m002",
+              "ch03/s01/p003"
+            ]
+          }
+        ],
+        "extra": null
+      },
+      "why_here": [
+        {
+          "text": "This is where the trust score actually changes what the reader does: it rescales the attention the reader pays to each passage.",
+          "cites": [
+            "ch03/s01/p003"
+          ]
+        }
+      ],
+      "added_value": [
+        {
+          "text": "Multiplying without dividing by the total would let the shares add up to less than one, shrinking the reader's attention overall; the division keeps it a fair split.",
+          "cites": [
+            "ch03/s01/m002"
+          ]
+        }
+      ],
+      "common_confusion": {
+        "type": "callout",
+        "tone": "caution",
+        "title": "The sum runs over every passage",
+        "spans": [
+          {
+            "text": "The j under the big sigma means 'every passage, one after another', not one particular passage.",
+            "cites": [
+              "ch03/s01/m002"
+            ]
+          }
+        ]
+      },
+      "try_it": {
+        "question": [
+          {
+            "text": "With shares 0.5 and 0.5 and trust scores 0.6 and 0.2, what new share does the first passage get?",
+            "cites": [
+              "ch03/s01/m002"
+            ]
+          }
+        ],
+        "answer": [
+          {
+            "text": "0.6 × 0.5 = 0.3 and 0.2 × 0.5 = 0.1; the total is 0.3 + 0.1 = 0.4, so the first passage gets 0.3 / 0.4 = 0.75.",
+            "cites": [
+              "ch03/s01/m002"
+            ]
+          }
+        ]
+      },
+      "explore_further": {
+        "prerequisites": [
+          {
+            "concept": "Attention",
+            "shelf_concept": "attention"
+          },
+          {
+            "concept": "Normalisation",
+            "shelf_concept": null
+          }
+        ],
+        "search_terms": [
+          "attention weights normalization",
+          "softmax vs normalising by a sum"
+        ],
+        "next_question": [
+          {
+            "text": "What happens to the new shares if every passage gets the same trust score?",
+            "cites": [
+              "ch03/s01/m002"
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "glossary": [
+    {
+      "type": "definition",
+      "term": "Vector",
+      "spans": [
+        {
+          "text": "A list of numbers standing for one thing, such as a question or a passage.",
+          "cites": [
+            "ch03/s01/p001"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "definition",
+      "term": "Sigmoid",
+      "spans": [
+        {
+          "text": "The squashing function σ: it maps any number to one between 0 and 1.",
+          "cites": [
+            "ch03/s01/p002"
+          ]
+        }
+      ]
+    }
+  ],
+  "love_note": {
+    "type": "callout",
+    "tone": "insight",
+    "title": "Why this is beautiful",
+    "spans": [
+      {
+        "text": "Two short lines turn a vague wish, 'listen to the passages that matter', into arithmetic a computer can learn: one line scores, the other shares, and together they lift exact match by 2.1 points.",
+        "cites": [
+          "ch03/s01/m001",
+          "ch03/s01/m002",
+          "ch04/s02/p001"
+        ]
+      }
+    ]
+  },
+  "path": [
+    {
+      "title": "Warm up: numbers as lists",
+      "formula": null,
+      "minutes": 5,
+      "goal": [
+        {
+          "text": "Get comfortable with a question written as a list of numbers.",
+          "cites": [
+            "ch03/s01/p001"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "The trust score",
+      "formula": "ch03/s01/m001",
+      "minutes": 15,
+      "goal": [
+        {
+          "text": "Compute a trust score by hand.",
+          "cites": [
+            "ch03/s01/m001"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Listening in proportion to trust",
+      "formula": "ch03/s01/m002",
+      "minutes": 10,
+      "goal": [
+        {
+          "text": "Re-share attention with two passages.",
+          "cites": [
+            "ch03/s01/m002"
+          ]
+        }
+      ]
+    }
+  ]
+}

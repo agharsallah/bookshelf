@@ -1,0 +1,17 @@
+name: explain-math
+version: 1
+description: Explain a paper's maths to someone with no maths background, so they understand it and come to love it — the big picture and a map of how the key formulas feed the result, then each load-bearing formula read aloud, its symbols as everyday things, why it has its shape, a worked example with tiny numbers, why the paper needs it, a common confusion, a small exercise and where to go next.
+# distil, not reason: the maths is given (formulas, the prose around them, their
+# explanations, the notation table); the work is teaching it well, and Python checks the
+# arithmetic, the formulas and the symbols (app.papers.math_checks).
+tier: distil
+job_kind: derive
+artifact_type: math_explainer
+scope: document
+selector: paper_math
+vision: false
+genre: paper   # a paper skill (docs/PAPERS.md P2); queued only for a paper with formulas
+gates:
+  grounding_min: 0.9
+  # A teaching text is longer than the formulas it explains: no compression band, a cap.
+  max_words: 7000

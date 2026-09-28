@@ -1,0 +1,298 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bookshelf.local/skills/explain-math/schema.json",
+  "title": "explain-math output",
+  "description": "The paper's load-bearing formulas taught to someone with no maths background: the big picture and a map of how the formulas feed the result, then each formula read aloud, its symbols as everyday things, why it has its shape, a worked example with tiny numbers, why the paper needs it, a common confusion, an exercise and where to go next; a glossary, a love note and a learning path.",
+  "type": "object",
+  "required": [
+    "big_picture",
+    "formulas",
+    "glossary",
+    "love_note",
+    "path"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "big_picture": {
+      "type": "object",
+      "required": [
+        "problem",
+        "map"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "problem": {
+          "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/spans"
+        },
+        "map": {
+          "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/diagram",
+          "description": "The math map: how the key formulas feed each other and the paper's result."
+        }
+      }
+    },
+    "formulas": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8,
+      "description": "The 1–8 load-bearing formulas (3–8 when the paper has that many), in the order to learn them.",
+      "items": {
+        "type": "object",
+        "required": [
+          "anchor",
+          "latex",
+          "name",
+          "in_plain_words",
+          "symbols",
+          "intuition",
+          "diagram",
+          "worked_example",
+          "why_here",
+          "added_value",
+          "common_confusion",
+          "try_it",
+          "explore_further"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "anchor": {
+            "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/anchor",
+            "description": "The formula: a math block of inputs.blocks, or the prose block a distilled_formulas entry cites."
+          },
+          "latex": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000,
+            "description": "Copied from the formula's meta.latex (or the distilled formula)."
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120,
+            "description": "A friendly name: 'The attention recipe'."
+          },
+          "in_plain_words": {
+            "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/spans"
+          },
+          "symbols": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 16,
+            "items": {
+              "type": "object",
+              "required": [
+                "symbol",
+                "everyday"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "symbol": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200,
+                  "description": "The symbol in LaTeX as the formula writes it."
+                },
+                "everyday": {
+                  "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/spans"
+                }
+              }
+            }
+          },
+          "intuition": {
+            "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/spans"
+          },
+          "diagram": {
+            "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/diagram",
+            "description": "What goes in, what happens, what comes out."
+          },
+          "worked_example": {
+            "type": "object",
+            "required": [
+              "setup",
+              "steps",
+              "result"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "setup": {
+                "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/spans"
+              },
+              "steps": {
+                "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/steps"
+              },
+              "result": {
+                "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/spans"
+              },
+              "extra": {
+                "description": "Optional: a small table or chart of how the output moves as one input changes.",
+                "oneOf": [
+                  {
+                    "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/table"
+                  },
+                  {
+                    "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/chart"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          },
+          "why_here": {
+            "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/spans"
+          },
+          "added_value": {
+            "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/spans"
+          },
+          "common_confusion": {
+            "allOf": [
+              {
+                "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/callout"
+              },
+              {
+                "properties": {
+                  "tone": {
+                    "const": "caution"
+                  }
+                }
+              }
+            ],
+            "description": "A caution callout: the mistake beginners make with it."
+          },
+          "try_it": {
+            "type": "object",
+            "required": [
+              "question",
+              "answer"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "question": {
+                "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/spans"
+              },
+              "answer": {
+                "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/spans"
+              }
+            }
+          },
+          "explore_further": {
+            "type": "object",
+            "required": [
+              "prerequisites",
+              "search_terms",
+              "next_question"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "prerequisites": {
+                "type": "array",
+                "maxItems": 6,
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "concept",
+                    "shelf_concept"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "concept": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 120
+                    },
+                    "shelf_concept": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "maxLength": 200,
+                      "description": "The exact canonical of an existing_concepts entry, else null."
+                    }
+                  }
+                }
+              },
+              "search_terms": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 5,
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 120
+                }
+              },
+              "next_question": {
+                "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/spans"
+              }
+            }
+          }
+        }
+      }
+    },
+    "glossary": {
+      "type": "array",
+      "maxItems": 15,
+      "items": {
+        "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/definition"
+      },
+      "description": "Definition blocks for the few maths words used."
+    },
+    "love_note": {
+      "allOf": [
+        {
+          "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/callout"
+        },
+        {
+          "properties": {
+            "tone": {
+              "const": "insight"
+            }
+          }
+        }
+      ],
+      "description": "Why this maths is beautiful, in a few sentences."
+    },
+    "path": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 12,
+      "description": "The suggested learning order.",
+      "items": {
+        "type": "object",
+        "required": [
+          "title",
+          "formula",
+          "minutes",
+          "goal"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "formula": {
+            "oneOf": [
+              {
+                "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/anchor"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The formula this step studies (one of formulas[].anchor), or null for a warm-up."
+          },
+          "minutes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 60
+          },
+          "goal": {
+            "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/spans"
+          }
+        }
+      }
+    }
+  }
+}
