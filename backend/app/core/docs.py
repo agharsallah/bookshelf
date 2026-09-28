@@ -39,6 +39,8 @@ TAGS_METADATA: list[dict[str, object]] = [
     {"name": "nodes", "description": "One block or subtree by its stable anchor."},
     {"name": "notes", "description": "Highlights and your notes. `raw` is never rewritten."},
     {"name": "reading", "description": "Where you are in each chapter; continue reading."},
+    {"name": "recalls", "description": "Chapters recalled from memory, predictions; graded."},
+    {"name": "reviews", "description": "Spaced retrieval reviews (FSRS) and flashcard marks."},
     {"name": "artifacts", "description": "Summaries, distillations, briefs; review queue."},
     {"name": "jobs", "description": "The pipeline queue. Long work returns `202` + a job."},
     {"name": "search", "description": "Address-first, two-tier hybrid search with citations."},

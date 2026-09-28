@@ -64,7 +64,7 @@ def test_every_mutating_route_requires_the_api_key(client: TestClient, method: s
     placeholder = "00000000-0000-0000-0000-000000000000"
     url = path
     for name in ("ref", "document_ref", "artifact_id", "concept_id", "edge_id", "job_id",
-                 "note_id", "name", "anchor"):  # fmt: skip
+                 "note_id", "name", "anchor", "recall_id", "item_id", "index"):  # fmt: skip
         url = url.replace(f"{{{name}}}", placeholder)
 
     response = client.request(method, url, json={})
