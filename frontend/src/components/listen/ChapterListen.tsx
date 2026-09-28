@@ -32,6 +32,7 @@ import {
   voicesFor,
 } from './listening';
 import type { NowPlaying } from './nowPlaying';
+import { readVoice } from '../../lib/voice';
 import { useVoicePreview, VoiceSelect } from './VoiceSelect';
 import styles from './ChapterListen.module.css';
 
@@ -96,7 +97,7 @@ export function ChapterListen(props: ChapterListenProps) {
         if (stale) return;
         setData(chapterAudio);
         setCatalogue(voices);
-        setVoice((current) => current || (defaultCast(voices, language, 1)[0] ?? ''));
+        setVoice((current) => current || (defaultCast(voices, language, 1, readVoice())[0] ?? ''));
       })
       .catch((error: unknown) => {
         if (!stale) setProblem(problemOf(error).message);

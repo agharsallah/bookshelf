@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bootstrapTheme, resolveTheme, THEME_STORAGE_KEY, themeBootstrapScript, type ThemeHost } from './theme';
+import { bootstrapTheme, followSystem, resolveTheme, setTheme, storedTheme, THEME_STORAGE_KEY, themeBootstrapScript, type ThemeHost } from './theme';
 
 function host(stored: Record<string, string>, prefersDark: boolean, storageThrows = false) {
   const dataset: Record<string, string> = {};
@@ -51,5 +51,41 @@ describe('bootstrapTheme', () => {
     const { fake, dataset } = host({ [THEME_STORAGE_KEY]: 'dark' }, false);
     new Function('window', themeBootstrapScript)(fake);
     expect(dataset.theme).toBe('dark');
+  });
+});
+
+describe('following the system again', () => {
+  function win(stored: string | null, prefersDark: boolean) {
+    const store = new Map<string, string>(stored ? [[THEME_STORAGE_KEY, stored]] : []);
+    const dataset: Record<string, string> = {};
+    const fake = {
+      localStorage: {
+        getItem: (k: string) => store.get(k) ?? null,
+        setItem: (k: string, v: string) => void store.set(k, v),
+        removeItem: (k: string) => void store.delete(k),
+      },
+      matchMedia: () => ({ matches: prefersDark }),
+      document: { documentElement: { dataset } },
+      dispatchEvent: () => true,
+    } as unknown as Window;
+    return { fake, dataset, store };
+  }
+
+  it('drops the stored choice and applies the OS theme', () => {
+    const { fake, dataset, store } = win('light', true);
+
+    followSystem(fake);
+
+    expect(store.has(THEME_STORAGE_KEY)).toBe(false);
+    expect(dataset.theme).toBe('dark');
+  });
+
+  it('reports a choice only while there is one', () => {
+    const { fake } = win(null, false);
+    expect(storedTheme(fake)).toBeNull();
+
+    setTheme('dark', fake);
+
+    expect(storedTheme(fake)).toBe('dark');
   });
 });

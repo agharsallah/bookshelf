@@ -81,3 +81,25 @@ export function followSystemTheme(win: Window = window): void {
     win.dispatchEvent(new CustomEvent<Theme>(THEME_CHANGE_EVENT, { detail: theme }));
   });
 }
+
+/** The reader's own choice, or null while the theme follows the OS. */
+export function storedTheme(win: Window = window): Theme | null {
+  try {
+    const stored = win.localStorage.getItem(THEME_STORAGE_KEY);
+    return stored === 'light' || stored === 'dark' ? stored : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Forget the choice and follow the OS again, applying what it says now. */
+export function followSystem(win: Window = window): void {
+  try {
+    win.localStorage.removeItem(THEME_STORAGE_KEY);
+  } catch {
+    // Best-effort, like `setTheme`.
+  }
+  const theme = resolveTheme(null, win.matchMedia('(prefers-color-scheme: dark)').matches);
+  win.document.documentElement.dataset.theme = theme;
+  win.dispatchEvent(new CustomEvent<Theme>(THEME_CHANGE_EVENT, { detail: theme }));
+}

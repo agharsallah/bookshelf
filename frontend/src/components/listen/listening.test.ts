@@ -182,6 +182,11 @@ describe('casting', () => {
     expect(defaultCast(CATALOGUE, 'zh', 2)).toEqual(['xinran', 'frank']);
     expect(defaultCast(CATALOGUE, 'fr', 1)).toEqual(['alice']);
   });
+
+  it('casts the reader\'s preferred voice first, once, when the catalogue has it', () => {
+    expect(defaultCast(CATALOGUE, 'zh', 2, 'frank')).toEqual(['frank', 'xinran']);
+    expect(defaultCast(CATALOGUE, 'zh', 2, 'nobody')).toEqual(['xinran', 'frank']);
+  });
 });
 
 describe('a chapter read aloud', () => {

@@ -94,11 +94,15 @@ export function voicesFor(voices: readonly VoicePublic[], language: string): Voi
   return [...voices].sort((a, b) => Number(b.languages[0] === language) - Number(a.languages[0] === language));
 }
 
-/** The first `count` voices for `language`: its default cast, then any voice that reads it. */
-export function defaultCast(catalogue: VoiceCatalogue, language: string, count: number): string[] {
+/**
+ * The first `count` voices for `language`: the reader's `preferred` voice (when the catalogue
+ * has it) as speaker 1, then the language's default cast, then any voice that reads it.
+ */
+export function defaultCast(catalogue: VoiceCatalogue, language: string, count: number, preferred: string | null = null): string[] {
   const defaults = catalogue.defaults[language] ?? catalogue.defaults.en ?? [];
   const fill = voicesFor(catalogue.voices, language).map((v) => v.id);
-  const cast = [...defaults, ...fill.filter((id) => !defaults.includes(id))];
+  const first = preferred && catalogue.voices.some((v) => v.id === preferred) ? [preferred] : [];
+  const cast = [...new Set([...first, ...defaults, ...fill])];
   return cast.slice(0, count);
 }
 

@@ -12,6 +12,7 @@ import type { JobPublic } from '../../lib/api/types/jobs';
 import type { SkillParam } from '../../lib/api/types/skills';
 import { enqueueJob } from '../../lib/jobs/api';
 import { problemOf } from '../common/Problem';
+import { readVoice } from '../../lib/voice';
 import { AUDIO_SKILL, defaultCast, FORMAT_LABELS, LANGUAGE_LABELS, MINUTES_LABELS, voicesFor } from './listening';
 import { useVoicePreview, VoiceSelect } from './VoiceSelect';
 import styles from './Listen.module.css';
@@ -37,7 +38,7 @@ export function EpisodeMaker({ documentId, catalogue, params, existing, onQueued
   const [format, setFormat] = useState(String(params.format?.default ?? 'conversation'));
   const [language, setLanguage] = useState(String(params.language?.default ?? 'en'));
   const count = catalogue.speakers[format] ?? 2;
-  const [cast, setCast] = useState<string[]>(() => defaultCast(catalogue, language, 4));
+  const [cast, setCast] = useState<string[]>(() => defaultCast(catalogue, language, 4, readVoice()));
   const [fresh, setFresh] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -49,7 +50,7 @@ export function EpisodeMaker({ documentId, catalogue, params, existing, onQueued
 
   const pickLanguage = (next: string) => {
     setLanguage(next);
-    setCast(defaultCast(catalogue, next, 4));
+    setCast(defaultCast(catalogue, next, 4, readVoice()));
   };
   const pickVoice = (speaker: number, id: string) => setCast((current) => current.map((v, i) => (i === speaker ? id : v)));
 
