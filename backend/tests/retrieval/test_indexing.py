@@ -182,6 +182,18 @@ def test_deleting_a_document_queues_the_purge_of_its_points(
     assert _payloads(qdrant, "blocks")  # Meadows is untouched: no rebuild ran
 
 
+def test_purging_a_document_from_a_store_with_no_collections_yet_succeeds(
+    qdrant: QdrantClient,
+) -> None:
+    # A document deleted before anything was ever embedded (a fresh embedded store) queues
+    # a purge; it has nothing to drop and must not fail and retry forever.
+    from app.retrieval.indexing import delete_document
+
+    delete_document(qdrant, uuid.uuid4())
+
+    assert qdrant.get_collections().collections == []
+
+
 def test_embedding_runs_with_no_database_transaction_open(
     session: Session, shelf: Shelf, qdrant: QdrantClient
 ) -> None:

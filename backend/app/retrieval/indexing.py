@@ -201,18 +201,21 @@ def index_document(
 
 
 def delete_document(client: QdrantClient, document_id: uuid.UUID | str) -> None:
-    """Drop every point of a document from all three collections."""
-    for collection in (Collection.BLOCKS, Collection.DISTILLATIONS):
+    """Drop every point of a document from every collection. A collection that does not
+    exist yet (nothing was ever embedded into this store) holds nothing to drop."""
+    for collection in (Collection.BLOCKS, Collection.DISTILLATIONS, Collection.CLAIMS):
+        if client.collection_exists(collection_name(collection)):
+            client.delete(
+                collection_name(collection),
+                points_selector=models.FilterSelector(filter=_by_document(document_id)),
+                wait=True,
+            )
+    if client.collection_exists(collection_name(Collection.DOCUMENTS)):
         client.delete(
-            collection_name(collection),
-            points_selector=models.FilterSelector(filter=_by_document(document_id)),
+            collection_name(Collection.DOCUMENTS),
+            points_selector=models.PointIdsList(points=[str(document_id)]),
             wait=True,
         )
-    client.delete(
-        collection_name(Collection.DOCUMENTS),
-        points_selector=models.PointIdsList(points=[str(document_id)]),
-        wait=True,
-    )
 
 
 def _indexed_document_ids(client: QdrantClient) -> set[str]:
