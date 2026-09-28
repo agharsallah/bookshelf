@@ -78,6 +78,18 @@ class ReviewSource(StrEnum):
     FLASHCARD = "flashcard"  # a flashcard you marked
 
 
+class Surface(StrEnum):
+    """Where attention went (`activity_minutes.surface`)."""
+
+    READ = "read"  # the source text in the reader
+    LISTEN = "listen"  # a recording playing: a chapter read aloud or an episode
+    STUDY = "study"  # quiz, flashcards, FAQ, glossary, quotes
+    RECALL = "recall"  # writing a chapter from memory, or a prediction
+    REVIEW = "review"  # spaced reviews
+    DISTILL = "distill"  # the brief, the guide: what the pipeline wrote
+    EXPLORE = "explore"  # search, the concept graph, the map
+
+
 class ArtifactType(StrEnum):
     OUTLINE_OVERRIDE = "outline_override"
     FIGURE_DESCRIPTION = "figure_description"
