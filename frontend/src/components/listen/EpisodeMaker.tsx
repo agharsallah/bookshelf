@@ -5,14 +5,15 @@
  * (write-audio-summary with these `params` and `voices`); the recording follows by itself.
  * Asking again for an episode that exists with a new cast re-records the same script.
  */
-import { useMemo, useRef, useState, type FormEvent } from 'react';
+import { useMemo, useState, type FormEvent } from 'react';
 import { browserApi, type ApiClient } from '../../lib/api/client';
-import type { VoiceCatalogue, VoicePublic } from '../../lib/api/types/audio';
+import type { VoiceCatalogue } from '../../lib/api/types/audio';
 import type { JobPublic } from '../../lib/api/types/jobs';
 import type { SkillParam } from '../../lib/api/types/skills';
 import { enqueueJob } from '../../lib/jobs/api';
 import { problemOf } from '../common/Problem';
-import { apiPath, AUDIO_SKILL, FORMAT_LABELS, LANGUAGE_LABELS, MINUTES_LABELS } from './listening';
+import { AUDIO_SKILL, defaultCast, FORMAT_LABELS, LANGUAGE_LABELS, MINUTES_LABELS, voicesFor } from './listening';
+import { useVoicePreview, VoiceSelect } from './VoiceSelect';
 import styles from './Listen.module.css';
 
 export interface EpisodeMakerProps {
@@ -28,18 +29,6 @@ export interface EpisodeMakerProps {
 
 const choicesOf = (param: SkillParam | undefined, fallback: string[]): string[] => (param ? param.choices.map(String) : fallback);
 
-/** Voices that read `language` first, then the rest (a Mandarin voice can read English). */
-function voicesFor(voices: readonly VoicePublic[], language: string): VoicePublic[] {
-  return [...voices].sort((a, b) => Number(b.languages[0] === language) - Number(a.languages[0] === language));
-}
-
-function defaultCast(catalogue: VoiceCatalogue, language: string, count: number): string[] {
-  const defaults = catalogue.defaults[language] ?? catalogue.defaults.en ?? [];
-  const fill = voicesFor(catalogue.voices, language).map((v) => v.id);
-  const cast = [...defaults, ...fill.filter((id) => !defaults.includes(id))];
-  return cast.slice(0, count);
-}
-
 export function EpisodeMaker({ documentId, catalogue, params, existing, onQueued, api = browserApi }: EpisodeMakerProps) {
   const minutesChoices = choicesOf(params.minutes, ['5', '15', '30']);
   const formatChoices = choicesOf(params.format, Object.keys(FORMAT_LABELS));
@@ -52,8 +41,7 @@ export function EpisodeMaker({ documentId, catalogue, params, existing, onQueued
   const [fresh, setFresh] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const preview = useRef<HTMLAudioElement | null>(null);
-  const [previewing, setPreviewing] = useState<string | null>(null);
+  const preview = useVoicePreview();
   const variant = `${minutes}m-${format}-${language}`;
   const exists = existing.includes(variant);
   const roles = FORMAT_LABELS[format]?.roles ?? [];
@@ -64,19 +52,6 @@ export function EpisodeMaker({ documentId, catalogue, params, existing, onQueued
     setCast(defaultCast(catalogue, next, 4));
   };
   const pickVoice = (speaker: number, id: string) => setCast((current) => current.map((v, i) => (i === speaker ? id : v)));
-
-  const hear = (voice: VoicePublic) => {
-    preview.current?.pause();
-    if (previewing === voice.id) {
-      setPreviewing(null);
-      return;
-    }
-    const sample = new Audio(apiPath(voice.sample_url));
-    sample.addEventListener('ended', () => setPreviewing(null));
-    preview.current = sample;
-    setPreviewing(voice.id);
-    void sample.play().catch(() => setPreviewing(null));
-  };
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -139,34 +114,17 @@ export function EpisodeMaker({ documentId, catalogue, params, existing, onQueued
       )}
       <fieldset className={styles.cast}>
         <legend>Voices</legend>
-        {Array.from({ length: count }, (_, speaker) => {
-          const chosen = options.find((v) => v.id === cast[speaker]);
-          return (
-            <div key={speaker} className={styles.castRow} data-speaker={speaker}>
-              <label>
-                <span className={styles.role}>{roles[speaker] ?? `Speaker ${speaker + 1}`}</span>
-                <select value={cast[speaker] ?? ''} onChange={(event) => pickVoice(speaker, event.currentTarget.value)}>
-                  {options.map((voice) => (
-                    <option key={voice.id} value={voice.id}>
-                      {voice.name} — {voice.accent}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              {chosen && (
-                <button
-                  type="button"
-                  className="btn btn-quiet"
-                  onClick={() => hear(chosen)}
-                  aria-pressed={previewing === chosen.id}
-                  aria-label={previewing === chosen.id ? `Stop ${chosen.name}` : `Hear ${chosen.name}`}
-                >
-                  {previewing === chosen.id ? 'Stop' : 'Hear'}
-                </button>
-              )}
-            </div>
-          );
-        })}
+        {Array.from({ length: count }, (_, speaker) => (
+          <VoiceSelect
+            key={speaker}
+            speaker={speaker}
+            role={roles[speaker] ?? `Speaker ${speaker + 1}`}
+            voices={options}
+            value={cast[speaker] ?? ''}
+            onChange={(id) => pickVoice(speaker, id)}
+            preview={preview}
+          />
+        ))}
         <p className={styles.fine}>
           A voice “over music” brings its music bed along. Add your own voice: put a 10–60 s .wav of clean speech (only voices whose owners agreed) in
           <code> .audio/voices/custom/</code>.

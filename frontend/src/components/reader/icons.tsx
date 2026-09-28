@@ -55,3 +55,11 @@ export const KeyboardIcon = () => (
     <path d="M5 8h.01M8 8h.01M11 8h.01M14 8h.01M5 11h.01M14 11h.01M7.5 11.5h5" />
   </Icon>
 );
+
+export const ListenIcon = () => (
+  <Icon>
+    <path d="M3.5 12.5V10a6.5 6.5 0 0 1 13 0v2.5" />
+    <rect x="2.75" y="11.5" width="3.5" height="5" rx="1.2" />
+    <rect x="13.75" y="11.5" width="3.5" height="5" rx="1.2" />
+  </Icon>
+);

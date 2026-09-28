@@ -1,0 +1,103 @@
+/*
+ * The reader's listening dock: raised over the bottom of the page, clear of the text's
+ * edges, scrolling on its own when the recording form is open on a short screen. The
+ * player inside keeps the Listen page's styles (AudioPlayer); jobs, notes and errors
+ * compose theirs, so both surfaces read the same.
+ */
+.dock {
+  position: fixed;
+  inset-block-end: var(--space-4);
+  inset-inline: max(var(--space-4), 50% - 22rem);
+  z-index: 20;
+  display: grid;
+  gap: var(--space-3);
+  max-block-size: min(34rem, 100dvh - 8rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--space-4);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-l);
+  background: var(--paper-raised);
+  box-shadow: var(--shadow-pop);
+  font-family: var(--font-ui);
+}
+
+.head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.kicker {
+  composes: kicker from './Listen.module.css';
+}
+
+.title {
+  font-family: var(--font-read);
+  font-size: var(--text-base);
+  line-height: var(--leading-tight);
+}
+
+.close {
+  flex: none;
+  inline-size: 2rem;
+  block-size: 2rem;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--ink-2);
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.close:hover {
+  background: var(--paper-sunken);
+  color: var(--ink);
+}
+
+.pick {
+  composes: castPick from './Listen.module.css';
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+}
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.form {
+  display: grid;
+  gap: var(--space-3);
+  padding-block-start: var(--space-3);
+  border-block-start: 1px solid var(--rule);
+}
+
+.working {
+  composes: working from './Listen.module.css';
+}
+
+.spinner {
+  composes: spinner from './Listen.module.css';
+}
+
+.state {
+  composes: workingState from './Listen.module.css';
+}
+
+.note {
+  composes: fine from './Listen.module.css';
+}
+
+.error {
+  composes: error from './Listen.module.css';
+}

@@ -6,7 +6,8 @@
  *
  * It picks up where you stopped (per render, in localStorage), tells the operating system
  * what is playing (Media Session: lock screen, headphone buttons, media keys), and takes
- * keys: Space or K play/pause, ← → skip, [ ] slower/faster, P N previous/next section.
+ * keys: Space or K play/pause, ← → skip, [ ] slower/faster, P N previous/next section
+ * (`shortcuts={false}` leaves the keys to the page, as the reader, which has its own).
  * The parent owns the `<audio>` element's ref, so the transcript can seek it too.
  */
 import { useEffect, useState, type CSSProperties, type RefObject } from 'react';
@@ -41,11 +42,13 @@ export interface AudioPlayerProps {
   /** Where to remember your place (`positionKey`). */
   storageKey: string;
   onTime: (seconds: number) => void;
+  /** Take the page's keys (default); false where the page has shortcuts of its own. */
+  shortcuts?: boolean;
 }
 
 const SAVE_EVERY = 5; // seconds of playback between saves of your place
 
-export function AudioPlayer({ audio, src, downloadHref, downloadName, title, bookTitle, sections, duration, storageKey, onTime }: AudioPlayerProps) {
+export function AudioPlayer({ audio, src, downloadHref, downloadName, title, bookTitle, sections, duration, storageKey, onTime, shortcuts = true }: AudioPlayerProps) {
   const [playing, setPlaying] = useState(false);
   const [time, setTime] = useState(0);
   const [length, setLength] = useState(duration);
@@ -152,6 +155,7 @@ export function AudioPlayer({ audio, src, downloadHref, downloadName, title, boo
   });
 
   useEffect(() => {
+    if (!shortcuts) return;
     const onKey = (event: KeyboardEvent) => {
       if (!shortcutApplies(event)) return;
       const actions: Record<string, () => void> = {
@@ -174,6 +178,7 @@ export function AudioPlayer({ audio, src, downloadHref, downloadName, title, boo
   });
 
   const total = length || duration;
+  const keys = (announce: string) => (shortcuts ? announce : undefined);
   const sectionTitle = sections[current]?.title ?? sections[0]?.title ?? '';
   return (
     <div className={styles.player}>
@@ -206,26 +211,26 @@ export function AudioPlayer({ audio, src, downloadHref, downloadName, title, boo
         </span>
       </div>
       <div className={styles.controls}>
-        <button type="button" className={styles.icon} onClick={() => jump(-1)} aria-label="Previous part" aria-keyshortcuts="P">
+        <button type="button" className={styles.icon} onClick={() => jump(-1)} aria-label="Previous part" aria-keyshortcuts={keys('P')}>
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5v14 M18 6l-9 6 9 6z" /></svg>
         </button>
-        <button type="button" className={styles.icon} onClick={() => seek(time - SKIP_BACK)} aria-label={`Back ${SKIP_BACK} seconds`} aria-keyshortcuts="ArrowLeft">
+        <button type="button" className={styles.icon} onClick={() => seek(time - SKIP_BACK)} aria-label={`Back ${SKIP_BACK} seconds`} aria-keyshortcuts={keys('ArrowLeft')}>
           <span className={styles.skip}>−{SKIP_BACK}</span>
         </button>
-        <button type="button" className={styles.play} onClick={toggle} aria-label={playing ? 'Pause' : 'Play'} aria-keyshortcuts="Space K">
+        <button type="button" className={styles.play} onClick={toggle} aria-label={playing ? 'Pause' : 'Play'} aria-keyshortcuts={keys('Space K')}>
           <svg viewBox="0 0 24 24" aria-hidden="true">{playing ? <path d="M8 5v14 M16 5v14" /> : <path d="M8 5l11 7-11 7z" />}</svg>
         </button>
-        <button type="button" className={styles.icon} onClick={() => seek(time + SKIP_AHEAD)} aria-label={`Ahead ${SKIP_AHEAD} seconds`} aria-keyshortcuts="ArrowRight">
+        <button type="button" className={styles.icon} onClick={() => seek(time + SKIP_AHEAD)} aria-label={`Ahead ${SKIP_AHEAD} seconds`} aria-keyshortcuts={keys('ArrowRight')}>
           <span className={styles.skip}>+{SKIP_AHEAD}</span>
         </button>
-        <button type="button" className={styles.icon} onClick={() => jump(1)} aria-label="Next part" aria-keyshortcuts="N">
+        <button type="button" className={styles.icon} onClick={() => jump(1)} aria-label="Next part" aria-keyshortcuts={keys('N')}>
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 5v14 M6 6l9 6-9 6z" /></svg>
         </button>
       </div>
       <div className={styles.extras}>
         <label className={styles.speed}>
           Speed
-          <select value={speed} onChange={(event) => setSpeed(Number(event.currentTarget.value))} aria-keyshortcuts="[ ]">
+          <select value={speed} onChange={(event) => setSpeed(Number(event.currentTarget.value))} aria-keyshortcuts={keys('[ ]')}>
             {SPEEDS.map((s) => (
               <option key={s} value={s}>
                 {s}×
@@ -236,9 +241,11 @@ export function AudioPlayer({ audio, src, downloadHref, downloadName, title, boo
         <a className="btn btn-quiet" href={downloadHref} download={downloadName}>
           Download MP3
         </a>
-        <span className={styles.keys} aria-hidden="true">
-          <Kbd>Space</Kbd> play · <Kbd>←</Kbd> <Kbd>→</Kbd> skip · <Kbd>[</Kbd> <Kbd>]</Kbd> speed · <Kbd>P</Kbd> <Kbd>N</Kbd> parts
-        </span>
+        {shortcuts && (
+          <span className={styles.keys} aria-hidden="true">
+            <Kbd>Space</Kbd> play · <Kbd>←</Kbd> <Kbd>→</Kbd> skip · <Kbd>[</Kbd> <Kbd>]</Kbd> speed · <Kbd>P</Kbd> <Kbd>N</Kbd> parts
+          </span>
+        )}
       </div>
     </div>
   );

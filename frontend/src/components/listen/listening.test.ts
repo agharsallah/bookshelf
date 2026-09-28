@@ -1,13 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import type { JobPublic } from '../../lib/api/types/jobs';
-import { CATALOGUE, EPISODE, SCRIPT_BODY } from './fixtures';
+import { CATALOGUE, EPISODE, READING_BODY, READING_ORDER, READING_RENDER, SCRIPT_BODY } from './fixtures';
 import {
   audioJobTitle,
   castNames,
+  defaultCast,
   downloadName,
   episodeLabel,
   formatTime,
   isAudioJob,
+  listeningTime,
   markAt,
   paramsOfVariant,
   parseScript,
@@ -15,9 +17,14 @@ import {
   pickVersion,
   versionLabel,
   versionsOf,
+  readingDownloadName,
   readPosition,
   sectionJump,
+  speakingAnchor,
   spokenTime,
+  startFrom,
+  turnAnchor,
+  voicesFor,
   writePosition,
 } from './listening';
 
@@ -160,6 +167,46 @@ describe('episodes and jobs', () => {
     expect(audioJobTitle(writing, [EPISODE], CATALOGUE.voices)).toBe('Writing the script: 5 min · Narrator, for Maya');
     const recording = job({ kind: 'narrate', skill: null, payload: { artifact_id: 'art-1', voices: ['alice', 'frank'] } });
     expect(audioJobTitle(recording, [EPISODE], CATALOGUE.voices)).toBe('Recording 15 min · Conversation with Alice & Frank');
+    const reading = job({ kind: 'narrate', skill: null, anchor: 'ch01', payload: { anchor: 'ch01', voices: ['maya'] } });
+    expect(audioJobTitle(reading, [EPISODE], CATALOGUE.voices)).toBe('Reading ch01 aloud with Maya');
+  });
+});
+
+describe('casting', () => {
+  it('puts voices that read the language first', () => {
+    expect(voicesFor(CATALOGUE.voices, 'zh')[0]?.id).toBe('xinran');
+    expect(voicesFor(CATALOGUE.voices, 'en').at(-1)?.id).toBe('xinran');
+  });
+
+  it('casts the default voices of a language, English when it has none', () => {
+    expect(defaultCast(CATALOGUE, 'zh', 2)).toEqual(['xinran', 'frank']);
+    expect(defaultCast(CATALOGUE, 'fr', 1)).toEqual(['alice']);
+  });
+});
+
+describe('a chapter read aloud', () => {
+  const script = parseScript(READING_BODY)!;
+  const turns = READING_RENDER.turns;
+
+  it('knows the passage each turn reads, and which is being read', () => {
+    expect(turnAnchor(script, turns[3])).toBe('ch01/s01/p002');
+    expect(turnAnchor(script, READING_RENDER.sections[0])).toBeNull();
+    expect(speakingAnchor(script, turns, 0)).toBeNull();
+    expect(speakingAnchor(script, turns, 5)).toBe('ch01/p001');
+    expect(speakingAnchor(script, turns, 9.5)).toBe('ch01/p001');
+    expect(speakingAnchor(script, turns, 15)).toBe('ch01/s01/p002');
+  });
+
+  it('starts from a passage, or the next one read when that one is not', () => {
+    expect(startFrom(script, turns, 'ch01/p001', READING_ORDER)).toBe(3);
+    expect(startFrom(script, turns, 'ch01/s01/c001', READING_ORDER)).toBe(12);
+    expect(startFrom(script, turns, 'elsewhere', READING_ORDER)).toBeNull();
+  });
+
+  it('tells how long it takes and names its download', () => {
+    expect(listeningTime(1800)).toBe('About 12 min');
+    expect(listeningTime(20)).toBe('About 1 min');
+    expect(readingDownloadName('Thinking in Systems', 'Stocks: and / flows?')).toBe('Thinking in Systems - Stocks and flows.mp3');
   });
 });
 

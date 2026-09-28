@@ -5,6 +5,7 @@
  * cites it. Select text (of the source, the distillation or the summary) to highlight
  * or annotate it; your notes list covers the chapter or the whole book. The URL follows the block in
  * view so any position can be shared, and your place in the chapter is saved as you read.
+ * Listen (l) opens a player that reads the chapter aloud and marks the passage it is on.
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import type { NoteDetail } from '../../lib/api/types/notes';
@@ -13,11 +14,12 @@ import type { HighlightColor } from '../../lib/contract';
 import { toCodePointRange, toUtf16Range } from '../../lib/codepoints';
 import { flatten, isUnder, pageMarkers } from '../../lib/documents/tree';
 import { useAnchorSync } from '../../lib/hooks/useAnchorSync';
+import { ChapterListen } from '../listen/ChapterListen';
 import { NoteComposer, type ComposerTarget } from '../notes/NoteComposer';
 import { NotesPanel, type NotesScope } from '../notes/NotesPanel';
 import { useNotes } from '../notes/useNotes';
 import { DistillPane, type Tab } from './DistillPane';
-import { revealBlock, sourceBlock, SOURCE_ATTR } from './dom';
+import { markSpeaking, revealBlock, sourceBlock, SOURCE_ATTR } from './dom';
 import { paintPaneNotes, paneNoteAt, revealPaneNote } from './paneMarks';
 import { groupMarks, marksFor, notedBlocks, type MarksByAnchor } from './marks';
 import { ShortcutHelp } from '../common/ShortcutHelp';
@@ -44,7 +46,7 @@ import { useAutoHide, useFocusChrome, useFullscreen, useMediaQuery } from './use
 import styles from './Reader.module.css';
 
 export interface ReaderProps {
-  document: { id: string; slug: string; title: string };
+  document: { id: string; slug: string; title: string; language?: string };
   unit: TreeNode;
   units: NavUnit[];
   panes: Panes;
@@ -81,6 +83,7 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
   const [contentsOpen, setContentsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [listening, setListening] = useState(false);
   const [prefs, setPrefs] = useReaderPrefs();
   const [composer, setComposer] = useState<{ target: ComposerTarget; compose: boolean } | null>(null);
   const [focusedNote, setFocusedNote] = useState<string | null>(null);
@@ -282,6 +285,9 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
       case 'spotlight':
         setPrefs((p) => ({ spotlight: !p.spotlight }));
         break;
+      case 'listen':
+        setListening((l) => !l);
+        break;
       case 'help':
         setHelpOpen(true);
         break;
@@ -331,6 +337,9 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
   );
 
   const closeSettings = useCallback(() => setSettingsOpen(false), []);
+  const onSpeaking = useCallback((anchor: string | null, follow: boolean) => {
+    if (sourceRef.current) markSpeaking(sourceRef.current, anchor, follow);
+  }, []);
 
   return (
     <div
@@ -368,6 +377,7 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
           button: settingsButton,
           panel: <ReadingSettings prefs={prefs} onChange={setPrefs} onClose={closeSettings} opener={settingsButton} />,
         }}
+        listen={{ open: listening, onToggle: () => runAction('listen') }}
         layout={{
           rail: showRail,
           pane: showPane,
@@ -457,6 +467,19 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
 
       {lightbox}
       {salience.card}
+      {listening ? (
+        <ChapterListen
+          documentId={doc.id}
+          bookTitle={doc.title}
+          anchor={unit.anchor}
+          chapter={unit.heading ?? unit.anchor}
+          language={doc.language}
+          activeAnchor={active}
+          order={order}
+          onSpeaking={onSpeaking}
+          onClose={() => setListening(false)}
+        />
+      ) : null}
 
       <ShortcutHelp open={helpOpen} shortcuts={READER_SHORTCUTS} onClose={() => setHelpOpen(false)} />
 

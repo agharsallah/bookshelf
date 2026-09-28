@@ -1,10 +1,11 @@
 /**
- * The Listen page's pure logic: reading an `audio_summary` script, naming episodes and
- * speakers, time on the player's clock, which section or turn is playing, and the place
- * you stopped at (kept per render in localStorage, when the browser allows it).
+ * Listening's pure logic, for the Listen page and a chapter read aloud in the reader:
+ * reading a script, naming episodes and speakers, casting voices, time on the player's
+ * clock, which section or turn (and so which passage) is playing, and the place you
+ * stopped at (kept per render in localStorage, when the browser allows it).
  */
 import type { Anchor } from '../../lib/contract';
-import type { AudioEpisode, AudioRender, AudioVersion, Mark, VoicePublic } from '../../lib/api/types/audio';
+import type { AudioEpisode, AudioRender, AudioVersion, Mark, VoiceCatalogue, VoicePublic } from '../../lib/api/types/audio';
 import type { JobPublic } from '../../lib/api/types/jobs';
 
 export const AUDIO_SKILL = 'write-audio-summary';
@@ -88,6 +89,19 @@ export function castNames(ids: readonly string[], voices: readonly VoicePublic[]
   return names.length <= 1 ? (names[0] ?? '') : `${names.slice(0, -1).join(', ')} & ${names.at(-1) ?? ''}`;
 }
 
+/** Voices that read `language` first, then the rest (a Mandarin voice can read English). */
+export function voicesFor(voices: readonly VoicePublic[], language: string): VoicePublic[] {
+  return [...voices].sort((a, b) => Number(b.languages[0] === language) - Number(a.languages[0] === language));
+}
+
+/** The first `count` voices for `language`: its default cast, then any voice that reads it. */
+export function defaultCast(catalogue: VoiceCatalogue, language: string, count: number): string[] {
+  const defaults = catalogue.defaults[language] ?? catalogue.defaults.en ?? [];
+  const fill = voicesFor(catalogue.voices, language).map((v) => v.id);
+  const cast = [...defaults, ...fill.filter((id) => !defaults.includes(id))];
+  return cast.slice(0, count);
+}
+
 /** `65` → "1:05", `3723` → "1:02:03". */
 export function formatTime(seconds: number): string {
   const total = Math.max(0, Math.floor(Number.isFinite(seconds) ? seconds : 0));
@@ -129,11 +143,53 @@ export function sectionJump(marks: readonly Mark[], time: number, direction: 1 |
   return marks[Math.max(current - 1, 0)]?.start ?? 0;
 }
 
+/** A file name safe on every system, at most 140 characters before `.mp3`. */
+function mp3Name(name: string): string {
+  const safe = name.replace(/[^\p{L}\p{N}._ -]+/gu, '').replace(/\s+/g, ' ').trim();
+  return `${safe.slice(0, 140)}.mp3`;
+}
+
 /** "Thinking in Systems - 15 min conversation.mp3" */
 export function downloadName(bookTitle: string, params: Readonly<Record<string, string | number>>): string {
-  const label = episodeLabel(params).replaceAll(' · ', ' ').toLowerCase();
-  const safe = `${bookTitle} - ${label}`.replace(/[^\p{L}\p{N}._ -]+/gu, '').replace(/\s+/g, ' ').trim();
-  return `${safe.slice(0, 140)}.mp3`;
+  return mp3Name(`${bookTitle} - ${episodeLabel(params).replaceAll(' · ', ' ').toLowerCase()}`);
+}
+
+/** "Thinking in Systems - Stocks and flows.mp3" */
+export function readingDownloadName(bookTitle: string, chapter: string): string {
+  return mp3Name(`${bookTitle} - ${chapter}`);
+}
+
+// --- A chapter read aloud: which passage is playing -------------------------------------
+
+/** Spoken words a minute, as the reading's length is told before it is recorded. */
+export const SPOKEN_WPM = 150;
+
+/** "About 12 min" to hear `words` read aloud (at least a minute). */
+export function listeningTime(words: number): string {
+  return `About ${Math.max(1, Math.round(words / SPOKEN_WPM))} min`;
+}
+
+/** The passage a turn mark reads: the first block its turn cites, else null. */
+export function turnAnchor(script: Script, mark: Mark | undefined): Anchor | null {
+  if (!mark || mark.turn === null) return null;
+  return script.sections[mark.section]?.turns[mark.turn]?.cites[0] ?? null;
+}
+
+/** The passage being read at `time`, or null before the first turn. */
+export function speakingAnchor(script: Script, turns: readonly Mark[], time: number): Anchor | null {
+  return turnAnchor(script, turns[markAt(turns, time)]);
+}
+
+/** Where to start hearing from `anchor`: the first turn reading it or anything after it in
+ * reading `order` (a table or a code block is not read, so the next passage that is). */
+export function startFrom(script: Script, turns: readonly Mark[], anchor: Anchor, order: ReadonlyMap<string, number>): number | null {
+  const at = order.get(anchor);
+  if (at === undefined) return null;
+  const mark = turns.find((m) => {
+    const cited = turnAnchor(script, m);
+    return cited !== null && (order.get(cited) ?? -1) >= at;
+  });
+  return mark?.start ?? null;
 }
 
 /** The API path of a render or sample (`audio/files/…`) as the browser fetches it. */
@@ -218,6 +274,7 @@ export function audioJobTitle(job: JobPublic, episodes: readonly AudioEpisode[],
     const params = isRecord(payload.params) ? (payload.params as Record<string, string | number>) : {};
     return `Writing the script: ${episodeLabel(params)}${cast ? `, for ${cast}` : ''}`;
   }
+  if (!payload.artifact_id && job.anchor) return `Reading ${job.anchor} aloud${cast ? ` with ${cast}` : ''}`;
   const episode = episodes.find((e) => e.script.id === payload.artifact_id);
   return `Recording${episode ? ` ${episodeLabel(episode.params)}` : ''}${cast ? ` with ${cast}` : ''}`;
 }

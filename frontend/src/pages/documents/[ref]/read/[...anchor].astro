@@ -98,7 +98,7 @@ const title = data && !data.missing ? `${data.unit.heading ?? data.unit.anchor},
     ) : (
       <Reader
         client:load
-        document={{ id: data.doc.id, slug: data.doc.slug, title: data.doc.title }}
+        document={{ id: data.doc.id, slug: data.doc.slug, title: data.doc.title, language: data.doc.language }}
         unit={data.unit}
         units={navUnits}
         panes={data.panes}

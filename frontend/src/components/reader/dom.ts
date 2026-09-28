@@ -45,6 +45,24 @@ export function revealBlock(root: ParentNode, anchor: string): boolean {
   return true;
 }
 
+export const SPEAKING_ATTR = 'data-speaking';
+
+/**
+ * Mark the block being read aloud (`data-speaking`, one at a time; null clears it) and,
+ * with `follow`, bring it into view when it has left the screen, as a page turns.
+ */
+export function markSpeaking(root: ParentNode, anchor: string | null, follow: boolean): void {
+  root.querySelectorAll(`[${SPEAKING_ATTR}]`).forEach((el) => el.removeAttribute(SPEAKING_ATTR));
+  const el = anchor ? sourceBlock(root, anchor) : null;
+  if (!el) return;
+  el.setAttribute(SPEAKING_ATTR, '');
+  if (!follow) return;
+  const { top, bottom } = el.getBoundingClientRect();
+  if (top < window.innerHeight * 0.15 || bottom > window.innerHeight * 0.6) {
+    el.scrollIntoView({ block: 'center', behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
+  }
+}
+
 /** The text container a cite chip annotates (its span's paragraph, item or cell). */
 function citedContent(chip: Element): Element {
   return chip.closest('li, td, th, p, blockquote, figure, dd, [data-block]') ?? chip;

@@ -59,6 +59,13 @@
   }
 }
 
+/* The passage being read aloud (ChapterListen): a quiet wash and a bar in the margin. */
+.block:global([data-speaking]) {
+  background-color: color-mix(in oklab, var(--accent-wash) 60%, transparent);
+  box-shadow: -0.6rem 0 0 -0.35rem var(--accent);
+  transition: background-color var(--dur-2) var(--ease-out);
+}
+
 /* Hovering a cite on the right marks the passage it points to. */
 .block:global(.is-citing) {
   background-color: color-mix(in oklab, var(--accent-wash) 70%, transparent);

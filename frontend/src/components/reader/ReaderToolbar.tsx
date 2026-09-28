@@ -1,12 +1,12 @@
 /**
  * The reader's sticky toolbar: book and chapter, the pane toggles, the "Aa"
- * reading settings, focus mode, full screen and chapter navigation. Popovers
+ * reading settings, listening, focus mode, full screen and chapter navigation. Popovers
  * (contents, settings) hang from it; the reader owns their state. In focus mode it
  * slides away while you read (`hidden`).
  */
 import type { ReactNode, RefObject } from 'react';
 import type { CSSProperties } from 'react';
-import { CollapseIcon, ContentsIcon, ExpandIcon, FocusIcon, KeyboardIcon, PaneIcon, TypeIcon } from './icons';
+import { CollapseIcon, ContentsIcon, ExpandIcon, FocusIcon, KeyboardIcon, ListenIcon, PaneIcon, TypeIcon } from './icons';
 import type { NavUnit } from './Navigator';
 import styles from './Reader.module.css';
 
@@ -33,6 +33,8 @@ export interface ReaderToolbarProps {
     onFocus: () => void;
     fullscreen: { active: boolean; supported: boolean; toggle: () => void };
   };
+  /** The chapter read aloud (ChapterListen): whether its player is open. */
+  listen: { open: boolean; onToggle: () => void };
   hidden: boolean;
   /** 0–1 through the chapter, drawn along the toolbar's lower edge (still visible when it is tucked away). */
   progress: number;
@@ -41,7 +43,7 @@ export interface ReaderToolbarProps {
 }
 
 export function ReaderToolbar(props: ReaderToolbarProps) {
-  const { book, chapter, prev, next, readHref, view, onView, locked, onLock, contents, settings, layout, hidden, progress, timeLeft, onHelp } = props;
+  const { book, chapter, prev, next, readHref, view, onView, locked, onLock, contents, settings, listen, layout, hidden, progress, timeLeft, onHelp } = props;
   const { fullscreen } = layout;
   return (
     <div className={styles.toolbar} data-hidden={hidden ? '' : undefined}>
@@ -87,6 +89,9 @@ export function ReaderToolbar(props: ReaderToolbarProps) {
           onClick={settings.onToggle}
         >
           <TypeIcon />
+        </button>
+        <button type="button" className={styles.icon} aria-pressed={listen.open} aria-label="Listen" title="Listen: the chapter read aloud (l)" onClick={listen.onToggle}>
+          <ListenIcon />
         </button>
         <button type="button" className={styles.icon} aria-pressed={layout.focus} aria-label="Focus mode" title="Focus mode: just the text (f)" onClick={layout.onFocus}>
           <FocusIcon />

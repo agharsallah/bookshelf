@@ -78,3 +78,15 @@ export interface AudioShelf {
   document_id: string;
   episodes: AudioEpisode[];
 }
+
+/** `GET /documents/{ref}/audio/read/{anchor}`: a chapter read aloud, as written. */
+export interface ChapterAudio {
+  anchor: string;
+  title: string;
+  /** A one-reader script (`{title, speakers, sections}`); each turn cites the block it reads. */
+  script: Record<string, unknown>;
+  /** Words read aloud, to tell how long it takes. */
+  words: number;
+  /** Recordings of these exact words, newest first. */
+  renders: AudioRender[];
+}

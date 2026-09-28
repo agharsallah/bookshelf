@@ -85,7 +85,7 @@ export interface JobCreate {
   params?: Record<string, string | number>;
   /** Narrated skills and `narrate`: a voice id per speaker, speaker 1 first. */
   voices?: string[];
-  /** Required for `narrate`: the `audio_summary` script to voice. */
+  /** `narrate`: the `audio_summary` script to voice; without it, the chapter at `anchor` is read aloud. */
   artifact_id?: string;
 }
 

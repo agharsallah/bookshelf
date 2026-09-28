@@ -8,7 +8,7 @@ import { EPISODE } from './fixtures';
 
 const RENDER = EPISODE.renders[0]!;
 
-function setup(onTime = vi.fn()) {
+function setup(onTime = vi.fn(), shortcuts?: boolean) {
   const audio = createRef<HTMLAudioElement>();
   render(
     <AudioPlayer
@@ -22,6 +22,7 @@ function setup(onTime = vi.fn()) {
       duration={RENDER.duration}
       storageKey="bookshelf:listen:r1"
       onTime={onTime}
+      shortcuts={shortcuts}
     />,
   );
   const el = audio.current!;
@@ -95,6 +96,16 @@ describe('AudioPlayer', () => {
     expect(el.playbackRate).toBe(1.15);
     fireEvent.change(screen.getByRole('combobox'), { target: { value: '2' } });
     expect(el.playbackRate).toBe(2);
+  });
+
+  it('leaves the keys to the page when it has shortcuts of its own', () => {
+    const { el } = setup(vi.fn(), false);
+    el.currentTime = 50;
+    fireEvent.keyDown(document.body, { key: 'ArrowLeft' });
+    fireEvent.keyDown(document.body, { key: ']' });
+    expect(el.currentTime).toBe(50);
+    expect(el.playbackRate).toBe(1);
+    expect(screen.getByRole('button', { name: 'Play' }).getAttribute('aria-keyshortcuts')).toBeNull();
   });
 
   it('offers the MP3 as a download', () => {
