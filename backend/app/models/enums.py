@@ -130,6 +130,8 @@ class ArtifactType(StrEnum):
     NOTATION_TABLE = "notation_table"  # make-notation
     JOURNAL_CLUB = "journal_club"  # make-journal-club
     MATH_EXPLAINER = "math_explainer"  # explain-math: the formulas taught from zero
+    # The library (app/pipeline/catalogue.py)
+    CATALOGUE_ENTRY = "catalogue_entry"  # catalogue-document: theme, subjects, facts
 
 
 class Origin(StrEnum):
