@@ -6,6 +6,7 @@ Docs: https://fastapi.tiangolo.com/tutorial/bigger-applications/
 from fastapi import APIRouter
 
 from app.api.routes import (
+    activity,
     artifacts,
     audio,
     concepts,
@@ -18,6 +19,7 @@ from app.api.routes import (
     media,
     nodes,
     notes,
+    reader_stats,
     reading,
     recalls,
     reviews,
@@ -29,6 +31,8 @@ from app.api.routes import (
 api_router = APIRouter()
 api_router.include_router(library.router)
 api_router.include_router(stats.router)  # before documents: /documents/{ref}/stats
+api_router.include_router(reader_stats.router)  # before documents: /documents/{ref}/reader-stats
+api_router.include_router(activity.router)
 api_router.include_router(documents.router)
 api_router.include_router(nodes.router)
 api_router.include_router(notes.router)
