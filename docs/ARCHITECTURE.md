@@ -1169,6 +1169,63 @@ Keep Astro as the shell and routing layer; add React islands only where interact
 | **Map** | React island | The atlas as a live force layout: books, chapters and concepts; select to read, double-click to open. A lens mode filters and highlights by connection type, kind and book, dims or hides the rest, groups by book, and shows proposed bridges to accept or reject. A path finder traces the strongest chain between two marks, hop by hop, each hop opening its evidence |
 | **Listen** | Astro + one React island | Audio summaries: pick an episode and cast, a player (skip, speed, parts, download, resume where you stopped, Media Session and keys), a transcript that follows the audio and links each line to its passage, and the form that makes an episode |
 | **Review queue** | React island | Draft artifacts, diff against the previous version, approve / edit / reject / re-run |
+| **You** | Astro + React islands | Reader statistics (§12 "Reader statistics"): `/you` for the shelf, `/you/{slug}` for one book, with a window (7 / 30 / 90 days, a year, all time) |
+
+### Reader statistics
+
+The pipeline statistics (§14) describe the machine; these describe the reader: how long you
+read, listen and study, when and in what sittings, how far and how deep you go with each book,
+the chapters and passages you spend longest on, your notes, and what you remember.
+
+```mermaid
+flowchart LR
+  classDef fe fill:#fdf3e1,stroke:#c98a1b,color:#4a2f00
+  classDef py fill:#eef5ee,stroke:#4f8a4f,color:#153515
+  classDef out fill:#e8f1fb,stroke:#3b6ea5,color:#0b2545
+
+  CL["attention clock<br/>lib/activity (one per app)"]:::fe
+  AM[("activity_minutes<br/>seconds per minute × surface × place")]:::out
+  H[("reading_positions · notes · recalls<br/>recall_grades · review_logs · review_items · edges")]:::out
+  C["collect<br/>(the only SQL)"]:::py
+  P["attention · books · passages · notes<br/>memory · concepts (pure)"]:::py
+  I["insights<br/>rules with thresholds"]:::py
+  UI["/you · /you/{slug}<br/>components/charts (d3 scales, React SVG)"]:::fe
+
+  CL -- "POST /activity, batched" --> AM --> C
+  H --> C --> P --> I --> UI
+```
+
+- **Capture.** Time is the one thing no other table records, so the browser keeps an attention
+  clock (`frontend/src/lib/activity`): pages say where attention is (`useAttention`, or
+  `<ActivityBeacon>` on pages without an island), and a 5 s tick counts it only while the page
+  is visible and was touched in the last two minutes. Audio counts itself while it actually
+  plays (`NowPlaying`), on any page. Reports go out every minute and on `pagehide`, batched
+  per minute and place; the server adds them to `activity_minutes`, never above 60 s a row
+  (migration `20260928105421_activity_minutes`). Surfaces: `read` (the block being read),
+  `listen`, `study`, `recall`, `review`, `distill` (brief, guide), `explore` (search, graph,
+  map, concepts). Listening while following the text counts for both.
+- **History.** Everything but time comes from rows the app already writes, so it covers the
+  whole history; time starts at `tracked_since`. A moved reading place, a note, a recall or a
+  review makes a day active even without tracked time.
+- **Figures.** Time by surface, day (calendar) and weekday × hour; *sittings* (no break over
+  ten minutes, any surface), their lengths and streaks; per book: progress by words, state
+  (unread, reading, stalled after 21 days, finished), depth (opened → read a quarter →
+  annotated → recalled → reviewed), notes per 1k words read, retention; per chapter: time,
+  distinct days, words per minute (only chapters with two minutes of reading and some progress)
+  and *pace*, your usual speed over the chapter's; the passages with the most time and the most
+  notes; note colors, targets and lengths; recall scores over time and idea statuses; review
+  ratings, card states and the next fourteen days due; the concepts mentioned by passages you
+  spent time on or annotated.
+- **Insights** (`app/reader_stats/insights/`) are rules in three files (habits, progress and
+  focus, notes and memory) with `Thresholds`: peak hours and weekday, streaks, short sittings,
+  stalled and nearly finished books, slow and skimmed chapters, a passage you keep returning
+  to, chapters finished without notes or a recall, missed ideas, due backlogs and retention.
+  Each links to where to act on it.
+- **Charts** live in `frontend/src/components/charts` as reusable React SVG components with
+  d3 for scales and layout (calendar heatmap, stacked columns, weekday × hour grid, share bar,
+  ranked bars, line, scatter, treemap, session strip), colored by theme tokens, each with a
+  tooltip, a keyboard path and a legend. `components/you/model.ts` turns the API's shapes into
+  their inputs.
 
 The render contract (§9) is implemented once as a `<Blocks>` component and reused by reader,
 brief, search results, and notes. Highlight colors, callout tones, and table styling live there
@@ -1236,6 +1293,9 @@ GET    /audio/files/{path}?download=   stream (byte ranges) or download a narrat
 GET    /exports/{document_id}.md       Markdown bundle
 GET    /exports/{document_id}.json     tree + approved artifacts, render-contract JSON
 GET    /exports/{document_id}/tables.csv  every table/chart block flattened
+POST   /activity                       seconds of attention per minute and place {entries: [...]}
+GET    /reader-stats?tz=&days=         reader statistics across the shelf (§12)
+GET    /documents/{ref}/reader-stats   the same for one book
 GET    /stats                          pipeline statistics for every book, skill and model (§14)
 GET    /documents/{ref}/stats          one book: passes, stages, chapters, skills, insights
 ```
