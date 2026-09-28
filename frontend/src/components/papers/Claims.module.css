@@ -1,0 +1,314 @@
+/*
+ * Claims: a lab notebook. The key (C2) sits in the margin set in the reading face; the
+ * rule beside the claim says how strongly the paper backs it — solid for measured, open
+ * for argued, dashed for speculated — and the badge names it in words.
+ */
+.groups {
+  display: grid;
+  gap: var(--space-7);
+}
+
+.group h2 {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: baseline;
+  margin-block-end: var(--space-4);
+  padding-block-end: var(--space-2);
+  border-block-end: 1px solid var(--rule);
+  font-family: var(--font-read);
+  font-size: var(--text-lg);
+  font-weight: 560;
+  letter-spacing: -0.01em;
+}
+
+.groupCount {
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+.claims {
+  display: grid;
+  gap: var(--space-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.claim {
+  display: grid;
+  grid-template-columns: 3.5rem minmax(0, 1fr);
+  gap: var(--space-4);
+  scroll-margin-block-start: 4rem;
+}
+
+.claim:target .claimBody {
+  background: var(--accent-wash);
+}
+
+.marginKey {
+  padding-block-start: 0.1rem;
+  color: var(--ink-3);
+  font-family: var(--font-read);
+  font-size: var(--text-md);
+  font-style: italic;
+  font-variant-numeric: oldstyle-nums;
+  text-align: end;
+}
+
+.claimBody {
+  display: grid;
+  gap: var(--space-2);
+  justify-items: start;
+  padding-inline-start: var(--space-4);
+  border-inline-start: 3px solid var(--accent);
+  min-inline-size: 0;
+}
+
+.claim[data-strength='argued'] .claimBody {
+  border-inline-start-color: color-mix(in oklab, var(--accent) 45%, var(--rule));
+}
+
+.claim[data-strength='speculated'] .claimBody {
+  border-inline-start: 3px dashed var(--rule-strong);
+}
+
+.claimText {
+  max-inline-size: var(--measure);
+  font-family: var(--font-read);
+  font-size: var(--text-base);
+  line-height: var(--leading-read);
+  text-wrap: pretty;
+}
+
+/* ── Badge ── */
+.badge {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+}
+
+.key {
+  color: var(--ink);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.kindChip,
+.strengthChip {
+  padding: 0 var(--space-2);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-pill);
+  color: var(--ink-2);
+}
+
+.badge[data-strength='measured'] .strengthChip {
+  border-color: var(--accent);
+  background: var(--accent-wash);
+  color: var(--ink);
+}
+
+.badge[data-strength='speculated'] .strengthChip {
+  border-style: dashed;
+}
+
+/* ── Relations ── */
+.noRelations {
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.relations {
+  display: grid;
+  gap: var(--space-3);
+  inline-size: 100%;
+  max-inline-size: 52rem;
+}
+
+.relationsToggle {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  justify-self: start;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  text-align: start;
+  cursor: pointer;
+}
+
+.relationsToggle:hover {
+  color: var(--ink);
+}
+
+.relationsToggle:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.caret {
+  inline-size: 0;
+  block-size: 0;
+  border-block: 0.3em solid transparent;
+  border-inline-start: 0.45em solid currentcolor;
+  transition: transform var(--dur-1) var(--ease-out);
+}
+
+.relationsToggle[aria-expanded='true'] .caret {
+  transform: rotate(90deg);
+}
+
+.proposedCount {
+  padding: 0 var(--space-2);
+  border: 1px dashed var(--tone-caution);
+  border-radius: var(--radius-pill);
+  color: var(--tone-caution);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+}
+
+.relationList > ul {
+  display: grid;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.relation {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-m);
+  background: var(--paper-raised);
+}
+
+.relation[data-status='proposed'] {
+  border-style: dashed;
+}
+
+.relationHead {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: baseline;
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.relationWord {
+  font-weight: 600;
+}
+
+.relation[data-tone='support'] .relationWord {
+  color: var(--tone-insight);
+}
+
+.relation[data-tone='contradict'] .relationWord {
+  color: var(--tone-important);
+}
+
+.relation[data-tone='extend'] .relationWord {
+  color: var(--tone-remember);
+}
+
+.otherClaim {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding-inline-start: var(--space-3);
+  border-inline-start: 2px solid var(--rule-strong);
+}
+
+.otherClaim p {
+  font-family: var(--font-read);
+  line-height: 1.5;
+}
+
+.rationale {
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+}
+
+.passages {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.passage {
+  display: grid;
+  gap: 0;
+}
+
+.passage a {
+  color: var(--ink-2);
+  font-weight: 600;
+}
+
+.passage[data-own] a {
+  color: var(--accent);
+}
+
+.passage q {
+  color: var(--ink-3);
+}
+
+.decide {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.error {
+  color: var(--tone-important);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.find {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.findStatus {
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+/* The margin carries the key on wide screens; the badge carries it when the margin folds. */
+.claimBody > .badge .key {
+  display: none;
+}
+
+@media (max-width: 36rem) {
+  .claimBody > .badge .key {
+    display: inline;
+  }
+
+  .claim {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .marginKey {
+    display: none;
+  }
+}

@@ -8,21 +8,24 @@
  * so it is registered as *synthetic* and never counted or marked as uncited.
  */
 import type { ArtifactType } from '../../../lib/api/types/artifacts';
-import type { Confidence, RenderBlock, Span, Spans } from '../../../lib/contract';
+import type { Confidence, RenderBlock, Spans } from '../../../lib/contract';
 import { ROLE_LABELS, parseGuide, type GuideKey } from '../../guide/guide';
+import { explainerBlocks, paperCardBlocks, parseExplainer, parsePaperCard } from '../../papers/bodies';
+import { claimSetBlocks, intentsBlocks, parseClaimSet, parseIntents, parseResults, resultsBlocks } from '../../papers/extract-bodies';
+import {
+  assessmentBlocks,
+  journalClubBlocks,
+  notationBlocks,
+  parseAssessment,
+  parseJournalClub,
+  parseNotation,
+  parseReview,
+  reviewBlocks,
+} from '../../papers/study-bodies';
+import { RECOMMENDATION_LABELS } from '../../papers/study-labels';
+import { blocks, isRecord, list, spans, str, synthetic, type Json } from './read';
 
-const SYNTHETIC = new WeakSet<Span>();
-
-/** A span the adapter wrote for structure, not a claim to ground. */
-export function synthetic(text: string, mark?: Span['mark']): Span {
-  const span: Span = mark ? { text, cites: [], mark } : { text, cites: [] };
-  SYNTHETIC.add(span);
-  return span;
-}
-
-export function isSynthetic(span: Span): boolean {
-  return SYNTHETIC.has(span);
-}
+export { isSynthetic, synthetic } from './read';
 
 export interface BodyFact {
   label: string;
@@ -34,24 +37,6 @@ export interface AdaptedBody {
   /** Non-claim metadata shown above the body: kind, caption, tags, concepts… */
   facts: BodyFact[];
   confidence: Confidence | null;
-}
-
-type Json = Record<string, unknown>;
-
-const isRecord = (v: unknown): v is Json => typeof v === 'object' && v !== null && !Array.isArray(v);
-const list = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
-const str = (v: unknown): string => (typeof v === 'string' ? v : '');
-
-function spans(v: unknown): Spans {
-  return list(v).filter(isRecord).map((s) => ({
-    text: str(s.text),
-    cites: list(s.cites).filter((c): c is string => typeof c === 'string'),
-    ...(typeof s.mark === 'string' ? { mark: s.mark as Span['mark'] } : {}),
-  }));
-}
-
-function blocks(v: unknown): RenderBlock[] {
-  return list(v).filter(isRecord) as unknown as RenderBlock[];
 }
 
 function confidenceOf(body: Json): Confidence | null {
@@ -248,6 +233,26 @@ export function adaptBody(type: ArtifactType, raw: unknown): AdaptedBody {
     }
     case 'salience_marks':
       return { blocks: salienceMarks(body), facts: [], confidence };
+    case 'paper_card':
+      return { blocks: paperCardBlocks(parsePaperCard(body)), facts: [], confidence };
+    case 'paper_explainer':
+      return { blocks: explainerBlocks(parseExplainer(body)), facts: [], confidence };
+    case 'claim_set':
+      return { blocks: claimSetBlocks(parseClaimSet(body)), facts: [], confidence };
+    case 'results_table':
+      return { blocks: resultsBlocks(parseResults(body)), facts: [], confidence };
+    case 'citation_intents':
+      return { blocks: intentsBlocks(parseIntents(body)), facts: [], confidence };
+    case 'paper_assessment':
+      return { blocks: assessmentBlocks(parseAssessment(body)), facts: [], confidence };
+    case 'paper_review': {
+      const review = parseReview(body);
+      return { blocks: reviewBlocks(review), facts: [...fact('Recommendation', review.verdict.recommendation ? RECOMMENDATION_LABELS[review.verdict.recommendation] : '')], confidence };
+    }
+    case 'notation_table':
+      return { blocks: notationBlocks(parseNotation(body)), facts: [], confidence };
+    case 'journal_club':
+      return { blocks: journalClubBlocks(parseJournalClub(body)), facts: [], confidence };
     case 'outline_override':
       return { blocks: outline(body), facts: [], confidence };
     case 'figure_description': {

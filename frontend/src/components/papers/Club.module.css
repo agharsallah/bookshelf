@@ -1,0 +1,161 @@
+/*
+ * Journal club: a handout. One loud thing — the pitch, set like a pull quote — then the
+ * figure, the weak spot, the questions (a sequence: ask them in order) and the debate,
+ * two columns facing each other. Prints in ink on white, one column.
+ */
+.pack {
+  display: grid;
+  gap: var(--space-7);
+  max-inline-size: 56rem;
+}
+
+.pack h2 {
+  margin-block-end: var(--space-3);
+  padding-block-end: var(--space-2);
+  border-block-end: 1px solid var(--rule);
+  font-family: var(--font-read);
+  font-size: var(--text-lg);
+  font-weight: 560;
+  letter-spacing: -0.01em;
+}
+
+.pitch p {
+  max-inline-size: 40ch;
+  font-family: var(--font-read);
+  font-size: clamp(1.35rem, 2.8vw, 1.9rem);
+  font-weight: 420;
+  line-height: 1.35;
+  letter-spacing: -0.012em;
+  text-wrap: balance;
+}
+
+.figure figure {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.figure img {
+  max-inline-size: 100%;
+  max-block-size: 28rem;
+  justify-self: start;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-m);
+  background: #fff;
+}
+
+.figure figcaption {
+  display: grid;
+  gap: var(--space-1);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.caption {
+  color: var(--ink-2);
+}
+
+.figureLink {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.why {
+  max-inline-size: var(--measure);
+  margin-block-start: var(--space-3);
+  line-height: var(--leading-read);
+}
+
+.weakest p {
+  max-inline-size: var(--measure);
+  padding-inline-start: var(--space-4);
+  border-inline-start: 3px solid var(--tone-caution);
+  font-family: var(--font-read);
+  font-size: var(--text-md);
+  line-height: 1.5;
+}
+
+.questions {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: q;
+}
+
+.questions li {
+  display: grid;
+  grid-template-columns: 2.5rem minmax(0, 1fr);
+  max-inline-size: calc(var(--measure) + 2.5rem);
+  font-family: var(--font-read);
+  font-size: var(--text-base);
+  line-height: 1.5;
+  counter-increment: q;
+}
+
+.questions li::before {
+  color: var(--accent);
+  font-family: var(--font-read);
+  font-size: var(--text-md);
+  font-style: italic;
+  line-height: 1.2;
+  content: counter(q);
+}
+
+.debate {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  gap: var(--space-5);
+}
+
+.debate > div {
+  padding: var(--space-4);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-m);
+}
+
+.debate > div[data-side='for'] {
+  border-block-start: 3px solid var(--tone-insight);
+}
+
+.debate > div[data-side='against'] {
+  border-block-start: 3px solid var(--tone-important);
+}
+
+.debate h3 {
+  margin-block-end: var(--space-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-ui);
+  font-weight: 600;
+}
+
+.debate ul {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding-inline-start: 1.1em;
+  line-height: var(--leading-read);
+}
+
+@media print {
+  .pack {
+    gap: 1.2rem;
+  }
+
+  .pitch p {
+    font-size: 16pt;
+  }
+
+  .figure img {
+    max-block-size: 9cm;
+  }
+
+  .debate {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .pack section {
+    break-inside: avoid;
+  }
+}

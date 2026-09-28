@@ -1,0 +1,94 @@
+---
+/**
+ * Claims tab: the paper's claims (extract-claims' `claim_set`) grouped by the section they
+ * rest on, with kind, strength and cited evidence, and how the shelf bears on each
+ * (accepted and proposed claim ↔ claim relations). Relations exist only for an approved
+ * claim set (its rows are what other papers are compared with); a draft shows its claims
+ * alone, with the way to review it.
+ */
+import { Problem } from '../../common/Problem';
+import { serverApi } from '../../../lib/api/server';
+import { load } from '../../../lib/documents/server';
+import { getPaperClaims } from '../../../lib/papers/claims-api';
+import { claimGroups, groupDraftClaims, relationTotals } from '../claims';
+import ClaimsBody, { FindRelations } from '../ClaimsBody';
+import DraftNote from '../DraftNote.astro';
+import { parseClaimSet } from '../extract-bodies';
+import { passageUnits } from '../load';
+import QueueJob from '../QueueJob';
+import { loadStudyArtifact } from '../study-load';
+import { STUDY_SKILLS } from '../study-labels';
+import TabEmpty from '../TabEmpty.astro';
+import type { TabViewProps } from '../tabs';
+
+type Props = TabViewProps;
+
+const { paper } = Astro.props;
+const loaded = await load(async () => {
+  const study = await loadStudyArtifact(paper.id, 'claim_set', STUDY_SKILLS.claims);
+  if (!study.best) return { study, shown: null };
+  const units = await passageUnits(paper.slug);
+  const approved = study.best.standing === 'approved';
+  const groups = approved ? claimGroups(await getPaperClaims(serverApi(), paper.slug)) : groupDraftClaims(parseClaimSet(study.best.artifact.body), units);
+  return { study, shown: { groups, units, approved } };
+});
+const data = loaded.ok ? loaded.value : null;
+const shown = data?.shown ?? null;
+const total = shown ? shown.groups.reduce((n, g) => n + g.claims.length, 0) : 0;
+const totals = shown ? relationTotals(shown.groups) : null;
+const bearing = totals ? totals.supported_by + totals.contradicted_by + totals.extended_by + totals.supports + totals.extends : 0;
+---
+
+{
+  !data ? (
+    !loaded.ok && <Problem title="The claims could not be loaded." problem={loaded.problem} />
+  ) : shown && data.study.best ? (
+    <div class="claims">
+      <DraftNote chosen={data.study.best} what="Claim set" />
+      <div class="bar">
+        <p class="summary">
+          {total === 1 ? '1 claim' : `${total} claims`}
+          {shown.approved
+            ? bearing > 0
+              ? `, ${bearing} ${bearing === 1 ? 'relation' : 'relations'} to other papers on your shelf`
+              : ', none related to other papers yet'
+            : '. Once the claim set is approved, each claim is compared with the claims of your other papers.'}
+          {totals && totals.proposed > 0 && ` · ${totals.proposed} proposed, waiting for you`}
+        </p>
+        {shown.approved && <FindRelations client:visible slug={paper.slug} />}
+      </div>
+      <ClaimsBody client:load slug={paper.slug} documentId={paper.id} groups={shown.groups} units={shown.units} />
+    </div>
+  ) : (
+    <TabEmpty
+      title="No claims listed yet"
+      body="Every claim the paper makes, one sentence each, with its kind (method, result…), how strongly it is backed (measured, argued, speculated) and the passages it rests on. Approved claims are compared with those of your other papers: which support it, which contradict it."
+    >
+      <QueueJob client:load request={data.study.request} label="List the claims now" initialJob={data.study.job} />
+    </TabEmpty>
+  )
+}
+
+<style>
+  .claims {
+    display: grid;
+    gap: var(--space-5);
+    max-width: 68rem;
+    margin-inline: auto;
+  }
+
+  .bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3) var(--space-5);
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .summary {
+    max-inline-size: 44rem;
+    color: var(--ink-2);
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+  }
+</style>

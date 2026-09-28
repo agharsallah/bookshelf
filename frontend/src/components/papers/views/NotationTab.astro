@@ -1,0 +1,69 @@
+---
+/**
+ * Notation tab: make-notation's `notation_table`, every symbol of the paper in order of
+ * first use, set in KaTeX (pre-rendered here), with its meaning and where it first
+ * appears (by the paper's own section heading). The pipeline makes it only for papers with mathematics; any paper can ask.
+ */
+import { Problem } from '../../common/Problem';
+import { getOutline, load } from '../../../lib/documents/server';
+import { renderInlineMath } from '../../../lib/katex';
+import DraftNote from '../DraftNote.astro';
+import { passageUnitsOf } from '../load';
+import { placeSymbols, prepareSymbols } from '../notation';
+import NotationBody from '../NotationBody';
+import QueueJob from '../QueueJob';
+import { parseNotation } from '../study-bodies';
+import { loadStudyArtifact } from '../study-load';
+import { STUDY_SKILLS } from '../study-labels';
+import TabEmpty from '../TabEmpty.astro';
+import type { TabViewProps } from '../tabs';
+
+type Props = TabViewProps;
+
+const { paper } = Astro.props;
+const loaded = await load(async () => {
+  const study = await loadStudyArtifact(paper.id, 'notation_table', STUDY_SKILLS.notation);
+  if (!study.best) return { study, shown: null };
+  const [prepared, outline] = await Promise.all([prepareSymbols(parseNotation(study.best.artifact.body), renderInlineMath), getOutline(paper.slug)]);
+  return { study, shown: { symbols: placeSymbols(prepared, outline.nodes), units: passageUnitsOf(outline.nodes) } };
+});
+const data = loaded.ok ? loaded.value : null;
+const shown = data?.shown ?? null;
+---
+
+{
+  !data ? (
+    !loaded.ok && <Problem title="The notation could not be loaded." problem={loaded.problem} />
+  ) : shown && data.study.best ? (
+    <div class="notation">
+      <DraftNote chosen={data.study.best} what="Notation table" />
+      {shown.symbols.length === 0 ? (
+        <p class="none">The notation table lists no symbols.</p>
+      ) : (
+        <NotationBody client:load slug={paper.slug} symbols={shown.symbols} units={shown.units} />
+      )}
+    </div>
+  ) : (
+    <TabEmpty
+      title="No notation table yet"
+      body="Every symbol the paper uses, in the order it first appears, with what it stands for and a link to where it is introduced. Made by itself for papers with equations; ask for one here for any other."
+    >
+      <QueueJob client:load request={data.study.request} label="Make the notation table now" initialJob={data.study.job} />
+    </TabEmpty>
+  )
+}
+
+<style>
+  .notation {
+    display: grid;
+    gap: var(--space-5);
+    max-width: 68rem;
+    margin-inline: auto;
+  }
+
+  .none {
+    color: var(--ink-3);
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+  }
+</style>

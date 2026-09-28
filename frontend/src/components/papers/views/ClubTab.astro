@@ -1,0 +1,157 @@
+---
+/**
+ * Journal club tab: make-journal-club's pack for presenting the paper to a group — pitch,
+ * key figure (its crop, fetched from the figure node, with why and a link), weakest
+ * assumption, five questions, the debate. Prints as a one-page handout: the site's and
+ * the page's chrome are hidden in print.
+ */
+import { Problem } from '../../common/Problem';
+import { serverApi } from '../../../lib/api/server';
+import type { NodeSubtree } from '../../../lib/api/types/documents';
+import { load } from '../../../lib/documents/server';
+import { mediaSrc } from '../../reader/figures';
+import ClubBody from '../ClubBody';
+import DraftNote from '../DraftNote.astro';
+import { authorLine, venueLine } from '../labels';
+import { passageUnits } from '../load';
+import QueueJob from '../QueueJob';
+import { parseJournalClub } from '../study-bodies';
+import { loadStudyArtifact } from '../study-load';
+import { STUDY_SKILLS } from '../study-labels';
+import TabEmpty from '../TabEmpty.astro';
+import type { TabViewProps } from '../tabs';
+
+type Props = TabViewProps;
+
+const { paper } = Astro.props;
+
+/** The key figure's crop, if the anchor is a figure the parser extracted; best effort. */
+async function figureImage(anchor: string) {
+  try {
+    const { node } = await serverApi().get<NodeSubtree>(`nodes/${encodeURIComponent(paper.slug)}/${anchor}`);
+    const path = node.meta.image_path;
+    if (!path) return null;
+    const caption = node.meta.caption?.trim() || null;
+    return { src: mediaSrc(path), alt: caption ?? node.text?.trim() ?? 'The key figure', caption };
+  } catch {
+    return null;
+  }
+}
+
+const loaded = await load(async () => {
+  const study = await loadStudyArtifact(paper.id, 'journal_club', STUDY_SKILLS.club);
+  if (!study.best) return { study, shown: null };
+  const club = parseJournalClub(study.best.artifact.body);
+  const [figure, units] = await Promise.all([club.keyFigure ? figureImage(club.keyFigure.anchor) : Promise.resolve(null), passageUnits(paper.slug)]);
+  return { study, shown: { club, figure, units } };
+});
+const data = loaded.ok ? loaded.value : null;
+const shown = data?.shown ?? null;
+const byline = [authorLine(paper.authors), venueLine(paper.venue, paper.year)].filter(Boolean).join('. ');
+---
+
+{
+  !data ? (
+    !loaded.ok && <Problem title="The journal club pack could not be loaded." problem={loaded.problem} />
+  ) : shown && data.study.best ? (
+    <div class="club">
+      <div class="screen-only bar">
+        <DraftNote chosen={data.study.best} what="Journal club pack" />
+        <button type="button" class="btn" data-print>
+          Print the handout
+        </button>
+      </div>
+      <header class="print-only handout-head">
+        <p class="handout-title">{paper.title}</p>
+        {byline && <p>{byline}</p>}
+      </header>
+      <ClubBody client:visible slug={paper.slug} club={shown.club} figure={shown.figure} units={shown.units} />
+    </div>
+  ) : (
+    <TabEmpty
+      title="No journal club pack yet"
+      body="Everything to present the paper to a group: a two-sentence pitch, the one figure to put up and why, its weakest assumption, five questions to ask in order, and the case for and against."
+    >
+      <QueueJob client:load request={data.study.request} label="Prepare the journal club now" initialJob={data.study.job} />
+    </TabEmpty>
+  )
+}
+
+<script>
+  document.addEventListener('astro:page-load', () => {
+    document.querySelector('[data-print]')?.addEventListener('click', () => window.print());
+  });
+</script>
+
+<style>
+  .club {
+    display: grid;
+    gap: var(--space-5);
+    max-width: 68rem;
+    margin-inline: auto;
+  }
+
+  .bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .print-only {
+    display: none;
+  }
+
+  @media print {
+    .screen-only {
+      display: none;
+    }
+
+    .print-only {
+      display: block;
+    }
+
+    .handout-head {
+      padding-block-end: 0.4rem;
+      border-block-end: 1px solid #000;
+      font-family: var(--font-ui);
+      font-size: 10pt;
+    }
+
+    .handout-title {
+      font-family: var(--font-read);
+      font-size: 15pt;
+      font-weight: 600;
+    }
+  }
+</style>
+
+<style is:global>
+  @media print {
+    :root {
+      color-scheme: light;
+    }
+
+    body {
+      background: #fff;
+      color: #000;
+    }
+
+    .masthead,
+    .colophon,
+    .skip-link,
+    nav.tabs,
+    header.head {
+      display: none !important;
+    }
+
+    main.main {
+      padding: 0;
+    }
+
+    a {
+      color: inherit;
+    }
+  }
+</style>

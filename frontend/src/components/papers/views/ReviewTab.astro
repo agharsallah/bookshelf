@@ -1,0 +1,232 @@
+---
+/**
+ * Review tab: the model's assessment (assess-paper: rubric bars with cited reasons,
+ * reproducibility checklist, related shelf papers) beside YOUR rating — side by side,
+ * never merged — then the peer-review report (review-paper) and how to argue with it in
+ * Claude Code (the Socratic mode). Either artifact can be missing and made here.
+ */
+import { Problem } from '../../common/Problem';
+import { serverApi } from '../../../lib/api/server';
+import { load } from '../../../lib/documents/server';
+import { listPapers } from '../../../lib/papers/api';
+import AssessmentBody from '../AssessmentBody';
+import CopyCommand from '../CopyCommand';
+import DraftNote from '../DraftNote.astro';
+import { starsLabel, VERDICT_LABELS } from '../labels';
+import { passageUnits } from '../load';
+import QueueJob from '../QueueJob';
+import { socraticCommand } from '../review';
+import ReviewReport from '../ReviewReport';
+import { parseAssessment, parseReview } from '../study-bodies';
+import { loadStudyArtifact } from '../study-load';
+import { STUDY_SKILLS } from '../study-labels';
+import TabEmpty from '../TabEmpty.astro';
+import type { TabViewProps } from '../tabs';
+
+type Props = TabViewProps;
+
+const { paper } = Astro.props;
+const loaded = await load(async () => {
+  const [assessment, review] = await Promise.all([
+    loadStudyArtifact(paper.id, 'paper_assessment', STUDY_SKILLS.assessment),
+    loadStudyArtifact(paper.id, 'paper_review', STUDY_SKILLS.review),
+  ]);
+  const parsed = assessment.best ? parseAssessment(assessment.best.artifact.body) : null;
+  const [units, shelf] = await Promise.all([
+    assessment.best || review.best ? passageUnits(paper.slug) : Promise.resolve([]),
+    parsed && parsed.relatedShelf.length > 0 ? listPapers(serverApi(), { limit: 100 }).catch(() => null) : Promise.resolve(null),
+  ]);
+  const titles = Object.fromEntries((shelf?.items ?? []).map((p) => [p.slug, p.title]));
+  return { assessment, review, parsed, report: review.best ? parseReview(review.best.artifact.body) : null, units, titles };
+});
+const data = loaded.ok ? loaded.value : null;
+const rating = paper.rating;
+const ratedOn = rating ? new Date(rating.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : null;
+---
+
+{
+  !data ? (
+    !loaded.ok && <Problem title="The review could not be loaded." problem={loaded.problem} />
+  ) : (
+    <div class="review">
+      <section class="part" aria-labelledby="review-assessment">
+        <h2 id="review-assessment">Assessment</h2>
+        <div class="voices">
+          <div class="model">
+            <h3 class="voice">The model’s view</h3>
+            {data.assessment.best && data.parsed ? (
+              <>
+                <DraftNote chosen={data.assessment.best} what="Assessment" />
+                <AssessmentBody client:visible slug={paper.slug} assessment={data.parsed} units={data.units} titles={data.titles} />
+              </>
+            ) : (
+              <TabEmpty
+                headingId="assessment-empty"
+                title="Not assessed yet"
+                body="Scores from 1 to 5 for novelty, rigour, evidence, clarity, reproducibility and relevance to your shelf, each with the passages behind it, and a checklist of what you would need to reproduce the work."
+              >
+                <QueueJob client:load request={data.assessment.request} label="Assess the paper now" initialJob={data.assessment.job} />
+              </TabEmpty>
+            )}
+          </div>
+          <aside class="yours" aria-labelledby="review-yours">
+            <h3 class="voice" id="review-yours">Yours</h3>
+            {rating ? (
+              <div class="rating">
+                <p class="stars" aria-label={starsLabel(rating.stars)}>
+                  <span aria-hidden="true">
+                    {'★'.repeat(rating.stars)}
+                    <span class="off">{'★'.repeat(5 - rating.stars)}</span>
+                  </span>
+                </p>
+                {rating.verdict && <p class="verdict">{VERDICT_LABELS[rating.verdict]}</p>}
+                {rating.note && <p class="note">“{rating.note}”</p>}
+                <p class="when">Rated {ratedOn}</p>
+              </div>
+            ) : (
+              <p class="unrated">You have not rated it yet.</p>
+            )}
+            <p class="apart">Rate it at the top of the page. Your rating is kept apart from the model’s: neither changes the other.</p>
+          </aside>
+        </div>
+      </section>
+
+      <section class="part" aria-labelledby="review-report">
+        <h2 id="review-report">Peer review</h2>
+        {data.review.best && data.report ? (
+          <>
+            <DraftNote chosen={data.review.best} what="Peer review" />
+            <ReviewReport client:visible slug={paper.slug} review={data.report} units={data.units} />
+          </>
+        ) : (
+          <TabEmpty
+            headingId="review-empty"
+            title="No peer review yet"
+            body="A referee’s report: what the paper does, its strengths, its weaknesses by severity, questions for the authors, experiments that are missing, and a verdict with the reviewer’s confidence."
+          >
+            <QueueJob client:load request={data.review.request} label="Write a peer review now" initialJob={data.review.job} />
+          </TabEmpty>
+        )}
+        <div class="argue">
+          <h3>Argue with it</h3>
+          <p>
+            The reviewer can also debate the paper with you instead of reporting on it: one probing question at a time, weakest point first. It pushes back
+            with the paper’s own passages, concedes when you cite something it missed, and at the end can write the report from what you agreed. Run
+            this in Claude Code, in this project:
+          </p>
+          <CopyCommand client:visible command={socraticCommand(paper.slug)} />
+        </div>
+      </section>
+    </div>
+  )
+}
+
+<style>
+  .review {
+    display: grid;
+    gap: var(--space-7);
+    max-width: 68rem;
+    margin-inline: auto;
+  }
+
+  .part > h2 {
+    margin-block-end: var(--space-4);
+    padding-block-end: var(--space-2);
+    border-block-end: 1px solid var(--rule);
+    font-family: var(--font-read);
+    font-size: var(--text-lg);
+    font-weight: 560;
+    letter-spacing: -0.01em;
+  }
+
+  .voices {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(13rem, 17rem);
+    gap: var(--space-6);
+    align-items: start;
+  }
+
+  .model {
+    display: grid;
+    gap: var(--space-4);
+    min-inline-size: 0;
+  }
+
+  .voice {
+    color: var(--ink-3);
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+    font-weight: 600;
+  }
+
+  .yours {
+    display: grid;
+    gap: var(--space-3);
+    padding: var(--space-4);
+    border: 1px solid var(--rule);
+    border-block-start: 4px solid var(--marker);
+    border-radius: var(--radius-m);
+    background: var(--paper-raised);
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+  }
+
+  .rating {
+    display: grid;
+    gap: var(--space-1);
+  }
+
+  .stars {
+    color: var(--ink);
+    font-size: 1.4rem;
+    letter-spacing: 0.1em;
+  }
+
+  .off {
+    color: var(--rule-strong);
+  }
+
+  .verdict {
+    font-weight: 600;
+  }
+
+  .note {
+    color: var(--ink-2);
+    font-family: var(--font-read);
+    font-style: italic;
+  }
+
+  .when,
+  .apart,
+  .unrated {
+    color: var(--ink-3);
+  }
+
+  .argue {
+    display: grid;
+    gap: var(--space-2);
+    max-inline-size: 44rem;
+    margin-block-start: var(--space-6);
+    padding: var(--space-4) var(--space-5);
+    border: 1px dashed var(--rule-strong);
+    border-radius: var(--radius-m);
+  }
+
+  .argue h3 {
+    font-family: var(--font-ui);
+    font-size: var(--text-ui);
+    font-weight: 600;
+  }
+
+  .argue p {
+    color: var(--ink-2);
+    font-size: var(--text-sm);
+    line-height: 1.5;
+  }
+
+  @media (max-width: 52rem) {
+    .voices {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+</style>

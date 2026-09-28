@@ -1,0 +1,113 @@
+---
+/**
+ * Results tab: extract-results' `results_table` as a readable matrix (method × dataset and
+ * metric, the paper's method first, best per column, units, cites) with a bar chart per
+ * column, and a picker to compare it with other papers' results (`/papers/compare`).
+ */
+import { Problem } from '../../common/Problem';
+import { serverApi } from '../../../lib/api/server';
+import { load } from '../../../lib/documents/server';
+import { listPapers } from '../../../lib/papers/api';
+import ComparePicker from '../ComparePicker';
+import DraftNote from '../DraftNote.astro';
+import { parseResults } from '../extract-bodies';
+import { passageUnits } from '../load';
+import QueueJob from '../QueueJob';
+import ResultsBody from '../ResultsBody';
+import { loadStudyArtifact } from '../study-load';
+import { STUDY_SKILLS } from '../study-labels';
+import TabEmpty from '../TabEmpty.astro';
+import type { TabViewProps } from '../tabs';
+
+type Props = TabViewProps;
+
+/** Papers offered in the compare picker. */
+const COMPARE_LIMIT = 100;
+
+const { paper } = Astro.props;
+const loaded = await load(async () => {
+  const study = await loadStudyArtifact(paper.id, 'results_table', STUDY_SKILLS.results);
+  if (!study.best) return { study, shown: null };
+  const [units, shelf] = await Promise.all([passageUnits(paper.slug), listPapers(serverApi(), { limit: COMPARE_LIMIT }).catch(() => null)]);
+  const others = (shelf?.items ?? [])
+    .filter((p) => p.id !== paper.id && p.artifacts.some((a) => a.type === 'results_table' && a.review === 'approved'))
+    .map((p) => ({ slug: p.slug, title: p.title, year: p.year }));
+  return { study, shown: { rows: parseResults(study.best.artifact.body), units, others } };
+});
+const data = loaded.ok ? loaded.value : null;
+const shown = data?.shown ?? null;
+---
+
+{
+  !data ? (
+    !loaded.ok && <Problem title="The results could not be loaded." problem={loaded.problem} />
+  ) : shown && data.study.best ? (
+    <div class="results">
+      <DraftNote chosen={data.study.best} what="Results table" />
+      {shown.rows.length === 0 ? (
+        <p class="none">The results table lists no numbers: the paper may report none in its tables or results sections.</p>
+      ) : (
+        <div class="layout">
+          <div class="main">
+            <ResultsBody client:load slug={paper.slug} rows={shown.rows} units={shown.units} />
+          </div>
+          <aside class="side" aria-label="Compare">
+            <ComparePicker client:visible slug={paper.slug} others={shown.others} />
+            <p class="hint">Only approved results tables are compared; names are matched through your concepts.</p>
+          </aside>
+        </div>
+      )}
+    </div>
+  ) : (
+    <TabEmpty
+      title="No results table yet"
+      body="Every number the paper reports in its results, one row per method, dataset and metric, with its unit, whether higher is better, and the table or passage it comes from. Approved tables can be compared across papers."
+    >
+      <QueueJob client:load request={data.study.request} label="Extract the results now" initialJob={data.study.job} />
+    </TabEmpty>
+  )
+}
+
+<style>
+  .results {
+    display: grid;
+    gap: var(--space-5);
+    max-width: 68rem;
+    margin-inline: auto;
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(14rem, 18rem);
+    gap: var(--space-6);
+    align-items: start;
+  }
+
+  .main {
+    min-inline-size: 0;
+  }
+
+  .side {
+    display: grid;
+    gap: var(--space-2);
+    position: sticky;
+    inset-block-start: var(--space-5);
+  }
+
+  .hint,
+  .none {
+    color: var(--ink-3);
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+  }
+
+  @media (max-width: 60rem) {
+    .layout {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .side {
+      position: static;
+    }
+  }
+</style>

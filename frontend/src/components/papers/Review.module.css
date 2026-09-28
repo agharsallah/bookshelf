@@ -1,0 +1,242 @@
+/*
+ * Review: two voices kept apart. The model's assessment and the referee report read as
+ * filed documents; the checklist marks carry an icon and a word, the status tone only
+ * reinforces them.
+ */
+.stack,
+.report {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.stack h3,
+.report h3 {
+  margin-block-end: var(--space-2);
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.overall,
+.prose {
+  max-inline-size: var(--measure);
+  font-family: var(--font-read);
+  font-size: var(--text-md);
+  line-height: 1.5;
+  text-wrap: pretty;
+}
+
+.prose {
+  font-size: var(--text-base);
+}
+
+.reasons {
+  display: grid;
+  gap: var(--space-3);
+  margin: var(--space-4) 0 0;
+}
+
+.reasons dt {
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.score {
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+  font-weight: 400;
+}
+
+.reasons dd {
+  margin: 0;
+  color: var(--ink-2);
+  line-height: var(--leading-read);
+}
+
+/* ── Checklist ── */
+.checkSummary {
+  margin-block-end: var(--space-3);
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.checklist {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.checklist li {
+  display: grid;
+  grid-template-columns: 1.75rem minmax(8rem, 12rem) minmax(0, 1fr);
+  gap: var(--space-3);
+  align-items: baseline;
+  padding-block: var(--space-2);
+  border-block-start: 1px solid var(--rule);
+}
+
+.mark {
+  display: inline-grid;
+  place-items: center;
+  inline-size: 1.5rem;
+  block-size: 1.5rem;
+  border: 1.5px solid currentcolor;
+  border-radius: 50%;
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  font-weight: 700;
+}
+
+.checklist li[data-tone='good'] .mark {
+  color: var(--tone-insight);
+}
+
+.checklist li[data-tone='warning'] .mark {
+  color: var(--tone-caution);
+}
+
+.checklist li[data-tone='critical'] .mark {
+  color: var(--tone-important);
+}
+
+.checklist li[data-tone='neutral'] .mark {
+  border-style: dashed;
+  color: var(--ink-3);
+}
+
+.checkName {
+  display: grid;
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.checkStatus {
+  color: var(--ink-3);
+  font-size: var(--text-xs);
+  font-weight: 400;
+}
+
+.checkWhy {
+  color: var(--ink-2);
+  line-height: 1.5;
+}
+
+.related {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.related li {
+  display: grid;
+  gap: 0;
+}
+
+.related a {
+  font-weight: 600;
+}
+
+/* ── Report ── */
+.verdict {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-5);
+  border-inline-start: 4px solid var(--rule-strong);
+  background: var(--paper-sunken);
+  border-radius: 0 var(--radius-m) var(--radius-m) 0;
+}
+
+.verdict[data-recommendation='accept'],
+.verdict[data-recommendation='weak_accept'] {
+  border-inline-start-color: var(--tone-insight);
+}
+
+.verdict[data-recommendation='weak_reject'],
+.verdict[data-recommendation='reject'] {
+  border-inline-start-color: var(--tone-important);
+}
+
+.recommendation {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  align-items: baseline;
+  font-family: var(--font-read);
+  font-size: var(--text-lg);
+  font-weight: 560;
+}
+
+.confidence {
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: 400;
+}
+
+.twoUp {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+  gap: var(--space-5);
+}
+
+.items {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding-inline-start: 1.2em;
+  line-height: var(--leading-read);
+}
+
+.items li::marker {
+  color: var(--ink-3);
+}
+
+.severity {
+  padding: 0 var(--space-2);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-pill);
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+}
+
+.items li[data-severity='major'] .severity {
+  border-color: var(--tone-important);
+  color: var(--tone-important);
+  font-weight: 600;
+}
+
+/* ── Argue with it ── */
+.command {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.command code {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-m);
+  background: var(--paper-sunken);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  user-select: all;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 40rem) {
+  .checklist li {
+    grid-template-columns: 1.75rem minmax(0, 1fr);
+  }
+
+  .checkWhy {
+    grid-column: 2;
+  }
+}
