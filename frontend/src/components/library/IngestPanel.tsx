@@ -86,7 +86,7 @@ export function IngestPanel({ initialFiles, initialProblem = null }: IngestPanel
           {files === null
             ? 'Looking in library/…'
             : files.length === 0
-              ? 'Every file in library/ is already on the shelf. Drop a PDF, HTML or Markdown file there to add it.'
+              ? 'Every file in library/ is already on the shelf. Drop a PDF, EPUB, HTML or Markdown file there to add it.'
               : `${files.length} ${files.length === 1 ? 'file is' : 'files are'} waiting in library/.`}
         </p>
       </div>

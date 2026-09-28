@@ -20,7 +20,7 @@ import { deriveSkills, madeKey } from '../../../components/document/jobs';
 import { outlineFromTree } from '../../../components/document/outline-model';
 import { plural } from '../../../components/library/spine';
 import type { Page } from '../../../lib/api/types';
-import type { ReadingPosition } from '../../../lib/api/types/documents';
+import { KIND_LABELS, type ReadingPosition } from '../../../lib/api/types/documents';
 import type { JobPublic } from '../../../lib/api/types/jobs';
 import type { SkillPublic } from '../../../lib/api/types/skills';
 import { chapterStatus, madeIndex, type ChapterStatus } from '../../../lib/documents/artifacts';
@@ -83,7 +83,7 @@ const outline = data
   : [];
 const facts = data
   ? [
-      data.doc.kind === 'pdf' ? 'PDF' : 'Article',
+      KIND_LABELS[data.doc.kind],
       data.doc.page_count ? `${data.doc.page_count} pages` : null,
       data.doc.counts.figures ? plural(data.doc.counts.figures, 'figure') : null,
       data.doc.counts.notes ? plural(data.doc.counts.notes, 'note') : null,

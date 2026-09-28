@@ -4,7 +4,10 @@
  */
 import type { JobPublic, JobKind, JobState } from './jobs';
 
-export type DocumentKind = 'pdf' | 'article';
+export type DocumentKind = 'pdf' | 'epub' | 'article';
+
+/** How a document's kind reads in the UI ("EPUB, 312 pages"). */
+export const KIND_LABELS: Record<DocumentKind, string> = { pdf: 'PDF', epub: 'EPUB', article: 'Article' };
 
 /** Pipeline state machine (ARCHITECTURE.md §7). */
 export const DOCUMENT_STATUSES = [
