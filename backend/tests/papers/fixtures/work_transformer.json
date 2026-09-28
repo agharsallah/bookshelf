@@ -1,0 +1,41 @@
+{
+  "id": "https://openalex.org/W2626778328",
+  "doi": "https://doi.org/10.65215/2Q58A426",
+  "display_name": "Attention Is All You Need",
+  "publication_year": 2017,
+  "publication_date": "2017-06-12",
+  "authorships": [
+    {"author_position": "first", "author": {"id": "https://openalex.org/A5103024730", "display_name": "Ashish Vaswani"}},
+    {"author_position": "middle", "author": {"id": "https://openalex.org/A5021878400", "display_name": "Noam Shazeer"}},
+    {"author_position": "last", "author": {"id": null, "display_name": null}}
+  ],
+  "primary_location": {
+    "is_oa": false, "landing_page_url": "https://doi.org/10.65215/2q58a426", "pdf_url": null,
+    "source": null, "version": "acceptedVersion"
+  },
+  "best_oa_location": {
+    "is_oa": true, "landing_page_url": "https://doi.org/10.65215/r5bs2d54",
+    "pdf_url": "https://oa.example.org/download/108.pdf", "source": null
+  },
+  "locations": [
+    {"landing_page_url": "https://doi.org/10.65215/2q58a426", "pdf_url": null, "source": null},
+    {"landing_page_url": "http://arxiv.org/abs/1706.03762", "pdf_url": "https://arxiv.org/pdf/1706.03762",
+     "source": {"id": "https://openalex.org/S4306400194", "display_name": "arXiv (Cornell University)"}},
+    {"landing_page_url": "https://papers.nips.cc/paper/7181", "pdf_url": null,
+     "source": {"id": "https://openalex.org/S4306420609", "display_name": "Neural Information Processing Systems"}}
+  ],
+  "abstract_inverted_index": {
+    "The": [0, 6], "dominant": [1], "sequence": [2], "transduction": [3], "models": [4],
+    "are": [5], "Transformer": [7], "is": [8], "simpler.": [9]
+  },
+  "cited_by_count": 26936,
+  "topics": [
+    {"id": "https://openalex.org/T10181", "display_name": "Natural Language Processing Techniques", "score": 0.9993},
+    {"id": "https://openalex.org/T10028", "display_name": "Topic Modeling", "score": 0.99}
+  ],
+  "concepts": [
+    {"id": "https://openalex.org/C41008148", "display_name": "Computer science", "level": 0, "score": 0.85}
+  ],
+  "referenced_works": ["https://openalex.org/W1632114991", "https://openalex.org/W1810943226", "https://openalex.org/W1632114991"],
+  "related_works": ["https://openalex.org/W2965373594", "https://openalex.org/W2964308564"]
+}
