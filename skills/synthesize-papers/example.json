@@ -1,0 +1,34 @@
+{
+  "blocks": [
+    {"type": "heading", "level": 2, "text": "Routing passages before reading"},
+    {
+      "type": "paragraph",
+      "spans": [
+        {"text": "Both papers ask how a reader can ignore irrelevant retrieved passages.", "cites": ["gated-adapters:ch01/p002", "fid-light:ch01/p001"]},
+        {"text": "Gated adapters learn a per-passage gate, while FiD-light prunes passages after encoding.", "cites": ["gated-adapters:ch03/s01/p002", "fid-light:ch03/p004"]}
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "caution",
+      "spans": [{"text": "Their NQ numbers use different retrievers, so the 2.1-point gap is not a like-for-like comparison.", "cites": ["gated-adapters:ch04/s01/p003", "fid-light:ch04/p002"]}]
+    }
+  ],
+  "table": {
+    "type": "table",
+    "caption": "The set at a glance",
+    "header": ["Paper", "Approach", "NQ EM"],
+    "rows": [
+      [
+        {"text": "Gated retrieval adapters", "cites": ["gated-adapters:fm01/p001"]},
+        {"text": "learned gate before reading", "cites": ["gated-adapters:ch03/s01/p002"]},
+        {"text": "53.4", "cites": ["gated-adapters:ch04/s02/t001"]}
+      ],
+      [
+        {"text": "FiD-light", "cites": ["fid-light:fm01/p001"]},
+        {"text": "prune after encoding", "cites": ["fid-light:ch03/p004"]},
+        {"text": "51.3", "cites": ["fid-light:ch04/t001"]}
+      ]
+    ]
+  }
+}

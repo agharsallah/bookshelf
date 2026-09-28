@@ -1,0 +1,9 @@
+{
+  "reasons": [
+    {
+      "candidate_id": "6f1c2b1e-3a4d-4c5e-9f60-7a8b9c0d1e2f",
+      "reason": "Mixture of Experts, which you rated 5 stars, builds its router on this paper's gating network (\"we use the gating of [12]\"), so it is the missing half of an argument you already rate highly.",
+      "cites": ["0b8e7f6a-5d4c-4b3a-8291-0f1e2d3c4b5a#ch03/p002"]
+    }
+  ]
+}

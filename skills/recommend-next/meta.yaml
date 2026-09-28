@@ -1,0 +1,12 @@
+name: recommend-next
+version: 1
+description: Explain, in two or three sentences each, why the top-scored reading candidates are worth your time, citing the shelf passages that lead to them (the sentence citing it, the TL;DR of the paper it extends); the ranking itself stays Python's (docs/PAPERS.md P6).
+tier: reason
+job_kind: null          # utility skill: run by the recommend_next job (app/papers/recommend.py)
+artifact_type: null     # the reasons land in reading_candidates.reason / reason_cites
+scope: document
+selector: shelf_leads   # built by app/papers/selectors/shelf.py, not a registered selector
+vision: false
+genre: paper
+gates:
+  grounding_min: 0      # reasons cite qualified shelf anchors; Python checks each one

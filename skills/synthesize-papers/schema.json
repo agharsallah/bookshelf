@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bookshelf.local/skills/synthesize-papers/schema.json",
+  "title": "synthesize-papers output",
+  "description": "Render-contract blocks and one render-contract table block whose `cites` are qualified `<slug>:<anchor>` keys (the cross-document cite form of search answers). With the `<slug>:` qualifiers removed, `blocks` must satisfy contracts/render-blocks.schema.json and `table` its `table` block; Python checks that, and that every cite is a passage of a paper in the set.",
+  "type": "object",
+  "required": ["blocks", "table"],
+  "additionalProperties": false,
+  "properties": {
+    "blocks": {
+      "description": "The synthesis, related-work style: heading, paragraph, bullets, callout, quote blocks.",
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 80,
+      "items": { "type": "object", "required": ["type"] }
+    },
+    "table": {
+      "description": "One row per paper (first cell: its title), columns chosen by you: question, approach, data, headline result, limitation.",
+      "type": "object",
+      "required": ["type", "header", "rows"],
+      "properties": { "type": { "const": "table" } }
+    }
+  }
+}

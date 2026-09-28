@@ -1,0 +1,12 @@
+name: synthesize-papers
+version: 1
+description: Write a related-work style synthesis of a user-chosen set of papers — the shared question, how the approaches differ, where the results agree or conflict, what is still open — plus one comparison table, every statement cited to the papers' own passages across the set.
+tier: reason
+job_kind: null          # utility skill: run by the synthesize_papers job (app/papers/synthesis.py)
+artifact_type: null     # the synthesis lands in paper_syntheses (versioned, reviewed there)
+scope: document
+selector: paper_set     # built by app/papers/selectors/sets.py, not a registered selector
+vision: false
+genre: paper
+gates:
+  grounding_min: 0      # cites are `<slug>:<anchor>`; Python checks each against the set

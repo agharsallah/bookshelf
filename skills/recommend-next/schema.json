@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bookshelf.local/skills/recommend-next/schema.json",
+  "title": "recommend-next output",
+  "description": "One reason per input candidate. Reasons explain a ranking Python already made; they never reorder or rescore it.",
+  "type": "object",
+  "required": ["reasons"],
+  "additionalProperties": false,
+  "properties": {
+    "reasons": {
+      "type": "array",
+      "maxItems": 50,
+      "items": {
+        "type": "object",
+        "required": ["candidate_id", "reason", "cites"],
+        "additionalProperties": false,
+        "properties": {
+          "candidate_id": {
+            "description": "The candidate's `id`, copied from the input.",
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+          },
+          "reason": { "type": "string", "minLength": 1, "maxLength": 600 },
+          "cites": {
+            "description": "Shelf passages behind the reason, each a `cite` key copied from that candidate's `leads[].passages` (`<document_id>#<anchor>`).",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}#[a-z]+[0-9]+(/[a-z]+[0-9]+)*$"
+            },
+            "maxItems": 6,
+            "uniqueItems": true
+          }
+        }
+      }
+    }
+  }
+}
