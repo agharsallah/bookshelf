@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TEI xmlns="http://www.tei-c.org/ns/1.0">
+  <text><back><div type="references"><listBibl>
+    <biblStruct xml:id="b0">
+      <analytic>
+        <title level="a" type="main">A first engine paper</title>
+        <author><persName><forename type="first">Ada</forename><surname>Lovelace</surname></persName></author>
+      </analytic>
+      <monogr><title level="m">Proceedings of Engines</title><imprint><date type="published" when="2017"/></imprint></monogr>
+      <note type="raw_reference">Ada Lovelace. A first engine paper. In Proceedings of Engines, 2017.</note>
+    </biblStruct>
+    <biblStruct xml:id="b1">
+      <analytic>
+        <title level="a" type="main">Attention is all you need</title>
+        <author><persName><forename type="first">Ashish</forename><surname>Vaswani</surname></persName></author>
+      </analytic>
+      <monogr><title level="j">arXiv</title><imprint><date type="published" when="2017"/></imprint></monogr>
+      <idno type="arXiv">arXiv:1706.03762</idno>
+    </biblStruct>
+  </listBibl></div></back></text>
+</TEI>

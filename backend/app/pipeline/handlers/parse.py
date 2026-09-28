@@ -15,7 +15,16 @@ from app.core.config import get_settings
 from app.jobs.registry import HandlerResult, JobContext, PermanentJobError, handler
 from app.models import Document, Node
 from app.models.enums import DocumentStatus, JobKind, JobState
-from app.pipeline.parse import ParsedDocument, ParseError, load_override, parse_file, store_tree
+from app.papers.detect import apply_guess, paper_mode
+from app.papers.outline import paper_strategy
+from app.pipeline.parse import (
+    PDF_SUFFIXES,
+    ParsedDocument,
+    ParseError,
+    load_override,
+    parse_file,
+    store_tree,
+)
 from app.services.library import resolve_source_path
 from app.services.media import prune_document_media
 
@@ -76,6 +85,7 @@ def run_parse(ctx: JobContext) -> HandlerResult:
             slug=document.slug,
             media_dir=settings.media_dir,
             outline_override=load_override(override),
+            strategy=paper_strategy(paper_mode(document)),  # papers read their own headings
         )
     except (ParseError, ValueError) as exc:
         _mark_failed(session, document)
@@ -94,6 +104,8 @@ def run_parse(ctx: JobContext) -> HandlerResult:
     try:
         count = store_tree(session, document, parsed)
         _fill_metadata(document, parsed)
+        judged = path.suffix.lower() in PDF_SUFFIXES and override is None
+        apply_guess(document, parsed, from_tree=not judged)  # docs/PAPERS.md §3 "Genre"
         document.page_count = parsed.page_count
         document.parse_tier = parsed.tier
         document.status = (
@@ -114,5 +126,6 @@ def run_parse(ctx: JobContext) -> HandlerResult:
             "tier": parsed.tier,
             "needs_review": parsed.needs_review,
             "warnings": parsed.warnings[:MAX_REPORTED_WARNINGS],
+            "genre": document.genre.value,
         }
     )

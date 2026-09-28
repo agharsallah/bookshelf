@@ -15,6 +15,7 @@ from app.pipeline.parse.markdown import parse_markdown
 from app.pipeline.parse.model import ParsedDocument, ParsedNode, ParseError
 from app.pipeline.parse.override import OUTLINE_OVERRIDE, OverrideChapter, load_override
 from app.pipeline.parse.pdf import parse_pdf
+from app.pipeline.parse.pdf.headings import DetectedOutline, OutlineStrategy
 from app.pipeline.parse.store import store_tree
 
 PDF_SUFFIXES = frozenset({".pdf"})
@@ -30,15 +31,24 @@ def parse_file(
     slug: str,
     media_dir: Path,
     outline_override: list[OverrideChapter] | None = None,
+    strategy: OutlineStrategy | None = None,
 ) -> ParsedDocument:
-    """Pick the parser by suffix. Raises `ParseError` for unreadable or unsupported input."""
+    """Pick the parser by suffix. Raises `ParseError` for unreadable or unsupported input.
+
+    `strategy` (PDF only) may take over heading placement, e.g. for scientific papers."""
     suffix = path.suffix.lower()
     if suffix not in SUPPORTED_SUFFIXES:
         raise ParseError(f"unsupported file type {suffix or '(none)'}")
     if not path.is_file():
         raise ParseError(f"file not found: {path.name}")
     if suffix in PDF_SUFFIXES:
-        return parse_pdf(path, slug=slug, media_dir=media_dir, outline_override=outline_override)
+        return parse_pdf(
+            path,
+            slug=slug,
+            media_dir=media_dir,
+            outline_override=outline_override,
+            strategy=strategy,
+        )
     if suffix in EPUB_SUFFIXES:
         return parse_epub(path, slug=slug, media_dir=media_dir)
     if suffix in HTML_SUFFIXES:
@@ -48,7 +58,10 @@ def parse_file(
 
 __all__ = [
     "OUTLINE_OVERRIDE",
+    "PDF_SUFFIXES",
     "SUPPORTED_SUFFIXES",
+    "DetectedOutline",
+    "OutlineStrategy",
     "OverrideChapter",
     "ParseError",
     "ParsedDocument",

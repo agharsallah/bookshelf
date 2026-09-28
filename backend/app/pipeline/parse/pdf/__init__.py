@@ -22,7 +22,9 @@ from app.pipeline.parse.pdf import geometry as geo
 from app.pipeline.parse.pdf import mupdf
 from app.pipeline.parse.pdf.furniture import strip_furniture
 from app.pipeline.parse.pdf.headings import (
+    DetectedOutline,
     Item,
+    OutlineStrategy,
     Placed,
     body_size,
     detect_headings,
@@ -129,8 +131,11 @@ def parse_pdf(
     slug: str,
     media_dir: Path,
     outline_override: list[OverrideChapter] | None = None,
+    strategy: OutlineStrategy | None = None,
 ) -> ParsedDocument:
-    """Parse a PDF; figure and display-math crops go to `media_dir/<slug>/<anchor>.png`."""
+    """Parse a PDF; figure and display-math crops go to `media_dir/<slug>/<anchor>.png`.
+
+    `strategy` may take over heading placement (never over an `outline_override`)."""
     try:
         doc = mupdf.open_pdf(path)
     except (pymupdf.FileDataError, pymupdf.EmptyFileError, RuntimeError) as exc:
@@ -148,15 +153,24 @@ def parse_pdf(
 
         toc = mupdf.toc(doc)
         parsed.tier = 3 if scanned else 1 if toc else 2
+        custom: DetectedOutline | None = None
+        if strategy is not None and not outline_override:
+            custom = strategy(items, body=body, toc=toc, page_count=doc.page_count)
         placed: list[Placed]
         if outline_override:
             placed = place_outline(items, override_entries(outline_override, doc.page_count))
+        elif custom is not None:
+            placed, parsed.genre = custom.placed, custom.genre
+            parsed.title = custom.title or parsed.title
+            if custom.note:
+                parsed.warnings.append(custom.note)
         elif parsed.tier == 1:
             placed = place_outline(items, toc_entries(toc))
         else:
             placed, title = detect_headings(items, body)
             parsed.title = parsed.title or title
-        parsed.needs_review = parsed.tier > 1 and not outline_override
+        confident = custom is not None and not custom.needs_review and not scanned
+        parsed.needs_review = parsed.tier > 1 and not outline_override and not confident
 
         events, refs = build_leaves(placed)
         finish_code(events)

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TEI xmlns="http://www.tei-c.org/ns/1.0">
+  <teiHeader>
+    <fileDesc>
+      <titleStmt><title level="a" type="main">Tiny Transformers Work</title></titleStmt>
+      <sourceDesc>
+        <biblStruct>
+          <analytic>
+            <author><persName><forename type="first">Ada</forename><surname>Lovelace</surname></persName></author>
+            <author><persName><forename type="first">Alan</forename><forename type="middle">M</forename><surname>Turing</surname></persName></author>
+            <idno type="DOI">10.1234/TINY.2021</idno>
+            <idno type="arXiv">arXiv:2101.00001v2</idno>
+          </analytic>
+          <monogr><imprint><date type="published" when="2021-01-01"/></imprint></monogr>
+        </biblStruct>
+      </sourceDesc>
+    </fileDesc>
+    <profileDesc><abstract><div><p>Tiny models work, and fast.</p></div></abstract></profileDesc>
+  </teiHeader>
+</TEI>

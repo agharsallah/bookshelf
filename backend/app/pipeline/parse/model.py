@@ -79,6 +79,7 @@ class ParsedDocument:
     children: list[ParsedNode] = field(default_factory=list)
     needs_review: bool = False
     warnings: list[str] = field(default_factory=list)
+    genre: str | None = None  # a genre an outline strategy recognised (e.g. papers.outline)
 
     def walk(self) -> Iterator[ParsedNode]:
         for child in self.children:

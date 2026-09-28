@@ -159,6 +159,9 @@ Every setting is an environment variable prefixed `BOOKSHELF_`, read from `.env`
 | `BOOKSHELF_MAX_RUNS_PER_DOCUMENT` | `400` | run ceiling |
 | `BOOKSHELF_LIBRARY_DIR` / `_MEDIA_DIR` / `_EXPORTS_DIR` / `_SKILLS_DIR` | repo folders | originals, crops, exports, skills |
 | `BOOKSHELF_CORS_ORIGINS` / `_ALLOWED_HOSTS` | `http://localhost:4321` / `*` | explicit in production |
+| `BOOKSHELF_OPENALEX_URL` / `_MAILTO` / `_API_KEY` | `https://api.openalex.org` / unset / unset | paper metadata; mailto = polite pool |
+| `BOOKSHELF_CLAIM_RELATE_THRESHOLD` / `_MAX_PAIRS` | `0.6` / `12` | claim tracker: cosine that nominates a cross-paper claim pair for `relate-claims`, pairs per job |
+| `BOOKSHELF_GROBID_URL` | unset | optional GROBID for paper header + references (P9) |
 
 Generate an API key: `python -c "import secrets; print(secrets.token_urlsafe(32))"`.
 

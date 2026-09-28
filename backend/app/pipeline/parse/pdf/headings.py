@@ -5,12 +5,14 @@
 - Tier 2 / 3: `detect_headings()` finds heading lines by font size and weight: sizes
   clearly above the body size are ranked (largest → chapter), and numbering patterns
   (`Part II`, `Chapter 3`, `3.2`, `3.2.1`) override the rank.
+- An `OutlineStrategy` (injected by the caller, e.g. `app.papers.outline` for scientific
+  papers) may take over placement for a document it recognises; it returns None otherwise.
 """
 
 import re
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Protocol
 
 from app.pipeline.parse.model import Heading, ParsedNode
 from app.pipeline.parse.override import OverrideChapter
@@ -39,6 +41,30 @@ class OutlineEntry:
     title: str
     page: int  # 1-based
     meta: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(slots=True)
+class DetectedOutline:
+    """A strategy's placement: headings interleaved with the stream, like `detect_headings`."""
+
+    placed: list[Placed]
+    title: str | None = None
+    needs_review: bool = True  # False: the strategy is confident enough to skip the human check
+    genre: str | None = None  # what the strategy recognised the document as
+    note: str | None = None  # why it is (not) confident, reported as a parse warning
+
+
+class OutlineStrategy(Protocol):
+    """Heading placement for a document kind the book heuristics serve badly."""
+
+    def __call__(
+        self,
+        items: list[Item],
+        *,
+        body: float,
+        toc: Sequence[tuple[int, str, int]],
+        page_count: int,
+    ) -> DetectedOutline | None: ...
 
 
 def _page(item: Item) -> int:

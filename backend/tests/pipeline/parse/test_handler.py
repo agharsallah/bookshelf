@@ -165,7 +165,7 @@ def test_markdown_article_is_parsed_without_review(session, library_dir: Path):
     result = _run(session, document)
 
     assert {k: v for k, v in result.result.items() if k != "pruned_media"} == {
-        "nodes": 2, "tier": 1, "needs_review": False, "warnings": []
+        "nodes": 2, "tier": 1, "needs_review": False, "warnings": [], "genre": "book"
     }  # fmt: skip
     assert (document.status, document.title) == (DocumentStatus.PARSED, "Notes")
 

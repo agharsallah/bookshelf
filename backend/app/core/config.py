@@ -126,6 +126,23 @@ class Settings(BaseSettings):
     # Measured on bge-small: cross-book concept pairs median 0.53, the closest ~0.67.
     concept_bridge_threshold: Annotated[float, Field(gt=0, le=1)] = 0.62
     concept_bridge_max_pairs: Annotated[int, Field(ge=1)] = 8
+    # Claim tracker (docs/PAPERS.md §5): cosine that nominates a cross-paper claim pair for
+    # `relate-claims`, and the most pairs one relate_claims job may send. Measured on
+    # bge-small: a contradicting pair on the same benchmark 0.62, two results on the same
+    # benchmark 0.61, unrelated results 0.49; topical neighbours reach 0.75 (the model says
+    # `none`, stored rejected, so each pair costs one call ever).
+    claim_relate_threshold: Annotated[float, Field(gt=0, le=1)] = 0.6
+    claim_relate_max_pairs: Annotated[int, Field(ge=1)] = 12
+
+    # --- Papers: external metadata (docs/PAPERS.md P7) ---------------------
+    # OpenAlex is asked on demand only. `mailto` joins the polite pool; an API key (free at
+    # openalex.org) lifts the anonymous limits. Both optional.
+    openalex_url: str = "https://api.openalex.org"
+    openalex_mailto: str | None = None
+    openalex_api_key: str | None = None
+    # Optional GROBID service (P9, e.g. http://localhost:8070): when set, paper_structure takes
+    # header metadata and references from it instead of the PyMuPDF heuristics.
+    grobid_url: str | None = None
 
     # --- Guardrails: network --------------------------------------------
     # `NoDecode` keeps pydantic-settings from JSON-parsing these, so the validator
@@ -163,7 +180,7 @@ class Settings(BaseSettings):
 
     @field_validator(
         "qdrant_url", "qdrant_api_key", "api_key", "model_explore", "model_distil",
-        "model_reason", mode="before",
+        "model_reason", "openalex_mailto", "openalex_api_key", "grobid_url", mode="before",
     )  # fmt: skip
     @classmethod
     def _blank_is_unset(cls, value: object) -> object:
