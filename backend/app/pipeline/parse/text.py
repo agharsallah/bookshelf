@@ -70,7 +70,7 @@ LISTING_CAPTION = re.compile(rf"^(?:listing|example)\s*{_NUM}\b[.:]?\s*", re.IGN
 _ASIDE_LABEL = re.compile(
     r"^(?P<label>(?:exercises?|problems?|key\s+(?:points?|takeaways?|ideas?)|warning|caution"
     r"|tip|remember|important|note|sidebar|try\s+it)(?:\s+\d+(?:\.\d+)*)?)"
-    r"\s*(?:[:.\u2014\u2013-]\s*|$)",
+    r"\s*(?:[:.\u2014\u2013-](?!\d)\s*|$)",  # `Exercise 5.15 through …` is prose
     re.IGNORECASE,
 )
 

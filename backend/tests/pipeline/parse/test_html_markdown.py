@@ -171,3 +171,14 @@ def test_markdown_without_headings_is_a_single_chapter():
     parsed = parse_markdown("Just one paragraph.\n")
 
     assert _shape(parsed) == [("ch01", "chapter"), ("ch01/p001", "paragraph")]
+
+
+def test_a_numbered_cross_reference_is_prose_not_an_aside():
+    from app.pipeline.parse.html import paragraph_leaf
+
+    prose = paragraph_leaf("Exercise 5.15 through Exercise 5.19 describe other features.")
+    labelled = paragraph_leaf("Exercise 5.15: Add a counter.")
+    assert prose is not None and prose.kind is NodeKind.PARAGRAPH
+    assert labelled is not None and (labelled.kind, labelled.meta["label"]) == (
+        NodeKind.ASIDE, "Exercise 5.15"
+    )  # fmt: skip
