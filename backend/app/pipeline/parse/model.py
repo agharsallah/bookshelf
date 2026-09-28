@@ -1,4 +1,4 @@
-"""The parsed tree: what every parser (PDF, HTML, Markdown) produces, before persistence.
+"""The parsed tree: what every parser (PDF, EPUB, HTML, Markdown) produces, before persistence.
 
 Pure data, no database. `store.store_tree()` turns a `ParsedDocument` into `nodes` rows.
 

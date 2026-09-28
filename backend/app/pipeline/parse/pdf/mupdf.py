@@ -111,3 +111,17 @@ def page_size(page: pymupdf.Page) -> tuple[float, float]:
 
 def pages(doc: pymupdf.Document) -> list[pymupdf.Page]:
     return [doc.load_page(i) for i in range(doc.page_count)]
+
+
+def image_to_png(data: bytes, target: Path, *, svg: bool, dpi: int = 144) -> None:
+    """Rasterise an SVG (or any image MuPDF reads that browsers may not) to a PNG file.
+
+    Used by the EPUB parser, whose figures are files in the book rather than page regions.
+    Raises `RuntimeError` / `ValueError` for data MuPDF cannot read.
+    """
+    target.parent.mkdir(parents=True, exist_ok=True)
+    if not svg:
+        pymupdf.Pixmap(data).save(target)
+        return
+    with pymupdf.open(stream=data, filetype="svg") as doc:
+        doc.load_page(0).get_pixmap(dpi=dpi).save(target)

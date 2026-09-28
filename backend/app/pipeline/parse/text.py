@@ -1,4 +1,4 @@
-"""Format-agnostic text heuristics shared by the PDF, HTML and Markdown parsers."""
+"""Format-agnostic text heuristics shared by the PDF, EPUB, HTML and Markdown parsers."""
 
 # Bullets, dashes and math glyphs below are the point, not look-alike typos.
 # ruff: noqa: RUF001
@@ -178,6 +178,12 @@ _TEX = {
 MATH_SYMBOLS = frozenset(_TEX) | frozenset("=^")
 
 
+def tex_symbol(char: str) -> str:
+    """The TeX for one math glyph (`π` → `\\pi `), or the glyph itself."""
+    tex = _TEX.get(char, char)
+    return f"{tex} " if tex.startswith("\\") else tex
+
+
 def latex_from_text(text: str) -> str | None:
     """LaTeX for a flat formula whose every symbol has a known mapping, else None.
 
@@ -186,7 +192,7 @@ def latex_from_text(text: str) -> str | None:
     parts: list[str] = []
     for char in text.strip():
         if char in _TEX:
-            parts.append(f"{_TEX[char]} " if _TEX[char].startswith("\\") else _TEX[char])
+            parts.append(tex_symbol(char))
         elif char.isascii():
             parts.append(char)
         else:
