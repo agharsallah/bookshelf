@@ -1,5 +1,6 @@
 /* Tables: book-style — rules above and below, hairlines between rows, no boxes. */
 .scroller {
+  position: relative; /* clip absolutely placed descendants with the table */
   max-width: 100%;
   overflow-x: auto;
   border-radius: var(--radius-s);

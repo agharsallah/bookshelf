@@ -75,6 +75,24 @@ describe('<Blocks> renders each block type', () => {
     expect(within(table).getByRole('cell').textContent).toBe('2');
   });
 
+  it('table cites shared by every cell show once under it, a row\'s once on its first cell', () => {
+    const cell = (text: string, ...cites: string[]) => ({ text, cites });
+    const { container, unmount } = render(
+      <Blocks
+        blocks={[
+          { type: 'table', header: ['System', 'F1'], rows: [[cell('BERT', 'ch05/p003'), cell('93.2', 'ch05/p003')], [cell('GPT', 'ch05/p003'), cell('82.3', 'ch05/p003')]] },
+        ]}
+      />,
+    );
+    expect(container.querySelectorAll('table a[data-anchor]')).toHaveLength(0);
+    expect([...container.querySelectorAll('a[data-anchor]')].map((a) => a.getAttribute('data-anchor'))).toEqual(['ch05/p003']);
+    unmount();
+
+    const rows = [[cell('BERT', 'ch05/p010'), cell('93.2', 'ch05/p010')], [cell('Human', 'ch05/p008'), cell('91.2', 'ch05/p009')]];
+    const { container: mixed } = render(<Blocks blocks={[{ type: 'table', header: ['System', 'F1'], rows }]} />);
+    expect([...mixed.querySelectorAll('table a[data-anchor]')].map((a) => a.getAttribute('data-anchor'))).toEqual(['ch05/p010', 'ch05/p008', 'ch05/p009']);
+  });
+
   it('chart as a labelled image with a data table of every value', () => {
     renderOne({
       type: 'chart',
