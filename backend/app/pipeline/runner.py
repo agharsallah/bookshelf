@@ -58,7 +58,10 @@ class RunResult:
     model: str | None
     cost_tokens: int | None
     duration_ms: int
-    usage: dict[str, Any] = field(default_factory=dict)
+    usage: dict[str, Any] = field(default_factory=dict)  # the envelope's raw token counts
+    cost_usd: float | None = None  # `total_cost_usd`: what the CLI says the call cost
+    api_ms: int | None = None  # `duration_api_ms`: time inside model API calls
+    turns: int | None = None  # `num_turns`: model turns (tool use makes more than one)
 
 
 class ModelRunner(Protocol):
@@ -96,7 +99,18 @@ def parse_envelope(stdout: str, *, duration_ms: int = 0) -> RunResult:
         cost_tokens=sum(counted) if counted else None,
         duration_ms=elapsed if isinstance(elapsed, int) else duration_ms,
         usage=usage,
+        cost_usd=_float_or_none(envelope.get("total_cost_usd")),
+        api_ms=_int_or_none(envelope.get("duration_api_ms")),
+        turns=_int_or_none(envelope.get("num_turns")),
     )
+
+
+def _int_or_none(value: Any) -> int | None:
+    return value if isinstance(value, int) and not isinstance(value, bool) else None
+
+
+def _float_or_none(value: Any) -> float | None:
+    return float(value) if isinstance(value, int | float) and not isinstance(value, bool) else None
 
 
 def _resolved_model(model_usage: Any) -> str | None:

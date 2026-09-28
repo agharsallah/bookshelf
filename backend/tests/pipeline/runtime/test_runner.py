@@ -44,6 +44,17 @@ def test_envelope_yields_text_resolved_model_and_tokens():
     assert result.model == "claude-haiku-4-5-20251001"
     assert result.cost_tokens == 3565
     assert result.duration_ms == 1499
+    assert (result.cost_usd, result.api_ms, result.turns) == (None, None, None)
+
+
+def test_envelope_keeps_cost_api_time_and_turns_for_telemetry():
+    envelope = {**ENVELOPE, "total_cost_usd": 0.0123, "duration_api_ms": 1210, "num_turns": 2}
+
+    result = parse_envelope(json.dumps(envelope))
+
+    assert result.cost_usd == pytest.approx(0.0123)
+    assert result.api_ms == 1210
+    assert result.turns == 2
 
 
 @pytest.mark.parametrize(
