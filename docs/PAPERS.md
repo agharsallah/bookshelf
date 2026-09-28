@@ -257,6 +257,7 @@ As built (`app/papers/profile.py`):
 | `assess-paper` | `paper_assessment` | document | reason | `overall` spans; `scores[{criterion, score 1–5, spans}]` for novelty · rigour · evidence · clarity · reproducibility · relevance (each once); `reproducibility[{item, status: yes·partial·no·unknown, spans}]` checklist (ten fixed items, each once); `related_shelf[{slug, why}]` |
 | `review-paper` | `paper_review` | document | reason | peer-review report: `summary`, `strengths[spans]`, `weaknesses[{severity: major·minor, spans}]`, `questions[spans]`, `missing_experiments[spans]`, `verdict {recommendation: accept·weak_accept·borderline·weak_reject·reject, confidence 1–5, spans}`; also an interactive Socratic reviewer in a Claude Code session (`/review-paper <slug> socratic`) |
 | `make-notation` | `notation_table` | document | explore | `symbols[{symbol_latex, meaning, first_anchor, cites}]` |
+| `explain-math` | `math_explainer` | document | distil | the maths for someone with no maths background: `big_picture {problem, map}` (a `diagram` of how the formulas feed the result), `formulas[1–8]` in learning order (each `anchor`, `latex`, `name`, `in_plain_words`, `symbols[{symbol, everyday}]`, `intuition`, `diagram`, `worked_example {setup, steps, result, extra}`, `why_here`, `added_value`, `common_confusion` caution callout, `try_it {question, answer}`, `explore_further`), `glossary` definitions, `love_note` insight callout, `path[{title, formula, minutes, goal}]` |
 | `make-journal-club` | `journal_club` | document | distil | `pitch`, `key_figure {anchor, why} \| null`, `weakest_assumption {spans}`, `questions[5]`, `debate {for, against}` |
 | `link-paper-concepts` | concepts + edges | document | reason | like `link-concepts`, with kinds method · dataset · metric · task |
 | `relate-claims` | claim ↔ claim edges (proposed) | claim pair | reason | like `relate-concepts`: supports · contradicts · extends · none, cites both papers |
@@ -292,10 +293,26 @@ As built (study and critique skills, `derive` jobs in `PAPER_DERIVES`, selectors
   and every cite are input blocks, no cite precedes `first_anchor`. "Contains the symbol" is not
   checked (LaTeX spellings vary too much to match reliably). Queued only when the paper has a
   formula (`Derive.when = has_math`); the selector raises otherwise.
+- **`explain-math`** (distil; `paper_math` selector in `papers/selectors/explain_math.py`:
+  `paper_notation`'s input plus the preferred `notation_table` symbols, the `paper_card` and
+  `existing_concepts`). Distil, not reason: the maths is given, the job is teaching it, and
+  Python checks what a model gets wrong (`papers/math_checks.py`, `CHECKS["explain-math"]`):
+  each formula `anchor` is a `math` block of the input or the prose a `distilled_formulas`
+  entry cites (a deviation from "math blocks only": BERT-style inline maths counts), once;
+  `latex` matches the source (whitespace, braces, sizing and spacing commands aside, or one
+  line of a multi-line source); every symbol is explained (best effort: letters and Greek
+  letters outside sub/superscripts; `\mathrm{…}` names and letter runs of 3+ skipped); every
+  `a op b = c` in a worked example or answer is recomputed at the precision written (`≈`
+  allows one unit in the last place); diagram node ids unique and edges joined; cites only
+  input anchors; `shelf_concept` from `existing_concepts`; path formulas chosen ones; a
+  formula section under 900 words. Queued with `when=has_math`; rendered by
+  `papers/render_math.py`; indexed. The paper page's `math` tab ("Math, explained", after
+  explain) shows it; the notation tab and the reader's notation panel link to it ("Explain
+  this math", `#formula-<anchor>` for a symbol used in a formula).
 - **`make-journal-club`** (`paper_journal_club` selector: whole paper + card + `figures:
   [{anchor, caption, explanation}]`, figure nodes only). `key_figure` is null only when the paper
   has no figure; otherwise it must be one of the offered figures (check).
-- All four are in `INDEXED_TYPES`; approving one (or a `paper_explainer`) on an indexed paper
+- All five are in `INDEXED_TYPES`; approving one (or a `paper_explainer`) on an indexed paper
   re-embeds it (`profile.INDEXED_DERIVES` → `orchestrator.guide_approved`).
 
 As built (shelf-level skills, both utility skills run inline by their Python job, like
@@ -512,7 +529,7 @@ under two papers); `GET …/synthesis` adds `sources` for its `<slug>:<anchor>` 
 | Surface | Route | Notes |
 |---|---|---|
 | Papers shelf | `/papers` | grid with venue, year, stars, pass, verdict facets; nav item |
-| Paper | `/documents/[ref]/paper/[tab]` | tabs: card · explain (level switch) · claims · results · references · notation · review (assessment + reviewer report + your rating) · club |
+| Paper | `/documents/[ref]/paper/[tab]` | tabs: card · explain (level switch) · math · claims · results · references · notation · review (assessment + reviewer report + your rating) · club |
 | Reader | existing | three-pass mode, claim margin marks, notation side panel |
 | Next | `/papers/next` | ranked candidates, score breakdown, reason with cites, add / dismiss, watch refresh |
 | Compare | `/papers/compare?ids=` | results matrix + bar chart per metric, "synthesize" → set |
