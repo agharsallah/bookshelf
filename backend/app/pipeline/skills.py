@@ -69,6 +69,9 @@ class GateConfig(BaseModel):
 
     grounding_min: Annotated[float, Field(ge=0, le=1)] = 0.9
     compression: tuple[float, float] | None = None
+    # Below this many source words the band's upper edge is not checked: a faithful note of
+    # a 70-word conclusion cannot be much shorter than it. None: always checked.
+    compression_min_source: Annotated[int | None, Field(ge=1)] = None
     max_words: Annotated[int | None, Field(ge=1)] = None
     # Book-wide runs: share of the input's chapters the output must cite at least once.
     # Only checked when the selector reports the chapters it offered (`Selection.chapters`).

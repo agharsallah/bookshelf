@@ -66,9 +66,29 @@ def schema_errors(
     errors = sorted(validator.iter_errors(output), key=lambda e: [str(p) for p in e.path])
     explained = [leaf for error in errors for leaf in _explain(error)]
     return [
-        f"schema: {'/'.join(str(p) for p in e.absolute_path) or '<root>'}: {e.message[:300]}"
+        f"schema: {'/'.join(str(p) for p in e.absolute_path) or '<root>'}: {_message(e)}"
         for e in explained[:_MAX_PROBLEMS]
     ]
+
+
+_MESSAGE_MAX = 300
+_SIZE_WORDS = {
+    "maxLength": ("characters", "at most"), "minLength": ("characters", "at least"),
+    "maxItems": ("items", "at most"), "minItems": ("items", "at least"),
+}  # fmt: skip
+
+
+def _message(error: ValidationError) -> str:
+    """A problem the retry can act on. jsonschema puts the offending value first ("'<the
+    whole caption>' is too long"), so a plain cut keeps the value and loses the verdict; say
+    sizes outright and, for anything else, keep the message's head and its tail."""
+    if error.validator in _SIZE_WORDS and isinstance(error.instance, (str, list)):
+        unit, bound = _SIZE_WORDS[str(error.validator)]
+        return f"has {len(error.instance)} {unit}; {bound} {error.validator_value} allowed"
+    message = error.message
+    if len(message) <= _MESSAGE_MAX:
+        return message
+    return f"{message[:120]} … {message[-(_MESSAGE_MAX - 123) :]}"
 
 
 def _explain(error: ValidationError) -> list[ValidationError]:
@@ -257,7 +277,7 @@ def evaluate(
         report.compression = round(words / source_words, 4)
         if report.compression < low:
             report.flags.append("compression_low")
-        elif report.compression > high:
+        elif report.compression > high and source_words >= (config.compression_min_source or 0):
             report.flags.append("compression_high")
     if config.max_words is not None and words > config.max_words:
         report.flags.append("over_max_words")

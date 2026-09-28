@@ -89,6 +89,32 @@ def test_schema_refs_resolve_through_the_render_contract_registry():
     ]
 
 
+def test_a_too_long_value_is_reported_by_its_size_not_cut_before_the_verdict():
+    """jsonschema says "'<the whole value>' is too long"; cut at 300 characters, the retry
+    prompt kept the value and lost the verdict, and the model repeated the same output."""
+    schema = {
+        "type": "object",
+        "properties": {
+            "caption": {"type": "string", "maxLength": 500},
+            "blocks": {"type": "array", "maxItems": 2},
+        },
+    }
+    output = {"caption": "x" * 521, "blocks": [{"type": "p", "text": "y" * 400}] * 3}
+
+    assert gates.schema_errors(schema, output) == [
+        "schema: blocks: has 3 items; at most 2 allowed",
+        "schema: caption: has 521 characters; at most 500 allowed",
+    ]
+
+
+def test_a_long_message_keeps_its_verdict():
+    schema = {"type": "object", "properties": {"kind": {"enum": ["chart", "table"]}}}
+
+    [problem] = gates.schema_errors(schema, {"kind": "z" * 400})
+
+    assert len(problem) < 340 and problem.endswith("is not one of ['chart', 'table']")
+
+
 def test_an_anyof_block_list_reports_what_is_wrong_in_the_block_type_meant():
     """A skill's own block subset is an `anyOf`; the retry must name the fix ("spans"),
     not say the block matches none of the schemas."""
@@ -114,6 +140,20 @@ def test_compression_band_is_inclusive(words, flags):
 
     assert report.compression == words / 100
     assert report.flags == flags
+
+
+@pytest.mark.parametrize(("source", "flags"), [(68, []), (150, ["compression_high"])])
+def test_a_very_short_source_is_not_flagged_for_a_note_as_long_as_it(source, flags):
+    """A 68-word conclusion kept whole is faithful, not verbose; a low ratio still flags."""
+    output = body(paragraph(" ".join(["w"] * source), "ch01/p001"))
+    config = GateConfig(grounding_min=0, compression=(0.2, 0.95), compression_min_source=150)
+
+    report = gates.evaluate(output, config=config, valid_anchors=VALID, source_words=source)
+    short = gates.evaluate(body(paragraph("w", "ch01/p001")), config=config,
+                           valid_anchors=VALID, source_words=source)  # fmt: skip
+
+    assert report.flags == flags
+    assert short.flags == ["compression_low"]
 
 
 def test_max_words_is_a_hard_cap():
