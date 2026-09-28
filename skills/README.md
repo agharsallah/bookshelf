@@ -70,6 +70,7 @@ verdict where it belongs. Its interactive section needs no inputs endpoint or im
 |---|---|---|---|
 | confirm-merge | `app/graph/dedup.py` (dedup job) | `pair: {similarity, a, b}`, each side `{canonical, aliases, kind, blurb, documents}` | `{same, confidence, rationale, survivor: a\|b}` → a `same_as` edge, proposed (same) or rejected |
 | relate-concepts | `app/graph/bridges.py` (bridge job) | `pair: {similarity, a, b}`, each side `{canonical, kind, blurb, book, passages: [{id, heading, text}]}` | `{relation, direction, confidence, rationale, evidence: [A1, B2…]}` → a proposed edge citing both books, or a rejected one for `none` |
+| grade-recall | `app/recall/grading.py` (`grade_recall` job, queued when a recall is saved) | `ideas: [{id, tier, text, why}]` (the chapter's salience marks, core and key, else its distillation's spans; I1, I2…), `recall`, `prediction` (or null) | `{ideas: [{id, status, feedback, cue?}], question: {idea, text} \| null, comparison: {predicted, argues, ideas} \| null}` → a `recall_grades` row citing each idea's anchors, and review items for the gaps and the question |
 
 ## SKILL.md
 

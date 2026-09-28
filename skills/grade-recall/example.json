@@ -1,0 +1,14 @@
+{
+  "ideas": [
+    {"id": "I1", "status": "recalled", "feedback": "You have the thesis: past a point, more utilization buys disproportionate waiting."},
+    {"id": "I2", "status": "partial", "feedback": "You said waits grow fast, but not how fast: the numbers are what make the case.", "cue": "At 90 and 95 percent utilization, how long is the average wait compared with the work itself?"},
+    {"id": "I3", "status": "missed", "feedback": "Variability, the second cause of waiting, is absent from your recall.", "cue": "Besides utilization, what else makes a queue wait, according to the chapter?"},
+    {"id": "I4", "status": "recalled", "feedback": "Right: slack is reserve capacity, not waste."}
+  ],
+  "question": {"idea": "I4", "text": "Why does keeping slack reduce waiting, when it leaves capacity unused?"},
+  "comparison": {
+    "predicted": "that teams should maximise utilization to ship faster",
+    "argues": "that high utilization is a trap: waiting explodes near full load, so slack is capacity worth keeping",
+    "ideas": ["I1", "I4"]
+  }
+}

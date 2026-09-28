@@ -1,0 +1,11 @@
+name: grade-recall
+version: 1
+description: Grade what a reader wrote from memory about a chapter against its key ideas (recalled, partial, missed), write a retrieval cue for each gap, ask one "why is this true?" question, and compare any prediction with what the chapter argues.
+tier: distil
+job_kind: null          # utility skill: run by the grade_recall job (app/recall/grading.py)
+artifact_type: null     # the grade lands in recall_grades, the gaps in review_items
+scope: chapter
+selector: recall_attempt  # built by app/recall/grading.py, not a registered selector
+vision: false
+gates:
+  grounding_min: 0      # the verdicts cite idea ids; Python maps them to the ideas' anchors

@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bookshelf.local/skills/grade-recall/schema.json",
+  "title": "grade-recall output",
+  "description": "A verdict on every key idea of the chapter (by id), one elaboration question about an idea the reader recalled, and the reader's prediction set against what the chapter argues. Idea ids stand in for citations: the backend maps each to the passages the idea cites.",
+  "type": "object",
+  "required": ["ideas", "question", "comparison"],
+  "additionalProperties": false,
+  "properties": {
+    "ideas": {
+      "type": "array",
+      "maxItems": 40,
+      "items": {
+        "type": "object",
+        "required": ["id", "status", "feedback"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {"type": "string", "pattern": "^I[0-9]{1,2}$"},
+          "status": {
+            "enum": ["recalled", "partial", "missed"],
+            "description": "recalled: the recall states the idea (in any words); partial: it touches the idea but misses or garbles what makes it hold; missed: absent."
+          },
+          "feedback": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 240,
+            "description": "One line to the reader: what they got, or what was missing, never the idea restated in full."
+          },
+          "cue": {
+            "type": "string",
+            "minLength": 8,
+            "maxLength": 240,
+            "description": "For partial and missed ideas: a question whose answer is the idea, that does not give it away. Used later as a review prompt."
+          }
+        },
+        "if": {"properties": {"status": {"enum": ["partial", "missed"]}}},
+        "then": {"required": ["cue"]}
+      }
+    },
+    "question": {
+      "description": "One 'why is this true?' question about an idea the reader recalled; null when they recalled none.",
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "required": ["idea", "text"],
+          "additionalProperties": false,
+          "properties": {
+            "idea": {"type": "string", "pattern": "^I[0-9]{1,2}$"},
+            "text": {"type": "string", "minLength": 8, "maxLength": 300}
+          }
+        }
+      ]
+    },
+    "comparison": {
+      "description": "The prediction against what the chapter argues; null when there is no prediction.",
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "required": ["predicted", "argues", "ideas"],
+          "additionalProperties": false,
+          "properties": {
+            "predicted": {"type": "string", "minLength": 1, "maxLength": 300, "description": "What the reader predicted, in a clause."},
+            "argues": {"type": "string", "minLength": 1, "maxLength": 400, "description": "What the chapter actually argues, in a sentence."},
+            "ideas": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 4,
+              "items": {"type": "string", "pattern": "^I[0-9]{1,2}$"},
+              "description": "The ideas that carry the chapter's thesis."
+            }
+          }
+        }
+      ]
+    }
+  }
+}
