@@ -104,6 +104,7 @@ _TABLES = (
     "recalls",
     "edges",
     "concepts",
+    "model_runs",
     "jobs",
     "workers",
     "artifacts",
