@@ -1,0 +1,25 @@
+---
+/** In-page links to each section of a long statistics page. */
+interface Props {
+  items: readonly { id: string; label: string }[];
+}
+const { items } = Astro.props;
+---
+
+<nav class="jump" aria-label="Sections">
+  {items.map((item) => <a href={`#${item.id}`}>{item.label}</a>)}
+</nav>
+
+<style>
+  .jump {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-4);
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+  }
+
+  .jump a {
+    color: var(--ink-2);
+  }
+</style>

@@ -1,0 +1,284 @@
+/* Shared by every chart: the frame, axes, marks' hover lift, tooltip and legend. */
+.frame {
+  position: relative;
+  display: grid;
+  gap: var(--space-2);
+  min-inline-size: 0;
+  margin: 0;
+}
+
+.svg {
+  display: block;
+  overflow: visible;
+  inline-size: 100%;
+  font-family: var(--font-ui);
+}
+
+.scrollX {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+
+.grid line {
+  stroke: var(--chart-grid);
+  stroke-width: 1;
+  shape-rendering: crispEdges;
+}
+
+.baseline {
+  stroke: var(--chart-axis);
+  stroke-width: 1;
+  shape-rendering: crispEdges;
+}
+
+.tick {
+  fill: var(--ink-3);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.label {
+  fill: var(--ink-2);
+  font-size: 11px;
+}
+
+.value {
+  fill: var(--ink);
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.mark {
+  transition: opacity var(--dur-1) var(--ease-out);
+  outline: none;
+}
+
+.mark:hover,
+.mark:focus-visible,
+.mark[data-active] {
+  opacity: 0.78;
+}
+
+.mark:focus-visible {
+  stroke: var(--focus);
+  stroke-width: 2;
+}
+
+.hit {
+  fill: transparent;
+  cursor: default;
+  outline: none;
+}
+
+.hit:focus-visible {
+  stroke: var(--focus);
+  stroke-width: 2;
+}
+
+.crosshair {
+  stroke: var(--ink-3);
+  stroke-width: 1;
+  pointer-events: none;
+}
+
+.line {
+  fill: none;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.area {
+  opacity: 0.1;
+}
+
+.dot {
+  stroke: var(--paper-raised);
+  stroke-width: 2;
+}
+
+.cell {
+  shape-rendering: geometricPrecision;
+}
+
+.tooltip {
+  position: absolute;
+  z-index: 3;
+  display: grid;
+  gap: 2px;
+  min-inline-size: 8rem;
+  max-inline-size: 18rem;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-m);
+  background: var(--paper-raised);
+  box-shadow: var(--shadow-pop);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  pointer-events: none;
+}
+
+.tipTitle {
+  color: var(--ink-2);
+  font-weight: 600;
+}
+
+.tipRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.tipRow strong {
+  font-variant-numeric: tabular-nums;
+}
+
+.tipRow span:last-child {
+  color: var(--ink-2);
+}
+
+.lineKey {
+  inline-size: 0.75rem;
+  block-size: 2px;
+  border-radius: 1px;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+  padding: 0;
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  list-style: none;
+}
+
+.legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.legendValue {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.swatch {
+  inline-size: 0.75rem;
+  block-size: 0.5rem;
+  border-radius: 2px;
+}
+
+.empty {
+  color: var(--ink-3);
+  font-size: var(--text-sm);
+}
+
+/* ── HTML bars (labels that wrap) ─────────────────────── */
+.bars {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-family: var(--font-ui);
+}
+
+.barRow {
+  display: grid;
+  grid-template-columns: minmax(8rem, 14rem) minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  font-size: var(--text-sm);
+}
+
+@media (max-width: 36rem) {
+  .barRow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.barLabel {
+  overflow: hidden;
+  color: var(--ink);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.barSub {
+  display: block;
+  color: var(--ink-3);
+  font-size: var(--text-xs);
+}
+
+.barTrack {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-inline-size: 0;
+}
+
+.barFill {
+  display: flex;
+  gap: 2px;
+  block-size: 0.75rem;
+  min-inline-size: 0;
+}
+
+.barSegment {
+  flex: none;
+  block-size: 100%;
+  min-inline-size: 2px;
+  outline: none;
+}
+
+.barSegment:last-child {
+  border-start-end-radius: 4px;
+  border-end-end-radius: 4px;
+}
+
+.barSegment:hover,
+.barSegment:focus-visible {
+  opacity: 0.78;
+}
+
+.barValue {
+  flex: none;
+  color: var(--ink-2);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Share bar ────────────────────────────────────────── */
+.share {
+  display: flex;
+  overflow: hidden;
+  gap: 2px;
+  block-size: 1rem;
+  border-radius: 4px;
+}
+
+.share > span {
+  block-size: 100%;
+  min-inline-size: 2px;
+}
+
+.onFill {
+  fill: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+.onFillMuted {
+  fill: rgb(255 255 255 / 0.85);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}

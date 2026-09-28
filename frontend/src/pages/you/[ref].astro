@@ -1,0 +1,161 @@
+---
+/**
+ * You and one book (`GET /documents/{ref}/reader-stats`): the library's figures narrowed to
+ * it, with its chapters in reading order.
+ */
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { Problem } from '../../components/common/Problem';
+import StatsSection from '../../components/stats/StatsSection.astro';
+import { StatTiles } from '../../components/stats/StatTiles';
+import { ChaptersSection } from '../../components/you/ChaptersSection';
+import { ConceptsSection } from '../../components/you/ConceptsSection';
+import { ago, formatPercent } from '../../components/you/format';
+import { Insights } from '../../components/you/Insights';
+import Jump from '../../components/you/Jump.astro';
+import { MemorySection } from '../../components/you/MemorySection';
+import { DEPTH_LABELS, STATE_LABELS } from '../../components/you/model';
+import { NotesSection } from '../../components/you/NotesSection';
+import { Panel } from '../../components/you/Panel';
+import { Passages } from '../../components/you/Passages';
+import { statsQuery } from '../../components/you/query';
+import RangeFilter from '../../components/you/RangeFilter.astro';
+import { RhythmSection } from '../../components/you/RhythmSection';
+import { readerTiles } from '../../components/you/tiles';
+import { TimeSection } from '../../components/you/TimeSection';
+import { serverApi } from '../../lib/api/server';
+import type { BookReaderStats } from '../../lib/api/types/readerStats';
+import { load } from '../../lib/documents/server';
+
+export const prerender = false;
+
+const ref = Astro.params.ref ?? '';
+const query = statsQuery(Astro.url);
+const loaded = await load(() => serverApi().get<BookReaderStats>(`documents/${encodeURIComponent(ref)}/reader-stats`, { query: { tz: query.tz, days: query.days } }));
+if (!loaded.ok && loaded.notFound) Astro.response.status = 404;
+const stats = loaded.ok ? loaded.value : null;
+const book = stats?.book;
+const titles = book ? { [book.slug]: book.title } : {};
+const depth = book ? book.depth.map((d) => DEPTH_LABELS[d]).join(' → ') || 'not opened yet' : '';
+const sections = [
+  { id: 'insights', label: 'Insights' },
+  { id: 'time', label: 'Time' },
+  { id: 'rhythm', label: 'Rhythm' },
+  { id: 'chapters', label: 'Chapters' },
+  { id: 'passages', label: 'Passages' },
+  { id: 'notes', label: 'Notes' },
+  { id: 'memory', label: 'Memory' },
+  { id: 'concepts', label: 'Concepts' },
+];
+---
+
+<BaseLayout title={book ? `You and ${book.title}` : 'You and a book'} description="How you read one book: time, pace, passages, notes and recall." width="wide">
+  <div class="page">
+    {
+      !stats || !book ? (
+        !loaded.ok && loaded.notFound ? (
+          <div class="head">
+            <h1>Not on the shelf</h1>
+            <p>
+              No document is called “{ref}”. <a href="/you">Back to your statistics</a>
+            </p>
+          </div>
+        ) : (
+          !loaded.ok && <Problem title="The statistics could not be loaded." problem={loaded.problem} />
+        )
+      ) : (
+        <>
+          <header class="head">
+            <p class="crumbs">
+              <a href="/you">You</a> / <a href={`/documents/${book.slug}`}>{book.title}</a>
+            </p>
+            <h1>{book.title}</h1>
+            <p class="lede">
+              {[book.authors.join(', '), `${formatPercent(book.progress)} read`, `${book.chapters_finished} of ${book.chapters} chapters`, STATE_LABELS[book.state], `last seen ${ago(book.last_seen, stats.generated_at)}`]
+                .filter(Boolean)
+                .join(' · ')}
+            </p>
+            <p class="depth">How deep: {depth}</p>
+          </header>
+          <RangeFilter path={`/you/${book.slug}`} days={query.days} tz={stats.tz} />
+          <Jump items={sections} />
+          <StatTiles tiles={readerTiles(stats.totals).filter((t) => t.label !== 'Books')} label="Totals for this book" />
+          <StatsSection id="insights" title="What stands out">
+            <Insights insights={stats.insights} />
+          </StatsSection>
+          <StatsSection id="time" title="Time">
+            <TimeSection client:visible generated_at={stats.generated_at} tz={stats.tz} days={stats.days} daily={stats.daily} surfaces={stats.surfaces} />
+          </StatsSection>
+          <StatsSection id="rhythm" title="Rhythm">
+            <RhythmSection
+              client:visible
+              generated_at={stats.generated_at}
+              tz={stats.tz}
+              hours={stats.hours}
+              session_lengths={stats.session_lengths}
+              sessions={stats.sessions}
+              totals={stats.totals}
+              titles={titles}
+            />
+          </StatsSection>
+          <StatsSection id="chapters" title="Chapters">
+            <ChaptersSection client:visible chapters={stats.chapters} colors={{ [book.slug]: 'var(--series-1)' }} wordsPerMinute={stats.totals.words_per_minute} single />
+          </StatsSection>
+          <StatsSection id="passages" title="Passages">
+            <div class="grid">
+              <Panel title="Where you lingered">
+                <Passages passages={stats.passages} showBook={false} empty="Passages show after some reading time in the reader." />
+              </Panel>
+              <Panel title="What you annotate">
+                <Passages passages={stats.annotated} showBook={false} empty="No notes or highlights in this book yet." />
+              </Panel>
+            </div>
+          </StatsSection>
+          <StatsSection id="notes" title="Notes">
+            <NotesSection client:visible notes={stats.notes} daily={stats.daily} generated_at={stats.generated_at} tz={stats.tz} days={stats.days} />
+          </StatsSection>
+          <StatsSection id="memory" title="Memory">
+            <MemorySection client:visible memory={stats.memory} daily={stats.daily} generated_at={stats.generated_at} tz={stats.tz} days={stats.days} />
+          </StatsSection>
+          <StatsSection id="concepts" title="Concepts">
+            <Panel title="Ideas you spent time with" lede="Time in passages that mention each concept, and the notes on them.">
+              <ConceptsSection concepts={stats.concepts} />
+            </Panel>
+          </StatsSection>
+        </>
+      )
+    }
+  </div>
+</BaseLayout>
+
+<style>
+  .page {
+    display: grid;
+    gap: var(--space-6);
+  }
+
+  .head {
+    display: grid;
+    gap: var(--space-2);
+    max-inline-size: var(--measure);
+  }
+
+  .crumbs,
+  .depth {
+    color: var(--ink-3);
+    font-size: var(--text-sm);
+  }
+
+  h1 {
+    font-size: var(--text-xl);
+  }
+
+  .lede {
+    color: var(--ink-2);
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 26rem), 1fr));
+    gap: var(--space-5);
+  }
+</style>

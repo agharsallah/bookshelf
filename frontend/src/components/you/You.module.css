@@ -1,0 +1,203 @@
+/* The reader statistics pages: panels in a responsive grid, insight cards, passage quotes. */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 26rem), 1fr));
+  gap: var(--space-5);
+}
+
+.panel {
+  display: grid;
+  align-content: start;
+  gap: var(--space-3);
+  min-inline-size: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--chart-grid);
+  border-radius: var(--radius-l);
+  background: var(--paper-raised);
+}
+
+.wide {
+  grid-column: 1 / -1;
+}
+
+.panelTitle {
+  font-family: var(--font-ui);
+  font-size: var(--text-ui);
+  font-weight: 650;
+}
+
+.panelLede {
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+  max-inline-size: var(--measure);
+}
+
+.figures {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-5);
+  margin: 0;
+  font-family: var(--font-ui);
+}
+
+.figures div {
+  display: grid;
+}
+
+.figures dt {
+  color: var(--ink-3);
+  font-size: var(--text-xs);
+}
+
+.figures dd {
+  margin: 0;
+  color: var(--ink);
+  font-size: var(--text-md);
+  font-weight: 600;
+}
+
+/* ── Insights ─────────────────────────────────────────── */
+.insights {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.insight {
+  display: grid;
+  align-content: start;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--chart-grid);
+  border-inline-start: 4px solid var(--tone, var(--rule-strong));
+  border-radius: var(--radius-m);
+  background: var(--paper-raised);
+  font-family: var(--font-ui);
+}
+
+.insight[data-tone='attention'] {
+  --tone: var(--tone-important);
+}
+
+.insight[data-tone='positive'] {
+  --tone: var(--tone-insight);
+}
+
+.insight[data-tone='neutral'] {
+  --tone: var(--tone-contrast);
+}
+
+.insightMeta {
+  display: flex;
+  gap: var(--space-2);
+  color: var(--ink-3);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.toneIcon {
+  display: inline-grid;
+  place-items: center;
+  inline-size: 1.1rem;
+  block-size: 1.1rem;
+  border-radius: 50%;
+  background: var(--tone);
+  color: var(--paper-raised);
+  font-weight: 700;
+  text-transform: none;
+}
+
+.insightTitle {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.insightDetail {
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+}
+
+/* ── Passages ─────────────────────────────────────────── */
+.passages {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: passage;
+}
+
+.passage {
+  display: grid;
+  gap: var(--space-1);
+  padding-block-end: var(--space-3);
+  border-block-end: 1px solid var(--chart-grid);
+}
+
+.passage:last-child {
+  border-block-end: 0;
+  padding-block-end: 0;
+}
+
+.quote {
+  margin: 0;
+  color: var(--ink);
+  font-family: var(--font-read);
+  font-size: var(--text-ui);
+  line-height: var(--leading-read);
+}
+
+.quote a {
+  color: inherit;
+  text-decoration-color: var(--rule-strong);
+}
+
+.passageMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+}
+
+.passageMeta strong {
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Range filter ─────────────────────────────────────── */
+.ranges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.ranges a {
+  display: inline-block;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-pill);
+  color: var(--ink-2);
+  text-decoration: none;
+}
+
+.ranges a:hover {
+  background: var(--paper-sunken);
+}
+
+.ranges a[aria-current='page'] {
+  border-color: var(--accent);
+  background: var(--accent-wash);
+  color: var(--accent-strong);
+  font-weight: 600;
+}

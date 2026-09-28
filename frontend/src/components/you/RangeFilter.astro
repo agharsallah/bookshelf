@@ -1,0 +1,43 @@
+---
+/** The window every figure below is counted over: one row of presets, above the charts. */
+import { RANGES } from './model';
+import { rangeHref } from './query';
+import styles from './You.module.css';
+
+interface Props {
+  path: string;
+  days: number | null;
+  tz: string;
+}
+const { path, days, tz } = Astro.props;
+---
+
+<nav class="filters" aria-label="Period">
+  <ul class={styles.ranges}>
+    {
+      RANGES.map((r) => (
+        <li>
+          <a href={rangeHref(path, r.days)} aria-current={r.days === days ? 'page' : undefined}>
+            {r.label}
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+  <p class="tz">Days and hours in {tz}. Progress and cards due are as of now.</p>
+</nav>
+
+<style>
+  .filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2) var(--space-4);
+  }
+
+  .tz {
+    color: var(--ink-3);
+    font-size: var(--text-xs);
+  }
+</style>
