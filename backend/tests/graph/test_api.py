@@ -134,7 +134,8 @@ WRITES = [
 def test_writes_without_the_api_key_are_401_and_change_nothing(
     client: TestClient, session: Session, linked: Concept, method: str, path: str, payload
 ):
-    an_edge = session.exec(select(Edge)).first()
+    # an accepted one: without an order, `first()` may pick the proposed same_as edge
+    an_edge = session.exec(select(Edge).where(Edge.status == EdgeStatus.ACCEPTED)).first()
     assert an_edge is not None
     url = API + path.format(id=linked.id, edge=an_edge.id)
 
