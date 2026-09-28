@@ -19,7 +19,7 @@ import type { Atlas, BridgeQueued } from '../../lib/api/types/graph';
 import { conceptHref, documentHref, readerHref } from '../search/links';
 import type { Selection } from '../graph/controller';
 import { GraphCanvas } from '../graph/GraphCanvas';
-import { KindMark, RelationMark } from '../graph/Legend';
+import { ConceptKindKey, KindMark, RelationMark } from '../graph/Legend';
 import { usePrefersReducedMotion } from '../graph/palette';
 import { parseRef } from '../graph/refs';
 import { LINK_KINDS, LINK_STYLES } from '../graph/styles';
@@ -64,14 +64,14 @@ export function AtlasExplorer({ initial, lens: initialLens, api = browserApi }: 
   const reducedMotion = usePrefersReducedMotion();
 
   const index = useMemo(() => indexAtlas(atlas), [atlas]);
-  const { mode, links, kinds, books, crossBook, others, query, pathFrom, pathTo } = lens;
+  const { mode, links, kinds, books, genres, crossBook, others, query, pathFrom, pathTo } = lens;
   // A path is traced over the whole picture: while one shows, nothing is hidden.
   const tracing = pathFrom !== null && pathTo !== null;
   const shown = tracing ? 'dim' : others;
   // Selection is not a filter: picking a node must not rebuild (and so reflow) the map.
   const filters = useMemo(
-    () => ({ mode, links, kinds, books, crossBook, others: shown, query }),
-    [mode, links, kinds, books, crossBook, shown, query],
+    () => ({ mode, links, kinds, books, genres, crossBook, others: shown, query }),
+    [mode, links, kinds, books, genres, crossBook, shown, query],
   );
   const view = useMemo(() => buildAtlasModel(index, filters), [index, filters]);
   const kit = atlasKit(mode === 'lens' ? lens.group : 'free');
@@ -153,6 +153,8 @@ export function AtlasExplorer({ initial, lens: initialLens, api = browserApi }: 
   const selectedEdge = edgeSelected ? (view.model.edges.find((e) => e.id === edgeSelected) ?? null) : null;
   const selection: Selection = selectedEdge ? { kind: 'edge', id: selectedEdge.id } : selectedNode ? { kind: 'node', id: selectedNode.id } : null;
   const present = LINK_KINDS.filter((l) => atlas.edges.some((e) => e.relation === l));
+  const conceptKinds = new Set(atlas.nodes.flatMap((n) => (n.concept_kind ? [n.concept_kind] : [])));
+  const papers = atlas.nodes.some((n) => n.kind === 'document' && n.genre === 'paper');
   const empty = atlas.nodes.length === 0;
 
   return (
@@ -260,7 +262,7 @@ export function AtlasExplorer({ initial, lens: initialLens, api = browserApi }: 
         <ul>
           <li>
             <KindMark kind="document" />
-            Books
+            {papers ? 'Books and papers' : 'Books'}
           </li>
           <li>
             <KindMark kind="node" />
@@ -270,6 +272,7 @@ export function AtlasExplorer({ initial, lens: initialLens, api = browserApi }: 
             <KindMark kind="concept" />
             Concepts (bigger is better connected)
           </li>
+          <ConceptKindKey present={conceptKinds} />
         </ul>
         <ul>
           {present.map((l) => (

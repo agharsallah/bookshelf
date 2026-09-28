@@ -13,13 +13,14 @@
  */
 import type { ReactNode } from 'react';
 import type { ApiClient } from '../../lib/api/client';
+import { GENRE_LABELS } from '../../lib/api/types/documents';
 import type { AtlasEdge, AtlasNode } from '../../lib/api/types/graph';
 import { conceptHref, documentHref, readerHref } from '../search/links';
 import { EdgeEvidence } from '../graph/EdgeEvidence';
 import { KindMark, RelationMark } from '../graph/Legend';
 import type { ModelEdge } from '../graph/model';
 import { graphHref, parseRef } from '../graph/refs';
-import { LINK_STYLES } from '../graph/styles';
+import { CONCEPT_KIND_STYLES, LINK_STYLES } from '../graph/styles';
 import { appearances, bookIdeas, chaptersOf, echoesOf, relatedIdeas, sharedWith, type Appearance } from './connections';
 import type { AtlasIndex } from './model';
 import graph from '../graph/Graph.module.css';
@@ -304,14 +305,12 @@ export function AtlasDetail({ api, index, node, edge, onSelect, onChanged, onPat
     node.kind === 'chapter'
       ? 'Chapter'
       : node.kind === 'document'
-        ? 'Book'
-        : node.concept_kind && node.concept_kind !== 'concept'
-          ? node.concept_kind.charAt(0).toUpperCase() + node.concept_kind.slice(1)
-          : 'Concept';
+        ? GENRE_LABELS[node.genre ?? 'book']
+        : CONCEPT_KIND_STYLES[node.concept_kind ?? 'concept'].label;
   return (
     <div className={graph.panelBody}>
       <p className={graph.panelKind}>
-        <KindMark kind={node.kind === 'chapter' ? 'node' : node.kind} />
+        <KindMark kind={node.kind === 'chapter' ? 'node' : node.kind} conceptKind={node.concept_kind} />
         {kindLabel}
         {node.kind === 'chapter' && node.sublabel ? <span className={graph.panelPlace}>{node.sublabel}</span> : null}
       </p>

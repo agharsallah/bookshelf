@@ -5,8 +5,8 @@
  * each node's `more` grows by the neighbours this client-side cut left out.
  */
 import { anchorLabel } from '../../lib/anchors';
-import type { EdgeStatus, EntityKind, GraphEdge, GraphNode, Neighborhood } from '../../lib/api/types/graph';
-import type { LinkKind } from './styles';
+import type { ConceptKind, EdgeStatus, EntityKind, GraphEdge, GraphNode, Neighborhood } from '../../lib/api/types/graph';
+import { conceptKindOf, type LinkKind } from './styles';
 
 export const NODE_CAP = 150;
 export const INITIAL_BUDGET = 60;
@@ -20,6 +20,8 @@ export interface ModelNode<D = GraphNode> {
   id: string;
   /** Drawn shape and colour. */
   kind: EntityKind;
+  /** A concept's own kind: a paper's method, dataset, metric or task gets its colour and glyph. */
+  conceptKind?: ConceptKind | undefined;
   label: string;
   /** The short text drawn beside the mark, when it is not the label (a passage's place). */
   caption?: string;
@@ -114,6 +116,8 @@ export function buildModel(hood: Neighborhood, budget = INITIAL_BUDGET): GraphMo
   const nodes: ModelNode[] = kept.map((n) => ({
     id: n.id,
     kind: n.kind,
+    // A neighbourhood concept's sublabel is its kind (graph/evidence.py labels).
+    conceptKind: n.kind === 'concept' ? conceptKindOf(n.sublabel) : undefined,
     label: n.label,
     depth: n.id === hood.focus ? 0 : Math.max(1, n.depth),
     weight: n.weight,

@@ -9,9 +9,10 @@
  * `null` in a list means "all of them", so a new relation or kind is shown by default
  * and the URL stays short. Unknown values in a URL are dropped, never trusted.
  *
- *   /map?mode=lens&links=supports,contradicts&kinds=framework&books=<id>&cross=1
+ *   /map?mode=lens&links=supports,contradicts&kinds=framework&books=<id>&genres=paper&cross=1
  *        &proposed=1&others=hide&group=book&q=loop&sel=concept:<id>&from=<ref>&to=<ref>
  */
+import { GENRES, type Genre } from '../../lib/api/types/documents';
 import { CONCEPT_KINDS, type ConceptKind } from '../../lib/api/types/graph';
 import { LINK_KINDS, type LinkKind } from '../graph/styles';
 
@@ -30,6 +31,8 @@ export interface LensState {
   kinds: KindKey[] | null;
   /** Book ids kept; null is all. */
   books: string[] | null;
+  /** Document genres kept (books, papers, articles); null is all. A concept passes by its books'. */
+  genres: Genre[] | null;
   /** Only concepts that appear in more than one book (and what links to them). */
   crossBook: boolean;
   /** What the lens does to everything it leaves out. */
@@ -48,13 +51,14 @@ export interface LensState {
 }
 
 /** The part of the lens that decides what is in play (not the selection, not the layout). */
-export type LensFilters = Pick<LensState, 'mode' | 'links' | 'kinds' | 'books' | 'crossBook' | 'others' | 'query'>;
+export type LensFilters = Pick<LensState, 'mode' | 'links' | 'kinds' | 'books' | 'genres' | 'crossBook' | 'others' | 'query'>;
 
 export const DEFAULT_LENS: LensState = {
   mode: 'map',
   links: null,
   kinds: null,
   books: null,
+  genres: null,
   crossBook: false,
   proposed: false,
   others: 'dim',
@@ -78,6 +82,7 @@ export function lensFromParams(params: URLSearchParams): LensState {
     links: list(params.get('links'), LINK_KINDS),
     kinds: list(params.get('kinds'), KIND_KEYS as readonly KindKey[]),
     books: books === null ? null : books.split(',').filter((b) => /^[0-9a-f-]{36}$/i.test(b)),
+    genres: list(params.get('genres'), GENRES),
     crossBook: params.get('cross') === '1',
     proposed: params.get('proposed') === '1',
     others: params.get('others') === 'hide' ? 'hide' : 'dim',
@@ -95,6 +100,7 @@ export function lensToParams(lens: LensState): URLSearchParams {
   if (lens.links) params.set('links', lens.links.join(','));
   if (lens.kinds) params.set('kinds', lens.kinds.join(','));
   if (lens.books) params.set('books', lens.books.join(','));
+  if (lens.genres) params.set('genres', lens.genres.join(','));
   if (lens.crossBook) params.set('cross', '1');
   if (lens.proposed) params.set('proposed', '1');
   if (lens.others === 'hide') params.set('others', 'hide');
@@ -117,7 +123,7 @@ export function toggle<T extends string>(current: T[] | null, value: T, all: rea
 
 /** Whether any filter is narrowing the view (the query aside). */
 export function isFiltering(lens: LensState): boolean {
-  return lens.mode === 'lens' && (lens.links !== null || lens.kinds !== null || lens.books !== null || lens.crossBook);
+  return lens.mode === 'lens' && (lens.links !== null || lens.kinds !== null || lens.books !== null || lens.genres !== null || lens.crossBook);
 }
 
 /** The lens with its filters cleared, keeping the mode, layout and selection. */
@@ -127,6 +133,7 @@ export function cleared(lens: LensState): LensState {
     links: null,
     kinds: null,
     books: null,
+    genres: null,
     crossBook: false,
     query: '',
   };

@@ -8,7 +8,7 @@ import { conceptHref, documentHref, readerHref } from '../search/links';
 import type { ModelNode } from './model';
 import { parseRef } from './refs';
 import { KindMark } from './Legend';
-import { KIND_STYLES } from './styles';
+import { CONCEPT_KIND_STYLES, KIND_STYLES } from './styles';
 import styles from './Graph.module.css';
 
 export interface NodeDetailProps {
@@ -25,8 +25,10 @@ function links(node: ModelNode): { href: string; label: string }[] {
       return parsed ? [{ href: conceptHref(parsed.id), label: 'Open the concept page' }] : [];
     case 'document':
       return doc ? [{ href: documentHref(doc.slug), label: 'Open the book' }] : [];
+    // A claim sits at its first evidence anchor in its paper.
     case 'node':
     case 'artifact':
+    case 'claim':
       return doc ? [{ href: readerHref(doc.slug, node.data.anchor), label: 'Read it in context' }] : [];
   }
 }
@@ -37,8 +39,8 @@ export function NodeDetail({ node, isFocus, onFocus }: NodeDetailProps) {
   return (
     <div className={styles.panelBody}>
       <p className={styles.panelKind}>
-        <KindMark kind={node.kind} />
-        {KIND_STYLES[node.kind].label}
+        <KindMark kind={node.kind} conceptKind={node.conceptKind} />
+        {node.conceptKind ? CONCEPT_KIND_STYLES[node.conceptKind].label : KIND_STYLES[node.kind].label}
         {passage && data.anchor ? <span className={styles.panelPlace}>{anchorLabel(data.anchor)}</span> : null}
       </p>
       {passage ? (
@@ -46,7 +48,7 @@ export function NodeDetail({ node, isFocus, onFocus }: NodeDetailProps) {
       ) : (
         <h2 className={styles.panelTitle}>{node.label}</h2>
       )}
-      {data.sublabel && !(node.kind === 'concept' && data.sublabel === 'concept') ? <p className={styles.panelMeta}>{data.sublabel}</p> : null}
+      {data.sublabel && !node.conceptKind ? <p className={styles.panelMeta}>{data.sublabel}</p> : null}
       {data.blurb ? <p className={styles.panelBlurb}>{data.blurb}</p> : null}
       <div className={styles.panelActions}>
         {isFocus ? null : (

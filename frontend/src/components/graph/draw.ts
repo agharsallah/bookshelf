@@ -14,7 +14,8 @@ import type { Layout, SimNode } from './layout';
 import { RING } from './layout';
 import type { GraphModel, ModelEdge, ModelNode } from './model';
 import type { GraphPalette } from './palette';
-import { edgeWidth, KIND_STYLES, LINK_STYLES, PROPOSED_DASH } from './styles';
+import { drawGlyph } from './glyphs';
+import { CONCEPT_KIND_STYLES, edgeWidth, KIND_STYLES, LINK_STYLES, PROPOSED_DASH } from './styles';
 
 type AnyModel = GraphModel<unknown, unknown>;
 type AnyNode = ModelNode<unknown>;
@@ -292,7 +293,8 @@ function drawNodes(ctx: CanvasRenderingContext2D, s: Scene) {
     const isFocus = sim.id === s.model.focus;
     const level = nodeLevel(s, sim.id);
     const dim = level < 0.5;
-    const color = alpha(s.palette.kinds[sim.kind], mix(DIM_NODE, 1, level));
+    const own = node.conceptKind ? s.palette.conceptKinds[node.conceptKind] : s.palette.kinds[sim.kind];
+    const color = alpha(own, mix(DIM_NODE, 1, level));
     const hollow = KIND_STYLES[sim.kind].shape === 'ring' || KIND_STYLES[sim.kind].shape === 'diamond';
     ctx.save();
     nodePath(ctx, sim);
@@ -301,6 +303,7 @@ function drawNodes(ctx: CanvasRenderingContext2D, s: Scene) {
     ctx.lineWidth = (isFocus ? 2.5 : 2) / k;
     ctx.strokeStyle = hollow ? color : alpha(s.palette.paper, 0.9);
     ctx.stroke();
+    if (node.conceptKind) drawGlyph(ctx, CONCEPT_KIND_STYLES[node.conceptKind].glyph, sim.x, sim.y, sim.r, isFocus ? s.palette.paper : color, 1.6 / k);
     if (sim.kind === 'document') {
       ctx.fillStyle = s.palette.paper;
       ctx.fillRect(sim.x - sim.r * 0.55, sim.y - sim.r * 0.55, sim.r * 1.1, 1.5 / k);

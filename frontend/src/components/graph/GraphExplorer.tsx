@@ -165,7 +165,7 @@ export function GraphExplorer({ focus: initialFocus, view: initialView, initial,
         </aside>
       </div>
 
-      <Legend />
+      <Legend conceptKinds={new Set(model.nodes.flatMap((n) => (n.conceptKind ? [n.conceptKind] : [])))} />
 
       <details className={styles.listBox} open>
         <summary>The neighbourhood as a list</summary>

@@ -52,7 +52,7 @@ export function AtlasList({ model, lens, selected, onSelect, onHighlight }: Atla
           onFocus={() => onHighlight(n.id)}
           onBlur={() => onHighlight(null)}
         >
-          <KindMark kind={n.kind === 'chapter' ? 'node' : n.kind} />
+          <KindMark kind={n.kind === 'chapter' ? 'node' : n.kind} conceptKind={n.concept_kind} />
           <span className={`${graph.listLabel} ${n.kind === 'concept' ? styles.italic : ''}`}>{n.label}</span>
           {note ? <span className={graph.listMore}>{note}</span> : null}
           {dimmed ? <span className={styles.srOnly}> (outside the lens)</span> : null}

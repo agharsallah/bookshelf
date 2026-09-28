@@ -1,11 +1,13 @@
 /**
  * The lens: filters that narrow the map to one aspect of the shelf, and highlight it.
  *
- * Connections (by type, with their mark and how many there are), kinds of thing (books,
+ * Connections (by type, with their mark and how many there are), the kind of document
+ * (books, papers, articles, when the shelf holds more than one), kinds of thing (books,
  * chapters, and concepts by their own kind), books, "only ideas in more than one book",
  * what to do with the rest (dim or hide), and whether to group by book. Every change is
  * immediate; counts come from the whole atlas, so a filter never hides its own way back.
  */
+import { GENRES, type Genre } from '../../lib/api/types/documents';
 import type { ConceptKind } from '../../lib/api/types/graph';
 import { KindMark, RelationMark } from '../graph/Legend';
 import { LINK_KINDS, LINK_STYLES, type LinkKind } from '../graph/styles';
@@ -32,10 +34,18 @@ const KIND_LABELS: Record<KindKey, string> = {
   person: 'People',
   work: 'Works',
   term: 'Terms',
+  method: 'Methods',
+  dataset: 'Datasets',
+  metric: 'Metrics',
+  task: 'Tasks',
 };
 
+const GENRE_PLURALS: Record<Genre, string> = { book: 'Books', paper: 'Papers', article: 'Articles' };
+
 function kindMark(key: KindKey) {
-  return <KindMark kind={key === 'document' ? 'document' : key === 'chapter' ? 'node' : 'concept'} />;
+  if (key === 'document') return <KindMark kind="document" />;
+  if (key === 'chapter') return <KindMark kind="node" />;
+  return <KindMark kind="concept" conceptKind={key} />;
 }
 
 function counts<T extends string>(values: T[]): Map<T, number> {
@@ -51,6 +61,9 @@ export function LensPanel({ index, lens, onChange, onFindBridges, bridges }: Len
   const kindCounts = counts(index.atlas.nodes.map(kindKey));
   const kinds = (KIND_KEYS as readonly KindKey[]).filter((k) => kindCounts.has(k));
   const on = <T extends string>(list: T[] | null, value: T) => list === null || list.includes(value);
+  // Genres of the shelf's documents; the fieldset shows only when there is a choice.
+  const genreCounts = counts(index.shelf.map((d) => d.genre ?? 'book'));
+  const genres = GENRES.filter((g) => genreCounts.has(g));
 
   return (
     <aside className={styles.lensPanel} aria-label="Lens">
@@ -66,7 +79,7 @@ export function LensPanel({ index, lens, onChange, onFindBridges, bridges }: Len
         ))}
         <p className={styles.only}>
           Only:{' '}
-          {(['supports', 'contradicts', 'shares', 'echoes'] as const)
+          {(['supports', 'contradicts', 'shares', 'echoes', 'cites'] as const)
             .filter((l) => linkCounts.has(l))
             .map((l) => (
               <button key={l} type="button" className={styles.linkish} onClick={() => set({ links: [l] })}>
@@ -76,13 +89,26 @@ export function LensPanel({ index, lens, onChange, onFindBridges, bridges }: Len
         </p>
       </fieldset>
 
+      {genres.length > 1 ? (
+        <fieldset className={styles.group}>
+          <legend>Kind of document</legend>
+          {genres.map((g) => (
+            <label key={g} className={styles.check}>
+              <input type="checkbox" checked={on(lens.genres, g)} onChange={() => set({ genres: toggle(lens.genres, g, genres) })} />
+              <span>{GENRE_PLURALS[g]}</span>
+              <span className={styles.tally}>{genreCounts.get(g)}</span>
+            </label>
+          ))}
+        </fieldset>
+      ) : null}
+
       <fieldset className={styles.group}>
         <legend>Show</legend>
         {kinds.map((k) => (
           <label key={k} className={styles.check}>
             <input type="checkbox" checked={on(lens.kinds, k)} onChange={() => set({ kinds: toggle(lens.kinds, k, kinds) })} />
             {kindMark(k)}
-            <span>{KIND_LABELS[k as ConceptKind | 'document' | 'chapter']}</span>
+            <span>{k === 'document' && genres.length > 1 ? 'Documents' : KIND_LABELS[k as ConceptKind | 'document' | 'chapter']}</span>
             <span className={styles.tally}>{kindCounts.get(k)}</span>
           </label>
         ))}

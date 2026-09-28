@@ -2,16 +2,21 @@
  * The key to the canvas: node kinds by shape and colour, relations by line and mark.
  * The swatches are small inline SVGs drawn from the same style table as the canvas.
  */
-import { ENTITY_KINDS, RELATIONS, type EntityKind } from '../../lib/api/types/graph';
-import { KIND_STYLES, LINK_STYLES, PROPOSED_DASH, RELATION_STYLES, type LinkKind } from './styles';
+import { ENTITY_KINDS, RELATIONS, type ConceptKind, type EntityKind } from '../../lib/api/types/graph';
+import { glyphPath } from './glyphs';
+import { CONCEPT_KIND_STYLES, KIND_STYLES, LINK_STYLES, MARKED_CONCEPT_KINDS, PROPOSED_DASH, RELATION_STYLES, type LinkKind } from './styles';
 import styles from './Graph.module.css';
 
-export function KindMark({ kind }: { kind: EntityKind }) {
+/** A kind's swatch; a concept with `conceptKind` takes that kind's colour and glyph. */
+export function KindMark({ kind, conceptKind }: { kind: EntityKind; conceptKind?: ConceptKind | null | undefined }) {
   const style = KIND_STYLES[kind];
-  const color = `var(${style.color})`;
+  const own = kind === 'concept' && conceptKind ? CONCEPT_KIND_STYLES[conceptKind] : null;
+  const color = `var(${own?.color ?? style.color})`;
+  const glyph = own && own.glyph !== 'none' ? glyphPath(own.glyph, 7, 7, 5) : null;
   return (
     <svg className={styles.mark} viewBox="0 0 14 14" width="14" height="14" aria-hidden="true">
       {style.shape === 'ring' ? <circle cx="7" cy="7" r="5" fill="var(--paper)" stroke={color} strokeWidth="2" /> : null}
+      {glyph ? <path d={glyph} fill="none" stroke={color} strokeWidth="1.4" strokeLinecap="round" /> : null}
       {style.shape === 'square' ? <rect x="3" y="3" width="8" height="8" fill={color} /> : null}
       {style.shape === 'spine' ? <rect x="4.5" y="1" width="5" height="12" rx="1" fill={color} /> : null}
       {style.shape === 'diamond' ? <path d="M7 1.5 12.5 7 7 12.5 1.5 7Z" fill="var(--paper)" stroke={color} strokeWidth="1.8" /> : null}
@@ -35,7 +40,21 @@ export function RelationMark({ relation, proposed = false }: { relation: LinkKin
   );
 }
 
-export function Legend() {
+/** Key rows for a paper's concept kinds (only those `present`, all when omitted). */
+export function ConceptKindKey({ present }: { present?: ReadonlySet<ConceptKind> }) {
+  return (
+    <>
+      {MARKED_CONCEPT_KINDS.filter((k) => !present || present.has(k)).map((k) => (
+        <li key={k}>
+          <KindMark kind="concept" conceptKind={k} />
+          {CONCEPT_KIND_STYLES[k].plural}
+        </li>
+      ))}
+    </>
+  );
+}
+
+export function Legend({ conceptKinds }: { conceptKinds?: ReadonlySet<ConceptKind> }) {
   return (
     <div className={styles.legend} aria-label="Key">
       <ul>
@@ -45,6 +64,7 @@ export function Legend() {
             {KIND_STYLES[k].plural}
           </li>
         ))}
+        {conceptKinds?.size ? <ConceptKindKey present={conceptKinds} /> : null}
       </ul>
       <ul>
         {RELATIONS.map((r) => (

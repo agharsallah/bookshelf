@@ -7,6 +7,8 @@
  *   Limits ─mentions→ wip limit ─supports→ little's law
  *   wip limit ─contradicts→ big batch   (framework, no chapter)
  *   Queues ─shares→ Stories (via little's law)
+ *
+ * Flow is a book, Talks a paper (genre), so little's law belongs to both genres.
  */
 import type { Atlas, AtlasEdge, AtlasNode } from '../../lib/api/types/graph';
 
@@ -67,12 +69,14 @@ export function shelf(): Atlas {
     nodes: [
       node(ids.flow, 'document', 'Flow', {
         document: FLOW,
+        genre: 'book',
         sublabel: 'A. Author',
         degree: 2,
       }),
-      node(ids.talks, 'document', 'Talks', { document: TALKS, degree: 1 }),
+      node(ids.talks, 'document', 'Talks', { document: TALKS, genre: 'paper', degree: 1 }),
       node(ids.queues, 'chapter', 'Queues', {
         document: FLOW,
+        genre: 'book',
         anchor: 'ch01',
         sublabel: 'Flow',
         ordinal: 1,
@@ -80,6 +84,7 @@ export function shelf(): Atlas {
       }),
       node(ids.limits, 'chapter', 'Limits', {
         document: FLOW,
+        genre: 'book',
         anchor: 'ch02',
         sublabel: 'Flow',
         ordinal: 2,
@@ -87,6 +92,7 @@ export function shelf(): Atlas {
       }),
       node(ids.stories, 'chapter', 'Stories', {
         document: TALKS,
+        genre: 'paper',
         anchor: 'ch01',
         sublabel: 'Talks',
         ordinal: 1,

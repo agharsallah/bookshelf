@@ -17,6 +17,7 @@
  * `'hide'` the model holds only what is in play and the layout reflows around it.
  */
 import type { Atlas, AtlasEdge, AtlasNode, EntityKind } from '../../lib/api/types/graph';
+import type { Genre } from '../../lib/api/types/documents';
 import type { Lens } from '../graph/draw';
 import { shorten } from '../graph/labels';
 import { edgeStrength, lanes, type GraphModel, type ModelEdge, type ModelNode } from '../graph/model';
@@ -31,6 +32,8 @@ export interface AtlasIndex {
   lines: Map<string, AtlasEdge[]>;
   /** Book ids a node belongs to: its own for books and chapters, its chapters' for concepts. */
   books: Map<string, Set<string>>;
+  /** Genres a node belongs to: its document's, or those of a concept's books. */
+  genres: Map<string, Set<Genre>>;
   /** Books in shelf order, as the map lists them. */
   shelf: AtlasNode[];
 }
@@ -73,7 +76,14 @@ export function indexAtlas(atlas: Atlas): AtlasIndex {
     }
   }
   const shelf = atlas.nodes.filter((n) => n.kind === 'document');
-  return { atlas, byId, lines, books, shelf };
+  // A document without a genre (an older server) is a book, the default.
+  const genreOf = new Map(shelf.map((d) => [d.document?.id ?? d.id, d.genre ?? 'book']));
+  const genres = new Map<string, Set<Genre>>();
+  for (const n of atlas.nodes) {
+    const own = n.kind === 'concept' ? [...(books.get(n.id) ?? [])].map((b) => genreOf.get(b) ?? 'book') : [n.genre ?? 'book'];
+    genres.set(n.id, new Set(own));
+  }
+  return { atlas, byId, lines, books, genres, shelf };
 }
 
 function matchesQuery(node: AtlasNode, q: string): boolean {
@@ -87,9 +97,11 @@ export function inPlay(index: AtlasIndex, lens: LensFilters): { nodes: Set<strin
   const books = filtering && lens.books ? new Set(lens.books) : null;
   const links = filtering && lens.links ? new Set(lens.links) : null;
   const cross = filtering && lens.crossBook;
+  const genres = filtering && lens.genres ? new Set(lens.genres) : null;
 
   const passes = (n: AtlasNode): boolean => {
     if (kinds && !kinds.has(kindKey(n))) return false;
+    if (genres && ![...(index.genres.get(n.id) ?? [])].some((g) => genres.has(g))) return false;
     const mine = index.books.get(n.id) ?? new Set<string>();
     if (books && ![...mine].some((b) => books.has(b))) return false;
     return !(cross && n.kind === 'concept' && mine.size < 2);
@@ -166,6 +178,7 @@ export function buildAtlasModel(index: AtlasIndex, lens: LensFilters): AtlasView
   const modelNodes: ModelNode<AtlasNode>[] = nodes.map((n) => ({
     id: n.id,
     kind: DRAWN_AS[n.kind],
+    conceptKind: n.kind === 'concept' ? (n.concept_kind ?? undefined) : undefined,
     label: n.label,
     caption: caption(n),
     depth: 1,

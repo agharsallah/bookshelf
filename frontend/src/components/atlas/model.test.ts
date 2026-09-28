@@ -17,6 +17,27 @@ describe('indexAtlas', () => {
   });
 });
 
+describe('genre lens', () => {
+  it('gives books and chapters their own genre and a concept the genres of its books', () => {
+    expect([...(index.genres.get(ids.stories) ?? [])]).toEqual(['paper']);
+    expect([...(index.genres.get(ids.law) ?? [])].sort()).toEqual(['book', 'paper']);
+    expect(index.genres.get(ids.batch)?.size).toBe(0);
+  });
+
+  it('papers only keeps the papers, their chapters and the ideas they name', () => {
+    const play = inPlay(index, lens({ genres: ['paper'] }));
+    expect([...play.nodes].sort()).toEqual([ids.talks, ids.stories, ids.law].sort());
+    expect([...play.edges].sort()).toEqual(['c3', 'm1']);
+  });
+
+  it('a document without a genre counts as a book', () => {
+    const bare = shelf();
+    for (const n of bare.nodes) delete n.genre;
+    const play = inPlay(indexAtlas(bare), lens({ genres: ['book'] }));
+    expect(play.nodes.has(ids.talks)).toBe(true);
+  });
+});
+
 describe('inPlay', () => {
   it('keeps everything in map mode, whatever the filters say', () => {
     const play = inPlay(index, {

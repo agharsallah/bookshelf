@@ -9,6 +9,7 @@ describe('lens URL', () => {
       links: ['supports' as const, 'shares' as const],
       kinds: ['framework' as const],
       books: ['00000000-0000-4000-8000-00000000000f'],
+      genres: ['paper' as const],
       crossBook: true,
       proposed: true,
       others: 'hide' as const,
@@ -26,12 +27,13 @@ describe('lens URL', () => {
   });
 
   it('drops values it does not know instead of trusting them', () => {
-    const lens = lensFromParams(new URLSearchParams('mode=weird&links=supports,nonsense&kinds=alien&books=not-a-uuid&others=explode'));
+    const lens = lensFromParams(new URLSearchParams('mode=weird&links=supports,nonsense&kinds=alien&books=not-a-uuid&genres=poem,paper&others=explode'));
     expect(lens).toMatchObject({
       mode: 'map',
       links: ['supports'],
       kinds: [],
       books: [],
+      genres: ['paper'],
       others: 'dim',
     });
   });

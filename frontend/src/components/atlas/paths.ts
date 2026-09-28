@@ -22,6 +22,8 @@ export const HOP_COST: Record<LinkKind, number> = {
   defines: 1.2,
   echoes: 1.6,
   mentions: 1.8,
+  // One paper citing another: a real link, but weaker than a typed relation between ideas.
+  cites: 2,
   // A shares line summarises a walk through the concepts it names: walk them instead.
   shares: 3.5,
   contains: 4,

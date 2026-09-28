@@ -9,6 +9,8 @@ describe('buildPalette', () => {
     expect(palette.marker).toBe('resolved(--marker)');
     expect(palette.markerInk).toBe('resolved(--marker-ink)');
     expect(palette.kinds.concept).toBe('resolved(--series-1)');
+    expect(palette.conceptKinds.framework).toBe('resolved(--series-1)');
+    expect(palette.conceptKinds.dataset).toBe('resolved(--series-5)');
     expect(palette.relations.contradicts).toBe('resolved(--tone-important)');
   });
 });

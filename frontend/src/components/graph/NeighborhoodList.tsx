@@ -7,7 +7,7 @@
 import { useMemo, useRef, type KeyboardEvent } from 'react';
 import type { Selection } from './controller';
 import type { GraphModel, ModelEdge, ModelNode } from './model';
-import { KIND_STYLES, LINK_STYLES } from './styles';
+import { CONCEPT_KIND_STYLES, KIND_STYLES, LINK_STYLES } from './styles';
 import { KindMark } from './Legend';
 import styles from './Graph.module.css';
 
@@ -74,9 +74,9 @@ export function NeighborhoodList({ model, selected, onSelect, onHighlight }: Nei
                   onClick={() => onSelect({ kind: 'node', id: node.id })}
                   onFocus={() => onHighlight(node.id)}
                 >
-                  <KindMark kind={node.kind} />
+                  <KindMark kind={node.kind} conceptKind={node.conceptKind} />
                   <span className={styles.listLabel}>{node.label}</span>
-                  <span className="visually-hidden">, {KIND_STYLES[node.kind].label}</span>
+                  <span className="visually-hidden">, {node.conceptKind ? CONCEPT_KIND_STYLES[node.conceptKind].label : KIND_STYLES[node.kind].label}</span>
                   {node.more > 0 ? <span className={styles.listMore}>+{node.more} more</span> : null}
                 </button>
                 {edgesUnder.get(node.id)?.length ? (
