@@ -1,0 +1,31 @@
+---
+/**
+ * Settings: theme, library layout, reading defaults, the default voice, and what a new
+ * book makes on its own. One island; everything in it saves as it changes.
+ */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { Settings } from '../components/settings/Settings';
+
+export const prerender = false;
+---
+
+<BaseLayout title="Settings" width="reading">
+  <header class="intro">
+    <h1>Settings</h1>
+    <p>How the app looks, reads and listens for you, and what a new book makes on its own.</p>
+  </header>
+  <Settings client:load />
+</BaseLayout>
+
+<style>
+  .intro {
+    margin-block-end: var(--space-5);
+  }
+
+  .intro p {
+    margin: var(--space-2) 0 0;
+    color: var(--ink-2);
+    font-family: var(--font-ui);
+    max-inline-size: var(--measure);
+  }
+</style>
