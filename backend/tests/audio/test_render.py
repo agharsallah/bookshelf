@@ -127,7 +127,7 @@ def test_only_an_audio_summary_can_be_narrated(
 ):
     summary = make_artifact(session, book, type=ArtifactType.CHAPTER_SUMMARY)
 
-    with pytest.raises(PermanentJobError, match="needs an audio_summary"):
+    with pytest.raises(PermanentJobError, match="not an audio summary"):
         narrate(
             session, narrate_job(session, summary), runner=FakeSpeechRunner(), settings=settings
         )

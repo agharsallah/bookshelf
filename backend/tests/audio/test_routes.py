@@ -25,7 +25,7 @@ def narration(audio_dir: Path, script: Artifact, key: str, created_at: str = "")
     render = store.Render(
         key=key,
         document_id=str(script.document_id),
-        artifact_id=str(script.id),
+        source=str(script.id),
         voices=("alice", "frank"),
         duration=90.0,
         sections=(store.Mark(0.0, 90.0, 0, title="Stocks"),),

@@ -11,7 +11,7 @@ import pytest
 from app.audio import store
 from app.core.errors import NotFoundError
 
-DOC, SCRIPT = uuid.uuid4(), uuid.uuid4()
+DOC, SCRIPT = uuid.uuid4(), str(uuid.uuid4())
 ENGINE = {"model": "vibevoice-1.5b", "seed": 42}
 MARK = store.Mark(start=0.0, end=1.0, section=0, title="Stocks")
 
@@ -20,7 +20,7 @@ def render(key: str = "k1", **fields: object) -> store.Render:
     base = store.Render(
         key=key,
         document_id=str(DOC),
-        artifact_id=str(SCRIPT),
+        source=SCRIPT,
         voices=("alice", "frank"),
         duration=61.5,
         sections=(MARK,),
@@ -44,6 +44,22 @@ def test_render_key_depends_on_the_cast_in_order_and_the_engine_but_not_key_orde
     assert key != store.render_key(["frank", "alice"], ENGINE)
     assert key != store.render_key(["alice", "frank"], {**ENGINE, "seed": 7})
     assert len(key) == 16
+
+
+def test_render_key_hashes_the_words_only_for_a_source_that_has_them():
+    key = store.render_key(["alice"], ENGINE)
+
+    assert store.render_key(["alice"], ENGINE, content="") == key  # summaries keep their keys
+    assert store.render_key(["alice"], ENGINE, content="words-1") != key
+    assert store.render_key(["alice"], ENGINE, content="words-1") != store.render_key(
+        ["alice"], ENGINE, content="words-2"
+    )
+
+
+@pytest.mark.parametrize("source", ["", "..", "../elsewhere", "a/b", "~home", "x" * 201])
+def test_a_folder_is_only_ever_a_plain_name_under_the_document(tmp_path: Path, source: str):
+    with pytest.raises(ValueError, match="not a narration source"):
+        store.folder(tmp_path, DOC, source)
 
 
 def test_a_saved_render_is_found_again_with_its_timeline(tmp_path: Path):
@@ -91,6 +107,34 @@ def test_list_renders_is_newest_first_and_ignores_torn_or_orphan_manifests(tmp_p
     assert [r.key for r in listed] == ["new", "old"]
     assert store.find(tmp_path, DOC, SCRIPT, "torn") is None
     assert store.list_renders(tmp_path, uuid.uuid4()) == []
+
+
+def test_renders_list_per_source_and_carry_the_words_they_voiced(tmp_path: Path):
+    with_audio(tmp_path)
+    store.save(tmp_path, render())
+    reading = "read~ch01"
+    audio = store.audio_path(tmp_path, DOC, reading, "r1")
+    audio.parent.mkdir(parents=True)
+    audio.write_bytes(b"ID3")
+    store.save(tmp_path, render("r1", source=reading, voices=("alice",), content="words-1"))
+
+    (listed,) = store.list_renders(tmp_path, DOC, reading)
+
+    assert (listed.key, listed.content, listed.file) == ("r1", "words-1", f"{DOC}/{reading}/r1.mp3")
+    assert {r.key for r in store.list_renders(tmp_path, DOC)} == {"k1", "r1"}
+    assert store.list_renders(tmp_path, DOC, "read~ch02") == []
+
+
+def test_a_manifest_from_before_sources_still_loads_as_its_scripts_render(tmp_path: Path):
+    with_audio(tmp_path)
+    legacy = {k: v for k, v in asdict(render()).items() if k not in ("source", "content")}
+    manifest = store.folder(tmp_path, DOC, SCRIPT) / "k1.json"
+    manifest.write_text(json.dumps({**legacy, "artifact_id": SCRIPT}))
+
+    found = store.find(tmp_path, DOC, SCRIPT, "k1")
+
+    assert found is not None
+    assert (found.source, found.content) == (SCRIPT, "")
 
 
 def test_remove_document_deletes_only_that_documents_narrations(tmp_path: Path):

@@ -1,9 +1,10 @@
-"""Which cast voices which script: `narrate` job specs, shared by `POST /jobs` and the
-orchestrator (a stored `audio_summary` queues its narration with the cast it was asked for).
+"""Which cast voices what: `narrate` job specs, shared by `POST /jobs` and the orchestrator
+(a stored `audio_summary` queues its narration with the cast it was asked for).
 
-A narrate job's scope is one script (`payload.artifact_id`) and one cast (`payload.voices`,
-speaker 1 first); its queue key says both, so asking twice for the same cast while one runs
-is one job, and a different cast is a second.
+A narrate job's scope is one source (`app.audio.sources`) and one cast (`payload.voices`,
+speaker 1 first): a script (`payload.artifact_id`) or a chapter read aloud (`payload.anchor`,
+one reader). Its queue key says both, so asking twice for the same cast while one runs is
+one job, and a different cast is a second.
 """
 
 import uuid
@@ -13,11 +14,12 @@ from pathlib import Path
 from sqlmodel import Session
 
 from app.audio import voices as voice_catalogue
+from app.audio.sources import SourceError, reading_source, script_params
 from app.audio.speech import FORMAT_SPEAKERS, default_cast, default_voices, speaker_count
 from app.jobs.queue import JobSpec
-from app.models import Artifact
+from app.models import Artifact, Document
 from app.models.enums import ArtifactType, JobKind
-from app.pipeline.skills import ParamValue, Skill, skill_for_artifact_type
+from app.pipeline.skills import ParamValue, Skill
 from app.services.errors import InvalidInputError
 
 NARRATE_PRIORITY = 130  # after everything that feeds study material
@@ -49,12 +51,6 @@ def cast_for(
     return check_voices(voices_dir, voices, count=count)
 
 
-def script_params(catalogue: Mapping[str, Skill], artifact: Artifact) -> dict[str, ParamValue]:
-    """The params a script was written with, from its episode key (human edits keep it)."""
-    skill = skill_for_artifact_type(catalogue, artifact.type)
-    return (skill.meta.params_of(artifact.variant) if skill is not None else None) or {}
-
-
 def narrate_spec(artifact: Artifact, voices: Sequence[str], *, force: bool = False) -> JobSpec:
     payload: dict[str, object] = {"artifact_id": str(artifact.id), "voices": list(voices)}
     if force:
@@ -68,6 +64,48 @@ def narrate_spec(artifact: Artifact, voices: Sequence[str], *, force: bool = Fal
     )
 
 
+def reading_spec(
+    document: Document, anchor: str, voices: Sequence[str], *, force: bool = False
+) -> JobSpec:
+    payload: dict[str, object] = {"anchor": anchor, "voices": list(voices)}
+    if force:
+        payload["force"] = True
+    return JobSpec(
+        kind=JobKind.NARRATE,
+        document_id=document.id,
+        anchor=anchor,
+        input_hash=f"narrate:read:{anchor}:{'+'.join(voices)}",
+        payload=payload,
+        priority=NARRATE_PRIORITY,
+    )
+
+
+def requested_reading(
+    session: Session,
+    *,
+    document_id: uuid.UUID | None,
+    anchor: str,
+    voices: Sequence[str] | None,
+    voices_dir: Path,
+    force: bool = False,
+) -> JobSpec:
+    """`POST /jobs {kind: narrate, anchor}`: read one chapter (or section) aloud, one voice."""
+    document = session.get(Document, document_id) if document_id is not None else None
+    if document is None:
+        raise InvalidInputError("Reading aloud needs a `document_id`.", field="body.document_id")
+    try:
+        source = reading_source(session, document, anchor)
+    except SourceError as exc:
+        raise InvalidInputError(str(exc), field="body.anchor") from exc
+    if not source.body["sections"]:
+        raise InvalidInputError(f"{anchor!r} has no text to read aloud.", field="body.anchor")
+    if voices is None:
+        cast = default_cast(1, document.language)
+    else:
+        cast = check_voices(voices_dir, voices, count=1)
+    return reading_spec(document, anchor, cast, force=force)
+
+
 def requested_spec(
     session: Session,
     *,
@@ -76,11 +114,25 @@ def requested_spec(
     voices: Sequence[str] | None,
     catalogue: Mapping[str, Skill],
     voices_dir: Path,
+    anchor: str | None = None,
     force: bool = False,
 ) -> JobSpec:
-    """A manual `POST /jobs {kind: narrate}`: voice (again) one script of this document."""
+    """A manual `POST /jobs {kind: narrate}`: voice (again) one script of this document, or,
+    with an `anchor` and no script, read that chapter aloud."""
+    if artifact_id is None and anchor:
+        return requested_reading(
+            session,
+            document_id=document_id,
+            anchor=anchor,
+            voices=voices,
+            voices_dir=voices_dir,
+            force=force,
+        )
     if artifact_id is None:
-        raise InvalidInputError("`narrate` jobs need an `artifact_id`.", field="body.artifact_id")
+        raise InvalidInputError(
+            "`narrate` jobs need an `artifact_id` (a script) or an `anchor` (a chapter).",
+            field="body.artifact_id",
+        )
     artifact = session.get(Artifact, artifact_id)
     if (
         artifact is None

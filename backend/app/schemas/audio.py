@@ -1,4 +1,4 @@
-"""Wire shapes for audio summaries: the voice catalogue and a book's episodes."""
+"""Wire shapes for audio: the voice catalogue, a book's episodes, a chapter read aloud."""
 
 import uuid
 from datetime import datetime
@@ -85,3 +85,19 @@ class AudioEpisode(BaseModel):
 class AudioShelf(BaseModel):
     document_id: uuid.UUID
     episodes: Annotated[list[AudioEpisode], Field(description="Shortest first, then format.")]
+
+
+class ChapterAudio(BaseModel):
+    """A chapter read aloud as written: what the reader says, and its recordings."""
+
+    anchor: str
+    title: str
+    script: Annotated[
+        dict[str, Any],
+        Field(description="`{title, speakers: [reader], sections}`; each turn cites its block."),
+    ]
+    words: Annotated[int, Field(description="Words read aloud, to tell how long it takes.")]
+    renders: Annotated[
+        list[AudioRender],
+        Field(description="Recordings of these exact words, newest first."),
+    ]

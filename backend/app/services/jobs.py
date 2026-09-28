@@ -141,6 +141,7 @@ def job_spec(
             voices=request.voices,
             catalogue=catalogue,
             voices_dir=voices_dir,
+            anchor=request.anchor,
             force=request.force,
         )
     skill = _check_skill(request, catalogue)

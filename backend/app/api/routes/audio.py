@@ -1,8 +1,9 @@
-"""Audio summaries: voices to cast, a book's episodes, and the narrations themselves.
+"""Audio: voices to cast, a book's episodes, a chapter read aloud, and the narrations.
 
 Making an episode is a job like any other study material: `POST /jobs` with
 `{kind: derive, skill: write-audio-summary, params, voices}` writes the script, then its
-narration queues itself; `{kind: narrate, artifact_id, voices}` voices a script again.
+narration queues itself; `{kind: narrate, artifact_id, voices}` voices a script again, and
+`{kind: narrate, anchor, voices: [one]}` reads that chapter aloud as written.
 """
 
 import re
@@ -15,12 +16,12 @@ from fastapi.responses import FileResponse
 
 from app.api.deps import SessionDep, SettingsDep
 from app.api.pipeline import SkillsDirDep
-from app.audio import episodes, store
+from app.audio import episodes, sources, store
 from app.audio import voices as voice_catalogue
 from app.audio.speech import DEFAULT_VOICES, FORMAT_SPEAKERS
 from app.core.errors import NotFoundError
 from app.pipeline.skills import load_catalogue
-from app.schemas.audio import AudioShelf, VoiceCatalogue, VoicePublic
+from app.schemas.audio import AudioShelf, ChapterAudio, VoiceCatalogue, VoicePublic
 from app.services import documents
 from app.services.errors import UpstreamError
 
@@ -94,6 +95,28 @@ def document_audio(
 ) -> AudioShelf:
     document = documents.get_document(session, ref)
     return episodes.shelf(session, document, load_catalogue(skills_dir), settings.audio_dir)
+
+
+@router.get(
+    "/documents/{ref}/audio/read/{anchor:path}",
+    response_model=ChapterAudio,
+    summary="A chapter read aloud: what the reader says, and its recordings",
+    description="The chapter (or part, or section) at `anchor` as a one-reader script, its "
+    "own words fit to hear, each turn citing its block; and every recording of those words. "
+    "Record one with `POST /jobs {kind: narrate, document_id, anchor, voices: [voice]}`.",
+)
+def chapter_audio(
+    ref: Annotated[str, PathParam(min_length=1, max_length=200)],
+    anchor: Annotated[str, PathParam(min_length=1, max_length=200)],
+    session: SessionDep,
+    settings: SettingsDep,
+) -> ChapterAudio:
+    document = documents.get_document(session, ref)
+    try:
+        source = sources.reading_source(session, document, anchor)
+    except sources.SourceError as exc:
+        raise NotFoundError(str(exc)) from exc
+    return episodes.chapter(source, settings.audio_dir)
 
 
 @router.get(

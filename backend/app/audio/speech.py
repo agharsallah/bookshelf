@@ -1,7 +1,8 @@
-"""From an `audio_summary` script to what the speech model reads.
+"""From a script to what the speech model reads.
 
-The script (skills/write-audio-summary) is sections of turns, each turn a speaker number
-(1 to 4) and what they say, with cites. The speech model needs only the words and one
+A script is sections of turns, each turn a speaker number (1 to 4) and what they say, with
+cites: an `audio_summary` (skills/write-audio-summary) or a chapter read aloud
+(`app.audio.reading`, one reader). The speech model needs only the words and one
 reference clip per speaker, so this strips the cites, tidies the text for speaking, and
 opens with a short spoken note that the audio is AI-generated (VibeVoice's terms ask that
 synthetic speech say so).
@@ -11,7 +12,7 @@ import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 # How many people each format has; the script declares exactly this many speakers.
 FORMAT_SPEAKERS: Mapping[str, int] = {"narrator": 1, "conversation": 2, "panel": 3, "roundtable": 4}
@@ -20,9 +21,17 @@ DEFAULT_VOICES: Mapping[str, tuple[str, ...]] = {
     "en": ("alice", "frank", "maya", "carter"),
     "zh": ("xinran", "bowen", "anchen", "alice"),
 }
-DISCLOSURE: Mapping[str, str] = {
-    "en": "This is an AI-generated audio summary of {title}.",
-    "zh": "这是一段由人工智能生成的《{title}》音频摘要。",
+# What the audio is, said first: a summary written about the book, or its own words read.
+Kind = Literal["summary", "reading"]
+DISCLOSURE: Mapping[Kind, Mapping[str, str]] = {
+    "summary": {
+        "en": "This is an AI-generated audio summary of {title}.",
+        "zh": "这是一段由人工智能生成的《{title}》音频摘要。",
+    },
+    "reading": {
+        "en": "This is an AI-generated reading of {title}.",
+        "zh": "这是一段由人工智能朗读的《{title}》。",
+    },
 }
 
 _MARKUP = re.compile(r"[*_`#>]+")
@@ -87,7 +96,12 @@ def speaker_count(body: Mapping[str, Any]) -> int:
 
 
 def build_request(
-    body: Mapping[str, Any], voices: Sequence[Path], *, title: str, language: str = "en"
+    body: Mapping[str, Any],
+    voices: Sequence[Path],
+    *,
+    title: str,
+    language: str = "en",
+    kind: Kind = "summary",
 ) -> SpeechRequest:
     """The request for one script and its voices (one per declared speaker, in order)."""
     count = speaker_count(body)
@@ -108,7 +122,8 @@ def build_request(
     if not sections:
         raise ScriptError("the script has nothing to say")
     first = sections[0]
-    disclosure = DISCLOSURE.get(language, DISCLOSURE["en"]).format(title=title)
+    said = DISCLOSURE[kind]
+    disclosure = said.get(language, said["en"]).format(title=title)
     opening = Turn(first.turns[0].speaker, f"{disclosure} {first.turns[0].text}")
     sections[0] = Section(first.title, (opening, *first.turns[1:]))
     return SpeechRequest(title=title, voices=tuple(voices), sections=tuple(sections))

@@ -2,15 +2,19 @@
 the script to play first (the latest approved version, else the latest one) and its
 renders, plus every version of the episode. A forced re-write replaces a script (the old
 row becomes `rejected`), but a version that was recorded stays listed with its audio, so
-making a new version never loses an old one."""
+making a new version never loses an old one.
+
+A chapter read aloud (`chapter`) has no versions: its words are the chapter's, and only the
+recordings of the words it has now are listed (a re-parse that changed them leaves the old
+ones on disk, unlisted, like any derived media)."""
 
 from collections.abc import Mapping
 from pathlib import Path
 
 from sqlmodel import Session, col, select
 
-from app.audio import store
-from app.audio.narration import script_params
+from app.audio import reading, store
+from app.audio.sources import Source, script_params
 from app.models import Artifact, Document
 from app.models.enums import ArtifactType, Review
 from app.pipeline.artifacts import pick_preferred
@@ -21,6 +25,7 @@ from app.schemas.audio import (
     AudioScript,
     AudioShelf,
     AudioVersion,
+    ChapterAudio,
     Mark,
 )
 
@@ -61,7 +66,7 @@ def shelf(
     ).all()
     renders: dict[str, list[AudioRender]] = {}
     for render in store.list_renders(audio_dir, document.id):
-        renders.setdefault(render.artifact_id, []).append(render_public(render))
+        renders.setdefault(render.source, []).append(render_public(render))
     live = [row for row in rows if row.review is not Review.REJECTED]
     chosen = pick_preferred(live, lambda row: row.variant)
     # A variant whose every version was replaced or rejected still has its recordings.
@@ -92,3 +97,19 @@ def shelf(
         )
     episodes.sort(key=lambda e: _order(e.params))
     return AudioShelf(document_id=document.id, episodes=episodes)
+
+
+def chapter(source: Source, audio_dir: Path) -> ChapterAudio:
+    """A reading source (`sources.reading_source`) and its recordings of these words."""
+    renders = [
+        render_public(render)
+        for render in store.list_renders(audio_dir, source.document.id, source.folder)
+        if render.content == source.content
+    ]
+    return ChapterAudio(
+        anchor=str(source.anchor),
+        title=str(source.body.get("title", "")),
+        script=dict(source.body),
+        words=reading.word_count(source.body),
+        renders=renders,
+    )

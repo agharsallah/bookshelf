@@ -25,6 +25,7 @@ class JobCreate(BaseModel):
                     "voices": ["alice", "frank"],
                 },
                 {"kind": "narrate", "document_id": "…", "artifact_id": "…", "voices": ["maya"]},
+                {"kind": "narrate", "document_id": "…", "anchor": "ch03", "voices": ["alice"]},
             ]
         },
     )
@@ -65,7 +66,11 @@ class JobCreate(BaseModel):
     ]
     artifact_id: Annotated[
         uuid.UUID | None,
-        Field(default=None, description="Required for `narrate`: the script to voice."),
+        Field(
+            default=None,
+            description="`narrate`: the script to voice. Without it, `narrate` reads the "
+            "chapter at `anchor` aloud, as written, with one voice.",
+        ),
     ]
 
 
