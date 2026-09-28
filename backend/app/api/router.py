@@ -19,6 +19,11 @@ from app.api.routes import (
     media,
     nodes,
     notes,
+    paper_candidates,
+    paper_claims,
+    paper_compare,
+    paper_sets,
+    papers,
     reader_stats,
     reading,
     recalls,
@@ -33,6 +38,12 @@ api_router.include_router(library.router)
 api_router.include_router(stats.router)  # before documents: /documents/{ref}/stats
 api_router.include_router(reader_stats.router)  # before documents: /documents/{ref}/reader-stats
 api_router.include_router(activity.router)
+# before any /papers/{ref} router: /papers/candidates is not a ref
+api_router.include_router(paper_candidates.router)
+api_router.include_router(paper_compare.router)  # /papers/compare is not a ref
+api_router.include_router(paper_claims.router)  # /papers/claims/relate is not a ref
+api_router.include_router(papers.router)  # after every fixed /papers/<word> router
+api_router.include_router(paper_sets.router)
 api_router.include_router(documents.router)
 api_router.include_router(nodes.router)
 api_router.include_router(notes.router)
