@@ -244,6 +244,43 @@ create table reading_positions (
   primary key (document_id, unit)
 );
 
+-- Remembering it (§9). A recall is a chapter written from memory, a prediction what you
+-- expected it to argue; both immutable (trigger, D11). Grades are derived and replaceable.
+create table recalls (
+  id            uuid primary key,
+  document_id   uuid not null references documents on delete cascade,
+  unit          text not null,               -- the chapter
+  kind          text not null,               -- recall | prediction
+  raw           text not null,               -- YOUR WORDS, never edited
+  created_at    timestamptz not null default now()
+);
+create table recall_grades (                 -- one per recall, from grade-recall
+  recall_id     uuid primary key references recalls on delete cascade,
+  prediction_id uuid references recalls on delete set null,
+  ideas         jsonb not null,              -- [{id, tier, text, cites, status, feedback, cue?}]
+  question      jsonb,                       -- {idea, text, cites}: one "why is this true?"
+  comparison    jsonb,                       -- {predicted, argues, ideas, cites}
+  origin        text not null, model text, created_at timestamptz not null default now()
+);
+-- What comes back for spaced retrieval, on an FSRS schedule (py-fsrs).
+create table review_items (
+  id            uuid primary key,
+  document_id   uuid not null references documents on delete cascade,
+  anchor        text not null,               -- the passage the answer rests on
+  source        text not null,               -- recall | question | flashcard
+  source_key    text not null,               -- unique per source: one item per idea / card
+  prompt        text not null,               -- all a review shows before you answer
+  answer        jsonb not null,              -- cited spans, revealed for a typed attempt
+  card          jsonb not null,              -- FSRS card state
+  due           timestamptz not null,        -- copied out of `card`, indexed
+  last_rating   smallint,
+  unique (source, source_key)
+);
+create table review_logs (                   -- every review: rating + what you typed
+  id uuid primary key, item_id uuid not null references review_items on delete cascade,
+  rating smallint not null, answer text, reviewed_at timestamptz not null default now()
+);
+
 -- DISTILLATION ---------------------------------------------------------
 -- Every AI output lands here. Immutable and versioned: a re-run inserts a new
 -- version, the old one stays for diffing.
@@ -510,6 +547,7 @@ Consequences:
 | `make-flashcards` | `flashcards` | chapter · document | distil | `[{front, back, cites[]}]` |
 | `make-glossary` | `glossary` | document | distil | `definition` blocks |
 | `mark-salience` | `salience_marks` | chapter | distil | `{marks: [{tier: core · key · term, text, cites: [one anchor], why}]}`, `text` verbatim from the cited block (`verbatim` gate); read by the reader's "Mark what matters" mode |
+| `grade-recall` | — (utility: `recall_grades` + `review_items`) | chapter | distil | `{ideas: [{id, status: recalled · partial · missed, feedback, cue?}], question: {idea, text} \| null, comparison: {predicted, argues, ideas} \| null}`; grades by idea id, Python maps ids to cites (§9 "Remembering it") |
 | `write-audio-summary` | `audio_summary` | document | reason | a spoken script: `{title, speakers[1–4], sections: [{title, turns: [{speaker, text, cites}]}]}`, per run `params` minutes · format · language (§9 "Audio summaries") |
 
 The four study skills marked *chapter · document* are one package each: a job with an anchor
@@ -901,6 +939,49 @@ are listed. In the reader, Listen (`l`) opens a dock with the player; the passag
 read is marked in the text and followed (unless turned off), and "play from where I am"
 starts at the block you are on.
 
+### Remembering it
+
+Reading once is not remembering. Three light habits, each at a moment the reader is already
+at, with no screen of its own beyond the Desk's review card:
+
+```mermaid
+flowchart LR
+  classDef human fill:#fdf3e1,stroke:#c98a1b,color:#4a2f00
+  classDef derived fill:#f4f0fa,stroke:#7c5cbf,color:#2b1a4d
+  P["prediction<br/>title + headings only"]:::human
+  R["recall<br/>chapter from memory"]:::human
+  G["grade-recall<br/>vs the chapter's key ideas"]:::derived
+  RV["review_items<br/>FSRS schedule"]:::derived
+  FC["flashcard marks"]:::human
+  D["Desk: due today<br/>prompt → typed answer → reveal → rate"]:::human
+  P --> G
+  R --> G --> RV
+  G -- "gaps marked in the reader" --> R
+  FC --> RV --> D
+```
+
+1. **Predict before reading** (pretesting). An unread chapter that can be graded opens on a
+   card with only its title and section headings: what do you think it will argue? Saved as a
+   `prediction` before the text shows; Escape skips it, a reading setting turns it off.
+2. **Closed-book recall** (retrieval practice). At the chapter's end (or `r`) a sheet covers
+   the text, which is also hidden and inert, and you write the main claims, evidence and
+   examples from memory. Saving queues a `grade_recall` job. The answer key is the chapter's
+   **key ideas**: its `salience_marks` core ideas and key points, else its distillation's cited
+   spans, numbered `I1, I2…`. `grade-recall` says for each idea *recalled*, *partial* or
+   *missed* with one line of feedback, writes a retrieval **cue** for each gap, asks one
+   "why is this true?" about an idea you recalled (elaboration), and, when there is a
+   prediction, sets it against the thesis ("you predicted X; it argues Y"). The model grades by
+   id only; every cite in the grade is the idea's own, so it cannot cite what the chapter does
+   not say. "Gaps marked" reopens the chapter with the missed ideas in the core wash and the
+   partial ones in the key stroke of the what-matters mode.
+3. **Spaced retrieval**. Each gap becomes a review item prompted by its cue and due tomorrow
+   (keyed by the idea, so missing it twice keeps one schedule); the why question is due now;
+   every flashcard you mark joins too (knew = Good, still learning = Again), marks now live
+   server-side instead of in the browser. FSRS (`py-fsrs`, no minute-scale learning steps)
+   sets each next date from your self-rating. A review is retrieval, not rereading:
+   `GET /reviews/due` carries prompts only, the cited answer is revealed for a typed
+   attempt, and the rating logs that attempt.
+
 ### Derived artifacts
 
 Once approved distillations exist, everything below is a cheap, separate skill over them. None of
@@ -931,7 +1012,7 @@ flowchart TD
 | `quiz` | one chapter | `{question, choices[], answer, cites[]}` | active recall; wrong answers link to the passage |
 | `faq` | chapter or document | `{question, answer_spans[]}` | how a colleague would ask; good search seed |
 | `quote_set` | one chapter | `quote` blocks with `page` | citable verbatim material for your own writing |
-| `flashcards` | `remember` callouts + definitions | `{front, back, cites[]}` | spaced repetition later, zero extra prompting |
+| `flashcards` | `remember` callouts + definitions | `{front, back, cites[]}` | spaced repetition: marked cards join the FSRS review queue (§9 "Remembering it") |
 | `glossary` | `definition` blocks across the book | `definition` blocks, deduped | feeds concept linking and the graph |
 
 Each is its own skill directory, its own schema, and its own row type, so adding one never
@@ -1078,7 +1159,8 @@ Keep Astro as the shell and routing layer; add React islands only where interact
 | Surface | Tech | Why |
 |---|---|---|
 | **Library** | Astro, static | Shelf grid, filters, ingest status. No client state worth shipping JS for |
-| **Reader** | React island | Two panes — source blocks left, distillation right — anchor-synced scrolling, highlight/note creation. Reading settings (font, size, spacing, width), panes you can put away, focus mode and full screen, passages colour-coded by role (quote, example, exercise…), all kept per browser. "Mark what matters" (`h`) colours the source itself: core ideas, key points and defined terms, drawn in as each block scrolls into view, each opening a card with why it was marked, and a meter of the key ideas reached. The marks are `mark-salience`'s when that chapter has run it (a manual `derive` per chapter), otherwise inferred from what the distillation, notes and summary cite and from the book's concepts and glossary. Saves your place in the chapter as you read (server-side, so it follows you across devices); the document page offers "Continue reading" and shows progress per chapter and for the book. Listen (`l`) reads the chapter aloud as written, marking and following the passage being read. Genuinely interactive |
+| **Reader** | React island | Two panes — source blocks left, distillation right — anchor-synced scrolling, highlight/note creation. Reading settings (font, size, spacing, width), panes you can put away, focus mode and full screen, passages colour-coded by role (quote, example, exercise…), all kept per browser. "Mark what matters" (`h`) colours the source itself: core ideas, key points and defined terms, drawn in as each block scrolls into view, each opening a card with why it was marked, and a meter of the key ideas reached. The marks are `mark-salience`'s when that chapter has run it (a manual `derive` per chapter), otherwise inferred from what the distillation, notes and summary cite and from the book's concepts and glossary. Saves your place in the chapter as you read (server-side, so it follows you across devices); the document page offers "Continue reading" and shows progress per chapter and for the book. Listen (`l`) reads the chapter aloud as written, marking and following the passage being read. Recall (`r`, or at the chapter's end) hides the text while you write what you remember, then shows the grade and marks the gaps; an unread chapter first asks what you expect it to argue (§9 "Remembering it"). Genuinely interactive |
+| **Desk** | Astro + one React island | The home page; "Due today" runs the spaced reviews across every book inline, one card at a time (prompt, typed answer, reveal, rate 1–4), and is absent when nothing is due |
 | **Brief** | Astro, static | Renders one approved artifact. Server-rendered, instant, printable |
 | **Guide** | Astro + one React island | The book guide with its charts (arc strip, chapter rows, theme heatmap, stat tiles), server-rendered then hydrated: a cite, chapter title or heatmap cell opens the passage in place (a drawer with the whole chapter, the cited block marked, previous / next chapter, "Open in reader"; its left edge drags wider with the reader's own width grip, and its width and typography are the reader's saved preferences); diagrams and charts magnify in the reader's lightbox. ⌘/Ctrl/middle click still opens the reader |
 | **Search** | React island | Query box, intent badge, grouped results, cited answer with click-through |
@@ -1111,6 +1193,17 @@ GET    /documents/{id}/blocks          paginated, ?anchor_prefix=
 
 GET    /documents/{id}/reading         reading positions, most recently read first
 PUT    /documents/{id}/reading         save a chapter's position {unit, anchor, progress}
+
+POST   /documents/{id}/recalls         write a recall (→ grade_recall job) or a prediction {unit, kind, raw}
+GET    /documents/{id}/recalls?unit=   recalls and predictions with their grades, newest first
+POST   /documents/{id}/recalls/{rid}/grade  grade a recall again → 202 + job
+
+GET    /reviews/due?limit=             review prompts due now across every book (no answers)
+POST   /reviews/{id}/reveal            the cited answer, for a typed attempt {answer}
+POST   /reviews/{id}/rating            log the attempt and rate it {rating 1–4, answer}; FSRS reschedules
+GET    /reviews/flashcards/{artifact}  your marks on a deck
+PUT    /reviews/flashcards/{artifact}/{index}  mark a card {mark: knew | learning}
+DELETE /reviews/flashcards/{artifact}  forget the deck's marks (and its queued cards)
 
 GET    /nodes/{document_id}/{anchor}   one block or subtree
 
@@ -1287,4 +1380,5 @@ The design above is a guideline. Where the build diverged, the reason is recorde
 | SSE lifetimes | poll `/jobs` | `/jobs/stream` and `/search/answer` end at once when shutdown begins (SIGINT/SIGTERM chained in the lifespan, `app/core/lifecycle.py`); streams are bounded (`max_seconds`, 180 s answer run) | A `fastapi dev` reload otherwise waits for every open stream |
 | URL ingest | fetch with limits | plus an SSRF guard: every request and redirect hop resolves the host and refuses loopback/private/link-local/multicast/reserved/unspecified addresses (IPv4, IPv6, IPv4-mapped) | Ingest by URL must not become a probe into the local network |
 | Re-parse media | — | a re-parse deletes files under `media_dir/<slug>/` no node references any more | Stale crops would otherwise accumulate forever |
+| Remembering it | quizzes and flashcards only | recalls, predictions, grades and an FSRS review queue (migration `20260928085522_recall_and_reviews`); grading is a Python job (`grade_recall`, `app/recall/grading.py`) running the `grade-recall` utility skill, not an artifact, because a grade belongs to one recall rather than to a document scope; flashcard marks moved from localStorage to `review_items` (a browser's old marks are sent up once) | Recall has to be graded against the book with cites, reviews have to be due across every book, and a mark in one browser should not be lost in another |
 | Library cards | — | `DocumentSummary.blurb`: approved book summary's first paragraph, else the brief's thesis, else the first chapter summary (≤ 280 chars), one query per page | A shelf needs a line per book without N+1 queries |
