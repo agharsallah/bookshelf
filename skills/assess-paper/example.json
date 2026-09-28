@@ -1,0 +1,229 @@
+{
+  "overall": [
+    {
+      "text": "A clear, well-motivated method with consistent gains on two of three benchmarks; the evidence rests on development sets and three seeds, and the gate must be retrained per benchmark.",
+      "cites": [
+        "ch04/s02/t001",
+        "ch04/p001",
+        "ch05/p002"
+      ]
+    }
+  ],
+  "scores": [
+    {
+      "criterion": "novelty",
+      "score": 3,
+      "spans": [
+        {
+          "text": "Gating passages before reading is a modest step beyond reranking the retriever's output, which the related work already does.",
+          "cites": [
+            "ch02/p003",
+            "ch03/s01/p002"
+          ]
+        }
+      ]
+    },
+    {
+      "criterion": "rigour",
+      "score": 3,
+      "spans": [
+        {
+          "text": "Baselines are re-run with released code and variance is reported over three seeds, but every number is on a development set.",
+          "cites": [
+            "ch04/s01/p002",
+            "ch04/s02/p002",
+            "ch04/p001"
+          ]
+        }
+      ]
+    },
+    {
+      "criterion": "evidence",
+      "score": 4,
+      "spans": [
+        {
+          "text": "+2.1 EM on NQ and +3.4 on HotpotQA over FiD-base; the TriviaQA lead of 0.3 is within one standard deviation.",
+          "cites": [
+            "ch04/s02/p001",
+            "ch04/s02/p002"
+          ]
+        }
+      ]
+    },
+    {
+      "criterion": "clarity",
+      "score": 4,
+      "spans": [
+        {
+          "text": "The gate is defined by one equation and a figure of the pipeline; the training procedure is given step by step.",
+          "cites": [
+            "ch03/s01/m001",
+            "ch03/f001",
+            "ch03/s02/p001"
+          ]
+        }
+      ]
+    },
+    {
+      "criterion": "reproducibility",
+      "score": 3,
+      "spans": [
+        {
+          "text": "Code and hyperparameters are released; the compute budget and the development-set splits used for tuning are not stated.",
+          "cites": [
+            "ch04/s01/p003",
+            "ch04/s01/t001"
+          ]
+        }
+      ]
+    },
+    {
+      "criterion": "relevance",
+      "score": 4,
+      "spans": [
+        {
+          "text": "It directly extends fusion-in-decoder readers, which two papers on the shelf build on.",
+          "cites": [
+            "ch02/p002"
+          ]
+        }
+      ]
+    }
+  ],
+  "reproducibility": [
+    {
+      "item": "code",
+      "status": "yes",
+      "spans": [
+        {
+          "text": "Code and trained gates are released.",
+          "cites": [
+            "ch04/s01/p003"
+          ]
+        }
+      ]
+    },
+    {
+      "item": "data",
+      "status": "yes",
+      "spans": [
+        {
+          "text": "Only public benchmarks are used.",
+          "cites": [
+            "ch04/p001"
+          ]
+        }
+      ]
+    },
+    {
+      "item": "hyperparameters",
+      "status": "yes",
+      "spans": [
+        {
+          "text": "Learning rate, batch size and gate width are listed in a table.",
+          "cites": [
+            "ch04/s01/t001"
+          ]
+        }
+      ]
+    },
+    {
+      "item": "seeds",
+      "status": "partial",
+      "spans": [
+        {
+          "text": "Three seeds for TriviaQA only; one run elsewhere.",
+          "cites": [
+            "ch04/s02/p002"
+          ]
+        }
+      ]
+    },
+    {
+      "item": "compute",
+      "status": "no",
+      "spans": [
+        {
+          "text": "The setup names the hardware nowhere and gives no training time.",
+          "cites": [
+            "ch04/s01/p001"
+          ]
+        }
+      ]
+    },
+    {
+      "item": "baselines",
+      "status": "yes",
+      "spans": [
+        {
+          "text": "FiD-base is re-run with the authors' released code.",
+          "cites": [
+            "ch04/s01/p002"
+          ]
+        }
+      ]
+    },
+    {
+      "item": "ablations",
+      "status": "partial",
+      "spans": [
+        {
+          "text": "Removing the gate is ablated; the gate's input features are not.",
+          "cites": [
+            "ch04/s03/p001"
+          ]
+        }
+      ]
+    },
+    {
+      "item": "statistical_significance",
+      "status": "no",
+      "spans": [
+        {
+          "text": "Gains are reported without significance tests.",
+          "cites": [
+            "ch04/s02/p001"
+          ]
+        }
+      ]
+    },
+    {
+      "item": "data_splits",
+      "status": "unknown",
+      "spans": [
+        {
+          "text": "It is not said which split was used to tune the gate threshold.",
+          "cites": [
+            "ch04/s01/p001"
+          ]
+        }
+      ]
+    },
+    {
+      "item": "evaluation_protocol",
+      "status": "yes",
+      "spans": [
+        {
+          "text": "Exact match with the standard answer normalisation.",
+          "cites": [
+            "ch04/p001"
+          ]
+        }
+      ]
+    }
+  ],
+  "related_shelf": [
+    {
+      "slug": "izacard-fid",
+      "why": [
+        {
+          "text": "The reader this paper gates is FiD; the gains are measured against it.",
+          "cites": [
+            "ch02/p002",
+            "ch04/s01/p002"
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+name: review-paper
+version: 2  # v2: quotes are the paper's words only; no claims about where the text mentions a thing
+description: Write a peer-review report on a paper — summary, strengths, weaknesses (major and minor), questions for the authors, missing experiments and a verdict with confidence — every point cited. Interactively it can also play a Socratic reviewer who debates the paper with you.
+tier: reason
+job_kind: derive
+artifact_type: paper_review
+scope: document
+selector: paper_review
+vision: false
+genre: paper   # a paper skill (docs/PAPERS.md P2)
+gates:
+  grounding_min: 0.9
+  max_words: 2500
+  coverage_min: 0.5  # a review that never reads the method or the results is not one

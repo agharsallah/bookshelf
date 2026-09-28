@@ -1,0 +1,378 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bookshelf.local/skills/assess-paper/schema.json",
+  "title": "assess-paper output",
+  "description": "The model's assessment of a paper (not the reader's rating, P8): an overall judgement, one 1-5 score per rubric criterion, a fixed reproducibility checklist and the shelf papers it bears on. Every key is always present; each criterion and each checklist item appears exactly once.",
+  "type": "object",
+  "required": [
+    "overall",
+    "scores",
+    "reproducibility",
+    "related_shelf"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "overall": {
+      "allOf": [
+        {
+          "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/spans"
+        },
+        {
+          "maxItems": 4
+        }
+      ],
+      "description": "The assessment in two or three sentences: what the paper is worth and why."
+    },
+    "scores": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "description": "One score per criterion, in rubric order: novelty, rigour, evidence, clarity, reproducibility, relevance.",
+      "items": {
+        "type": "object",
+        "required": [
+          "criterion",
+          "score",
+          "spans"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "criterion": {
+            "enum": [
+              "novelty",
+              "rigour",
+              "evidence",
+              "clarity",
+              "reproducibility",
+              "relevance"
+            ]
+          },
+          "score": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5
+          },
+          "spans": {
+            "allOf": [
+              {
+                "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/spans"
+              },
+              {
+                "maxItems": 4
+              }
+            ],
+            "description": "Why this score, citing the passages it rests on."
+          }
+        }
+      },
+      "allOf": [
+        {
+          "contains": {
+            "properties": {
+              "criterion": {
+                "const": "novelty"
+              }
+            },
+            "required": [
+              "criterion"
+            ]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "properties": {
+              "criterion": {
+                "const": "rigour"
+              }
+            },
+            "required": [
+              "criterion"
+            ]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "properties": {
+              "criterion": {
+                "const": "evidence"
+              }
+            },
+            "required": [
+              "criterion"
+            ]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "properties": {
+              "criterion": {
+                "const": "clarity"
+              }
+            },
+            "required": [
+              "criterion"
+            ]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "properties": {
+              "criterion": {
+                "const": "reproducibility"
+              }
+            },
+            "required": [
+              "criterion"
+            ]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "properties": {
+              "criterion": {
+                "const": "relevance"
+              }
+            },
+            "required": [
+              "criterion"
+            ]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        }
+      ]
+    },
+    "reproducibility": {
+      "type": "array",
+      "minItems": 10,
+      "maxItems": 10,
+      "description": "The reproducibility checklist, one entry per item in checklist order.",
+      "items": {
+        "type": "object",
+        "required": [
+          "item",
+          "status",
+          "spans"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "item": {
+            "enum": [
+              "code",
+              "data",
+              "hyperparameters",
+              "seeds",
+              "compute",
+              "baselines",
+              "ablations",
+              "statistical_significance",
+              "data_splits",
+              "evaluation_protocol"
+            ]
+          },
+          "status": {
+            "enum": [
+              "yes",
+              "partial",
+              "no",
+              "unknown"
+            ]
+          },
+          "spans": {
+            "allOf": [
+              {
+                "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/spans"
+              },
+              {
+                "maxItems": 3
+              }
+            ],
+            "description": "What the paper reports (yes/partial) or where it would say so and does not (no/unknown)."
+          }
+        }
+      },
+      "allOf": [
+        {
+          "contains": {
+            "properties": {
+              "item": {
+                "const": "code"
+              }
+            },
+            "required": [
+              "item"
+            ]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "properties": {
+              "item": {
+                "const": "data"
+              }
+            },
+            "required": [
+              "item"
+            ]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "properties": {
+              "item": {
+                "const": "hyperparameters"
+              }
+            },
+            "required": [
+              "item"
+            ]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "properties": {
+              "item": {
+                "const": "seeds"
+              }
+            },
+            "required": [
+              "item"
+            ]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "properties": {
+              "item": {
+                "const": "compute"
+              }
+            },
+            "required": [
+              "item"
+            ]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "properties": {
+              "item": {
+                "const": "baselines"
+              }
+            },
+            "required": [
+              "item"
+            ]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "properties": {
+              "item": {
+                "const": "ablations"
+              }
+            },
+            "required": [
+              "item"
+            ]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "properties": {
+              "item": {
+                "const": "statistical_significance"
+              }
+            },
+            "required": [
+              "item"
+            ]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "properties": {
+              "item": {
+                "const": "data_splits"
+              }
+            },
+            "required": [
+              "item"
+            ]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "properties": {
+              "item": {
+                "const": "evaluation_protocol"
+              }
+            },
+            "required": [
+              "item"
+            ]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        }
+      ]
+    },
+    "related_shelf": {
+      "type": "array",
+      "maxItems": 5,
+      "description": "Papers already on the shelf (slugs from inputs.shelf.papers) this one extends, contradicts or depends on; they back the relevance score.",
+      "items": {
+        "type": "object",
+        "required": [
+          "slug",
+          "why"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "slug": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "why": {
+            "allOf": [
+              {
+                "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/spans"
+              },
+              {
+                "maxItems": 2
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

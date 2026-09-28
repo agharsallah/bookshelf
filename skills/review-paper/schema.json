@@ -1,0 +1,146 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bookshelf.local/skills/review-paper/schema.json",
+  "title": "review-paper output",
+  "description": "A peer-review report on a paper, as a careful reviewer for its venue would write it. Every point cites the passages it is about. Every key is always present.",
+  "type": "object",
+  "required": [
+    "summary",
+    "strengths",
+    "weaknesses",
+    "questions",
+    "missing_experiments",
+    "verdict"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "summary": {
+      "allOf": [
+        {
+          "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/spans"
+        },
+        {
+          "maxItems": 6
+        }
+      ],
+      "description": "What the paper claims and does, in the reviewer's words, neutral."
+    },
+    "strengths": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8,
+      "description": "What the paper does well, most important first.",
+      "items": {
+        "allOf": [
+          {
+            "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/spans"
+          },
+          {
+            "maxItems": 3
+          }
+        ]
+      }
+    },
+    "weaknesses": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 10,
+      "description": "What is wrong or missing, major points first.",
+      "items": {
+        "type": "object",
+        "required": [
+          "severity",
+          "spans"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "severity": {
+            "enum": [
+              "major",
+              "minor"
+            ]
+          },
+          "spans": {
+            "allOf": [
+              {
+                "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/spans"
+              },
+              {
+                "maxItems": 3
+              }
+            ]
+          }
+        }
+      }
+    },
+    "questions": {
+      "type": "array",
+      "minItems": 0,
+      "maxItems": 10,
+      "description": "Questions for the authors whose answers could change the assessment.",
+      "items": {
+        "allOf": [
+          {
+            "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/spans"
+          },
+          {
+            "maxItems": 2
+          }
+        ]
+      }
+    },
+    "missing_experiments": {
+      "type": "array",
+      "minItems": 0,
+      "maxItems": 8,
+      "description": "Experiments or analyses that would test the claims better.",
+      "items": {
+        "allOf": [
+          {
+            "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/spans"
+          },
+          {
+            "maxItems": 2
+          }
+        ]
+      }
+    },
+    "verdict": {
+      "type": "object",
+      "required": [
+        "recommendation",
+        "confidence",
+        "spans"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "recommendation": {
+          "enum": [
+            "accept",
+            "weak_accept",
+            "borderline",
+            "weak_reject",
+            "reject"
+          ]
+        },
+        "confidence": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5,
+          "description": "How sure the reviewer is: 1 guess ... 5 certain."
+        },
+        "spans": {
+          "allOf": [
+            {
+              "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/spans"
+            },
+            {
+              "maxItems": 4
+            }
+          ],
+          "description": "Why this recommendation, weighing the strengths against the weaknesses."
+        }
+      }
+    }
+  }
+}

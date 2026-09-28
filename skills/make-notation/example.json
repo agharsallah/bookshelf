@@ -1,0 +1,48 @@
+{
+  "symbols": [
+    {
+      "symbol_latex": "q",
+      "meaning": "Encoding of the question.",
+      "first_anchor": "ch03/s01/p001",
+      "cites": [
+        "ch03/s01/p001",
+        "ch03/s01/m001"
+      ]
+    },
+    {
+      "symbol_latex": "p_i",
+      "meaning": "Encoding of the i-th retrieved passage.",
+      "first_anchor": "ch03/s01/p001",
+      "cites": [
+        "ch03/s01/p001",
+        "ch03/s01/m001"
+      ]
+    },
+    {
+      "symbol_latex": "w",
+      "meaning": "Learned projection vector of the gate.",
+      "first_anchor": "ch03/s01/m001",
+      "cites": [
+        "ch03/s01/m001",
+        "ch03/s01/p002"
+      ]
+    },
+    {
+      "symbol_latex": "g_i",
+      "meaning": "Gate score of passage i, between 0 and 1.",
+      "first_anchor": "ch03/s01/m001",
+      "cites": [
+        "ch03/s01/m001",
+        "ch03/s01/p002"
+      ]
+    },
+    {
+      "symbol_latex": "\\sigma",
+      "meaning": "The logistic sigmoid.",
+      "first_anchor": "ch03/s01/m001",
+      "cites": [
+        "ch03/s01/p002"
+      ]
+    }
+  ]
+}

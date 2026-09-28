@@ -1,0 +1,137 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bookshelf.local/skills/make-journal-club/schema.json",
+  "title": "make-journal-club output",
+  "description": "A journal-club kit for presenting a paper in ten minutes and discussing it for thirty: the pitch, the figure to show, the weakest assumption, five discussion questions and both sides of the debate. Every key is always present.",
+  "type": "object",
+  "required": [
+    "pitch",
+    "key_figure",
+    "weakest_assumption",
+    "questions",
+    "debate"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "pitch": {
+      "allOf": [
+        {
+          "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/spans"
+        },
+        {
+          "maxItems": 4
+        }
+      ],
+      "description": "Why this paper is worth the group's hour, in two or three sentences."
+    },
+    "key_figure": {
+      "description": "The one figure to put on the screen (an anchor from inputs.figures) and what to point at; null only when the paper has no figure.",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "anchor",
+            "why"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "anchor": {
+              "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/anchor"
+            },
+            "why": {
+              "allOf": [
+                {
+                  "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/spans"
+                },
+                {
+                  "maxItems": 3
+                }
+              ]
+            }
+          }
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "weakest_assumption": {
+      "type": "object",
+      "required": [
+        "spans"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "spans": {
+          "allOf": [
+            {
+              "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/spans"
+            },
+            {
+              "maxItems": 4
+            }
+          ],
+          "description": "The assumption the conclusions lean on hardest and why it is doubtful."
+        }
+      }
+    },
+    "questions": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "description": "Five open questions for the discussion.",
+      "items": {
+        "allOf": [
+          {
+            "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/spans"
+          },
+          {
+            "maxItems": 2
+          }
+        ]
+      }
+    },
+    "debate": {
+      "type": "object",
+      "required": [
+        "for",
+        "against"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "for": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 4,
+          "items": {
+            "allOf": [
+              {
+                "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/spans"
+              },
+              {
+                "maxItems": 2
+              }
+            ]
+          },
+          "description": "The strongest case for the paper's conclusions."
+        },
+        "against": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 4,
+          "items": {
+            "allOf": [
+              {
+                "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/spans"
+              },
+              {
+                "maxItems": 2
+              }
+            ]
+          },
+          "description": "The strongest case against them."
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bookshelf.local/skills/make-notation/schema.json",
+  "title": "make-notation output",
+  "description": "The paper's notation table: every symbol its formulas use, once, with its meaning and the block that first uses it, in order of first use.",
+  "type": "object",
+  "required": [
+    "symbols"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "symbols": {
+      "type": "array",
+      "maxItems": 80,
+      "items": {
+        "type": "object",
+        "required": [
+          "symbol_latex",
+          "meaning",
+          "first_anchor",
+          "cites"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "symbol_latex": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "The symbol as the paper writes it in LaTeX, e.g. d_k or \\mathbf{W}^Q."
+          },
+          "meaning": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300,
+            "description": "What it denotes, as the paper defines it (shape or domain when stated)."
+          },
+          "first_anchor": {
+            "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/anchor",
+            "description": "The first block in inputs.blocks that uses the symbol."
+          },
+          "cites": {
+            "allOf": [
+              {
+                "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/cites"
+              },
+              {
+                "minItems": 1
+              }
+            ],
+            "description": "The blocks that define or use it, first_anchor or later."
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,13 @@
+name: make-journal-club
+version: 1
+description: Prepare a paper for a journal club — the pitch, the one figure to show and what to point at, the weakest assumption, five discussion questions and the strongest case for and against its conclusions — every point cited.
+tier: distil
+job_kind: derive
+artifact_type: journal_club
+scope: document
+selector: paper_journal_club
+vision: false
+genre: paper   # a paper skill (docs/PAPERS.md P2)
+gates:
+  grounding_min: 0.9
+  max_words: 1200

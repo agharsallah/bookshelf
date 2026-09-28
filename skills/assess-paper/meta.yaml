@@ -1,0 +1,16 @@
+name: assess-paper
+version: 1
+description: Assess a paper on a fixed rubric — novelty, rigour, evidence, clarity, reproducibility and relevance to your shelf, each scored 1-5 with the passages it rests on — plus a reproducibility checklist (code, data, hyperparameters, seeds, compute, baselines, ablations, significance, splits, protocol). The model's view, never merged with your rating (P8).
+tier: reason
+job_kind: derive
+artifact_type: paper_assessment
+scope: document
+selector: paper_assessment
+vision: false
+genre: paper   # a paper skill (docs/PAPERS.md P2)
+gates:
+  grounding_min: 0.9
+  max_words: 1800
+  # Units offered = every unit distillation: a rigour or evidence score that never looked
+  # at the method or the results is not an assessment.
+  coverage_min: 0.5

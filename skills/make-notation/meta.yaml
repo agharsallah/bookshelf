@@ -1,0 +1,14 @@
+name: make-notation
+version: 2  # v2: inline formulas from the unit notes (distilled_formulas)
+description: Build the paper's notation table — every symbol its formulas use, once, with its meaning as the paper defines it and the block that first uses it — from the formulas, the prose around them and their describe-math explanations. Shown beside the reader in the second pass.
+tier: explore
+job_kind: derive
+artifact_type: notation_table
+scope: document
+selector: paper_notation
+vision: false
+genre: paper   # a paper skill (docs/PAPERS.md P2); queued only for a paper with formulas
+gates:
+  # Entries carry `cites`, not spans, so grounding is not scored; the anchor gate checks
+  # every cite and app.papers.checks checks first_anchor, order and duplicates.
+  grounding_min: 0.9

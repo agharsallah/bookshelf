@@ -1,0 +1,120 @@
+{
+  "summary": [
+    {
+      "text": "The paper adds a learned gate that scores each retrieved passage against the question before a fusion-in-decoder reader attends to it, ",
+      "cites": [
+        "ch03/p001",
+        "ch03/s01/p002"
+      ]
+    },
+    {
+      "text": "and reports +2.1 EM on NQ and +3.4 on HotpotQA over FiD-base with a smaller adapter.",
+      "cites": [
+        "ch04/s02/p001"
+      ]
+    }
+  ],
+  "strengths": [
+    [
+      {
+        "text": "A simple, cheap change that composes with any retriever and reader.",
+        "cites": [
+          "ch03/p001"
+        ]
+      }
+    ],
+    [
+      {
+        "text": "Baselines are re-run with the authors' code rather than copied.",
+        "cites": [
+          "ch04/s01/p002"
+        ]
+      }
+    ]
+  ],
+  "weaknesses": [
+    {
+      "severity": "major",
+      "spans": [
+        {
+          "text": "All numbers are on development sets, which were also used for model selection; test-set results are needed to support the claims.",
+          "cites": [
+            "ch04/p001"
+          ]
+        }
+      ]
+    },
+    {
+      "severity": "major",
+      "spans": [
+        {
+          "text": "The TriviaQA gain of 0.3 EM is within the ±0.4 standard deviation, yet the abstract lists it as an improvement.",
+          "cites": [
+            "ch04/s02/p002",
+            "fm01/p002"
+          ]
+        }
+      ]
+    },
+    {
+      "severity": "minor",
+      "spans": [
+        {
+          "text": "The compute budget is not reported, so the efficiency claim cannot be checked.",
+          "cites": [
+            "ch04/s01/p001"
+          ]
+        }
+      ]
+    }
+  ],
+  "questions": [
+    [
+      {
+        "text": "How often is the gold passage missing from the retrieved set, and what does the gate do then?",
+        "cites": [
+          "ch03/p001"
+        ]
+      }
+    ],
+    [
+      {
+        "text": "Does one gate trained on NQ transfer to HotpotQA?",
+        "cites": [
+          "ch05/p002"
+        ]
+      }
+    ]
+  ],
+  "missing_experiments": [
+    [
+      {
+        "text": "Test-set results on NQ and HotpotQA.",
+        "cites": [
+          "ch04/p001"
+        ]
+      }
+    ],
+    [
+      {
+        "text": "An ablation of the gate's inputs (question only, passage only).",
+        "cites": [
+          "ch04/s03/p001"
+        ]
+      }
+    ]
+  ],
+  "verdict": {
+    "recommendation": "weak_accept",
+    "confidence": 4,
+    "spans": [
+      {
+        "text": "A useful, well-executed idea whose headline gains are clear on two benchmarks; the development-set-only evaluation keeps it from a clear accept.",
+        "cites": [
+          "ch04/s02/t001",
+          "ch04/p001"
+        ]
+      }
+    ]
+  }
+}
