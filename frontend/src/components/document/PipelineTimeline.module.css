@@ -12,6 +12,10 @@
   font-weight: 560;
 }
 
+.statsLink {
+  font-size: var(--text-sm);
+}
+
 .now {
   color: var(--accent);
   font-size: var(--text-ui);

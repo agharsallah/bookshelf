@@ -19,6 +19,11 @@ describe('isCurrent', () => {
 });
 
 describe('the navigation', () => {
+  it('counts the stats pages as part of the pipeline', () => {
+    expect(isCurrent(item('/pipeline'), '/pipeline/stats')).toBe(true);
+    expect(isCurrent(item('/pipeline'), '/pipeline/stats/meadows-systems')).toBe(true);
+  });
+
   it('keeps review and the pipeline in the workshop, each with its count', () => {
     expect(NAV.filter((i) => i.workshop).map((i) => [i.label, i.count])).toEqual([
       ['Review', 'review'],

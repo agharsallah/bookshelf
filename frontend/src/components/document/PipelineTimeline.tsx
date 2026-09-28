@@ -61,6 +61,9 @@ export function PipelineTimeline({ documentId, slug, initialStatus, initialJobs 
         {progress.label}
         {live.length > 0 ? `, ${live.length} ${live.length === 1 ? 'job' : 'jobs'} in progress` : ''}
       </p>
+      <p className={styles.statsLink}>
+        <a href={`/pipeline/stats/${slug}`}>Tokens, time and what to improve</a>
+      </p>
 
       <ol className={styles.steps}>
         {PIPELINE_STEPS.map((step, i) => {

@@ -1,0 +1,102 @@
+---
+/**
+ * Pipeline statistics across the library (`GET /stats`): every book side by side, the
+ * skills and models that did the work, and what to improve first.
+ */
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import { Problem, problemOf, type ProblemInfo } from '../../../components/common/Problem';
+import { BookTable } from '../../../components/stats/BookTable';
+import { InsightList } from '../../../components/stats/InsightList';
+import { ModelTable } from '../../../components/stats/RunTables';
+import { SkillTable } from '../../../components/stats/SkillTable';
+import StatsSection from '../../../components/stats/StatsSection.astro';
+import { StatTiles } from '../../../components/stats/StatTiles';
+import { libraryTiles } from '../../../components/stats/tiles';
+import { serverApi } from '../../../lib/api/server';
+import type { LibraryStats } from '../../../lib/api/types/stats';
+
+export const prerender = false;
+
+let stats: LibraryStats | null = null;
+let problem: ProblemInfo | null = null;
+try {
+  stats = await serverApi().get<LibraryStats>('stats');
+} catch (error) {
+  problem = problemOf(error);
+}
+const since = stats?.telemetry_since ? new Date(stats.telemetry_since).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' }) : null;
+---
+
+<BaseLayout title="Pipeline stats" description="What each book cost in tokens and time, and what to improve." width="wide">
+  <div class="page">
+    <header class="head">
+      <p class="crumbs"><a href="/pipeline">Pipeline</a> / Stats</p>
+      <h1>Pipeline stats</h1>
+      <p class="lede">
+        What every book cost to parse, distil and link: tokens, minutes and failures, normalized per page and per 1k words
+        so books of any length compare. Open a book for its chapters, stages and skills.
+      </p>
+    </header>
+    {
+      problem || !stats ? (
+        <Problem title="The statistics could not be loaded." problem={problem ?? problemOf(null)} />
+      ) : (
+        <>
+          <StatTiles tiles={libraryTiles(stats)} label="Library totals" />
+          <StatsSection id="insights" title="What to improve" lede="Rules over the skill and book figures, most severe first.">
+            <InsightList insights={stats.insights} />
+          </StatsSection>
+          <StatsSection id="books" title="Books">
+            <BookTable books={stats.books} />
+          </StatsSection>
+          <StatsSection
+            id="skills"
+            title="Skills"
+            lede="Across every book. Second tries, repairs and flags come from each output's gate report; tokens per word out is what one word of distillation costs."
+          >
+            <SkillTable skills={stats.skills} />
+          </StatsSection>
+          <StatsSection id="models" title="Models">
+            <ModelTable models={stats.models} />
+          </StatsSection>
+          <p class="foot">
+            Tokens are input + output as the CLI reports them.{' '}
+            {since ? `Cache, cost and wasted tokens are recorded per call since ${since}.` : 'Cache, cost and wasted tokens are recorded per call from the next runs on.'}
+          </p>
+        </>
+      )
+    }
+  </div>
+</BaseLayout>
+
+<style>
+  .page {
+    display: grid;
+    gap: var(--space-6);
+  }
+
+  .head {
+    display: grid;
+    gap: var(--space-2);
+    max-inline-size: var(--measure);
+  }
+
+  .crumbs {
+    color: var(--ink-3);
+    font-size: var(--text-sm);
+  }
+
+  h1 {
+    font-size: var(--text-xl);
+  }
+
+  .lede,
+  .foot {
+    color: var(--ink-2);
+  }
+
+  .foot {
+    font-size: var(--text-sm);
+    max-inline-size: var(--measure);
+  }
+</style>

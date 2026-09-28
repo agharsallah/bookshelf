@@ -39,6 +39,7 @@ if (docs[0]?.status === 'fulfilled') documents = docs[0].value;
         Each document moves through parse, enrich, distil, brief, index, link and derive on its own. Failures wait
         here, grouped by what went wrong, until you retry them.
       </p>
+      <p class="more"><a href="/pipeline/stats">Stats: tokens, time and what to improve, per book</a></p>
     </header>
     {
       problem ? (
@@ -68,5 +69,9 @@ if (docs[0]?.status === 'fulfilled') documents = docs[0].value;
 
   .lede {
     color: var(--ink-2);
+  }
+
+  .more {
+    font-size: var(--text-sm);
   }
 </style>

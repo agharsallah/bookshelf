@@ -1,0 +1,118 @@
+.gantt {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  --label: 9rem;
+  --value: 15rem;
+}
+
+.axis,
+.row {
+  display: grid;
+  grid-template-columns: var(--label) minmax(0, 1fr) var(--value);
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.ticks {
+  position: relative;
+  block-size: 1rem;
+  border-block-end: 1px solid var(--chart-axis);
+  color: var(--ink-3);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.ticks span {
+  position: absolute;
+  inset-block-start: 0;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.ticks span[data-edge='start'] {
+  transform: none;
+}
+
+.ticks span[data-edge='end'] {
+  transform: translateX(-100%);
+}
+
+.rows {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.label {
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+}
+
+.track {
+  position: relative;
+  block-size: 0.75rem;
+  border-radius: var(--radius-s);
+  background: repeating-linear-gradient(
+    to right,
+    var(--chart-grid) 0 1px,
+    transparent 1px 25%
+  );
+}
+
+/* First start to last finish: a hairline the busy stretches sit on. */
+.span {
+  position: absolute;
+  inset-block-start: calc(50% - 1px);
+  block-size: 2px;
+  background: var(--chart-axis);
+}
+
+.bar {
+  position: absolute;
+  inset-block: 0;
+  min-inline-size: 3px;
+  border-radius: var(--radius-s);
+  background: var(--series-1);
+}
+
+.bar[data-failed] {
+  background: repeating-linear-gradient(135deg, var(--series-1) 0 4px, var(--series-6) 4px 6px);
+}
+
+.value {
+  color: var(--ink);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.sub {
+  display: block;
+  color: var(--ink-3);
+  font-size: var(--text-xs);
+  font-weight: 400;
+}
+
+.row:hover .bar {
+  box-shadow: 0 0 0 1px var(--paper), 0 0 0 2px var(--series-1);
+}
+
+.empty {
+  color: var(--ink-3);
+  font-size: var(--text-sm);
+}
+
+@media (max-width: 40rem) {
+  .gantt {
+    --label: 6.5rem;
+    --value: 6rem;
+  }
+
+  .sub,
+  .ticks span:not([data-edge]) {
+    display: none;
+  }
+}

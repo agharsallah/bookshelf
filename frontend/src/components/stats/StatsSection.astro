@@ -1,0 +1,33 @@
+---
+/** One titled block of a stats page: a heading, an optional lede, then its figure. */
+interface Props {
+  id: string;
+  title: string;
+  lede?: string;
+}
+const { id, title, lede } = Astro.props;
+---
+
+<section class="section" aria-labelledby={id}>
+  <h2 id={id}>{title}</h2>
+  {lede && <p class="lede">{lede}</p>}
+  <slot />
+</section>
+
+<style>
+  .section {
+    display: grid;
+    gap: var(--space-3);
+    min-inline-size: 0;
+  }
+
+  h2 {
+    font-size: var(--text-md);
+  }
+
+  .lede {
+    color: var(--ink-2);
+    font-size: var(--text-sm);
+    max-inline-size: var(--measure);
+  }
+</style>

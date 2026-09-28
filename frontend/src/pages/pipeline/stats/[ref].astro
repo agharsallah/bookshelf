@@ -1,0 +1,132 @@
+---
+/**
+ * One book's pipeline statistics (`GET /documents/{ref}/stats`): its size, its first
+ * end-to-end pass stage by stage, chapter and skill figures, and what to improve.
+ */
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import { Problem } from '../../../components/common/Problem';
+import { ChapterTable } from '../../../components/stats/ChapterTable';
+import { formatCount, formatDuration } from '../../../components/stats/format';
+import { InsightList } from '../../../components/stats/InsightList';
+import { ModelTable, PassTable } from '../../../components/stats/RunTables';
+import { SkillTable } from '../../../components/stats/SkillTable';
+import { StageGantt } from '../../../components/stats/StageGantt';
+import StatsSection from '../../../components/stats/StatsSection.astro';
+import { StatTiles } from '../../../components/stats/StatTiles';
+import { bookTiles } from '../../../components/stats/tiles';
+import { serverApi } from '../../../lib/api/server';
+import type { DocumentStats } from '../../../lib/api/types/stats';
+import { load } from '../../../lib/documents/server';
+
+export const prerender = false;
+
+const ref = Astro.params.ref ?? '';
+const loaded = await load(() => serverApi().get<DocumentStats>(`documents/${encodeURIComponent(ref)}/stats`));
+if (!loaded.ok && loaded.notFound) Astro.response.status = 404;
+const stats = loaded.ok ? loaded.value : null;
+const book = stats?.book;
+const elements = book ? Object.entries(book.elements).map(([kind, n]) => `${n} ${kind}${n === 1 ? '' : 's'}`) : [];
+const size = book
+  ? [book.pages ? `${book.pages} pages` : null, `${formatCount(book.words)} words`, `${book.chapters} chapters`, `${book.sections} sections`, `${formatCount(book.blocks)} blocks`, ...elements]
+      .filter(Boolean)
+      .join(' · ')
+  : '';
+const e2e = stats?.end_to_end;
+---
+
+<BaseLayout title={book ? `Stats: ${book.title}` : 'Stats'} description="What this book cost in tokens and time, and what to improve." width="wide">
+  <div class="page">
+    {
+      !stats || !book ? (
+        !loaded.ok && loaded.notFound ? (
+          <div class="head">
+            <h1>Not on the shelf</h1>
+            <p>
+              No document is called “{ref}”. <a href="/pipeline/stats">Back to the stats</a>
+            </p>
+          </div>
+        ) : (
+          !loaded.ok && <Problem title="The statistics could not be loaded." problem={loaded.problem} />
+        )
+      ) : (
+        <>
+          <header class="head">
+            <p class="crumbs">
+              <a href="/pipeline">Pipeline</a> / <a href="/pipeline/stats">Stats</a> / <a href={`/documents/${book.slug}`}>{book.title}</a>
+            </p>
+            <h1>{book.title}</h1>
+            <p class="lede">
+              {[book.authors.join(', '), book.year, book.kind.toUpperCase(), `parse tier ${book.parse_tier ?? '—'}`, book.status].filter(Boolean).join(' · ')}
+            </p>
+            <p class="size">{size}</p>
+          </header>
+          <StatTiles tiles={bookTiles(stats)} label="Book totals" />
+          <StatsSection id="insights" title="What to improve" lede="Rules over this book's skill, stage and chapter figures, most severe first.">
+            <InsightList insights={stats.insights} />
+          </StatsSection>
+          {e2e && (
+            <StatsSection
+              id="end-to-end"
+              title="End to end, stage by stage"
+              lede={`The first pass: ${formatDuration(e2e.wall_ms)} from the first job to the last, busy for ${formatDuration(e2e.active_ms)}, ${e2e.jobs} jobs. A thin line runs from a stage's first start to its last finish, solid where its jobs were running; stretches apart are retries and re-runs, overlap is work that ran side by side.`}
+            >
+              <StageGantt pass={e2e} />
+            </StatsSection>
+          )}
+          <StatsSection
+            id="chapters"
+            title="Chapters"
+            lede="Tokens and compute time per chapter on one scale; tokens per 1k words and seconds per page make chapters of different lengths comparable."
+          >
+            <ChapterTable chapters={stats.chapters} />
+          </StatsSection>
+          <StatsSection id="skills" title="Skills" lede="What each skill cost here, how often it failed or needed a second try, and how its outputs scored.">
+            <SkillTable skills={stats.skills} />
+          </StatsSection>
+          <div class="pair">
+            <StatsSection id="passes" title="Passes" lede="Bursts of activity more than 30 minutes apart: the initial run, then re-runs and study material.">
+              <PassTable passes={stats.passes} />
+            </StatsSection>
+            <StatsSection id="models" title="Models">
+              <ModelTable models={stats.models} />
+            </StatsSection>
+          </div>
+        </>
+      )
+    }
+  </div>
+</BaseLayout>
+
+<style>
+  .page {
+    display: grid;
+    gap: var(--space-6);
+  }
+
+  .head {
+    display: grid;
+    gap: var(--space-2);
+    max-inline-size: var(--measure);
+  }
+
+  .crumbs,
+  .size {
+    color: var(--ink-3);
+    font-size: var(--text-sm);
+  }
+
+  h1 {
+    font-family: var(--font-read);
+    font-size: var(--text-xl);
+  }
+
+  .lede {
+    color: var(--ink-2);
+  }
+
+  .pair {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 26rem), 1fr));
+    gap: var(--space-6);
+  }
+</style>
