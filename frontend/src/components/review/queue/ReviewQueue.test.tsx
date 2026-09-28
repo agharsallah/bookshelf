@@ -95,6 +95,23 @@ describe('<ReviewQueue>', () => {
     await waitFor(() => expect(calls.map((c) => c.path)).toEqual(['artifacts/third/review']));
   });
 
+  it('approve all sends every shown draft that passes its gates and leaves needs-review items', async () => {
+    const { calls, queue, row, user } = setup();
+    await user.click(screen.getByRole('button', { name: 'Approve all 2' }));
+    await waitFor(() => expect(calls.map((c) => c.path).sort()).toEqual(['artifacts/second/review', 'artifacts/third/review']));
+    expect(calls.every((c) => (c.body as { action: string }).action === 'approve')).toBe(true);
+    expect(row('1.1')).toBeTruthy();
+    expect(within(queue).queryByRole('button', { name: /Section note 1\.2/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Approve all/ })).toBeNull();
+  });
+
+  it('approve all respects the filters in place', async () => {
+    const { calls, user } = setup();
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Tier' }), 'reason');
+    expect(screen.queryByRole('button', { name: /Approve all/ })).toBeNull();
+    expect(calls).toEqual([]);
+  });
+
   it('filters by a named select, marks the filter as set, and clears back to the whole queue', async () => {
     const { user } = setup();
     expect(screen.getByText(/need.? review/).textContent).toBe('1 needs review, 2 drafts, across 1 document.');

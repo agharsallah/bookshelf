@@ -109,10 +109,17 @@ export function ReviewQueue({ items: initial, documents, headings, skills, api =
     [byId, verdict],
   );
 
-  const approvable = triage.selected.filter((id) => {
-    const item = byId.get(id);
-    return item?.review === 'draft' && deriveGates(item, item.skill ? thresholds[item.skill] : null).passesAll;
-  });
+  /** Bulk approval never overrides a gate: only drafts that pass every one qualify. */
+  const passing = useCallback(
+    (ids: readonly string[]) =>
+      ids.filter((id) => {
+        const item = byId.get(id);
+        return item?.review === 'draft' && deriveGates(item, item.skill ? thresholds[item.skill] : null).passesAll;
+      }),
+    [byId, thresholds],
+  );
+  const approvable = passing(triage.selected);
+  const approvableAll = useMemo(() => passing(order), [passing, order]);
 
   const run = useCallback(
     (command: TriageCommand) => {
@@ -184,6 +191,16 @@ export function ReviewQueue({ items: initial, documents, headings, skills, api =
       <div className={styles.toolbar}>
         <QueueFilters items={items} titles={titles} value={filters} onChange={setFilters} />
         <div className={styles.tools}>
+          {approvableAll.length > 0 ? (
+            <button
+              type="button"
+              className={`btn btn-primary ${styles.small}`}
+              title="Approves every draft shown that passes all its gates; items that need review stay."
+              onClick={() => act('approve', approvableAll)}
+            >
+              Approve all {approvableAll.length}
+            </button>
+          ) : null}
           <button type="button" className={`btn ${styles.small}`} onClick={() => dispatch({ type: 'help' })} aria-keyshortcuts="?">
             Shortcuts <kbd className={styles.kbd}>?</kbd>
           </button>
