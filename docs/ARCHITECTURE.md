@@ -1504,3 +1504,14 @@ The design above is a guideline. Where the build diverged, the reason is recorde
 | Remembering it | quizzes and flashcards only | recalls, predictions, grades and an FSRS review queue (migration `20260928085522_recall_and_reviews`); grading is a Python job (`grade_recall`, `app/recall/grading.py`) running the `grade-recall` utility skill, not an artifact, because a grade belongs to one recall rather than to a document scope; flashcard marks moved from localStorage to `review_items` (a browser's old marks are sent up once) | Recall has to be graded against the book with cites, reviews have to be due across every book, and a mark in one browser should not be lost in another |
 | Library cards | — | `DocumentSummary.blurb`: approved book summary's first paragraph, else the brief's thesis, else the first chapter summary (≤ 280 chars), one query per page | A shelf needs a line per book without N+1 queries |
 | Library themes and covers | tags only | `DocumentSummary.catalogue`: each document's preferred `catalogue_entry` (approved, else the latest draft, flagged) read at request time, the shelf's spelling of its theme; `GET /documents/{ref}/cover`: a book's EPUB cover image or rendered first PDF page, cached as `media_dir/<slug>/cover.*` (`app/services/covers.py`) | The library groups, colours and describes books by theme, and shows them face out, without a column per field or a copy to keep in step |
+
+### Settings
+
+`/settings` (frontend) holds two kinds of choice. **Display** choices stay in the browser,
+like the reader toolbar's: theme (light, dark or follow the OS), library layout, workshop
+mode, the reader's type and aids (including "Before you read"), and a default voice that
+narration forms cast first. **Pipeline** choices live on the server, in the one-row
+`app_settings` table (`GET`/`PATCH /settings`): `auto_derive.book` and `.paper` list the
+study-material skills queued when a document is distilled (its brief, or a paper's card,
+approved). Books default to none; papers default to their `PAPER_DERIVES`, as before. Only
+whole-document, non-narrated `derive` skills are offered (`services/app_settings.eligible`).
