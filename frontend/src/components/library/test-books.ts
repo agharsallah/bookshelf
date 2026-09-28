@@ -1,5 +1,5 @@
 /** Test data for the library's tests: a DocumentSummary with only what matters overridden. */
-import type { DocumentSummary } from '../../lib/api/types/documents';
+import type { CatalogueCard, DocumentSummary } from '../../lib/api/types/documents';
 
 export function summary(slug: string, over: Partial<DocumentSummary> = {}): DocumentSummary {
   return {
@@ -25,6 +25,27 @@ export function summary(slug: string, over: Partial<DocumentSummary> = {}): Docu
     latest_job: null,
     blurb: null,
     paused: null,
+    catalogue: null,
+    ...over,
+  };
+}
+
+/** A library card shelving the document under `theme`. */
+export function card(theme: string | null, over: Partial<CatalogueCard> = {}): CatalogueCard {
+  return {
+    theme,
+    subjects: [],
+    form: null,
+    audience: null,
+    level: null,
+    description: null,
+    publisher: null,
+    published: null,
+    edition: null,
+    isbn: null,
+    language: null,
+    series: null,
+    draft: false,
     ...over,
   };
 }

@@ -11,15 +11,21 @@ export interface ShelfReading {
   share: number;
   /** When the book was last read (ISO), or null when never opened. */
   lastRead: string | null;
+  /** The block to pick up at: the latest position, unless its chapter is finished. */
+  resume: string | null;
 }
 
-export const NOT_READ: ShelfReading = { share: 0, lastRead: null };
+export const NOT_READ: ShelfReading = { share: 0, lastRead: null, resume: null };
 
 export function shelfReading(positions: readonly ReadingPosition[], chapters: number): ShelfReading {
   if (positions.length === 0) return NOT_READ;
   const read = positions.reduce((sum, p) => sum + (isFinished(p.progress) ? 1 : Math.max(0, p.progress)), 0);
-  const lastRead = positions.reduce((latest, p) => (p.updated_at > latest ? p.updated_at : latest), '');
-  return { share: Math.min(1, read / Math.max(chapters, positions.length, 1)), lastRead: lastRead || null };
+  const latest = positions.reduce((last, p) => (p.updated_at > last.updated_at ? p : last));
+  return {
+    share: Math.min(1, read / Math.max(chapters, positions.length, 1)),
+    lastRead: latest.updated_at || null,
+    resume: isFinished(latest.progress) ? null : latest.anchor,
+  };
 }
 
 /** The book read most recently: the one that wears the bookmark ribbon. */

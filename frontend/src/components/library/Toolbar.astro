@@ -1,0 +1,406 @@
+---
+/**
+ * Finding and arranging the books. A plain GET form (words in the title or authors, the
+ * order, and in workshop mode the pipeline state) plus tag links and removable chips
+ * for the filters that are set: server-rendered, shareable, and working without
+ * JavaScript. With it (`live.ts`) filters apply as you type, chips and tags toggle in
+ * place, and the display switches appear: group the books by the dimension that dyes
+ * them, and shelf or list.
+ */
+import { DOCUMENT_STATUSES } from '../../lib/api/types/documents';
+import { pipelineProgress } from '../../lib/documents/pipeline';
+import { DIMENSION_LABELS, DIMENSIONS } from './facets';
+import { activeFilters, libraryHref, NO_FILTERS, resultSummary, type LibraryFilters } from './filters';
+import { SORTS, type Sort } from './sort';
+import { VIEWS } from './view';
+
+interface Props {
+  filters: LibraryFilters;
+  sort: Sort;
+  tags: { tag: string; count: number }[];
+  shown: number;
+  total: number;
+  filtered: boolean;
+}
+
+const { filters, sort, tags, shown, total, filtered } = Astro.props;
+const VIEW_LABELS = { shelf: 'Shelf', list: 'List' } as const;
+const HIDDEN = ['genre', 'reading', 'study', 'theme', 'tag', 'author'] as const;
+---
+
+<search class="toolbar">
+  <form method="get" action="/library" class="controls" data-filters>
+    <label class="find">
+      <span class="visually-hidden">Find a title or author</span>
+      <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+        <circle cx="7" cy="7" r="4.6" fill="none" stroke="currentColor" stroke-width="1.5"></circle>
+        <path d="M10.5 10.5 14 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
+      </svg>
+      <input
+        type="search"
+        name="q"
+        value={filters.q ?? ''}
+        placeholder="Find a title or author"
+        maxlength="200"
+        autocomplete="off"
+      />
+    </label>
+
+    <label class="pick">
+      <span>Sort</span>
+      <select name="sort">
+        {SORTS.map((s) => <option value={s.value} selected={sort === s.value}>{s.label}</option>)}
+      </select>
+    </label>
+
+    <label class="pick workshop-only">
+      <span>State</span>
+      <select name="status">
+        <option value="">Any state</option>
+        {DOCUMENT_STATUSES.map((s) => <option value={s} selected={filters.status === s}>{pipelineProgress(s).label}</option>)}
+      </select>
+    </label>
+
+    {HIDDEN.map((name) => <input type="hidden" name={name} value={filters[name] ?? ''} />)}
+    <button type="submit" class="btn" data-apply>Filter</button>
+
+    <div class="display" data-needs-script>
+      <button type="button" class="toggle" data-group aria-pressed="false">
+        <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+          <path d="M2 13.5V5M4.5 13.5V5M9 13.5V5M11.5 13.5V5M6.8 13.5V3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"></path>
+        </svg>
+        Group by
+        {DIMENSIONS.map((d) => <span class="group-dim" data-dim={d}>{DIMENSION_LABELS[d].toLowerCase()}</span>)}
+      </button>
+      <div class="views" role="group" aria-label="Show as">
+        {
+          VIEWS.map((view) => (
+            <button type="button" data-view={view} aria-pressed={view === 'shelf' ? 'true' : 'false'}>
+              {view === 'shelf' ? (
+                <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+                  <path d="M2.5 13.5v-9h2.5v9M6.5 13.5v-11h2.5v11M10.5 13.5l1.2-8.2 2.4.4-1.2 7.8" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round" />
+                </svg>
+              ) : (
+                <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+                  <path d="M2.5 4h1M6 4h7.5M2.5 8h1M6 8h7.5M2.5 12h1M6 12h7.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
+                </svg>
+              )}
+              {VIEW_LABELS[view]}
+            </button>
+          ))
+        }
+      </div>
+    </div>
+  </form>
+
+  <div class="meta">
+    <div class="status">
+      <p class="summary" aria-live="polite" data-summary>{resultSummary(shown, total, filtered)}</p>
+      <ul class="active" aria-label="Filters in use" data-active-filters>
+        {
+          activeFilters(filters).map((f) => (
+            <li>
+              <a href={libraryHref({ ...filters, [f.key]: null }, sort)} data-remove={f.key} aria-label={f.remove}>
+                {f.label}
+                <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
+                  <path d="M4 4l8 8m0-8l-8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                </svg>
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+      <a class="clear" href={libraryHref(NO_FILTERS, sort)} data-clear hidden={!filtered}>Clear all</a>
+    </div>
+    {
+      tags.length > 0 && (
+        <nav class="tags" aria-label="Tags">
+          <ul>
+            {tags.map(({ tag, count }) => {
+              const active = filters.tag === tag;
+              return (
+                <li>
+                  <a href={libraryHref({ ...filters, tag: active ? null : tag }, sort)} aria-current={active ? 'true' : undefined} data-tag={tag}>
+                    {tag}
+                    <span class="count">{count}</span>
+                  </a>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
+      )
+    }
+  </div>
+</search>
+
+<style>
+  .toolbar {
+    display: grid;
+    gap: var(--space-3);
+    font-family: var(--font-ui);
+    font-size: var(--text-ui);
+  }
+
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2) var(--space-3);
+  }
+
+  .find {
+    position: relative;
+    display: flex;
+    flex: 1 1 12rem;
+    align-items: center;
+    min-inline-size: 0;
+  }
+
+  .find svg {
+    position: absolute;
+    inset-inline-start: var(--space-3);
+    color: var(--ink-3);
+    pointer-events: none;
+  }
+
+  input[type='search'],
+  select {
+    min-width: 0;
+    height: 2.5rem;
+    border: 1px solid var(--rule-strong);
+    border-radius: var(--radius-m);
+    background: var(--paper-raised);
+    color: var(--ink);
+    font: inherit;
+    transition: border-color var(--dur-1) var(--ease-out);
+  }
+
+  input[type='search'] {
+    width: 100%;
+    padding: 0 var(--space-3) 0 calc(var(--space-3) + 16px + var(--space-2));
+  }
+
+  select {
+    padding: 0 var(--space-5) 0 var(--space-2);
+    border-color: transparent;
+    background-color: transparent;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  input:hover,
+  select:hover {
+    border-color: var(--ink-3);
+  }
+
+  input::placeholder {
+    color: var(--ink-3);
+  }
+
+  .pick {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding-inline-start: var(--space-3);
+    border: 1px solid var(--rule-strong);
+    border-radius: var(--radius-m);
+    background: var(--paper-raised);
+  }
+
+  .pick span {
+    color: var(--ink-3);
+    font-size: var(--text-sm);
+  }
+
+  .pick select:hover {
+    border-color: transparent;
+  }
+
+  /* `.btn` sets a display; the script hides the button once filters apply live. */
+  [data-apply][hidden] {
+    display: none;
+  }
+
+  .display {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-inline-start: auto;
+  }
+
+  .toggle,
+  .views button {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-block-size: 2.5rem;
+    padding: 0 var(--space-3);
+    border: 1px solid var(--rule-strong);
+    border-radius: var(--radius-m);
+    background: var(--paper-raised);
+    color: var(--ink-2);
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    cursor: pointer;
+    transition:
+      background var(--dur-1) var(--ease-out),
+      color var(--dur-1) var(--ease-out),
+      border-color var(--dur-1) var(--ease-out);
+  }
+
+  .toggle:hover,
+  .views button:hover {
+    color: var(--ink);
+  }
+
+  .group-dim {
+    display: none;
+    margin-inline-start: -0.2em;
+  }
+
+  :global(.by-kind) .group-dim[data-dim='kind'],
+  :global(.by-reading) .group-dim[data-dim='reading'],
+  :global(.by-study) .group-dim[data-dim='study'],
+  :global(.by-theme) .group-dim[data-dim='theme'] {
+    display: inline;
+  }
+
+  :global(.group-on) .toggle {
+    border-color: var(--ink);
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  .views {
+    display: inline-flex;
+    padding: 2px;
+    border: 1px solid var(--rule-strong);
+    border-radius: var(--radius-m);
+    background: var(--paper-raised);
+  }
+
+  .views button {
+    min-block-size: calc(2.5rem - 6px);
+    border: 0;
+    border-radius: calc(var(--radius-m) - 2px);
+    background: transparent;
+  }
+
+  :global(.view-shelf) [data-view='shelf'],
+  :global(.view-list) [data-view='list'] {
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  /* How many books, the filters in use, and the tags, in one line under the controls. */
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2) var(--space-4);
+  }
+
+  .tags ul,
+  .active {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .tags a {
+    display: inline-flex;
+    align-items: baseline;
+    gap: var(--space-2);
+    padding: var(--space-1) var(--space-3);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-pill);
+    color: var(--ink-2);
+    font-size: var(--text-sm);
+    text-decoration: none;
+    transition:
+      background var(--dur-1) var(--ease-out),
+      border-color var(--dur-1) var(--ease-out);
+  }
+
+  .tags a:hover {
+    border-color: var(--rule-strong);
+    color: var(--ink);
+  }
+
+  .tags a[aria-current='true'] {
+    border-color: var(--accent);
+    background: var(--accent-wash);
+    color: var(--ink);
+  }
+
+  .count {
+    color: var(--ink-3);
+    font-size: var(--text-xs);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .status {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2) var(--space-3);
+    min-block-size: 2rem;
+  }
+
+  .summary {
+    color: var(--ink-2);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .active :global(a) {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding: 0.15rem var(--space-2) 0.15rem var(--space-3);
+    border-radius: var(--radius-pill);
+    background: var(--ink);
+    color: var(--paper);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    text-decoration: none;
+    animation: chip-in var(--dur-3) var(--ease-turn) both;
+  }
+
+  .active :global(a:hover) {
+    background: var(--accent);
+    color: var(--on-accent);
+  }
+
+  @keyframes chip-in {
+    from {
+      opacity: 0;
+      scale: 0.8;
+    }
+  }
+
+  .clear {
+    font-size: var(--text-sm);
+  }
+
+  .clear[hidden] {
+    display: none;
+  }
+
+  @media (max-width: 40rem) {
+    .find {
+      flex-basis: 100%;
+    }
+
+    .display {
+      margin-inline-start: 0;
+    }
+  }
+</style>

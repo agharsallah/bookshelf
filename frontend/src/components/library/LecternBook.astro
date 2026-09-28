@@ -1,0 +1,165 @@
+---
+/**
+ * A book on the lectern: its face-out cover (the book's own, over one in the shelf's
+ * dye), what it is and the facts printed in it, how far you have read and where to pick
+ * up, what its library card says (theme, description, audience, subjects), its blurb,
+ * the study material it has and its tags. The theme and tags filter the shelf. Rendered
+ * once per book into a `<template>`, so picking a spine only clones it (`live-lectern.ts`).
+ */
+import { GENRE_LABELS } from '../../lib/api/types/documents';
+import { pipelineProgress } from '../../lib/documents/pipeline';
+import { dyeStyle } from './book-style';
+import { NO_THEME } from './facets';
+import { libraryHref, NO_FILTERS } from './filters';
+import type { LibraryItem } from './items';
+import { readingLabel } from './progress';
+import { DEFAULT_SORT } from './sort';
+import { pagesOf, plural, shortTitle, spineLook, waitingReview } from './spine';
+import styles from './Lectern.module.css';
+
+type Props = LibraryItem;
+
+const { doc, reading, materials, buckets, colours, current } = Astro.props;
+const href = `/documents/${doc.slug}`;
+const pages = pagesOf(doc);
+const titleId = `lectern-${doc.id}`;
+const facts = [
+  GENRE_LABELS[doc.genre],
+  doc.year,
+  pages.pages ? `${pages.estimated ? 'about ' : ''}${pages.pages} pages` : null,
+  doc.counts.chapters > 0 ? plural(doc.counts.chapters, doc.genre === 'book' ? 'chapter' : 'section') : null,
+]
+  .filter(Boolean)
+  .join(', ');
+const lastRead = reading.lastRead
+  ? new Intl.DateTimeFormat('en-GB', {
+      day: 'numeric',
+      month: 'short',
+      ...(reading.lastRead.slice(0, 4) !== String(new Date().getFullYear()) ? { year: 'numeric' } : {}),
+    }).format(new Date(reading.lastRead))
+  : null;
+// Picking up where you left off goes into the reader; the book's page (contents, study
+// material, notes) always stays one click away beside it.
+const resume = reading.resume ? `${href}/read/${reading.resume}` : null;
+const primary = resume ? { label: 'Continue reading', href: resume } : { label: reading.lastRead ? 'Open the book' : 'Start reading', href };
+// Only books have a cover to show (`GET /documents/{ref}/cover`); the cloth one stays beneath.
+const cover = doc.genre === 'book' && doc.kind !== 'article' ? `/api/documents/${encodeURIComponent(doc.slug)}/cover` : null;
+const progress = pipelineProgress(doc.status);
+const waiting = waitingReview(doc);
+const card = doc.catalogue;
+const printed = card ? [card.publisher, card.edition, card.series].filter(Boolean).join(', ') : '';
+const readership = card?.audience ? `For ${card.audience.charAt(0).toLowerCase()}${card.audience.slice(1)}` : null;
+const subtitle = doc.title.slice(shortTitle(doc.title).length).replace(/^\s*[:—–-]\s*/, '');
+---
+
+<article class={styles.book} style={dyeStyle(colours, spineLook(doc).shade)} data-dyed aria-labelledby={titleId}>
+  <div class={styles.head}>
+    <a class={styles.cover} href={href} tabindex="-1" aria-hidden="true">
+      <span class={styles.coverBand}></span>
+      <span class={styles.coverTitle}>{shortTitle(doc.title)}</span>
+      {subtitle && <span class={styles.coverSubtitle}>{subtitle}</span>}
+      <span class={styles.coverAuthor}>{doc.authors.join(', ')}</span>
+      {cover && <img class={styles.coverImage} src={cover} alt="" loading="lazy" decoding="async" />}
+      <span class={styles.coverRead} style={`--share:${reading.lastRead ? reading.share : 0}`}></span>
+    </a>
+
+    <div class={styles.headline}>
+      {current && <p class={styles.now}><span class="marker">Reading now</span></p>}
+      <h2 class:list={[styles.title, 'book-title']} id={titleId}><a href={href}>{doc.title}</a></h2>
+      {doc.authors.length > 0 && <p class={styles.authors}>{doc.authors.join(', ')}</p>}
+      {facts && <p class={styles.facts}>{facts}</p>}
+      {(printed || card?.isbn) && (
+        <p class={styles.facts}>
+          {printed}
+          {card?.isbn && <span class={styles.isbn}>ISBN {card.isbn}</span>}
+        </p>
+      )}
+    </div>
+  </div>
+
+  <div class={styles.body}>
+    <div class={styles.reading}>
+      <span class={styles.bar} role="img" aria-label={readingLabel(reading)} style={`--share:${reading.share}`}>
+        <span></span>
+      </span>
+      <span class={styles.readLabel}>
+        {readingLabel(reading)}{lastRead ? `, last read ${lastRead}` : ''}
+      </span>
+    </div>
+
+    <p class={styles.actions}>
+      <a class="btn btn-primary" href={primary.href}>{primary.label}</a>
+      {resume && <a class="btn" href={href}>Book page</a>}
+    </p>
+
+    {
+      card && (
+        <div class={styles.card}>
+          {buckets.theme !== NO_THEME && (
+            <p class={styles.theme}>
+              Shelved under{' '}
+              <a href={libraryHref({ ...NO_FILTERS, theme: buckets.theme }, DEFAULT_SORT)} data-facet-filter="theme" data-value={buckets.theme} style={`--dye:${colours.dyes.theme}`}>
+                {buckets.theme}
+              </a>
+            </p>
+          )}
+          {card.description && <p class={styles.description}>{card.description}</p>}
+          {(readership || card.level) && (
+            <p class={styles.readership}>
+              {[readership, card.level && `${card.level} level`].filter(Boolean).join(', ')}
+            </p>
+          )}
+          {card.subjects.length > 0 && (
+            <ul class={styles.subjects} aria-label="Subjects">
+              {card.subjects.map((s) => <li>{s}</li>)}
+            </ul>
+          )}
+          {card.draft && <p class:list={[styles.draftCard, 'workshop-only']}>Library card is a draft, waiting for review</p>}
+        </div>
+      )
+    }
+
+    {doc.blurb && <p class={styles.blurb}>{doc.blurb}</p>}
+
+    <div class={styles.study}>
+      <h3>Study material</h3>
+      {
+        materials !== null && materials.length > 0 ? (
+          <ul>
+            {materials.map((m) => (
+              <li data-draft={m.standing !== 'approved' ? '' : undefined}>
+                <a href={m.href} title={m.hint}>
+                  {m.label}
+                </a>
+              </li>
+            ))}
+          </ul>
+        ) : doc.artifacts.approved > 0 ? (
+          <a href={href}>{materials === null ? 'See what is ready' : 'Ready chapter by chapter'}</a>
+        ) : (
+          <p class={styles.none}>{waiting > 0 ? 'Drafts waiting for review' : 'Nothing yet'}</p>
+        )
+      }
+    </div>
+
+    {
+      doc.tags.length > 0 && (
+        <ul class={styles.tags} aria-label="Tags">
+          {doc.tags.map((tag) => (
+            <li>
+              <a href={libraryHref({ ...NO_FILTERS, tag }, DEFAULT_SORT)} data-tag={tag}>
+                {tag}
+              </a>
+            </li>
+          ))}
+        </ul>
+      )
+    }
+
+    <p class:list={[styles.state, 'workshop-only']} data-attention={progress.attention ?? undefined}>
+      {progress.label}
+      {doc.paused ? ', paused at the run ceiling' : ''}
+      {waiting > 0 && <span>{plural(waiting, 'draft')} to review</span>}
+    </p>
+  </div>
+</article>

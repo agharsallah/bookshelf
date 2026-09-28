@@ -2,21 +2,21 @@
 /**
  * One book in the list view: a strip of its cloth, the title in the book's voice with
  * its authors and year, how far you have read, and the study material it already
- * has (book-wide brief, guide, cards, quiz...). Workshop mode adds its pipeline state.
+ * has (book-wide brief, guide, cards, quiz...). The strip wears the shelf's dye, and
+ * workshop mode adds its pipeline state.
  */
 import { GENRE_LABELS } from '../../lib/api/types/documents';
 import { pipelineProgress } from '../../lib/documents/pipeline';
 import { bookAttributes } from './book-data';
+import { dyeStyle, placeStyle } from './book-style';
 import type { LibraryItem } from './items';
 import { readingLabel } from './progress';
-import { sortKeys } from './sort';
-import { CLOTH_COLORS, plural, spineLook, waitingReview } from './spine';
+import { plural, spineLook, waitingReview } from './spine';
 import styles from './Catalogue.module.css';
 
-type Props = LibraryItem;
+type Props = LibraryItem & { index: number };
 
-const { doc, reading, materials, current, hidden } = Astro.props;
-const cloth = CLOTH_COLORS[spineLook(doc).cloth];
+const { doc, index, reading, materials, buckets, colours, keys, current, hidden } = Astro.props;
 const progress = pipelineProgress(doc.status);
 const waiting = waitingReview(doc);
 const href = `/documents/${doc.slug}`;
@@ -28,11 +28,12 @@ const read = readingLabel(reading);
 
 <li
   class={styles.row}
-  style={`--cloth:${cloth}`}
+  style={`${dyeStyle(colours, spineLook(doc).shade)};${placeStyle(doc.id, colours, index)}`}
+  data-dyed
   data-current={current ? '' : undefined}
   hidden={hidden}
   aria-labelledby={titleId}
-  {...bookAttributes(doc, sortKeys(doc, reading.lastRead))}
+  {...bookAttributes(doc, buckets, keys)}
 >
   <span class={styles.cloth} aria-hidden="true"></span>
   <div class={styles.main}>

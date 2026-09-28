@@ -1,55 +1,60 @@
 ---
 /**
- * One book standing on the shelf: a cloth spine with its short title set to fit, the
- * author and a call-number label with the year. Hover or focus lifts it off the shelf
- * and shows the catalogue card with the full title (anchored to the spine where CSS
- * anchor positioning exists). The book read most recently wears the highlighter
- * ribbon. In workshop mode the label's notches show the pipeline milestones and a
- * paper slip sticks out when drafts wait for review. On narrow screens the books lie
- * flat and show their full titles inline.
+ * One book standing on the shelf: a cloth spine dyed by the chosen dimension, its short
+ * title set to fit, the author, and a call-number sticker showing what the shelf is
+ * sorted by (year, share read or length). A highlighter edge rises up the spine as the
+ * book is read, and the book read most recently wears the ribbon. The spine is a link to
+ * the book's page; pointing at it (or focusing it) shows the book on the lectern. In
+ * workshop mode the sticker's
+ * notches show the pipeline milestones and a paper slip sticks out when drafts wait
+ * for review. On narrow screens the books lie flat and show their full titles.
  */
-import type { DocumentSummary } from '../../lib/api/types/documents';
 import { pipelineProgress, PIPELINE_STEPS, stepState } from '../../lib/documents/pipeline';
 import { bookAttributes } from './book-data';
-import { readingLabel, type ShelfReading } from './progress';
-import { sortKeys } from './sort';
-import { CLOTH_COLORS, plural, spineAuthor, spineLook, titleFit, waitingReview } from './spine';
+import { dyeStyle, placeStyle } from './book-style';
+import type { LibraryItem } from './items';
+import { LECTERN } from './live-ids';
+import { readingLabel } from './progress';
+import { pagesOf, spineAuthor, spineLook, titleFit, waitingReview } from './spine';
 import styles from './Spine.module.css';
 
-interface Props {
-  doc: DocumentSummary;
+type Props = LibraryItem & {
   index: number;
-  reading: ShelfReading;
-  current: boolean;
-  hidden: boolean;
-}
+  /** On the lectern now. */
+  selected: boolean;
+};
 
-const { doc, index, reading, current, hidden } = Astro.props;
+const { doc, index, reading, buckets, colours, keys, current, hidden, selected } = Astro.props;
 const look = spineLook(doc);
 const fit = titleFit(doc.title, doc.authors, look);
 const progress = pipelineProgress(doc.status);
 const waiting = waitingReview(doc);
-const cardId = `card-${doc.id}`;
-const anchorName = `--spine-${index}`;
-const facts = [doc.year, doc.kind === 'article' ? 'Article' : doc.page_count ? `${doc.page_count} pages` : null]
-  .filter(Boolean)
-  .join(', ');
+const pages = pagesOf(doc);
 const read = readingLabel(reading);
+const stickers = {
+  year: doc.year ? String(doc.year) : '',
+  progress: reading.lastRead ? `${Math.round(reading.share * 100)}%` : '',
+  length: pages.pages ? `${pages.estimated ? '~' : ''}${pages.pages}p` : '',
+};
+const facts = [doc.year, doc.kind === 'article' ? 'Article' : pages.pages ? `${pages.pages} pages` : null].filter(Boolean).join(', ');
 ---
 
 <li
   class={styles.book}
-  style={`--cloth:${CLOTH_COLORS[look.cloth]}`}
+  style={`${dyeStyle(colours, look.shade)};${placeStyle(doc.id, colours, index)}`}
+  data-dyed
   data-kind={doc.kind}
   data-current={current ? '' : undefined}
   hidden={hidden}
-  {...bookAttributes(doc, sortKeys(doc, reading.lastRead))}
+  {...bookAttributes(doc, buckets, keys)}
 >
   <a
     class={styles.spine}
     href={`/documents/${doc.slug}`}
-    aria-describedby={cardId}
-    style={`--w:${look.width}rem;--h:${fit.height}rem;--ts:${fit.size}rem;anchor-name:${anchorName}`}
+    aria-controls={LECTERN}
+    aria-current={selected ? 'true' : undefined}
+    data-spine
+    style={`--w:${look.width}rem;--h:${fit.height}rem;--ts:${fit.size}rem;--share:${reading.lastRead ? reading.share : 0}`}
   >
     {current && <span class={styles.ribbon} aria-hidden="true"></span>}
     {waiting > 0 && <span class:list={[styles.slip, 'workshop-only']} aria-hidden="true"></span>}
@@ -57,34 +62,22 @@ const read = readingLabel(reading);
     <span class={styles.title} data-clipped={fit.clipped ? '' : undefined}>{fit.text}</span>
     <span class={styles.flatTitle}>{doc.title}</span>
     <span class={styles.author}>{spineAuthor(doc.authors)}</span>
-    <span class={styles.label} aria-hidden="true" data-empty={doc.year ? undefined : ''}>
-      <span class={styles.year}>{doc.year ?? ''}</span>
+    <span class="visually-hidden">, {current ? `reading now, ${read.toLowerCase()}` : read.toLowerCase()}</span>
+    <span class={styles.label} aria-hidden="true">
+      {
+        Object.entries(stickers).map(([sticker, text]) => (
+          <span data-sticker={sticker} data-empty={text ? undefined : ''}>
+            {text}
+          </span>
+        ))
+      }
       <span class:list={[styles.notches, 'workshop-only']} data-attention={progress.attention ?? undefined}>
         {PIPELINE_STEPS.map((_, i) => <span class={styles.notch} data-state={stepState(doc.status, i)} />)}
       </span>
     </span>
+    <span class={styles.readEdge} aria-hidden="true"></span>
     <span class={styles.flatMeta} aria-hidden="true">
-      {[doc.authors.join(', '), facts].filter(Boolean).join('; ')}
+      {[doc.authors.join(', '), facts, read].filter(Boolean).join('; ')}
     </span>
   </a>
-
-  <div class={styles.card} id={cardId} role="note" style={`position-anchor:${anchorName}`}>
-    <p class:list={[styles.cardTitle, 'book-title']}>{doc.title}</p>
-    {doc.authors.length > 0 && <p class={styles.cardAuthors}>{doc.authors.join(', ')}</p>}
-    {facts && <p class={styles.cardFacts}>{facts}</p>}
-    <p class={styles.cardReading} data-current={current ? '' : undefined}>
-      {current ? `Reading now, ${read.toLowerCase()}` : read}
-    </p>
-    {doc.blurb && <p class={styles.cardBlurb}>{doc.blurb}</p>}
-    {doc.tags.length > 0 && (
-      <p class={styles.cardTags}>
-        {doc.tags.map((tag) => <span>{tag}</span>)}
-      </p>
-    )}
-    <p class:list={[styles.cardStatus, 'workshop-only']} data-attention={progress.attention ?? undefined}>
-      {progress.label}{doc.paused ? ', paused at the run ceiling' : ''}
-    </p>
-    {waiting > 0 && <p class:list={[styles.cardWaiting, 'workshop-only']}>{plural(waiting, 'draft')} waiting for review</p>}
-  </div>
 </li>
-

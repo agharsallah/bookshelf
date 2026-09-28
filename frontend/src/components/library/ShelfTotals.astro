@@ -1,0 +1,107 @@
+---
+/**
+ * The totals worth a glance, in the library's header: chapters read (with a highlighter
+ * meter), study material ready, drafts waiting for review (workshop mode) and notes taken.
+ */
+import type { LibraryItem } from './items';
+import { shelfTotals } from './overview';
+
+interface Props {
+  items: LibraryItem[];
+}
+
+const totals = shelfTotals(Astro.props.items);
+const readShare = totals.chapters ? totals.chaptersRead / totals.chapters : 0;
+const number = new Intl.NumberFormat('en-GB');
+---
+
+<dl class="totals">
+  <div class="total">
+    <dt>Chapters read</dt>
+    <dd>
+      <span class="figure">{number.format(totals.chaptersRead)}</span>{' '}
+      <span class="of">of {number.format(totals.chapters)}</span>
+    </dd>
+    <span class="meter" aria-hidden="true" style={`--share:${readShare}`}><span></span></span>
+  </div>
+  <div class="total">
+    <dt>Ready to study</dt>
+    <dd><span class="figure">{number.format(totals.ready)}</span>{' '}<span class="of">items</span></dd>
+  </div>
+  <div class="total">
+    <dt>Notes</dt>
+    <dd><span class="figure">{number.format(totals.notes)}</span></dd>
+  </div>
+  <div class="total workshop-only">
+    <dt>To review</dt>
+    <dd><span class="figure caution">{number.format(totals.drafts)}</span>{' '}<span class="of">drafts</span></dd>
+  </div>
+</dl>
+
+<style>
+  .totals {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-5);
+    margin: 0 0 0 auto;
+    font-family: var(--font-ui);
+  }
+
+  .total {
+    display: grid;
+    gap: 0.1rem;
+    align-content: start;
+  }
+
+  dt {
+    color: var(--ink-3);
+    font-size: var(--text-xs);
+  }
+
+  dd {
+    margin: 0;
+    color: var(--ink-2);
+    font-size: var(--text-sm);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .figure {
+    color: var(--ink);
+    font-size: var(--text-md);
+    font-weight: 650;
+    letter-spacing: -0.01em;
+  }
+
+  .figure.caution {
+    color: var(--tone-caution);
+  }
+
+  .meter {
+    display: block;
+    block-size: 3px;
+    margin-block-start: var(--space-1);
+    border-radius: var(--radius-pill);
+    background: var(--rule);
+  }
+
+  .meter > span {
+    display: block;
+    block-size: 100%;
+    inline-size: calc(var(--share) * 100%);
+    border-radius: inherit;
+    background: var(--marker);
+    box-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.15);
+    transform-origin: left;
+    animation: grow var(--dur-4) var(--ease-stroke) var(--dur-4) both;
+  }
+
+  @keyframes grow {
+    from { scale: 0 1; }
+  }
+
+  @media (max-width: 40rem) {
+    .totals {
+      margin-inline-start: 0;
+    }
+  }
+</style>

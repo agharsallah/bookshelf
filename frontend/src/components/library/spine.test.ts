@@ -1,11 +1,27 @@
 import { describe, expect, it } from 'vitest';
-import { MAX_SPINE_HEIGHT, shortTitle, spineAuthor, spineLook, titleFit, wrapLength } from './spine';
+import { MAX_SPINE_HEIGHT, pagesOf, shortTitle, spineAuthor, spineLook, titleFit, wrapLength } from './spine';
 
 describe('spineLook', () => {
+  const counts = { chapters: 1, blocks: 0, figures: 0, notes: 0 };
+
   it('is stable per slug and thicker for longer books', () => {
-    const thin = spineLook({ slug: 'a', kind: 'pdf', page_count: 100 });
-    expect(spineLook({ slug: 'a', kind: 'pdf', page_count: 100 })).toEqual(thin);
-    expect(spineLook({ slug: 'a', kind: 'pdf', page_count: 800 }).width).toBeGreaterThan(thin.width);
+    const thin = spineLook({ slug: 'a', kind: 'pdf', page_count: 100, counts });
+    expect(spineLook({ slug: 'a', kind: 'pdf', page_count: 100, counts })).toEqual(thin);
+    expect(spineLook({ slug: 'a', kind: 'pdf', page_count: 800, counts }).width).toBeGreaterThan(thin.width);
+  });
+
+  it('sizes a book without a page count by its parsed length', () => {
+    const short = spineLook({ slug: 'a', kind: 'epub', page_count: null, counts: { ...counts, blocks: 400 } });
+    const long = spineLook({ slug: 'a', kind: 'epub', page_count: null, counts: { ...counts, blocks: 6000 } });
+    expect(long.width).toBeGreaterThan(short.width);
+  });
+});
+
+describe('pagesOf', () => {
+  it('prefers the printed count, else estimates from the blocks, else knows nothing', () => {
+    expect(pagesOf({ page_count: 264, counts: { blocks: 2068 } })).toEqual({ pages: 264, estimated: false });
+    expect(pagesOf({ page_count: null, counts: { blocks: 1366 } })).toEqual({ pages: 171, estimated: true });
+    expect(pagesOf({ page_count: null, counts: { blocks: 0 } })).toEqual({ pages: null, estimated: false });
   });
 });
 

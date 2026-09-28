@@ -1,20 +1,42 @@
 ---
 /**
  * The list view: the library as a catalogue, one book per row, for scanning titles,
- * progress and what there is to study. Same items and order as the shelf.
+ * progress and what there is to study. Same items, order, dyes and groups as the shelf;
+ * grouped, a header row names each group.
  */
 import CatalogueRow from './CatalogueRow.astro';
-import type { LibraryItem } from './items';
+import type { Palette } from './facets';
+import { dividerCards, type LibraryItem } from './items';
 import styles from './Catalogue.module.css';
 
 interface Props {
   items: LibraryItem[];
   label: string;
+  /** The shelf's buckets, for the group headers. */
+  palette: Palette;
 }
 
-const { items, label } = Astro.props;
+const { items, label, palette } = Astro.props;
 ---
 
 <ol class={styles.catalogue} aria-label={label} data-books>
-  {items.map((item) => <CatalogueRow {...item} />)}
+  {items.map((item, index) => <CatalogueRow index={index} {...item} />)}
+  {
+    dividerCards(palette, items).map((card) => (
+      <li
+        class={styles.divider}
+        data-divider={card.dimension}
+        data-bucket={card.bucket}
+        data-index={card.index}
+        style={`--g:${card.index};--tab:${card.dye}`}
+        hidden={card.count === 0}
+      >
+        <span class={styles.dividerSwatch} aria-hidden="true" />
+        <span class={styles.dividerLabel}>{card.label}</span>
+        <span class={styles.dividerCount} data-divider-count>
+          {card.count}
+        </span>
+      </li>
+    ))
+  }
 </ol>

@@ -117,6 +117,27 @@ export interface PausedState {
   limit: number;
 }
 
+/**
+ * A document's library card (`catalogue-document`, read from its preferred `catalogue_entry`):
+ * the shelf-wide theme it is shelved under, what it covers and for whom, and the publication
+ * facts printed in it. `draft` until a human approves it; unknowns are null.
+ */
+export interface CatalogueCard {
+  theme: string | null;
+  subjects: string[];
+  form: string | null;
+  audience: string | null;
+  level: string | null;
+  description: string | null;
+  publisher: string | null;
+  published: number | null;
+  edition: string | null;
+  isbn: string | null;
+  language: string | null;
+  series: string | null;
+  draft: boolean;
+}
+
 /** `GET /documents` item. */
 export interface DocumentSummary extends DocumentPublic {
   counts: DocumentCounts;
@@ -126,6 +147,8 @@ export interface DocumentSummary extends DocumentPublic {
   blurb: string | null;
   /** Set when the run ceiling paused the document; `POST /documents/{ref}/resume` clears it. */
   paused: PausedState | null;
+  /** The library card, once `catalogue-document` wrote one. */
+  catalogue: CatalogueCard | null;
 }
 
 /** `GET /documents/{ref}`. */

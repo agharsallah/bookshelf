@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
-  documentsQuery,
+  activeFilters,
   filterHref,
   hasFilters,
   libraryHref,
   matchesFilters,
+  NO_FILTERS,
   noMatchMessage,
   parseFilters,
   resultSummary,
@@ -16,17 +17,20 @@ const parse = (qs: string) => parseFilters(new URLSearchParams(qs));
 
 describe('parseFilters', () => {
   it('reads every filter, trimmed', () => {
-    expect(parse('tag=systems&status=parsed&genre=paper&author=%20Meadows%20&q=loops')).toEqual({
+    expect(parse('tag=systems&status=parsed&genre=paper&reading=finished&study=ready&theme=Machine+learning&author=%20Meadows%20&q=loops')).toEqual({
       tag: 'systems',
       status: 'parsed',
       genre: 'paper',
+      reading: 'finished',
+      study: 'ready',
+      theme: 'Machine learning',
       author: 'Meadows',
       q: 'loops',
     });
   });
 
-  it('drops blanks and unknown statuses', () => {
-    expect(parse('tag=&status=shelved&genre=poem&author=%20%20')).toEqual({ tag: null, status: null, genre: null, author: null, q: null });
+  it('drops blanks and unknown values', () => {
+    expect(parse('tag=&status=shelved&genre=poem&reading=skimmed&study=all&author=%20%20')).toEqual(NO_FILTERS);
   });
 
   it('caps overlong values at the API’s limits', () => {
@@ -34,18 +38,8 @@ describe('parseFilters', () => {
   });
 });
 
-describe('documentsQuery', () => {
-  it('sends only the filters that are set, plus the page size', () => {
-    expect(documentsQuery({ tag: 'systems', status: null, genre: null, author: null, q: 'flow' })).toEqual({
-      limit: 100,
-      tag: 'systems',
-      q: 'flow',
-    });
-  });
-});
-
 describe('filterHref', () => {
-  const current = { tag: 'systems', status: 'parsed', genre: null, author: null, q: null } as const;
+  const current: LibraryFilters = { ...NO_FILTERS, tag: 'systems', status: 'parsed' };
 
   it('changes one filter and keeps the rest', () => {
     expect(filterHref(current, { tag: 'queues' })).toBe('/library?tag=queues&status=parsed');
@@ -57,7 +51,7 @@ describe('filterHref', () => {
   });
 
   it('encodes values', () => {
-    expect(filterHref({ tag: null, status: null, genre: null, author: null, q: null }, { q: 'a&b c' })).toBe('/library?q=a%26b+c');
+    expect(filterHref(NO_FILTERS, { q: 'a&b c' })).toBe('/library?q=a%26b+c');
   });
 });
 
@@ -78,10 +72,19 @@ describe('tagCloud', () => {
   });
 });
 
-const none: LibraryFilters = { tag: null, status: null, genre: null, author: null, q: null };
+const none = NO_FILTERS;
 
 describe('matchesFilters', () => {
-  const book = { title: 'Thinking in Systems', authors: ['Donella Meadows'], tags: ['systems'], status: 'linked', genre: 'book' };
+  const book = {
+    title: 'Thinking in Systems',
+    authors: ['Donella Meadows'],
+    tags: ['systems'],
+    status: 'linked',
+    genre: 'book',
+    reading: 'finished',
+    study: 'drafts',
+    theme: 'Systems thinking',
+  };
 
   it('passes every book when nothing is set', () => {
     expect(matchesFilters(book, none)).toBe(true);
@@ -89,6 +92,7 @@ describe('matchesFilters', () => {
 
   it('matches words in the title and the authors, ignoring case', () => {
     expect(matchesFilters(book, { ...none, q: 'in sys' })).toBe(true);
+    expect(matchesFilters(book, { ...none, q: 'MEADOWS' })).toBe(true);
     expect(matchesFilters(book, { ...none, q: 'flow' })).toBe(false);
     expect(matchesFilters(book, { ...none, author: 'meadows' })).toBe(true);
     expect(matchesFilters(book, { ...none, author: 'Reinertsen' })).toBe(false);
@@ -101,9 +105,13 @@ describe('matchesFilters', () => {
     expect(matchesFilters(book, { ...none, tag: 'systems', q: 'flow' })).toBe(false);
   });
 
-  it('matches the genre exactly', () => {
-    expect(matchesFilters(book, { ...none, genre: 'book' })).toBe(true);
+  it('matches the facets exactly', () => {
+    expect(matchesFilters(book, { ...none, genre: 'book', reading: 'finished', study: 'drafts' })).toBe(true);
     expect(matchesFilters(book, { ...none, genre: 'paper' })).toBe(false);
+    expect(matchesFilters(book, { ...none, reading: 'unread' })).toBe(false);
+    expect(matchesFilters(book, { ...none, study: 'ready' })).toBe(false);
+    expect(matchesFilters(book, { ...none, theme: 'Systems thinking' })).toBe(true);
+    expect(matchesFilters(book, { ...none, theme: 'none' })).toBe(false);
   });
 });
 
@@ -124,6 +132,24 @@ describe('noMatchMessage', () => {
     );
     expect(noMatchMessage({ ...none, genre: 'paper', q: 'bert' })).toBe('No papers match “bert”.');
     expect(noMatchMessage({ ...none, genre: 'article' })).toBe('No articles on the shelf yet.');
+    expect(noMatchMessage({ ...none, genre: 'paper', reading: 'finished', study: 'ready' })).toBe(
+      'No papers you have finished with study material ready.',
+    );
+    expect(noMatchMessage({ ...none, theme: 'Career' })).toBe('No books under “Career”.');
+    expect(noMatchMessage({ ...none, theme: 'none' })).toBe('No books without a theme yet.');
+  });
+});
+
+describe('activeFilters', () => {
+  it('names each filter that is set, in URL order, in the reader’s words', () => {
+    expect(activeFilters({ ...none, tag: 'career', genre: 'paper', reading: 'unread', theme: 'none', q: 'flow' })).toEqual([
+      { key: 'q', label: '“flow”', remove: 'Remove the filter “flow”' },
+      { key: 'genre', label: 'Papers', remove: 'Remove the filter Papers' },
+      { key: 'reading', label: 'Not started', remove: 'Remove the filter Not started' },
+      { key: 'theme', label: 'No theme yet', remove: 'Remove the filter No theme yet' },
+      { key: 'tag', label: 'career', remove: 'Remove the filter career' },
+    ]);
+    expect(activeFilters(none)).toEqual([]);
   });
 });
 

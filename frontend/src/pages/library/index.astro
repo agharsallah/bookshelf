@@ -1,27 +1,34 @@
 ---
 /**
- * The library: every book on the shelf, as spines or as a catalogue list, filtered and
- * ordered by query params (q, author, tag, status, sort). Every book is rendered and
- * the filters hide the rest, so the page's script can filter as you type; without
- * JavaScript the GET form does the same through the server. "Add a book" opens the
- * ingest desk in a dialog; `?add=paper` (or `book`, `article`, `1`) opens it on arrival
- * with that genre chosen.
+ * The library: every book on the shelf, dyed by what matters to you (kind, reading,
+ * study material or theme), as spines beside a lectern or as a catalogue list. Filters
+ * and order live in query params (q, genre, reading, study, theme, tag, status, sort); display
+ * choices (view, dye, grouping) are the reader's own, in localStorage. Every book is
+ * rendered and the filters hide the rest, so the page's script can filter as you type;
+ * without JavaScript the GET form and links do the same through the server. "Add a
+ * book" opens the ingest desk in a dialog; `?add=paper` (or `book`, `article`, `1`)
+ * opens it on arrival with that genre chosen.
  */
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import AddBookButton from '../../components/library/AddBookButton.astro';
 import AddBookDialog from '../../components/library/AddBookDialog.astro';
 import Catalogue from '../../components/library/Catalogue.astro';
 import EmptyShelf from '../../components/library/EmptyShelf.astro';
-import FilterBar from '../../components/library/FilterBar.astro';
+import Lectern from '../../components/library/Lectern.astro';
+import Overview from '../../components/library/Overview.astro';
 import Shelf from '../../components/library/Shelf.astro';
-import ViewToggle from '../../components/library/ViewToggle.astro';
-import { hasFilters, libraryHref, NO_FILTERS, noMatchMessage, parseFilters, resultSummary, tagCloud } from '../../components/library/filters';
+import ShelfTotals from '../../components/library/ShelfTotals.astro';
+import Toolbar from '../../components/library/Toolbar.astro';
+import { facet, shelfPalette } from '../../components/library/facets';
+import { hasFilters, libraryHref, NO_FILTERS, noMatchMessage, parseFilters, tagCloud } from '../../components/library/filters';
 import { libraryItems } from '../../components/library/items';
 import { loadLibrary } from '../../components/library/load';
-import { parseSort } from '../../components/library/sort';
-import { DEFAULT_VIEW, viewBootstrapScript, viewClass } from '../../components/library/view';
+import { shelfSentence } from '../../components/library/overview';
+import { parseSort, stickerFor } from '../../components/library/sort';
+import { defaultClasses, viewBootstrapScript } from '../../components/library/view';
 import { Problem } from '../../components/common/Problem';
 import { GENRES } from '../../lib/api/types/documents';
+import '../../components/library/library.css';
 
 export const prerender = false;
 
@@ -34,25 +41,27 @@ const addGenre = GENRES.find((g) => g === add) ?? null;
 const addOpen = add !== null;
 
 const { documents, problem, files, filesProblem, extras } = await loadLibrary();
-const items = libraryItems(documents, extras, filters, sort);
+const palette = shelfPalette(documents);
+const items = libraryItems(documents, extras, filters, sort, palette);
 const total = documents.length;
 const shown = items.filter((item) => !item.hidden).length;
 const waiting = files?.length ?? 0;
 const tags = tagCloud(documents);
 const label = filtered ? 'Matching books' : 'All books';
 const clearHref = libraryHref(NO_FILTERS, sort);
+const selected = (items.find((i) => i.current) ?? items.find((i) => !i.hidden) ?? items[0])?.doc.slug ?? null;
+const onShelf = shelfSentence(facet(palette, 'kind', items.map((i) => i.buckets)));
 ---
 
 <BaseLayout title="Library" description="Every book and article on your shelf.">
-  <div class:list={['library', viewClass(DEFAULT_VIEW)]} data-library>
+  <div class:list={['library', ...defaultClasses(), `sticker-${stickerFor(sort)}`]} data-library>
     <script is:inline data-astro-rerun set:html={viewBootstrapScript} />
     <header class="head">
       <div class="heading">
         <h1>Library</h1>
-        <p class="count">
-          {total === 0 ? 'Nothing on the shelf yet' : `${resultSummary(total, total, false)} on your shelf`}
-        </p>
+        <p class="count">{total === 0 ? 'Nothing on the shelf yet' : `${onShelf} on your shelf`}</p>
       </div>
+      {total > 0 && !problem && <ShelfTotals items={items} />}
       <AddBookButton waiting={waiting} />
     </header>
 
@@ -61,31 +70,27 @@ const clearHref = libraryHref(NO_FILTERS, sort);
     ) : total === 0 ? (
       <EmptyShelf waiting={waiting} />
     ) : (
-      <>
-        <FilterBar filters={filters} sort={sort} tags={tags} />
+      <div class="desk">
+        <div class="main">
+          <Overview items={items} filters={filters} sort={sort} palette={palette} />
+          <Toolbar filters={filters} sort={sort} tags={tags} shown={shown} total={total} filtered={filtered} />
 
-        <div class="results">
-          <p class="summary" aria-live="polite">
-            <span data-summary>{resultSummary(shown, total, filtered)}</span>
-            <a href={clearHref} data-clear hidden={!filtered}>Clear filters</a>
-          </p>
-          <ViewToggle />
-        </div>
+          <div class="no-match" data-no-match hidden={shown > 0}>
+            <p class="no-match-text" data-no-match-text>{noMatchMessage(filters)}</p>
+            <p>
+              Try fewer words, or <a href={clearHref} data-clear>clear the filters</a> to see the whole shelf.
+            </p>
+          </div>
 
-        <div class="no-match" data-no-match hidden={shown > 0}>
-          <p class="no-match-text" data-no-match-text>{noMatchMessage(filters)}</p>
-          <p>
-            Try fewer words, or <a href={clearHref} data-clear>clear the filters</a> to see the whole shelf.
-          </p>
+          <div class="view shelf-view">
+            <Shelf items={items} label={label} selected={selected} palette={palette} />
+          </div>
+          <div class="view list-view">
+            <Catalogue items={items} label={label} palette={palette} />
+          </div>
         </div>
-
-        <div class="view shelf-view">
-          <Shelf items={items} label={label} />
-        </div>
-        <div class="view list-view">
-          <Catalogue items={items} label={label} />
-        </div>
-      </>
+        <Lectern items={items} selected={selected} />
+      </div>
     )}
 
     <AddBookDialog files={files} problem={filesProblem} open={addOpen} genre={addGenre} />
@@ -113,13 +118,12 @@ const clearHref = libraryHref(NO_FILTERS, sort);
     flex-wrap: wrap;
     align-items: flex-end;
     justify-content: space-between;
-    gap: var(--space-3) var(--space-5);
-    margin-block-end: var(--space-2);
+    gap: var(--space-4) var(--space-7);
   }
 
   .heading {
     display: grid;
-    gap: var(--space-1);
+    gap: var(--space-2);
   }
 
   h1 {
@@ -130,37 +134,9 @@ const clearHref = libraryHref(NO_FILTERS, sort);
 
   .count {
     color: var(--ink-2);
-    font-family: var(--font-ui);
-    font-size: var(--text-ui);
-  }
-
-  .results {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-3);
-    padding-block-start: var(--space-2);
-    border-block-start: 1px solid var(--rule);
-    font-family: var(--font-ui);
-  }
-
-  .summary {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: var(--space-3);
-    color: var(--ink-2);
-    font-size: var(--text-ui);
-    font-variant-numeric: tabular-nums;
-  }
-
-  .summary a {
-    font-size: var(--text-sm);
-  }
-
-  [data-clear][hidden] {
-    display: none;
+    font-family: var(--font-read);
+    font-size: var(--text-base);
+    font-style: italic;
   }
 
   .no-match {
@@ -182,7 +158,7 @@ const clearHref = libraryHref(NO_FILTERS, sort);
   }
 
   .view {
-    padding-block-start: var(--space-4);
+    padding-block-start: var(--space-2);
   }
 
   .view-shelf .list-view,
@@ -193,6 +169,40 @@ const clearHref = libraryHref(NO_FILTERS, sort);
   /* An empty result shows the message, not an empty plank. */
   .library:has([data-no-match]:not([hidden])) .view {
     display: none;
+  }
+
+  /* The library, and the lectern beside it from the top: the book you are reading is in
+     view on arrival, with where to pick up. The list has room for its own columns. */
+  .desk {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 23rem;
+    align-items: start;
+    gap: var(--space-6);
+  }
+
+  .main {
+    display: grid;
+    gap: var(--space-5);
+    min-inline-size: 0;
+  }
+
+  .view-list .desk {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .view-list .desk > :global(aside) {
+    display: none;
+  }
+
+  @media (max-width: 60rem) {
+    .desk {
+      grid-template-columns: minmax(0, 1fr);
+      gap: var(--space-5);
+    }
+
+    .desk > :global(aside) {
+      order: -1;
+    }
   }
 
   @media (max-width: 40rem) {

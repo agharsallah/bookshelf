@@ -1,25 +1,15 @@
 /**
- * How a document stands on the shelf. A spine's thickness follows its page count,
- * its height and cloth are picked from its slug, so a book looks the same every
- * visit and neighbours rarely match. The title is set to fit: the largest type that
- * lets the short title (before any subtitle) run in one or more vertical lines,
+ * How a document stands on the shelf. A spine's thickness follows its length, its
+ * height and a slight shade of its dye are picked from its slug, so a book looks the
+ * same every visit and neighbours of one colour still read as separate books (the dye
+ * itself is the colour code, `facets.ts`). The title is set to fit: the largest type
+ * that lets the short title (before any subtitle) run in one or more vertical lines,
  * growing the spine up to the shelf's height before it shrinks the type.
  */
 import type { DocumentSummary } from '../../lib/api/types/documents';
 
-export const CLOTHS = ['oxblood', 'navy', 'forest', 'ochre', 'slate', 'plum', 'teal'] as const;
-export type Cloth = (typeof CLOTHS)[number];
-
-/** Cloth dyes: dark enough for paper-coloured type in both themes (>= 7:1). */
-export const CLOTH_COLORS: Record<Cloth, string> = {
-  oxblood: '#6d2a2a',
-  navy: '#25355a',
-  forest: '#2c4a37',
-  ochre: '#6e4f16',
-  slate: '#3b4450',
-  plum: '#4e2c4d',
-  teal: '#1d4f52',
-};
+/** Blocks on an average printed page, for books without a page count (EPUB, articles). */
+export const BLOCKS_PER_PAGE = 8;
 
 /** A small, stable string hash (FNV-1a). */
 export function hash(text: string): number {
@@ -32,20 +22,28 @@ export function hash(text: string): number {
 }
 
 export interface SpineLook {
-  cloth: Cloth;
+  /** How much darker than its dye the cloth is (0–9%), so neighbours differ. */
+  shade: number;
   /** Thickness in rem. */
   width: number;
   /** Height in rem. */
   height: number;
 }
 
-export function spineLook(doc: Pick<DocumentSummary, 'slug' | 'kind' | 'page_count'>): SpineLook {
+/** Printed pages, or an estimate from the parsed blocks (`estimated`); null when neither is known. */
+export function pagesOf(doc: { page_count: number | null; counts: { blocks: number } }): { pages: number | null; estimated: boolean } {
+  if (doc.page_count) return { pages: doc.page_count, estimated: false };
+  if (doc.counts.blocks > 0) return { pages: Math.max(1, Math.round(doc.counts.blocks / BLOCKS_PER_PAGE)), estimated: true };
+  return { pages: null, estimated: false };
+}
+
+export function spineLook(doc: Pick<DocumentSummary, 'slug' | 'kind' | 'page_count' | 'counts'>): SpineLook {
   const h = hash(doc.slug);
-  const cloth: Cloth = CLOTHS[h % CLOTHS.length] ?? 'navy';
-  if (doc.kind === 'article') return { cloth, width: 2.4, height: 13 + ((h >> 4) % 3) * 0.5 };
-  const pages = doc.page_count ?? 200;
+  const shade = (h % 4) * 3;
+  if (doc.kind === 'article') return { shade, width: 2.4, height: 13 + ((h >> 4) % 3) * 0.5 };
+  const pages = pagesOf(doc).pages ?? 200;
   const width = Math.round((2.6 + (Math.min(pages, 900) / 900) * 2.2) * 100) / 100;
-  return { cloth, width, height: 15.5 + ((h >> 4) % 5) * 0.6 };
+  return { shade, width, height: 15.5 + ((h >> 4) % 5) * 0.6 };
 }
 
 /** The tallest a spine may grow to fit its title (the shelf row is a little taller). */

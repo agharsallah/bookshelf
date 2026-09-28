@@ -1,0 +1,35 @@
+---
+/**
+ * The lectern beside the library: a book face out, with where to pick it up and its page
+ * one click away. It opens on the book you are reading (else the first on the shelf);
+ * with the script, pointing at a spine puts that book here instead (`live-lectern.ts`),
+ * from the `<template>` each book has.
+ */
+import LecternBook from './LecternBook.astro';
+import type { LibraryItem } from './items';
+import { LECTERN } from './live-ids';
+import styles from './Lectern.module.css';
+
+interface Props {
+  items: LibraryItem[];
+  selected: string | null;
+}
+
+const { items, selected } = Astro.props;
+const shown = items.find((item) => item.doc.slug === selected);
+---
+
+<aside class={styles.lectern} id={LECTERN} aria-label="The book taken off the shelf" data-lectern>
+  <div class={styles.slot} data-lectern-slot data-book={shown?.doc.slug}>
+    {shown && <LecternBook {...shown} />}
+  </div>
+  <p class={styles.hint} data-needs-script>Point at a spine to see it here. Click it to open the book.</p>
+  <p class="visually-hidden" aria-live="polite" data-lectern-status></p>
+</aside>
+{
+  items.map((item) => (
+    <template data-lectern-for={item.doc.slug}>
+      <LecternBook {...item} />
+    </template>
+  ))
+}

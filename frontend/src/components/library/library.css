@@ -1,0 +1,111 @@
+/*
+ * The library's page-wide rules, keyed on the classes the display choices set on the
+ * library (`view.ts`): which dimension dyes the books (`by-*`), whether they stand in
+ * groups (`group-on`), what the call-number stickers show (`sticker-*`), and the
+ * motion when the shelf re-arranges (`live-motion.ts`). Books carry their dyes and
+ * groups inline (`book-style.ts`); anything that wears a dye is marked `data-dyed`.
+ */
+
+/* A registered colour, so a change of dimension fades the cloth instead of snapping. */
+@property --cloth {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #474d56;
+}
+
+.by-kind [data-dyed] {
+  --cloth: color-mix(in oklab, var(--c-kind), black var(--shade, 0%));
+}
+
+.by-reading [data-dyed] {
+  --cloth: color-mix(in oklab, var(--c-reading), black var(--shade, 0%));
+}
+
+.by-study [data-dyed] {
+  --cloth: color-mix(in oklab, var(--c-study), black var(--shade, 0%));
+}
+
+.by-theme [data-dyed] {
+  --cloth: color-mix(in oklab, var(--c-theme), black var(--shade, 0%));
+}
+
+/* The new dye runs along the shelf, book after book; a spotlight fades the others (`data-dimmed`). */
+[data-dyed] {
+  transition:
+    --cloth var(--dur-4) var(--ease-out) calc(min(var(--i, 0), 40) * 22ms),
+    opacity var(--dur-2) var(--ease-out);
+}
+
+/* Grouped, the first paint stands each group behind its divider (the script then moves
+   the elements too, so the reading order matches). */
+.group-on.by-kind [data-book] {
+  order: calc(var(--g-kind) * 2 + 1);
+}
+
+.group-on.by-reading [data-book] {
+  order: calc(var(--g-reading) * 2 + 1);
+}
+
+.group-on.by-study [data-book] {
+  order: calc(var(--g-study) * 2 + 1);
+}
+
+.group-on.by-theme [data-book] {
+  order: calc(var(--g-theme) * 2 + 1);
+}
+
+[data-divider] {
+  order: calc(var(--g, 0) * 2);
+}
+
+/* The sticker shows what the shelf is sorted by. */
+[data-sticker] {
+  display: none;
+}
+
+.sticker-year [data-sticker='year'],
+.sticker-progress [data-sticker='progress'],
+.sticker-length [data-sticker='length'] {
+  display: inline;
+}
+
+/* Choices that only work with the script. */
+.library:not([data-live]) [data-needs-script] {
+  display: none !important;
+}
+
+/* ── Re-arranging (live-motion.ts): books glide, leave down and arrive from above ── */
+@media (prefers-reduced-motion: no-preference) {
+  html[data-shelf-moving]::view-transition-old(root),
+  html[data-shelf-moving]::view-transition-new(root) {
+    animation: none;
+  }
+
+  html[data-shelf-moving]::view-transition-group(*) {
+    animation-duration: var(--dur-4);
+    animation-timing-function: var(--ease-turn);
+  }
+
+  html[data-shelf-moving]::view-transition-old(*):only-child {
+    animation: shelf-leave var(--dur-3) var(--ease-out) both;
+  }
+
+  html[data-shelf-moving]::view-transition-new(*):only-child {
+    animation: shelf-arrive var(--dur-4) var(--ease-turn) both;
+  }
+}
+
+@keyframes shelf-leave {
+  to {
+    opacity: 0;
+    translate: 0 1.5rem;
+    scale: 0.92;
+  }
+}
+
+@keyframes shelf-arrive {
+  from {
+    opacity: 0;
+    translate: 0 -1.5rem;
+  }
+}

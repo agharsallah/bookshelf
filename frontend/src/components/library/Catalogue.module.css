@@ -25,12 +25,18 @@
   display: none;
 }
 
+.row[data-dimmed] {
+  opacity: 0.3;
+}
+
 .cloth {
   grid-area: cloth;
   align-self: stretch;
   min-block-size: 3rem;
   border-radius: 2px;
-  background: var(--cloth);
+  background:
+    linear-gradient(90deg, rgb(0 0 0 / 0.2), transparent 40%, rgb(255 255 255 / 0.1) 60%, transparent),
+    var(--cloth);
 }
 
 /* Where you are: the current book's strip is the highlighter. */
@@ -115,6 +121,11 @@
   from { scale: 0 1; }
 }
 
+/* Once rows move around (live.ts), moving one must not refill its bar. */
+:global([data-settled]) .bar > span {
+  animation: none;
+}
+
 .readLabel {
   display: flex;
   flex-wrap: wrap;
@@ -169,6 +180,40 @@
 
 .state[data-attention='failed'] {
   color: var(--tone-important);
+}
+
+/* ── Group headers (grouped list) ───────────────────────────── */
+.divider {
+  display: none;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-5) 0 var(--space-2);
+  border-block-end: 1px solid var(--rule-strong);
+}
+
+:global(.group-on.by-kind) .divider[data-divider='kind']:not([hidden]),
+:global(.group-on.by-reading) .divider[data-divider='reading']:not([hidden]),
+:global(.group-on.by-study) .divider[data-divider='study']:not([hidden]),
+:global(.group-on.by-theme) .divider[data-divider='theme']:not([hidden]) {
+  display: flex;
+}
+
+.dividerSwatch {
+  inline-size: 0.5rem;
+  block-size: 1.3rem;
+  border-radius: 2px;
+  background: var(--tab);
+}
+
+.dividerLabel {
+  color: var(--ink);
+  font-weight: 650;
+}
+
+.dividerCount {
+  color: var(--ink-3);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
 }
 
 @media (max-width: 52rem) {

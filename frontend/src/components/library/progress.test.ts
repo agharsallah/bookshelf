@@ -9,6 +9,11 @@ describe('shelfReading', () => {
     const reading = shelfReading([at('ch01', 0.98, '2026-09-20T00:00:00Z'), at('ch02', 0.5, '2026-09-22T00:00:00Z')], 4);
     expect(reading.share).toBeCloseTo(1.5 / 4);
     expect(reading.lastRead).toBe('2026-09-22T00:00:00Z');
+    expect(reading.resume).toBe('ch02/p001');
+  });
+
+  it('has nothing to resume when the chapter read last is finished', () => {
+    expect(shelfReading([at('ch01', 0.5, '2026-09-20T00:00:00Z'), at('ch02', 1, '2026-09-22T00:00:00Z')], 4).resume).toBeNull();
   });
 
   it('is unread without positions and never above the whole book', () => {
@@ -19,7 +24,7 @@ describe('shelfReading', () => {
 
 describe('currentBook', () => {
   it('is the book read most recently, or none', () => {
-    expect(currentBook({ a: { share: 0.1, lastRead: '2026-09-01' }, b: { share: 0.1, lastRead: '2026-09-05' }, c: NOT_READ })).toBe('b');
+    expect(currentBook({ a: { share: 0.1, lastRead: '2026-09-01', resume: null }, b: { share: 0.1, lastRead: '2026-09-05', resume: null }, c: NOT_READ })).toBe('b');
     expect(currentBook({ c: NOT_READ })).toBeNull();
   });
 });
@@ -27,9 +32,9 @@ describe('currentBook', () => {
 describe('readingLabel', () => {
   it('says how far, in the reader’s words', () => {
     expect(readingLabel(NOT_READ)).toBe('Not started');
-    expect(readingLabel({ share: 0.001, lastRead: 't' })).toBe('1% read');
-    expect(readingLabel({ share: 0.42, lastRead: 't' })).toBe('42% read');
-    expect(readingLabel({ share: 1, lastRead: 't' })).toBe('Finished');
+    expect(readingLabel({ share: 0.001, lastRead: 't', resume: null })).toBe('1% read');
+    expect(readingLabel({ share: 0.42, lastRead: 't', resume: null })).toBe('42% read');
+    expect(readingLabel({ share: 1, lastRead: 't', resume: null })).toBe('Finished');
   });
 });
 

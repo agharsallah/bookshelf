@@ -1,0 +1,442 @@
+/* The lectern (Lectern.astro, LecternBook.astro): the book taken off the shelf, face out. */
+.lectern {
+  /* Below the sticky masthead (BaseLayout); taller than the window, it scrolls on its own. */
+  --top: calc(4rem + var(--space-4));
+  position: sticky;
+  inset-block-start: var(--top);
+  display: grid;
+  gap: var(--space-3);
+  align-content: start;
+  max-block-size: calc(100dvh - var(--top) - var(--space-4));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+.slot {
+  display: grid;
+}
+
+.hint {
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  text-align: center;
+}
+
+.book {
+  display: grid;
+  overflow: hidden;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-l);
+  background: var(--paper-raised);
+  box-shadow: var(--shadow-lift);
+  font-family: var(--font-ui);
+  font-size: var(--text-ui);
+  line-height: var(--leading-ui);
+}
+
+/* ── The head: the cover on its stand, beside what the book is ── */
+.head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-4) var(--space-3);
+  background: var(--paper-sunken);
+}
+
+.headline {
+  display: grid;
+  gap: var(--space-1);
+  animation: settle var(--dur-3) var(--ease-out) both;
+}
+
+.cover {
+  --gilt: color-mix(in oklab, #e9d9a8 82%, var(--cloth));
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  width: 6.5rem;
+  min-height: 9.4rem;
+  padding: var(--space-3) var(--space-2) var(--space-2) var(--space-3);
+  border-radius: 2px 5px 5px 2px;
+  background:
+    linear-gradient(90deg, rgb(0 0 0 / 0.32) 0 0.3rem, rgb(255 255 255 / 0.08) 0.3rem 0.38rem, transparent 0.7rem),
+    radial-gradient(120% 90% at 30% 10%, rgb(255 255 255 / 0.1), transparent 60%),
+    var(--cloth);
+  box-shadow:
+    /* The page block under the boards, seen at the fore-edge. */
+    3px 3px 0 -1px #efe8d6,
+    4px 4px 0 -1px rgb(0 0 0 / 0.18),
+    0 1rem 1.2rem -0.8rem rgb(0 0 0 / 0.55);
+  color: #f5efe0;
+  text-decoration: none;
+  transform: perspective(40rem) rotateY(-10deg);
+  transform-origin: left center;
+  animation: turn-in var(--dur-4) var(--ease-turn) both;
+}
+
+.cover:hover {
+  color: #f5efe0;
+  text-decoration: none;
+}
+
+/* The book's own cover, over the cloth one; a missing image (alt="") shows nothing. */
+.coverImage {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  border-radius: inherit;
+  object-fit: cover;
+}
+
+/* Taken off the shelf, the book turns to face you. */
+@keyframes turn-in {
+  from {
+    opacity: 0;
+    transform: perspective(40rem) rotateY(-80deg) translateX(-1rem);
+  }
+}
+
+.coverBand {
+  width: 60%;
+  height: 0.3rem;
+  border-block: 1px solid var(--gilt);
+  opacity: 0.8;
+}
+
+.coverTitle {
+  font-family: var(--font-read);
+  font-size: 0.82rem;
+  font-weight: 560;
+  line-height: 1.12;
+  text-wrap: balance;
+}
+
+.coverSubtitle {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--gilt);
+  font-family: var(--font-read);
+  font-size: 0.6rem;
+  line-height: 1.25;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.coverAuthor {
+  margin-block-start: auto;
+  color: var(--gilt);
+  font-family: var(--font-read);
+  font-size: 0.62rem;
+  font-style: italic;
+}
+
+/* The highlighter along the cover's foot: how much of it is read. */
+.coverRead {
+  position: absolute;
+  z-index: 1;
+  inset: auto auto 0 0;
+  width: calc(var(--share, 0) * 100%);
+  height: 4px;
+  background: var(--marker);
+  transform-origin: left;
+  animation: stroke var(--dur-4) var(--ease-stroke) var(--dur-3) both;
+}
+
+@keyframes stroke {
+  from { scale: 0 1; }
+}
+
+/* ── What the book is ─────────────────────────────────────── */
+.body {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  animation: settle var(--dur-3) var(--ease-out) both;
+}
+
+@keyframes settle {
+  from {
+    opacity: 0;
+    translate: 0 0.4rem;
+  }
+}
+
+.now {
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.title {
+  font-size: var(--text-base);
+  line-height: var(--leading-tight);
+  text-wrap: pretty;
+}
+
+.title a {
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.title a:hover {
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+}
+
+.authors {
+  color: var(--ink-2);
+}
+
+.facts {
+  color: var(--ink-3);
+  font-size: var(--text-sm);
+}
+
+.reading {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.bar {
+  display: block;
+  block-size: 0.4rem;
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  background: var(--rule);
+}
+
+.bar > span {
+  display: block;
+  block-size: 100%;
+  inline-size: calc(var(--share) * 100%);
+  border-radius: inherit;
+  background: var(--cloth);
+  transform-origin: left;
+  animation: stroke var(--dur-4) var(--ease-stroke) var(--dur-2) both;
+}
+
+.readLabel {
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-block: var(--space-1) var(--space-2);
+}
+
+.actions :global(.btn-primary) {
+  flex: 1 1 auto;
+}
+
+/* ── The library card ─────────────────────────────────────── */
+.isbn {
+  margin-inline-start: var(--space-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.card {
+  display: grid;
+  gap: var(--space-2);
+  padding-block-start: var(--space-3);
+  border-block-start: 1px solid var(--rule);
+}
+
+.theme {
+  color: var(--ink-3);
+  font-size: var(--text-sm);
+}
+
+.theme a {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-inline-start: var(--space-1);
+  padding: 0.05rem var(--space-2) 0.05rem 0.35rem;
+  border-radius: var(--radius-pill);
+  background: color-mix(in oklab, var(--dye) 14%, var(--paper-raised));
+  color: var(--ink);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.theme a::before {
+  content: '';
+  inline-size: 0.6rem;
+  block-size: 0.6rem;
+  border-radius: 2px;
+  background: var(--dye);
+}
+
+.theme a:hover,
+.theme a[aria-current='true'] {
+  background: color-mix(in oklab, var(--dye) 26%, var(--paper-raised));
+}
+
+.description {
+  color: var(--ink);
+  font-family: var(--font-read);
+  font-size: var(--text-ui);
+  font-style: italic;
+  line-height: var(--leading-read);
+  text-wrap: pretty;
+}
+
+.readership {
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+}
+
+.subjects {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.subjects li {
+  padding: 0 var(--space-2);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-pill);
+  color: var(--ink-2);
+  font-size: var(--text-xs);
+}
+
+.draftCard {
+  color: var(--tone-caution);
+  font-size: var(--text-xs);
+}
+
+.blurb {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--ink);
+  font-family: var(--font-read);
+  font-size: var(--text-sm);
+  line-height: var(--leading-read);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 6;
+}
+
+.study {
+  display: grid;
+  gap: var(--space-2);
+  padding-block-start: var(--space-3);
+  border-block-start: 1px solid var(--rule);
+}
+
+.study h3 {
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.study ul,
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.study li a {
+  display: inline-block;
+  padding: 0.15rem var(--space-2);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-pill);
+  color: var(--accent);
+  font-size: var(--text-sm);
+  font-weight: 550;
+  text-decoration: none;
+  transition: background var(--dur-1) var(--ease-out);
+}
+
+.study li a:hover {
+  background: var(--accent-wash);
+}
+
+/* A draft is outlined in dashes: there, but not yet reviewed. */
+.study li[data-draft] a {
+  border-style: dashed;
+  border-color: var(--rule-strong);
+  color: var(--ink-2);
+}
+
+.none {
+  color: var(--ink-3);
+  font-size: var(--text-sm);
+}
+
+.tags a {
+  display: inline-block;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--paper-sunken);
+  color: var(--ink-2);
+  font-size: var(--text-xs);
+  text-decoration: none;
+}
+
+.tags a:hover,
+.tags a[aria-current='true'] {
+  background: var(--accent-wash);
+  color: var(--ink);
+}
+
+.state {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  color: var(--accent);
+  font-size: var(--text-sm);
+}
+
+.state[data-attention='review'],
+.state span {
+  color: var(--tone-caution);
+}
+
+.state[data-attention='failed'] {
+  color: var(--tone-important);
+}
+
+/* ── Narrow: the lectern sits above the pile, just the head and the actions ── */
+@media (max-width: 60rem) {
+  .lectern {
+    position: static;
+    max-block-size: none;
+    overflow: visible;
+  }
+
+  .hint,
+  .coverSubtitle,
+  .card,
+  .blurb,
+  .study,
+  .tags {
+    display: none;
+  }
+
+  .actions :global(.btn-primary) {
+    flex: 0 1 auto;
+  }
+}
+
+@media (forced-colors: active) {
+  .cover {
+    border: 1px solid CanvasText;
+  }
+}
