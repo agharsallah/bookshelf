@@ -62,7 +62,7 @@ export function GraphExplorer({ focus: initialFocus, view: initialView, initial,
 
   // The server may resolve a merged concept to its survivor: keep the URL honest.
   useEffect(() => {
-    if (hood && answered === focus && hood.focus !== focus) history.replaceState(null, '', graphHref(hood.focus, view));
+    if (hood && answered === focus && hood.focus !== focus) history.replaceState(history.state, '', graphHref(hood.focus, view));
   }, [hood, answered, focus, view]);
 
   // Client-side re-focus keeps the tab title in step ("<focus> — <app>").

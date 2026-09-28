@@ -9,6 +9,7 @@
  * Recall (r, or at the chapter's end) hides the text while you write what you remember,
  * and an unread chapter first asks what you expect it to argue (components/recall).
  */
+import { navigate } from 'astro:transitions/client';
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import type { NoteDetail } from '../../lib/api/types/notes';
 import type { RecallPublic } from '../../lib/api/types/recalls';
@@ -211,7 +212,7 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
   const onCite = useCallback(
     (anchor: string) => {
       setView('source');
-      if (!sourceRef.current || !revealBlock(sourceRef.current, anchor)) window.location.assign(readHref(anchor));
+      if (!sourceRef.current || !revealBlock(sourceRef.current, anchor)) void navigate(readHref(anchor));
     },
     [readHref],
   );
@@ -227,7 +228,7 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
   /** Show what a note marks: its passage in the text, its block on the pane, or its chapter. */
   const revealNote = (note: NoteDetail) => {
     if (note.target === 'source') return onCite(note.anchor);
-    if (!isUnder(note.anchor, unit.anchor)) return window.location.assign(readHref(note.anchor));
+    if (!isUnder(note.anchor, unit.anchor)) return void navigate(readHref(note.anchor));
     setView('distil');
     setTab(note.target === 'chapter_summary' ? 'summary' : 'distillation');
     requestAnimationFrame(() => {

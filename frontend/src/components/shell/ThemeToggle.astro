@@ -13,6 +13,7 @@
 </button>
 
 <script>
+  import { onPage } from '../../lib/page';
   import { currentTheme, setTheme, THEME_CHANGE_EVENT } from '../../lib/theme';
 
   function sync(button: HTMLButtonElement) {
@@ -21,13 +22,15 @@
     button.title = `Switch to ${next} theme`;
   }
 
-  for (const button of document.querySelectorAll<HTMLButtonElement>('[data-theme-toggle]')) {
-    sync(button);
-    button.addEventListener('click', () => {
-      setTheme(currentTheme() === 'dark' ? 'light' : 'dark');
-    });
-    window.addEventListener(THEME_CHANGE_EVENT, () => sync(button));
-  }
+  onPage((signal) => {
+    for (const button of document.querySelectorAll<HTMLButtonElement>('[data-theme-toggle]')) {
+      sync(button);
+      button.addEventListener('click', () => {
+        setTheme(currentTheme() === 'dark' ? 'light' : 'dark');
+      });
+      window.addEventListener(THEME_CHANGE_EVENT, () => sync(button), { signal });
+    }
+  });
 </script>
 
 <style>

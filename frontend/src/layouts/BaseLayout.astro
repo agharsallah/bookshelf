@@ -3,8 +3,13 @@
  * App shell: head (fonts, theme and mode bootstraps), skip link, masthead with the
  * reading navigation and, in workshop mode, the review and pipeline pages with their
  * live counts; an `actions` slot for page-level controls, main content, footer.
+ *
+ * Pages change without reloading (`ClientRouter`). Page scripts therefore run
+ * through `onPage` (lib/page.ts), and the theme and mode are written to `<html>` again
+ * after each swap, which replaces its attributes with the new page's.
  */
 import { Font } from 'astro:assets';
+import { ClientRouter } from 'astro:transitions';
 import { PUBLIC_APP_NAME } from 'astro:env/client';
 import '../styles/base.css';
 import ApiStatus from '../components/shell/ApiStatus.astro';
@@ -27,6 +32,7 @@ const pageTitle = title ? `${title} — ${PUBLIC_APP_NAME}` : PUBLIC_APP_NAME;
 const path = Astro.url.pathname;
 const reading = NAV.filter((item) => !item.workshop);
 const workshop = NAV.filter((item) => item.workshop);
+const afterSwapScript = `document.addEventListener('astro:after-swap', () => { ${themeBootstrapScript} ${workshopBootstrapScript} });`;
 ---
 
 <!doctype html>
@@ -36,6 +42,7 @@ const workshop = NAV.filter((item) => item.workshop);
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <script is:inline set:html={themeBootstrapScript} />
     <script is:inline set:html={workshopBootstrapScript} />
+    <script is:inline set:html={afterSwapScript} />
     <meta name="color-scheme" content="light dark" />
     <meta name="description" content={description} />
     <meta name="generator" content={Astro.generator} />
@@ -45,6 +52,7 @@ const workshop = NAV.filter((item) => item.workshop);
     <Font cssVariable="--font-hanken" preload />
     <Font cssVariable="--font-plex-mono" />
     <title>{pageTitle}</title>
+    <ClientRouter />
   </head>
   <body>
     <a class="skip-link" href="#main">Skip to content</a>
@@ -111,11 +119,11 @@ const workshop = NAV.filter((item) => item.workshop);
       import { followSystemTheme } from '../lib/theme';
       import { isWorkshop, WORKSHOP_CHANGE_EVENT } from '../lib/workshop';
       import { loadNavCounts, pipelineSignal } from '../components/shell/nav';
+      import { onPage } from '../lib/page';
 
       followSystemTheme();
-      enhanceStaticDiagrams();
 
-      // The workshop links wear their counts; fetched only when they are shown.
+      // The workshop links wear their counts; fetched only when they are shown, per page.
       let counted = false;
       async function count() {
         if (counted || !isWorkshop()) return;
@@ -140,8 +148,12 @@ const workshop = NAV.filter((item) => item.workshop);
           counted = false; // offline or the API is down: the footer says so; try again on the next switch
         }
       }
-      void count();
-      window.addEventListener(WORKSHOP_CHANGE_EVENT, () => void count());
+      onPage((signal) => {
+        enhanceStaticDiagrams(document, signal);
+        counted = false;
+        void count();
+        window.addEventListener(WORKSHOP_CHANGE_EVENT, () => void count(), { signal });
+      });
     </script>
   </body>
 </html>

@@ -40,7 +40,7 @@ const clearHref = libraryHref({ tag: null, status: null, author: null, q: null }
 
 <BaseLayout title="Library" description="Every book and article on your shelf.">
   <div class:list={['library', viewClass(DEFAULT_VIEW)]} data-library>
-    <script is:inline set:html={viewBootstrapScript} />
+    <script is:inline data-astro-rerun set:html={viewBootstrapScript} />
     <header class="head">
       <div class="heading">
         <h1>Library</h1>
@@ -89,9 +89,12 @@ const clearHref = libraryHref({ tag: null, status: null, author: null, q: null }
 
 <script>
   import { initLibrary } from '../../components/library/live';
+  import { onPage } from '../../lib/page';
 
-  const root = document.querySelector<HTMLElement>('[data-library]');
-  if (root) initLibrary(root);
+  onPage((signal) => {
+    const root = document.querySelector<HTMLElement>('[data-library]');
+    if (root) initLibrary(root, signal);
+  });
 </script>
 
 <style>

@@ -3,6 +3,7 @@
  * Approve / reject are sent at once and the item leaves the queue; Undo reopens it
  * (./useVerdicts.ts). Focus follows the cursor.
  */
+import { navigate as go } from 'astro:transitions/client';
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { anchorLabel } from '../../../lib/anchors';
 import { browserApi, type ApiClient } from '../../../lib/api/client';
@@ -37,7 +38,7 @@ const NARROW = '(max-width: 60rem)';
 /** How long a verdict's toast (and its Undo button) stays up. */
 const TOAST_MS = 8000;
 
-export function ReviewQueue({ items: initial, documents, headings, skills, api = browserApi, navigate = (h) => window.location.assign(h) }: ReviewQueueProps) {
+export function ReviewQueue({ items: initial, documents, headings, skills, api = browserApi, navigate = (h) => void go(h) }: ReviewQueueProps) {
   const [items, setItems] = useState(initial);
   const [hidden, setHidden] = useState<ReadonlySet<string>>(new Set());
   const [filters, setFilters] = useState<Filters>({});

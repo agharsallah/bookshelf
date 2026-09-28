@@ -2,6 +2,7 @@
  * The focused queue item, read in place: gates and verbs in the tool's voice above,
  * what approval triggers, and the body on a sheet below.
  */
+import { navigate } from 'astro:transitions/client';
 import { anchorLabel } from '../../../lib/anchors';
 import type { ArtifactListItem } from '../../../lib/api/types/artifacts';
 import type { SkillGates } from '../../../lib/api/types/skills';
@@ -57,7 +58,7 @@ export function ArtifactPreview({ item, heading, documentTitle, thresholds, busy
       {note ? <p className={styles.propagation}>After approval: {note}</p> : null}
 
       <div className={styles.sheet}>
-        <ArtifactBody type={item.type} body={item.body} onCite={(anchor) => window.location.assign(reviewHref(item.id, { cite: anchor }))} />
+        <ArtifactBody type={item.type} body={item.body} onCite={(anchor) => void navigate(reviewHref(item.id, { cite: anchor }))} />
       </div>
     </article>
   );

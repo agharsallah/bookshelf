@@ -61,13 +61,18 @@ const current = items.find((i) => i.current);
 </header>
 
 <script>
-  for (const form of document.querySelectorAll<HTMLFormElement>('[data-scope]')) {
-    const select = form.querySelector('select');
-    select?.addEventListener('change', () => {
-      const href = select.selectedOptions[0]?.dataset.href;
-      if (href) window.location.assign(href);
-    });
-  }
+  import { navigate } from 'astro:transitions/client';
+  import { onPage } from '../../lib/page';
+
+  onPage(() => {
+    for (const form of document.querySelectorAll<HTMLFormElement>('[data-scope]')) {
+      const select = form.querySelector('select');
+      select?.addEventListener('change', () => {
+        const href = select.selectedOptions[0]?.dataset.href;
+        if (href) void navigate(href);
+      });
+    }
+  });
 </script>
 
 <style>

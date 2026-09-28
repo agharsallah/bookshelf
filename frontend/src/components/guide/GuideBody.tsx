@@ -4,6 +4,7 @@
  * a Magnify button (the shared lightbox). A cite outside every chapter, and any
  * ⌘/Ctrl/middle click, still follows its link into the reader.
  */
+import { navigate } from 'astro:transitions/client';
 import { useCallback, useState } from 'react';
 import type { Anchor } from '../../lib/contract';
 import type { PreparedBlock } from '../../lib/prepare';
@@ -34,7 +35,7 @@ export function GuideBody({ slug, sections, rows, themes, numbers, units }: Guid
     (anchor: Anchor) => {
       const unit = unitOfAnchor(units, anchor);
       if (unit) setPassage({ unit, anchor });
-      else window.location.assign(readHref(anchor));
+      else void navigate(readHref(anchor));
     },
     [units, readHref],
   );

@@ -11,6 +11,7 @@
  * on its page). Picking something from the margin or the list glides the map to it.
  * The view lives in the URL, so a lens can be bookmarked.
  */
+import { navigate } from 'astro:transitions/client';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Problem, problemOf, type ProblemInfo } from '../common/Problem';
 import { browserApi, type ApiClient } from '../../lib/api/client';
@@ -81,7 +82,7 @@ export function AtlasExplorer({ initial, lens: initialLens, api = browserApi }: 
 
   useEffect(() => {
     const qs = lensToParams(lens).toString();
-    history.replaceState(null, '', qs ? `/map?${qs}` : '/map');
+    history.replaceState(history.state, '', qs ? `/map?${qs}` : '/map');
   }, [lens]);
 
   const proposed = lens.proposed;
@@ -145,7 +146,7 @@ export function AtlasExplorer({ initial, lens: initialLens, api = browserApi }: 
   const open = (id: string) => {
     const node = index.byId.get(id);
     const href = node ? openHref(node) : null;
-    if (href) window.location.assign(href);
+    if (href) void navigate(href);
   };
 
   const selectedNode = lens.selected && isNodeRef(lens.selected) ? (index.byId.get(lens.selected) ?? null) : null;

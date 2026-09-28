@@ -12,6 +12,7 @@
 </button>
 
 <script>
+  import { onPage } from '../../lib/page';
   import { isWorkshop, setWorkshop, WORKSHOP_CHANGE_EVENT } from '../../lib/workshop';
 
   function sync(button: HTMLButtonElement) {
@@ -20,11 +21,13 @@
     button.title = on ? 'Hide review, pipeline and re-run tools' : 'Show review, pipeline and re-run tools';
   }
 
-  for (const button of document.querySelectorAll<HTMLButtonElement>('[data-workshop-toggle]')) {
-    sync(button);
-    button.addEventListener('click', () => setWorkshop(!isWorkshop()));
-    window.addEventListener(WORKSHOP_CHANGE_EVENT, () => sync(button));
-  }
+  onPage((signal) => {
+    for (const button of document.querySelectorAll<HTMLButtonElement>('[data-workshop-toggle]')) {
+      sync(button);
+      button.addEventListener('click', () => setWorkshop(!isWorkshop()));
+      window.addEventListener(WORKSHOP_CHANGE_EVENT, () => sync(button), { signal });
+    }
+  });
 </script>
 
 <style>

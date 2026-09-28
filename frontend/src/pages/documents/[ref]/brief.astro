@@ -108,9 +108,13 @@ const data = loaded.ok ? loaded.value : null;
 </BaseLayout>
 
 <script>
-  for (const button of document.querySelectorAll<HTMLButtonElement>('[data-print]')) {
-    button.addEventListener('click', () => window.print());
-  }
+  import { onPage } from '../../../lib/page';
+
+  onPage(() => {
+    for (const button of document.querySelectorAll<HTMLButtonElement>('[data-print]')) {
+      button.addEventListener('click', () => window.print());
+    }
+  });
 </script>
 
 <style>

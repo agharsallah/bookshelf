@@ -4,6 +4,7 @@
  * clicks on existing highlights and "what matters" marks (in the text and on the pane), and the keyboard shortcuts
  * (j/k block, [/] chapter, n note, Esc close; the rest via `onAction`).
  */
+import { navigate } from 'astro:transitions/client';
 import { useEffect, useRef, type RefObject } from 'react';
 import { toast } from '../document/toast';
 import type { ComposerTarget } from '../notes/NoteComposer';
@@ -151,9 +152,9 @@ export function useReaderEvents(options: ReaderEventOptions): void {
         el?.focus({ preventScroll: true });
         el?.scrollIntoView({ block: 'nearest' });
       } else if (event.key === ']' && o.nextHref) {
-        window.location.assign(o.nextHref);
+        void navigate(o.nextHref);
       } else if (event.key === '[' && o.prevHref) {
-        window.location.assign(o.prevHref);
+        void navigate(o.prevHref);
       } else if (o.onAction(event)) {
         event.preventDefault();
       } else if (event.key === 'n' && current) {

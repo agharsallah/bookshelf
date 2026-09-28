@@ -4,6 +4,7 @@
  * listbox: ↑/↓ move, Enter opens, Esc closes and returns focus where it was. The dialog
  * is portalled to <body> so it covers the page, not just the masthead it is mounted in.
  */
+import { navigate } from 'astro:transitions/client';
 import { useCallback, useEffect, useReducer, useRef, type KeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { browserApi, type ApiClient } from '../../lib/api/client';
@@ -28,7 +29,7 @@ export interface CommandPaletteProps {
 }
 
 function go(href: string) {
-  window.location.assign(href);
+  void navigate(href);
 }
 
 export function CommandPalette({ api = browserApi, navigate = go, debounceMs = 120 }: CommandPaletteProps) {

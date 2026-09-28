@@ -138,7 +138,7 @@ function wireViews(root: HTMLElement): void {
   });
 }
 
-function wireDialog(root: HTMLElement): void {
+function wireDialog(root: HTMLElement, signal?: AbortSignal): void {
   const dialog = document.getElementById(ADD_BOOK_DIALOG);
   if (!(dialog instanceof HTMLDialogElement)) return;
   // Invoker commands open the dialog natively; elsewhere, open it from here.
@@ -148,14 +148,15 @@ function wireDialog(root: HTMLElement): void {
     }
   }
   let added = false;
-  window.addEventListener(INGESTED_EVENT, () => (added = true));
+  window.addEventListener(INGESTED_EVENT, () => (added = true), { signal });
   dialog.addEventListener('close', () => {
     if (added) location.reload();
   });
 }
 
-export function initLibrary(root: HTMLElement): void {
+/** Wire the library page; `signal` ends its window listeners when the page is left. */
+export function initLibrary(root: HTMLElement, signal?: AbortSignal): void {
   wireFilters(root);
   wireViews(root);
-  wireDialog(root);
+  wireDialog(root, signal);
 }

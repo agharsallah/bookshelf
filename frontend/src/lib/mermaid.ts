@@ -87,9 +87,10 @@ export async function renderDiagram(source: string): Promise<string> {
 
 /**
  * Render every diagram in static markup (outside islands, which render their own).
- * Re-renders when the theme changes. Mermaid is only fetched if a diagram exists.
+ * Re-renders when the theme changes, until `signal` aborts (the page is swapped out).
+ * Mermaid is only fetched if a diagram exists.
  */
-export function enhanceStaticDiagrams(root: ParentNode = document): void {
+export function enhanceStaticDiagrams(root: ParentNode = document, signal?: AbortSignal): void {
   const targets = [...root.querySelectorAll<HTMLElement>('[data-mermaid]')].filter(
     (el) => !el.closest('astro-island'),
   );
@@ -108,5 +109,5 @@ export function enhanceStaticDiagrams(root: ParentNode = document): void {
     }
   };
   void renderAll();
-  window.addEventListener(THEME_CHANGE_EVENT, () => void renderAll());
+  window.addEventListener(THEME_CHANGE_EVENT, () => void renderAll(), { signal });
 }

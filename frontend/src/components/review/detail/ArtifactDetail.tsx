@@ -2,6 +2,7 @@
  * One artifact under review: read it, proof it against its sources, compare it with the
  * previous version, correct it (a new human version, D15), approve, reject or re-run it.
  */
+import { navigate as go } from 'astro:transitions/client';
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { browserApi, type ApiClient } from '../../../lib/api/client';
 import type { ArtifactPublic, ReviewAction } from '../../../lib/api/types/artifacts';
@@ -54,7 +55,7 @@ export function ArtifactDetail({
   initialMode = 'read',
   initialCite = null,
   api = browserApi,
-  navigate = (href) => window.location.assign(href),
+  navigate = (href) => void go(href),
 }: ArtifactDetailProps) {
   const [artifact, setArtifact] = useState(initial);
   const [versions, setVersions] = useState(initialVersions);
@@ -118,7 +119,7 @@ export function ArtifactDetail({
         Saved as version {next.version}, written by you. The skill’s version stays for comparison. {next.review === 'approved' ? note : null}
       </p>,
     );
-    window.history.replaceState(null, '', `/review/${next.id}`);
+    window.history.replaceState(window.history.state, '', `/review/${next.id}`);
   };
 
   const saveNew = async (body: Record<string, unknown>) => {
