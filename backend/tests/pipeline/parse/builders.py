@@ -103,6 +103,44 @@ def diagram_pdf(path: Path) -> Path:
     return path
 
 
+def sparse_grid_pdf(path: Path) -> Path:
+    """A diagram drawn on a ruled grid (a model architecture of stacked token boxes): a 5x6
+    ruled grid with a label in only a few cells, captioned as a figure."""
+    doc = pymupdf.open()
+    page = doc.new_page()
+    _text(page, 72, 80, "Chapter 1 Models", 20, fontname="hebo")
+    labels = {(1, 1): "E[CLS]", (1, 2): "E1", (3, 3): "Model"}
+    for r in range(5):
+        for c in range(6):
+            rect = pymupdf.Rect(72 + c * 60, 120 + r * 24, 132 + c * 60, 144 + r * 24)
+            page.draw_rect(rect, color=(0, 0, 0), width=0.5)
+            if (r, c) in labels:
+                _text(page, rect.x0 + 4, rect.y1 - 8, labels[(r, c)], 9)
+    _text(page, 72, 270, "Figure 1: Overall pre-training procedure", 10)
+    doc.save(path)
+    return path
+
+
+def figure_with_grid_pdf(path: Path) -> Path:
+    """A figure whose middle is a small ruled grid of labelled boxes (an input-embedding
+    diagram), framed by other shapes, with a `Figure N` caption and no `Table N` one."""
+    doc = pymupdf.open()
+    page = doc.new_page()
+    _text(page, 72, 80, "Chapter 1 Inputs", 20, fontname="hebo")
+    for r, row in enumerate([["Tok", "Seg", "Pos"], ["E1", "EA", "E0"]]):
+        for c, cell in enumerate(row):
+            rect = pymupdf.Rect(200 + c * 40, 150 + r * 20, 240 + c * 40, 170 + r * 20)
+            page.draw_rect(rect, color=(0, 0, 0), width=0.5)
+            _text(page, rect.x0 + 4, rect.y1 - 6, cell, 9)
+    page.draw_rect(pymupdf.Rect(100, 130, 160, 210), color=(0, 0, 0))
+    page.draw_rect(pymupdf.Rect(360, 130, 420, 210), color=(0, 0, 0))
+    page.draw_line((160, 140), (360, 140), color=(0, 0, 0))
+    page.draw_line((160, 200), (360, 200), color=(0, 0, 0))
+    _text(page, 72, 240, "Figure 3: Input embeddings", 10)
+    doc.save(path)
+    return path
+
+
 def scanned_pdf(path: Path) -> Path:
     """A page that is only an image of text, like a scan: no text layer at all."""
     source = pymupdf.open()

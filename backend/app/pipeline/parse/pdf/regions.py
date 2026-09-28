@@ -77,6 +77,17 @@ def _cell(value: str | None) -> str:
     return " ".join((value or "").split())
 
 
+_MIN_TABLE_FILL = 0.4  # below this share of non-empty cells, a ruled grid is a drawing
+
+
+def _is_drawing(header: list[str], body: list[list[str]]) -> bool:
+    """A ruled grid that is mostly empty cells: a diagram built from boxes (a model's
+    stacked token embeddings, a flow chart on a lattice), which `find_tables()` also
+    reports. Left to the figure path, it is cropped and described instead of transcribed."""
+    cells = [*header, *(c for row in body for c in row)]
+    return sum(1 for c in cells if c) < _MIN_TABLE_FILL * len(cells)
+
+
 def _tables(page: pymupdf.Page, page_no: int, out: PageRegions) -> list[Bbox]:
     areas: list[Bbox] = []
     for table in mupdf.tables(page):
@@ -87,6 +98,8 @@ def _tables(page: pymupdf.Page, page_no: int, out: PageRegions) -> list[Bbox]:
             header, body = (rows[0], rows[1:]) if rows else ([], [])
         if len(header) < 2 or not body:
             continue  # a single framed cell is a box, not a table
+        if _is_drawing(header, body):
+            continue
         areas.append(table.bbox)
         out.absorb(table.bbox)
         meta: dict[str, object] = {"table": {"header": header, "rows": body}, "caption": None}
@@ -254,4 +267,20 @@ def classify_regions(
     boxes = _asides(paths, page_no, out)
     loose = [p for p in paths if p.bbox not in boxes]
     _figures(page, page_no, loose, [*tables, *boxes], out, scanned=scanned)
+    _drop_tables_inside_figures(out)
     return out
+
+
+def _drop_tables_inside_figures(out: PageRegions) -> None:
+    """An uncaptioned grid inside a figure's area is a boxed part of that figure (the token
+    boxes of an architecture diagram), not a table of its own: the figure's crop shows it."""
+    figures = [r.bbox for r in out.regions if r.node.kind is NodeKind.FIGURE]
+    out.regions = [
+        r
+        for r in out.regions
+        if not (
+            r.node.kind is NodeKind.TABLE
+            and r.node.meta.get("caption") is None
+            and any(geo.contains(geo.pad(f, 2), r.bbox) for f in figures)
+        )
+    ]

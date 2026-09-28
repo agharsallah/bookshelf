@@ -20,7 +20,9 @@ from tests.pipeline.parse.builders import (
     boxed_diagram_pdf,
     decorated_text_pdf,
     diagram_pdf,
+    figure_with_grid_pdf,
     list_pdf,
+    sparse_grid_pdf,
 )
 from tests.pipeline.parse.conftest import of_kind
 
@@ -131,6 +133,24 @@ def test_vector_drawing_cluster_becomes_a_figure_that_swallows_its_labels(tmp_pa
     assert [p.text for p in of_kind(parsed, NodeKind.PARAGRAPH)] == [
         "The diagram below shows a reinforcing loop."
     ]
+
+
+def test_a_mostly_empty_ruled_grid_is_a_figure_not_a_table(tmp_path: Path):
+    # A vector diagram drawn with ruled boxes (BERT's Figure 1) is found by find_tables();
+    # a grid where most cells are empty is a drawing, and its caption says so.
+    parsed = parse_pdf(sparse_grid_pdf(tmp_path / "g.pdf"), slug="g", media_dir=tmp_path)
+
+    assert of_kind(parsed, NodeKind.TABLE) == []
+    [figure] = of_kind(parsed, NodeKind.FIGURE)
+    assert figure.meta["caption"] == "Figure 1: Overall pre-training procedure"
+
+
+def test_an_uncaptioned_grid_inside_a_figure_is_part_of_the_figure(tmp_path: Path):
+    parsed = parse_pdf(figure_with_grid_pdf(tmp_path / "f.pdf"), slug="f", media_dir=tmp_path)
+
+    assert of_kind(parsed, NodeKind.TABLE) == []
+    [figure] = of_kind(parsed, NodeKind.FIGURE)
+    assert figure.meta["caption"] == "Figure 3: Input embeddings"
 
 
 @pytest.mark.parametrize(
