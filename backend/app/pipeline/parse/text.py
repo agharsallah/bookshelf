@@ -4,6 +4,9 @@
 # ruff: noqa: RUF001
 
 import re
+from collections.abc import Sequence
+
+from app.pipeline.parse.anchors import normalize_text
 
 # --- line joining -----------------------------------------------------------------------
 
@@ -90,6 +93,51 @@ _BACK_MATTER = re.compile(
 def is_back_matter(heading: str) -> bool:
     """Bibliography / index headings: kept in the tree, never distilled (`meta.skip`)."""
     return bool(_BACK_MATTER.match(heading.strip()))
+
+
+# --- outlines and metadata -------------------------------------------------------------------
+
+PART_RE = re.compile(r"^(?:part|book)\s+(?:[ivxlc]+|\d+|[a-z]+)\b", re.IGNORECASE)
+_NUMBERING = re.compile(
+    r"^(?:(?:part|chapter|book|section)\s+)?(?:[ivxlc]+|\d+(?:\.\d+)*)[.:)]?\s+", re.IGNORECASE
+)
+_NON_ALNUM = re.compile(r"[^0-9a-z]+")
+
+
+def title_key(text: str) -> str:
+    """Letters and digits only, casefolded: how a heading line is matched to an outline title."""
+    return _NON_ALNUM.sub("", normalize_text(text).casefold())
+
+
+def title_keys(text: str) -> set[str]:
+    """The title with and without its numbering (`Chapter 3`, `3.2`)."""
+    return {k for k in (title_key(text), title_key(_NUMBERING.sub("", normalize_text(text)))) if k}
+
+
+def outline_levels(entries: Sequence[tuple[int, str]]) -> list[int]:
+    """Container level (0 part … 3 subsection) of each `(depth, title)` outline entry.
+
+    Depth 1 is a chapter, unless the outline's depth-1 entries include `Part …` ones: then
+    those are parts and everything under them moves up one level.
+    """
+    has_parts = any(depth == 1 and PART_RE.match(title.strip()) for depth, title in entries)
+    levels: list[int] = []
+    in_part = False
+    for depth, title in entries:
+        if depth == 1:
+            in_part = has_parts and bool(PART_RE.match(title.strip()))
+        levels.append(min(depth - 1 if in_part else depth, 3))
+    return levels
+
+
+def split_authors(raw: str) -> list[str]:
+    """`A; B and C` → names; a single `Meadows, Donella` is turned around."""
+    parts = [p.strip() for p in re.split(r";|&|\band\b", raw) if p.strip()]
+    if len(parts) == 1 and parts[0].count(",") == 1:
+        last, first = (s.strip() for s in parts[0].split(","))
+        if " " not in last and " " not in first:
+            return [f"{first} {last}"]  # `Meadows, Donella`
+    return [a.strip() for p in parts for a in p.split(",") if a.strip()]
 
 
 # --- code ---------------------------------------------------------------------------------

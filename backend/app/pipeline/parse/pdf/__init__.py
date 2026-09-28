@@ -39,6 +39,7 @@ from app.pipeline.parse.pdf.prose import (
     split_footnotes,
 )
 from app.pipeline.parse.pdf.regions import Region, classify_regions
+from app.pipeline.parse.text import split_authors
 from app.pipeline.parse.tree import build_tree
 
 SCANNED_CHARS_PER_PAGE = 200
@@ -49,21 +50,12 @@ def _chars(blocks: list[Block]) -> int:
     return sum(len(line.text.strip()) for block in blocks for line in block.lines)
 
 
-def _authors(raw: str) -> list[str]:
-    parts = [p.strip() for p in re.split(r";|&|\band\b", raw) if p.strip()]
-    if len(parts) == 1 and parts[0].count(",") == 1:
-        last, first = (s.strip() for s in parts[0].split(","))
-        if " " not in last and " " not in first:
-            return [f"{first} {last}"]  # `Meadows, Donella`
-    return [a.strip() for p in parts for a in p.split(",") if a.strip()]
-
-
 def _describe(doc: pymupdf.Document, parsed: ParsedDocument) -> None:
     meta = mupdf.metadata(doc)
     title = meta.get("title", "").strip()
     if title and not title.lower().endswith((".pdf", ".doc", ".docx")):
         parsed.title = title
-    parsed.authors = _authors(meta.get("author", ""))
+    parsed.authors = split_authors(meta.get("author", ""))
     if year := _YEAR.match(meta.get("creationDate", "")):
         parsed.year = int(year.group(1))
 

@@ -67,6 +67,20 @@ def _math_to_tex(raw: str) -> str:
     return _MATH.sub(replace, raw)
 
 
+def paragraph_leaf(text: str) -> ParsedNode | None:
+    """A paragraph's text as a leaf: `\\[ … \\]` / `$$ … $$` is display math, a `Note:`
+    opening makes an aside, anything else is a paragraph. Shared with the EPUB walker."""
+    if not text:
+        return None
+    if m := _DISPLAY.match(text):
+        latex = (m.group(1) or m.group(2)).strip()
+        return ParsedNode(NodeKind.MATH, text=latex,
+                          meta={"inline": False, "latex": latex, "image_path": None})  # fmt: skip
+    if labelled := aside_label(text):
+        return ParsedNode(NodeKind.ASIDE, text=labelled[1] or text, meta={"label": labelled[0]})
+    return ParsedNode(NodeKind.PARAGRAPH, text=text)
+
+
 def _text(el: ET.Element) -> str:
     return normalize_text("".join(el.itertext()))
 
@@ -118,15 +132,8 @@ class _Walker:
                 self.walk(el)
 
     def paragraph(self, text: str) -> None:
-        if not text:
-            return
-        if m := _DISPLAY.match(text):
-            latex = (m.group(1) or m.group(2)).strip()
-            self.leaf(NodeKind.MATH, latex, inline=False, latex=latex, image_path=None)
-        elif labelled := aside_label(text):
-            self.leaf(NodeKind.ASIDE, labelled[1] or text, label=labelled[0])
-        else:
-            self.leaf(NodeKind.PARAGRAPH, text)
+        if leaf := paragraph_leaf(text):
+            self.events.append(leaf)
 
     def table(self, el: ET.Element) -> None:
         rows = [[_text(cell) for cell in row.iter("cell")] for row in el.iter("row")]

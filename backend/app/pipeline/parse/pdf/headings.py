@@ -12,23 +12,25 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
-from app.pipeline.parse.anchors import normalize_text
 from app.pipeline.parse.model import Heading, ParsedNode
 from app.pipeline.parse.override import OverrideChapter
 from app.pipeline.parse.pdf.layout import Block
-from app.pipeline.parse.text import FIGURE_CAPTION, LISTING_CAPTION, TABLE_CAPTION, list_marker
+from app.pipeline.parse.text import (
+    FIGURE_CAPTION,
+    LISTING_CAPTION,
+    PART_RE,
+    TABLE_CAPTION,
+    list_marker,
+    outline_levels,
+    title_keys,
+)
 
 Item = Block | ParsedNode
 Placed = Block | ParsedNode | Heading
 
-PART_RE = re.compile(r"^(?:part|book)\s+(?:[ivxlc]+|\d+|[a-z]+)\b", re.IGNORECASE)
 CHAPTER_RE = re.compile(r"^chapter\s+(?:[ivxlc]+|\d+|[a-z]+)\b", re.IGNORECASE)
 _SUBSECTION_RE = re.compile(r"^\d+\.\d+\.\d+\.?\s+\S")
 _SECTION_RE = re.compile(r"^\d+\.\d+\.?\s+\S")
-_NUMBERING = re.compile(
-    r"^(?:(?:part|chapter|book|section)\s+)?(?:[ivxlc]+|\d+(?:\.\d+)*)[.:)]?\s+", re.IGNORECASE
-)
-_NON_ALNUM = re.compile(r"[^0-9a-z]+")
 
 
 @dataclass(slots=True)
@@ -43,31 +45,17 @@ def _page(item: Item) -> int:
     return item.page if isinstance(item, Block) else item.page_from or 0
 
 
-def _key(text: str) -> str:
-    return _NON_ALNUM.sub("", normalize_text(text).casefold())
-
-
-def _keys(text: str) -> set[str]:
-    """The title with and without its numbering (`Chapter 3`, `3.2`)."""
-    return {k for k in (_key(text), _key(_NUMBERING.sub("", normalize_text(text)))) if k}
-
-
 # --- tier 1 and override --------------------------------------------------------------------
 
 
 def toc_entries(toc: Sequence[tuple[int, str, int]]) -> list[OutlineEntry]:
     """Map PDF outline levels to container levels, detecting `Part` entries."""
-    has_parts = any(lvl == 1 and PART_RE.match(title.strip()) for lvl, title, _ in toc)
-    entries: list[OutlineEntry] = []
-    in_part = False
-    for lvl, title, page in toc:
-        if page < 1 or not title.strip():
-            continue  # dangling outline entries point nowhere
-        if lvl == 1:
-            in_part = has_parts and bool(PART_RE.match(title.strip()))
-        level = lvl - 1 if in_part else lvl
-        entries.append(OutlineEntry(level=min(level, 3), title=title.strip(), page=page))
-    return entries
+    live = [(lvl, title, page) for lvl, title, page in toc if page >= 1 and title.strip()]
+    levels = outline_levels([(lvl, title) for lvl, title, _ in live])  # dangling ones dropped
+    return [
+        OutlineEntry(level=level, title=title.strip(), page=page)
+        for level, (_, title, page) in zip(levels, live, strict=True)
+    ]
 
 
 def override_entries(chapters: list[OverrideChapter], page_count: int) -> list[OutlineEntry]:
@@ -84,7 +72,7 @@ def override_entries(chapters: list[OverrideChapter], page_count: int) -> list[O
 
 def _match(items: list[Item], start: int, entry: OutlineEntry) -> tuple[int, int] | None:
     """`(first, end)` item indices of blocks on the entry's page that spell its title."""
-    wanted = _keys(entry.title)
+    wanted = title_keys(entry.title)
     for i in range(start, len(items)):
         if _page(items[i]) != entry.page:
             break
@@ -94,7 +82,7 @@ def _match(items: list[Item], start: int, entry: OutlineEntry) -> tuple[int, int
             if not isinstance(block, Block) or block.page != entry.page or len(block.text) > 200:
                 break
             text = f"{text} {block.text}"
-            found = _keys(text)
+            found = title_keys(text)
             if found & wanted:
                 return i, j + 1
             if not any(w.startswith(f) for w in wanted for f in found):
