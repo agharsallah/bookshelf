@@ -129,6 +129,7 @@ class ArtifactType(StrEnum):
     PAPER_REVIEW = "paper_review"  # review-paper: peer-review report
     NOTATION_TABLE = "notation_table"  # make-notation
     JOURNAL_CLUB = "journal_club"  # make-journal-club
+    MATH_EXPLAINER = "math_explainer"  # explain-math: the formulas taught from zero
 
 
 class Origin(StrEnum):
