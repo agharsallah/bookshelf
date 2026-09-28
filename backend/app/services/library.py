@@ -24,6 +24,7 @@ from app.services.errors import InvalidInputError
 
 SUPPORTED_SUFFIXES: dict[str, DocumentKind] = {
     ".pdf": DocumentKind.PDF,
+    ".epub": DocumentKind.EPUB,
     ".html": DocumentKind.ARTICLE,
     ".htm": DocumentKind.ARTICLE,
     ".md": DocumentKind.ARTICLE,

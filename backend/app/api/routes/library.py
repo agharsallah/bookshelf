@@ -15,7 +15,7 @@ router = APIRouter(prefix="/library", tags=["library"])
     response_model=Page[LibraryFilePublic],
     summary="List library files not yet ingested",
     description=(
-        "Supported files (`.pdf .html .htm .md`) under `library/`, recursively, whose "
+        "Supported files (`.pdf .epub .html .htm .md`) under `library/`, recursively, whose "
         "sha256 matches no document. Hashes are cached by path, size and mtime."
     ),
 )

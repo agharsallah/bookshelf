@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 from sqlmodel import Session, func, select
 
+from app.core.config import get_settings
 from app.jobs import queue
 from app.jobs.queue import JobSpec
 from app.jobs.registry import JobContext, PermanentJobError, get_handler
@@ -12,6 +13,7 @@ from app.models import Document, Job, Node
 from app.models.enums import DocumentKind, DocumentStatus, JobKind
 from app.pipeline.handlers.parse import run_parse
 from tests.pipeline.parse.builders import book_pdf
+from tests.pipeline.parse.epub_builders import book_epub
 
 
 def _document(session: Session, source_path: str, **overrides: object) -> Document:
@@ -63,6 +65,25 @@ def test_pdf_with_outline_is_parsed_stored_and_described(session, library_dir: P
     assert (document.title, document.authors, document.year) == (
         "Thinking in Systems", ["Donella Meadows"], 2008
     )  # fmt: skip
+
+
+def test_epub_is_parsed_stored_and_described(session, library_dir: Path):
+    book_epub(library_dir / "systems.epub")
+    document = _document(session, "library/systems.epub", kind=DocumentKind.EPUB,
+                         slug="systems", title="systems")  # fmt: skip
+
+    result = _run(session, document)
+
+    assert (result.result["tier"], result.result["nodes"]) == (1, _node_count(session, document))
+    assert (document.status, document.parse_tier, document.page_count) == (
+        DocumentStatus.PARSED, 1, 12
+    )  # fmt: skip
+    assert (document.title, document.authors, document.year) == (
+        "Thinking in Systems", ["Donella Meadows"], 2008
+    )  # fmt: skip
+    figures = session.exec(select(Node).where(Node.kind == "figure")).all()
+    media_dir = get_settings().media_dir
+    assert figures and all((media_dir / f.meta["image_path"]).is_file() for f in figures)
 
 
 def test_guessed_outline_lands_in_needs_review_and_keeps_human_metadata(session, library_dir: Path):

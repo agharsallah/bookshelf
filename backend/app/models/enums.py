@@ -6,6 +6,7 @@ from enum import StrEnum
 
 class DocumentKind(StrEnum):
     PDF = "pdf"
+    EPUB = "epub"
     ARTICLE = "article"
 
 
