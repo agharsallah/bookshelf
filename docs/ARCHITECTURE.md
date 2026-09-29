@@ -1381,6 +1381,14 @@ flowchart LR
   flags, weak grounding, a clean expensive skill that may hold up one tier cheaper (D16), a cost
   driver, wasted tokens, low parallelism or long queue waits, and outlier chapters and books.
   Each one carries the metric and value that triggered it.
+- **Over time** (library only, `app/stats/activity.py`). `activity` is one row per UTC day with
+  work: a job counts on the day it finished, with its whole run time and tokens (failed jobs'
+  share split out); cost comes from calls on the day they were made. `stages` is every job
+  kind's compute, busy time and job-duration spread across the library. The page charts the
+  days by compute, tokens, jobs or cost over 14/30/90 days or all of them, and ranks the stages.
+- **Tables** (`StatsTable`, `components/stats/table.ts`) sort by any column in the browser
+  (figures largest first, missing values last either way) and show a page at a time with
+  "show more". The server render is the default order's first page.
 
 ---
 
