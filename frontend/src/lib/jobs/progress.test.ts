@@ -13,7 +13,7 @@ function job(overrides: Partial<JobPublic> = {}): JobPublic {
   };
 }
 
-const queue = (unclaimed: QueueStatus['unclaimed_kinds'] = []): QueueStatus => ({ workers: [], queued: 1, running: 0, unclaimed_kinds: unclaimed });
+const queue = (unclaimed: QueueStatus['unclaimed_kinds'] = []): QueueStatus => ({ workers: [], queued: 1, running: 0, unclaimed_kinds: unclaimed, paused: false, max_running: null, slots: 2 });
 
 describe('describeJob', () => {
   it('gives a queued job its place in line', () => {
@@ -23,6 +23,13 @@ describe('describeJob', () => {
   it('says when no worker will pick a queued job up', () => {
     expect(describeJob(job(), NOW, queue(['derive'])).phase).toBe('stalled');
     expect(describeJob(job(), NOW, queue(['parse'])).phase).toBe('waiting');
+  });
+
+  it('says a queued job waits for the paused queue, keeping its place in line', () => {
+    const paused = { ...queue(), paused: true };
+    expect(describeJob(job({ queue_position: 2 }), NOW, paused)).toEqual({ phase: 'paused', text: 'Paused, 2nd in line', live: true });
+    expect(describeJob(job({ run_after: '2026-09-26T10:01:30Z' }), NOW, paused).phase).toBe('paused');
+    expect(describeJob(job(), NOW, { ...paused, unclaimed_kinds: ['derive'] }).phase).toBe('stalled');
   });
 
   it('counts down a retry backoff', () => {

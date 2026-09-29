@@ -2,14 +2,14 @@
  * Where a job is in its life, in words a reader can act on. Pure; used by every surface
  * that shows a job (study buttons, the pipeline timeline, the pipeline page).
  *
- * `queued` alone hid three different situations; `describeJob` tells them apart:
- * waiting its turn (and its place in line), backing off before a retry, and waiting for a
- * worker that is not running at all (`QueueStatus.unclaimed_kinds`) — the one that needs
- * the user to do something.
+ * `queued` alone hid four different situations; `describeJob` tells them apart:
+ * waiting its turn (and its place in line), backing off before a retry, held by a paused
+ * queue (`QueueStatus.paused`), and waiting for a worker that is not running at all
+ * (`QueueStatus.unclaimed_kinds`) — the last two need the user to do something.
  */
 import type { JobPublic, QueueStatus } from '../api/types/jobs';
 
-export type JobPhase = 'waiting' | 'stalled' | 'backoff' | 'running' | 'done' | 'skipped' | 'failed';
+export type JobPhase = 'waiting' | 'paused' | 'stalled' | 'backoff' | 'running' | 'done' | 'skipped' | 'failed';
 
 export interface JobProgress {
   phase: JobPhase;
@@ -58,6 +58,8 @@ export function describeJob(job: JobPublic, now: number, queue: QueueStatus | nu
           text: 'Waiting: no worker is running',
           live: true,
         };
+      const place = job.queue_position ? `, ${placeInLine(job.queue_position)}` : '';
+      if (queue?.paused) return { phase: 'paused', text: `Paused${place}`, live: true };
       const after = Date.parse(job.run_after ?? '');
       if (!Number.isNaN(after) && after > now) {
         return {
@@ -66,7 +68,6 @@ export function describeJob(job: JobPublic, now: number, queue: QueueStatus | nu
           live: true,
         };
       }
-      const place = job.queue_position ? `, ${placeInLine(job.queue_position)}` : '';
       return { phase: 'waiting', text: `Queued${place}`, live: true };
     }
     case 'running': {

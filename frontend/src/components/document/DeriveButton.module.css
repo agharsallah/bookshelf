@@ -46,6 +46,7 @@
 
 .item[data-phase='waiting'] .spinner,
 .item[data-phase='backoff'] .spinner,
+.item[data-phase='paused'] .spinner,
 .item[data-phase='stalled'] .spinner {
   border-top-color: var(--ink-3);
   animation-duration: 2.4s;

@@ -41,7 +41,7 @@ describe('<DeriveButton>', () => {
   });
 
   it('warns when no worker will run it', () => {
-    render(<DeriveButton {...props} job={job()} queue={{ workers: [], queued: 1, running: 0, unclaimed_kinds: ['derive'] }} />);
+    render(<DeriveButton {...props} job={job()} queue={{ workers: [], queued: 1, running: 0, unclaimed_kinds: ['derive'], paused: false, max_running: null, slots: 2 }} />);
     expect(screen.getByText('Waiting: no worker is running')).toBeTruthy();
   });
 

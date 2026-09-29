@@ -110,7 +110,7 @@ describe('run_after ordering', () => {
 
 describe('queue events', () => {
   it('keeps the latest queue status and parses only real ones', () => {
-    const status = { workers: [], queued: 2, running: 0, unclaimed_kinds: ['derive'] };
+    const status = { workers: [], queued: 2, running: 0, unclaimed_kinds: ['derive'], paused: false, max_running: null, slots: 2 };
     expect(apply({ type: 'queue', queue: parseQueueEvent(JSON.stringify(status))! }).queue).toEqual(status);
     expect(parseQueueEvent('{"id": "j1"}')).toBeNull();
   });

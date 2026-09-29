@@ -4,7 +4,7 @@ import type { JobStreamConnection } from './connection';
 import { subscribeJobStream, type JobStreamListener } from './shared';
 
 const job = { id: 'j1', state: 'running', attempts: 1, created_at: '2026-09-26T10:00:00Z', started_at: '2026-09-26T10:00:01Z' } as JobPublic;
-const status: QueueStatus = { workers: [], queued: 0, running: 1, unclaimed_kinds: [] };
+const status: QueueStatus = { workers: [], queued: 0, running: 1, unclaimed_kinds: [], paused: false, max_running: null, slots: 2 };
 
 function listener(): JobStreamListener & { seen: string[] } {
   const seen: string[] = [];
