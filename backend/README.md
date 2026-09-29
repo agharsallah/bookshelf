@@ -90,8 +90,17 @@ POST /documents {path|url} → parse ─┬─ describe_figure · explain_code �
 There is no Anthropic API key in the backend. Model calls go through `ModelRunner`, whose
 implementation shells out to `claude -p` (`BOOKSHELF_CLAUDE_BIN`, default `claude`) with
 no tools, no session persistence and no project settings. Install Claude Code and log in
-once (`claude` → `/login`); the worker then uses your subscription. Concurrency is capped
-by `BOOKSHELF_WORKER_CONCURRENCY` (2).
+once (`claude` → `/login`); the worker then uses your subscription. Each worker runs up to
+`BOOKSHELF_WORKER_CONCURRENCY` (2) jobs at once: its slots, fixed at start.
+
+Two controls, set at runtime from the pipeline page (`PATCH /jobs/queue`) and obeyed by
+every worker on its next claim, no restart: **pause** starts nothing (running jobs finish,
+queued ones wait, new ones still queue) until **resume**, e.g. to save the subscription's
+tokens; **`max_running`** caps the jobs running at once across all workers, below their
+slots. Both live in `app_settings.data["queue"]` and gate `claim()` in SQL. Pausing holds
+every kind; the cap leaves out embedding and narration, which spend no tokens and have a
+slot of their own. To run *more* than the slots allow, raise `BOOKSHELF_WORKER_CONCURRENCY`
+(up to 8) or start another worker.
 
 Interactive mode: open Claude Code in the repo and run a skill by name
 (`/distil-chapter <slug> ch03`). The skill fetches `GET /skills/{name}/inputs` (the exact
