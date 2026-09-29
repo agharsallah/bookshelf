@@ -1505,6 +1505,29 @@ The design above is a guideline. Where the build diverged, the reason is recorde
 | Library cards | — | `DocumentSummary.blurb`: approved book summary's first paragraph, else the brief's thesis, else the first chapter summary (≤ 280 chars), one query per page | A shelf needs a line per book without N+1 queries |
 | Library themes and covers | tags only | `DocumentSummary.catalogue`: each document's preferred `catalogue_entry` (approved, else the latest draft, flagged) read at request time, the shelf's spelling of its theme; `GET /documents/{ref}/cover`: a book's EPUB cover image or rendered first PDF page, cached as `media_dir/<slug>/cover.*` (`app/services/covers.py`) | The library groups, colours and describes books by theme, and shows them face out, without a column per field or a copy to keep in step |
 
+### Collections
+
+A **collection** gathers by hand the books, papers and articles you are studying around one
+topic (say, "Fine-tuning"), in the order you mean to read them. It is not a paper set
+(`paper_sets`, papers only, made for a synthesis) and not the library card's machine-written
+`subjects`. Tables `collections` (slug fixed at creation, so links survive a rename) and
+`collection_members` (document, dense `position`, a `note` on why it is there; cascades from
+both sides), migration `20260929090831_collections`. API: `/collections` (create, list,
+`?document_id=` for "which hold this", detail with library rows, `PATCH`, `DELETE`,
+`PUT …/members/{document_id}`, `DELETE …/members/{document_id}`, `PUT …/order`).
+
+Every other view narrows to one with an optional `?collection=<id|slug>` and is unchanged
+without it: `GET /documents`, `GET /graph/atlas` (only its documents, their chapters and the
+concepts those chapters touch; concepts reached only through concept-to-concept edges are
+dropped), `GET /graph/neighborhood` (passages, documents and claims outside it are left out,
+and whatever only they connected), `GET /concepts` (an accepted edge ending in, or evidenced
+in, one of its documents). Frontend: `/collections` and `/collections/{slug}` (the reading
+path, with progress, notes, reordering and adding from the shelf), a collection chip filter
+on `/library`, "Add to a collection" on a document's page, `?collection=` on `/map`, `/graph`
+and `/graph/…`. The reader keeps `?collection=` in every chapter link, shows where the
+document sits in the collection above the text, and ends the last chapter with the next
+document instead of "Back to the document" (`components/collections/path.ts`).
+
 ### Settings
 
 `/settings` (frontend) holds two kinds of choice. **Display** choices stay in the browser,
