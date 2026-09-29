@@ -106,4 +106,12 @@ async def stream_jobs(
 def _health(status: QueueStatus) -> tuple[object, ...]:
     """What a `queue` event reports, minus `seen_at`, which moves on every worker beat."""
     workers = tuple((w.name, w.running) for w in status.workers)
-    return (workers, status.queued, status.running, tuple(status.unclaimed_kinds))
+    return (
+        workers,
+        status.queued,
+        status.running,
+        tuple(status.unclaimed_kinds),
+        status.paused,
+        status.max_running,
+        status.slots,
+    )

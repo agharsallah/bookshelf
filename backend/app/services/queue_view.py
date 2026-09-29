@@ -1,5 +1,6 @@
-"""What the queue looks like from outside: each job's place in line, and whether any
-worker is there to run it (`GET /jobs/queue`, the `queue` event of `/jobs/stream`)."""
+"""What the queue looks like from outside: each job's place in line, whether any worker
+is there to run it, and whether it is paused or capped (`GET /jobs/queue`, the `queue`
+event of `/jobs/stream`)."""
 
 from collections.abc import Iterable
 
@@ -10,6 +11,7 @@ from app.jobs import presence, queue
 from app.models import Job
 from app.models.enums import JobKind, JobState
 from app.schemas.job import JobPublic, QueueStatus, WorkerPublic
+from app.services.app_settings import queue_controls
 
 
 def public_jobs(session: Session, jobs: Iterable[Job]) -> list[JobPublic]:
@@ -44,9 +46,14 @@ def queue_status(session: Session) -> QueueStatus:
         ).all()
     }
     claimed = {kind for w in workers for kind in w.kinds}
+    uncapped = {k.value for k in queue.UNCAPPED}
+    controls = queue_controls(session)
     return QueueStatus(
         workers=[WorkerPublic.model_validate(w) for w in workers],
         queued=counts.get("queued", 0),
         running=counts.get("running", 0),
         unclaimed_kinds=sorted(k for k in runnable if k.value not in claimed),
+        paused=controls.paused,
+        max_running=controls.max_running,
+        slots=sum(w.concurrency for w in workers if set(w.kinds) - uncapped),
     )

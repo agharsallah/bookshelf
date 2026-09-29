@@ -129,3 +129,18 @@ class QueueStatus(BaseModel):
     # Kinds with runnable queued jobs that no live worker claims: those jobs wait forever
     # until a worker for them starts. Empty when every queued job has a taker.
     unclaimed_kinds: list[JobKind]
+    # Paused: no worker starts a job; running ones finish, queued ones wait for a resume.
+    paused: bool = False
+    # Jobs that may run at once across every worker (`None`: as many as there are slots).
+    # Embedding and narration are not counted: they spend no tokens and run one at a time.
+    max_running: int | None = None
+    # Job slots across live workers that run token-spending work: the most that can run.
+    slots: int = 0
+
+
+class QueueControlsUpdate(BaseModel):
+    """`PATCH /jobs/queue`: the controls given change; the others keep their value."""
+
+    paused: bool | None = None
+    # `null` lifts the cap. Above `slots` it changes nothing until more workers start.
+    max_running: Annotated[int | None, Field(ge=1, le=64)] = None

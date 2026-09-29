@@ -1,6 +1,7 @@
 """Job queue: enqueue work and watch it (§13). Ingest and re-runs return `202` + a job."""
 
 import uuid
+from dataclasses import replace
 
 from fastapi import APIRouter, Depends, Query, status
 
@@ -13,7 +14,8 @@ from app.models import Job
 from app.models.enums import JobKind, JobState
 from app.pipeline.skills import load_catalogue
 from app.schemas.common import Page
-from app.schemas.job import JobAccepted, JobCreate, JobPublic, QueueStatus
+from app.schemas.job import JobAccepted, JobCreate, JobPublic, QueueControlsUpdate, QueueStatus
+from app.services import app_settings
 from app.services import jobs as job_service
 from app.services.queue_view import public_job, public_jobs, queue_status
 
@@ -47,6 +49,29 @@ def list_jobs(
     ),
 )
 def get_queue(session: SessionDep) -> QueueStatus:
+    return queue_status(session)
+
+
+@router.patch(
+    "/queue",
+    response_model=QueueStatus,
+    dependencies=[Depends(require_api_key)],
+    summary="Pause or resume the queue, or cap how many jobs run at once",
+    description=(
+        "`paused: true` stops every worker from starting a job: running jobs finish, queued "
+        "ones wait (new ones still queue) until `paused: false`. `max_running` caps the "
+        "jobs running at once across all workers (`null`: no cap beyond the workers' slots, "
+        "`BOOKSHELF_WORKER_CONCURRENCY` each); lowering it stops nothing already running. "
+        "Embedding and narration are not capped. Fields left out keep their value; workers "
+        "obey a change on their next claim, with no restart."
+    ),
+)
+def update_queue(body: QueueControlsUpdate, session: SessionDep) -> QueueStatus:
+    changes = body.model_dump(include=body.model_fields_set)
+    if changes.get("paused", False) is None:
+        changes.pop("paused")
+    current = app_settings.queue_controls(session)
+    app_settings.set_queue_controls(session, replace(current, **changes))
     return queue_status(session)
 
 
