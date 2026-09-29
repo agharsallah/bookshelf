@@ -4,9 +4,13 @@ Today that is `auto_derive`: the study-material skills a document queues on its 
 it is distilled (its brief, or a paper's card, approved), one list per group, `book` and
 `paper`. A group never set has no entry; the caller supplies its default (the paper
 profile's own by-products), so a new install behaves as before.
+
+And `queue`: whether the job queue is paused and how many jobs may run at once, read by
+`jobs.queue.claim` in SQL so every worker obeys a change on its next claim.
 """
 
 from collections.abc import Mapping
+from dataclasses import dataclass
 
 from sqlmodel import Session
 
@@ -91,3 +95,36 @@ def set_auto_derive(
     row.updated_at = utcnow()
     session.add(row)
     session.commit()
+
+
+@dataclass(frozen=True, slots=True)
+class QueueControls:
+    """`paused`: claim nothing (running jobs finish). `max_running`: jobs running at once
+    across every worker (`None`: as many as the workers have slots)."""
+
+    paused: bool = False
+    max_running: int | None = None
+
+
+def queue_controls(session: Session) -> QueueControls:
+    row = session.get(AppSettings, SINGLETON_ID)
+    stored = (row.data if row else {}).get("queue")
+    if not isinstance(stored, dict):
+        return QueueControls()
+    cap = stored.get("max_running")
+    return QueueControls(
+        paused=stored.get("paused") is True,
+        max_running=cap if isinstance(cap, int) and cap > 0 else None,
+    )
+
+
+def set_queue_controls(session: Session, controls: QueueControls) -> QueueControls:
+    row = session.get(AppSettings, SINGLETON_ID) or AppSettings()
+    row.data = {
+        **row.data,
+        "queue": {"paused": controls.paused, "max_running": controls.max_running},
+    }
+    row.updated_at = utcnow()
+    session.add(row)
+    session.commit()
+    return controls

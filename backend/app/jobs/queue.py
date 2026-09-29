@@ -6,6 +6,11 @@ for waiting work: enqueueing the same (kind, document, anchor, input_hash) while
 queued returns None instead of a second row. While one *runs*, one follow-up may queue
 (its inputs may have changed meanwhile); `claim()` starts it only after the running one
 finished, so one scope never runs twice at once.
+
+Two controls in `app_settings.data["queue"]` (`services/app_settings.py`) gate `claim()`
+for every worker at once, with no restart: `paused` starts nothing (running jobs finish,
+queued ones wait), and `max_running` caps how many jobs run at once across all workers.
+The cap leaves out `UNCAPPED` kinds, which spend no tokens and have one slot each.
 """
 
 import json
@@ -30,6 +35,11 @@ HEARTBEAT_SECONDS = 60.0
 STALE_AFTER = timedelta(seconds=HEARTBEAT_SECONDS * 5)
 # `jobs.result` key: CLI runs the job has made over all its attempts (`app.pipeline.ceiling`).
 RUNS = "runs"
+# Kinds `max_running` does not count or hold back: local work with its own single-slot
+# runner (`app.jobs.embedded`, `app.jobs.narration`), not `claude` runs.
+UNCAPPED = (JobKind.EMBED, JobKind.NARRATE)
+# Serialises claims, so two workers cannot both take the last slot under `max_running`.
+_CLAIM_LOCK = 0x626F6F6B  # "book"
 
 
 @dataclass(frozen=True, slots=True)
@@ -86,9 +96,11 @@ def claim(session: Session, kinds: list[JobKind] | None = None) -> Job | None:
     """Atomically move the next runnable job to `running` and return it.
 
     Also picks up `running` jobs whose lock went stale (crashed worker). A queued job waits
-    while an identical one (same kind, document, anchor, input_hash) is running.
+    while an identical one (same kind, document, anchor, input_hash) is running. Nothing
+    is claimed while the queue is paused, nor past `max_running` (see the module doc).
     """
     kind_filter = "and kind = any(:kinds)" if kinds else ""
+    session.execute(text("select pg_advisory_xact_lock(:key)"), {"key": _CLAIM_LOCK})
     row = session.execute(
         text(
             f"""
@@ -106,6 +118,14 @@ def claim(session: Session, kinds: list[JobKind] | None = None) -> Job | None:
                                             = coalesce(j.input_hash, '')))
                      or (state = 'running' and locked_at < now() - :stale))
                 {kind_filter}
+                and not coalesce((select (data -> 'queue' ->> 'paused')::boolean
+                                  from app_settings where id = 1), false)
+                and (kind = any(:uncapped)
+                     or (select count(*) from jobs c
+                         where c.state = 'running' and c.locked_at >= now() - :stale
+                           and not c.kind = any(:uncapped))
+                        < coalesce((select (data -> 'queue' ->> 'max_running')::int
+                                    from app_settings where id = 1), 2147483647))
               order by priority, run_after
               for update skip locked
               limit 1
@@ -113,7 +133,11 @@ def claim(session: Session, kinds: list[JobKind] | None = None) -> Job | None:
             returning id
             """  # noqa: S608  (kind_filter is a constant, values are bound)
         ),
-        {"kinds": [k.value for k in kinds or []], "stale": STALE_AFTER},
+        {
+            "kinds": [k.value for k in kinds or []],
+            "stale": STALE_AFTER,
+            "uncapped": [k.value for k in UNCAPPED],
+        },
     ).first()
     session.commit()
     if row is None:
