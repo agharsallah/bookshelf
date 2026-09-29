@@ -21,7 +21,7 @@ from app.schemas.stats import (
     TimeTotals,
     TokenTotals,
 )
-from app.stats import chapters, collect, skills, timeline
+from app.stats import activity, chapters, collect, skills, timeline
 from app.stats.facts import BookFacts, CallFact
 from app.stats.insights import Context, insights
 from app.stats.numbers import rate, ratio, rounded
@@ -177,6 +177,8 @@ def library_stats(session: Session, *, settings: Settings, skills_dir: Path) -> 
         time=time,
         skills=skill_rows,
         models=skills.model_stats(jobs, calls),
+        stages=timeline.stage_spans(jobs, calls),
+        activity=activity.daily(jobs, calls),
         insights=insights(context),
         telemetry_since=_telemetry_since(calls),
         generated_at=datetime.now(UTC),

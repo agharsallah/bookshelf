@@ -6,7 +6,7 @@ Durations are milliseconds. `tokens` is input + output tokens, known for every j
 only calls made since per-call telemetry started (`tracked_calls` says how many).
 """
 
-from datetime import datetime
+from datetime import date, datetime
 from enum import StrEnum
 
 from pydantic import BaseModel, Field
@@ -239,6 +239,19 @@ class DocumentStats(BaseModel):
     generated_at: datetime
 
 
+class ActivityDay(BaseModel):
+    """One calendar day (UTC) of pipeline work: jobs count on the day they finished."""
+
+    day: date
+    jobs: int = 0
+    failed: int = 0
+    compute_ms: int = Field(default=0, description="Run time of the jobs that finished that day.")
+    failed_ms: int = Field(default=0, description="The part of it spent on jobs that failed.")
+    tokens: int = 0
+    cost_usd: float | None = Field(default=None, description="Recorded calls made that day.")
+    books: int = Field(default=0, description="Distinct books worked on.")
+
+
 class BookRow(BaseModel):
     book: BookInfo
     jobs: JobCounts
@@ -258,6 +271,12 @@ class LibraryStats(BaseModel):
     time: TimeTotals
     skills: list[SkillStats]
     models: list[ModelStats]
+    stages: list[StageSpan] = Field(
+        default_factory=list, description="Every job kind across the library, in pipeline order."
+    )
+    activity: list[ActivityDay] = Field(
+        default_factory=list, description="Days with pipeline work, oldest first."
+    )
     insights: list[Insight]
     telemetry_since: datetime | None
     generated_at: datetime
