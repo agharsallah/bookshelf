@@ -51,7 +51,7 @@ describe('bookTiles', () => {
 describe('libraryTiles', () => {
   it('reports the median first pass across books', () => {
     const row = (ms: number | null): BookRow => ({ book, jobs, tokens, time, efficiency, end_to_end_ms: ms, failure_rate: 0.2, remaining: { queued: 0, running: 0, eta_ms: null }, last_activity: null });
-    const library: LibraryStats = { books: [row(1000), row(60_000), row(null), row(3_600_000)], jobs, tokens, time, skills: [], models: [], insights: [], telemetry_since: null, generated_at: '' };
+    const library: LibraryStats = { books: [row(1000), row(60_000), row(null), row(3_600_000)], jobs, tokens, time, skills: [], models: [], stages: [], activity: [], insights: [], telemetry_since: null, generated_at: '' };
 
     expect(value(libraryTiles(library), 'Typical end to end')?.value).toBe('1 min');
     expect(value(libraryTiles(library), 'Jobs')?.note).toBe('20% failed');

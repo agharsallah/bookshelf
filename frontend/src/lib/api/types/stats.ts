@@ -199,6 +199,20 @@ export interface DocumentStats {
   generated_at: string;
 }
 
+/** One calendar day (UTC) of pipeline work: jobs count on the day they finished. */
+export interface ActivityDay {
+  /** `YYYY-MM-DD` */
+  day: string;
+  jobs: number;
+  failed: number;
+  compute_ms: number;
+  /** The part of `compute_ms` spent on jobs that failed. */
+  failed_ms: number;
+  tokens: number;
+  cost_usd: number | null;
+  books: number;
+}
+
 export interface BookRow {
   book: BookInfo;
   jobs: JobCounts;
@@ -219,6 +233,10 @@ export interface LibraryStats {
   time: TimeTotals;
   skills: SkillStats[];
   models: ModelStats[];
+  /** Every job kind across the library, in pipeline order. */
+  stages: StageSpan[];
+  /** Days with pipeline work, oldest first. */
+  activity: ActivityDay[];
   insights: Insight[];
   telemetry_since: string | null;
   generated_at: string;

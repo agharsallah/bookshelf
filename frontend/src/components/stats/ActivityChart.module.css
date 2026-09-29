@@ -1,0 +1,184 @@
+/* The day-by-day chart: controls, a summary row, bars on one axis, a hover card. */
+.activity {
+  display: grid;
+  gap: var(--space-3);
+  min-inline-size: 0;
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+}
+
+.summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-6);
+  margin: 0;
+}
+
+.summary dt {
+  color: var(--ink-3);
+  font-size: var(--text-xs);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.summary dd {
+  margin: 0;
+  color: var(--ink);
+  font-size: var(--text-md);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.summary dd span {
+  color: var(--ink-3);
+  font-size: var(--text-sm);
+  font-weight: 400;
+}
+
+.chart {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: 12rem auto;
+  gap: var(--space-1) var(--space-2);
+  margin: 0;
+  padding: var(--space-4) var(--space-4) var(--space-3);
+  border: 1px solid var(--chart-grid);
+  border-radius: var(--radius-m);
+  background: var(--paper-raised);
+}
+
+.yAxis {
+  position: relative;
+  min-inline-size: 3.5rem;
+  color: var(--ink-3);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.yAxis span {
+  position: absolute;
+  inset-inline-end: 0;
+  transform: translateY(50%);
+  white-space: nowrap;
+}
+
+.plot {
+  position: relative;
+  min-inline-size: 0;
+}
+
+.grid {
+  position: absolute;
+  inset-inline: 0;
+  border-block-start: 1px solid var(--chart-grid);
+}
+
+.grid:first-child {
+  border-color: var(--chart-axis);
+}
+
+.bars {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 2px; /* the surface gap between stacked segments */
+  min-inline-size: 0;
+  border-radius: var(--radius-s) var(--radius-s) 0 0;
+}
+
+.column[data-active] {
+  background: var(--accent-wash);
+}
+
+.bar,
+.failed {
+  display: block;
+  flex: none;
+  min-block-size: 2px;
+  inline-size: min(100%, 1.75rem);
+  margin-inline: auto;
+}
+
+.bar {
+  background: var(--series-1);
+}
+
+.failed {
+  background: var(--tone-important);
+}
+
+/* The data end is the top segment; the baseline end stays square. */
+.column > :first-child {
+  border-start-start-radius: var(--radius-s);
+  border-start-end-radius: var(--radius-s);
+}
+
+.tooltip {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: var(--at);
+  z-index: 1;
+  display: grid;
+  gap: 2px;
+  min-inline-size: 13rem;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-m);
+  background: var(--paper-raised);
+  color: var(--ink-2);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+  transform: translateX(var(--space-3));
+}
+
+.tooltip[data-side='left'] {
+  transform: translateX(calc(-100% - var(--space-3)));
+}
+
+.tooltip strong {
+  color: var(--ink);
+}
+
+.xAxis {
+  grid-column: 2;
+  display: grid;
+  gap: 2px;
+  color: var(--ink-3);
+  font-size: var(--text-xs);
+}
+
+.xAxis span {
+  display: flex;
+  white-space: nowrap;
+}
+
+/* Labels overflow their narrow day column: inward at the ends, both ways in the middle. */
+.xAxis span[data-edge='middle'] {
+  justify-content: center;
+}
+
+.xAxis span[data-edge='end'] {
+  justify-content: flex-end;
+}
+
+.table summary {
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.table[open] summary {
+  margin-block-end: var(--space-2);
+}

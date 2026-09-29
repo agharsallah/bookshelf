@@ -1,10 +1,12 @@
 /**
- * Two small tables: the book's passes (bursts of activity: the initial end-to-end run,
- * then re-runs and derived material) and the models that did the work.
+ * Small tables over runs: the book's passes (bursts of activity: the initial end-to-end
+ * run, then re-runs and derived material), the models that did the work, and where the
+ * compute time went stage by stage.
  */
-import type { ModelStats, PipelinePass } from '../../lib/api/types/stats';
+import type { ModelStats, PipelinePass, StageSpan } from '../../lib/api/types/stats';
 import { KIND_LABELS } from '../pipeline/model';
-import { formatCount, formatDuration, formatNumber, formatUsd, NONE } from './format';
+import { formatCount, formatDuration, formatNumber, formatPercent, formatUsd, NONE } from './format';
+import { share } from './model';
 import { StatsTable, type StatsColumn } from './StatsTable';
 import styles from './Stats.module.css';
 
@@ -75,6 +77,73 @@ export function ModelTable({ models, pageSize = 10 }: { models: readonly ModelSt
       noun="models"
       label="Models"
       initialSort={{ key: 'tokens', dir: 'desc' }}
+      pageSize={pageSize}
+    />
+  );
+}
+
+function stageColumns(total: number, max: number): StatsColumn<StageSpan>[] {
+  return [
+    { key: 'stage', label: 'Stage', value: (s) => KIND_LABELS[s.kind], cell: (s) => KIND_LABELS[s.kind] },
+    {
+      key: 'compute',
+      label: 'Compute',
+      firstDir: 'desc',
+      title: 'Sum of the stage’s job run times',
+      value: (s) => s.compute_ms,
+      cell: (s) => (
+        <span className={styles.barCell}>
+          <span className={styles.track} aria-hidden="true">
+            {s.compute_ms > 0 ? <span className={styles.fill} style={{ inlineSize: `${share(s.compute_ms, max)}%` }} /> : null}
+          </span>
+          <span className={styles.num}>
+            {formatDuration(s.compute_ms)}
+            <span className={styles.sub}>{formatPercent(total ? s.compute_ms / total : null)}</span>
+          </span>
+        </span>
+      ),
+    },
+    { key: 'busy', label: 'Busy', numeric: true, title: 'Time at least one of its jobs was running', value: (s) => s.busy_ms, cell: (s) => formatDuration(s.busy_ms) },
+    {
+      key: 'jobs',
+      label: 'Jobs',
+      numeric: true,
+      value: (s) => s.jobs.total,
+      cell: (s) => (
+        <>
+          {s.jobs.total}
+          {s.jobs.failed ? <span className={`${styles.sub} ${styles.warn}`}>{s.jobs.failed} failed</span> : null}
+        </>
+      ),
+    },
+    { key: 'mean', label: 'Mean job', numeric: true, value: (s) => s.duration.mean_ms, cell: (s) => formatDuration(s.duration.mean_ms) },
+    { key: 'p50', label: 'Median', numeric: true, value: (s) => s.duration.p50_ms, cell: (s) => formatDuration(s.duration.p50_ms) },
+    { key: 'p95', label: 'p95', numeric: true, value: (s) => s.duration.p95_ms, cell: (s) => formatDuration(s.duration.p95_ms) },
+    { key: 'max', label: 'Longest', numeric: true, value: (s) => s.duration.max_ms, cell: (s) => formatDuration(s.duration.max_ms) },
+    { key: 'tokens', label: 'Tokens', numeric: true, value: (s) => s.tokens, cell: (s) => formatCount(s.tokens) },
+    {
+      key: 'per_minute',
+      label: 'Tokens / min',
+      numeric: true,
+      title: 'Tokens per minute of compute: how token-dense the stage’s time is',
+      value: (s) => (s.compute_ms ? s.tokens / (s.compute_ms / 60_000) : null),
+      cell: (s) => (s.compute_ms && s.tokens ? formatCount(s.tokens / (s.compute_ms / 60_000)) : NONE),
+    },
+  ];
+}
+
+export function StageTimeTable({ stages, pageSize = 12 }: { stages: readonly StageSpan[]; pageSize?: number }) {
+  if (stages.length === 0) return <p className={styles.empty}>No stage has run yet.</p>;
+  const total = stages.reduce((sum, s) => sum + s.compute_ms, 0);
+  const max = Math.max(0, ...stages.map((s) => s.compute_ms));
+  return (
+    <StatsTable
+      rows={stages}
+      columns={stageColumns(total, max)}
+      rowKey={(s) => s.kind}
+      noun="stages"
+      label="Time by stage"
+      initialSort={{ key: 'compute', dir: 'desc' }}
       pageSize={pageSize}
     />
   );

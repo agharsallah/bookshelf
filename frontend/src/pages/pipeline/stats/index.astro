@@ -5,9 +5,10 @@
  */
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import { Problem, problemOf, type ProblemInfo } from '../../../components/common/Problem';
+import { ActivityChart } from '../../../components/stats/ActivityChart';
 import { BookTable } from '../../../components/stats/BookTable';
 import { InsightList } from '../../../components/stats/InsightList';
-import { ModelTable } from '../../../components/stats/RunTables';
+import { ModelTable, StageTimeTable } from '../../../components/stats/RunTables';
 import { SkillTable } from '../../../components/stats/SkillTable';
 import StatsSection from '../../../components/stats/StatsSection.astro';
 import { StatTiles } from '../../../components/stats/StatTiles';
@@ -24,6 +25,7 @@ try {
 } catch (error) {
   problem = problemOf(error);
 }
+const today = stats ? stats.generated_at.slice(0, 10) : '';
 const since = stats?.telemetry_since ? new Date(stats.telemetry_since).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' }) : null;
 ---
 
@@ -45,6 +47,20 @@ const since = stats?.telemetry_since ? new Date(stats.telemetry_since).toLocaleD
           <StatTiles tiles={libraryTiles(stats)} label="Library totals" />
           <StatsSection id="insights" title="What to improve" lede="Rules over the skill and book figures, most severe first.">
             <InsightList insights={stats.insights} />
+          </StatsSection>
+          <StatsSection
+            id="activity"
+            title="Over time"
+            lede="What the pipeline did each day (UTC): a job counts on the day it finished, with its whole run time. Failed work is stacked on top. Hover a day for its figures."
+          >
+            <ActivityChart client:load days={stats.activity} today={today} />
+          </StatsSection>
+          <StatsSection
+            id="stages"
+            title="Where the time goes"
+            lede="Compute time per stage across every book, with the spread of a single job: a long p95 against its median is a stage whose worst jobs are worth a look."
+          >
+            <StageTimeTable client:visible stages={stats.stages} />
           </StatsSection>
           <StatsSection id="books" title="Books" lede="Most recently active first. Click a column to sort it, again to flip it.">
             <BookTable client:load books={stats.books} />
