@@ -7,13 +7,17 @@
  *   artifact:<id>          → /graph/artifact/<id>
  *   node:<doc>#ch03/p014   → /graph/node/<doc>/ch03/p014
  *
- * `?depth=2&proposed=1` carry the view options.
+ * `?depth=2&proposed=1` carry the view options; `?collection=<slug>` keeps the walk inside
+ * one collection's documents.
  */
 import { ENTITY_KINDS, type EntityKind, type GraphRef } from '../../lib/api/types/graph';
+import { collectionParam } from '../collections/path';
 
 export interface GraphView {
   depth: 1 | 2;
   proposed: boolean;
+  /** A collection's slug: passages outside its documents are left out. */
+  collection?: string | null;
 }
 
 export const defaultView: GraphView = { depth: 1, proposed: false };
@@ -52,6 +56,7 @@ export function graphHref(ref: GraphRef, view: Partial<GraphView> = {}): string 
   const params = new URLSearchParams();
   if (view.depth === 2) params.set('depth', '2');
   if (view.proposed) params.set('proposed', '1');
+  if (view.collection) params.set('collection', view.collection);
   const qs = params.toString();
   return qs ? `${path}?${qs}` : path;
 }
@@ -67,5 +72,7 @@ export function refFromPath(rest: string): GraphRef | null {
 }
 
 export function viewFromParams(params: URLSearchParams): GraphView {
-  return { depth: params.get('depth') === '2' ? 2 : 1, proposed: params.get('proposed') === '1' };
+  const view: GraphView = { depth: params.get('depth') === '2' ? 2 : 1, proposed: params.get('proposed') === '1' };
+  const collection = collectionParam(params);
+  return collection ? { ...view, collection } : view;
 }

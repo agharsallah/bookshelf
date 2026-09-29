@@ -37,6 +37,8 @@ import styles from './Atlas.module.css';
 export interface AtlasExplorerProps {
   initial: Atlas;
   lens: LensState;
+  /** The collection the atlas was loaded for, if any. */
+  scope?: { slug: string; name: string } | null;
   api?: ApiClient;
 }
 
@@ -54,7 +56,8 @@ function isNodeRef(id: string): boolean {
   return /^(concept|document|node):/.test(id);
 }
 
-export function AtlasExplorer({ initial, lens: initialLens, api = browserApi }: AtlasExplorerProps) {
+export function AtlasExplorer({ initial, lens: initialLens, scope: initialScope = null, api = browserApi }: AtlasExplorerProps) {
+  const [scope, setScope] = useState(initialScope);
   const [atlas, setAtlas] = useState(initial);
   const [lens, setLens] = useState(initialLens);
   const [edgeSelected, setEdgeSelected] = useState<string | null>(null);
@@ -86,23 +89,29 @@ export function AtlasExplorer({ initial, lens: initialLens, api = browserApi }: 
   }, [lens]);
 
   const proposed = lens.proposed;
+  const collection = lens.collection;
   const reload = useCallback(() => {
     api
-      .get<Atlas>('graph/atlas', { query: { include_proposed: proposed } })
+      .get<Atlas>('graph/atlas', { query: { include_proposed: proposed, collection: collection ?? undefined } })
       .then((next) => {
         setAtlas(next);
         setProblem(null);
       })
       .catch((error: unknown) => setProblem(problemOf(error)));
-  }, [api, proposed]);
+  }, [api, proposed, collection]);
 
-  // Proposed links are a different atlas, not a filter: fetch it when the toggle flips.
-  const loadedWith = useRef(initialLens.proposed);
+  // Proposed links and a collection make a different atlas, not a filter: fetch it anew.
+  const loadedWith = useRef(`${initialLens.proposed}|${initialLens.collection ?? ''}`);
   useEffect(() => {
-    if (loadedWith.current === proposed) return;
-    loadedWith.current = proposed;
+    const key = `${proposed}|${collection ?? ''}`;
+    if (loadedWith.current === key) return;
+    loadedWith.current = key;
     reload();
-  }, [proposed, reload]);
+  }, [proposed, collection, reload]);
+  const wholeShelf = () => {
+    setScope(null);
+    setLens((l) => ({ ...l, collection: null, selected: null, pathFrom: null, pathTo: null }));
+  };
 
   const [bridges, setBridges] = useState<string | null>(null);
   const findBridges = () => {
@@ -161,11 +170,21 @@ export function AtlasExplorer({ initial, lens: initialLens, api = browserApi }: 
     <div className={graph.explorer}>
       <header className={styles.head}>
         <div className={styles.titleBlock}>
-          <h1>Map</h1>
-          <p className={styles.lede}>
-            Your shelf at a glance: each book, the chapters that take part in the graph, and the ideas they share. Select anything to see how it
-            connects and read it in context.
-          </p>
+          <h1>{scope ? `Map of ${scope.name}` : 'Map'}</h1>
+          {scope ? (
+            <p className={styles.lede}>
+              Only the books, papers and articles in <a href={`/collections/${scope.slug}`}>{scope.name}</a>, their chapters and the ideas
+              they touch.{' '}
+              <button type="button" className={styles.scopeClear} onClick={wholeShelf}>
+                Show the whole shelf
+              </button>
+            </p>
+          ) : (
+            <p className={styles.lede}>
+              Your shelf at a glance: each book, the chapters that take part in the graph, and the ideas they share. Select anything to see how
+              it connects and read it in context.
+            </p>
+          )}
         </div>
         <div className={styles.tools}>
           <fieldset className={graph.segmented}>

@@ -33,11 +33,13 @@ const links = (n: number) => `${n} link${n === 1 ? '' : 's'}`;
 
 export interface ConceptBrowserProps {
   initial: Page<ConceptSummary> | null;
+  /** A collection's slug: only concepts its documents name, opened in its graph. */
+  collection?: string | null;
   api?: ApiClient;
   debounceMs?: number;
 }
 
-export function ConceptBrowser({ initial, api = browserApi, debounceMs = 180 }: ConceptBrowserProps) {
+export function ConceptBrowser({ initial, collection = null, api = browserApi, debounceMs = 180 }: ConceptBrowserProps) {
   const [q, setQ] = useState('');
   const [kind, setKind] = useState<ConceptKind | null>(null);
   const [sort, setSort] = useState<ConceptSort>('alpha');
@@ -58,7 +60,10 @@ export function ConceptBrowser({ initial, api = browserApi, debounceMs = 180 }: 
     const controller = new AbortController();
     const timer = setTimeout(() => {
       api
-        .get<Page<ConceptSummary>>('concepts', { query: { q: q.trim() || undefined, kind: kind ?? undefined, sort, limit: 40 }, signal: controller.signal })
+        .get<Page<ConceptSummary>>('concepts', {
+          query: { q: q.trim() || undefined, kind: kind ?? undefined, sort, limit: 40, collection: collection ?? undefined },
+          signal: controller.signal,
+        })
         .then((next) => {
           setPage(next);
           setProblem(null);
@@ -69,7 +74,7 @@ export function ConceptBrowser({ initial, api = browserApi, debounceMs = 180 }: 
       clearTimeout(timer);
       controller.abort();
     };
-  }, [api, q, kind, sort, initial, debounceMs]);
+  }, [api, q, kind, sort, initial, debounceMs, collection]);
 
   const onInputKey = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key !== 'ArrowDown') return;
@@ -166,7 +171,7 @@ export function ConceptBrowser({ initial, api = browserApi, debounceMs = 180 }: 
                   {links(c.edge_count)}
                 </span>
               ) : null}
-              <a className={styles.graph} href={graphHref(`concept:${c.id}`)} aria-label={`Open ${c.canonical} in the graph`}>
+              <a className={styles.graph} href={graphHref(`concept:${c.id}`, { collection })} aria-label={`Open ${c.canonical} in the graph`}>
                 <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
                   <circle cx="4" cy="11" r="2.2" />
                   <circle cx="12" cy="4.5" r="2.2" />

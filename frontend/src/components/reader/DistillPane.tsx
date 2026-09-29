@@ -95,9 +95,30 @@ export function DistillPane(props: DistillPaneProps) {
     notes: props.notesCount,
   };
 
+  // Clicking a cite chip scrolls the source, which moves the active section; the pane must
+  // stay put then, since that click came from the pane. Hold the follow until the jump settles.
+  const holdFollow = useRef(false);
+  useEffect(() => {
+    const pane = paneRef.current;
+    if (!pane) return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const onClick = (event: MouseEvent) => {
+      if (!(event.target instanceof Element) || !event.target.closest('[data-anchor]')) return;
+      holdFollow.current = true;
+      clearTimeout(timer);
+      timer = setTimeout(() => (holdFollow.current = false), 1500);
+    };
+    pane.addEventListener('click', onClick, true);
+    return () => {
+      pane.removeEventListener('click', onClick, true);
+      clearTimeout(timer);
+    };
+  }, [paneRef]);
+
   // Follow the reading position: scroll to the first thing citing the active section.
   useEffect(() => {
     const pane = paneRef.current;
+    if (holdFollow.current) return;
     if (locked || !pane || !activeSection || tab === 'notes') return;
     const scopes = [...pane.querySelectorAll<HTMLElement>('[data-scope]')];
     const scoped = scopes.find((el) => activeAnchor !== null && isUnder(activeAnchor, el.dataset.scope ?? '~'));

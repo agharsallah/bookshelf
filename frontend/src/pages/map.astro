@@ -3,6 +3,7 @@
  * The map (§11): the whole shelf at chapter grain — books, their chapters, the concepts
  * they discuss — as a live force layout with a lens. The atlas is loaded here so the map
  * draws on arrival; the island owns the view, which lives in the query string.
+ * `?collection=<slug>` maps only that collection.
  */
 import { ActivityBeacon } from '../lib/activity/ActivityBeacon';
 import BaseLayout from '../layouts/BaseLayout.astro';
@@ -11,14 +12,21 @@ import { lensFromParams } from '../components/atlas/lens';
 import { Problem, problemOf, type ProblemInfo } from '../components/common/Problem';
 import type { Atlas } from '../lib/api/types/graph';
 import { serverApi } from '../lib/api/server';
+import { getCollection } from '../lib/collections/api';
 
 export const prerender = false;
 
 const lens = lensFromParams(Astro.url.searchParams);
 let atlas: Atlas | null = null;
 let problem: ProblemInfo | null = null;
+let scope: { slug: string; name: string } | null = null;
 try {
-  atlas = await serverApi().get<Atlas>('graph/atlas', { query: { include_proposed: lens.proposed } });
+  const [map, collection] = await Promise.all([
+    serverApi().get<Atlas>('graph/atlas', { query: { include_proposed: lens.proposed, collection: lens.collection } }),
+    lens.collection ? getCollection(serverApi(), lens.collection) : null,
+  ]);
+  atlas = map;
+  scope = collection && { slug: collection.slug, name: collection.name };
 } catch (error) {
   problem = problemOf(error);
 }
@@ -28,7 +36,7 @@ try {
   <ActivityBeacon client:load surface="explore" detail="map" />
   {
     atlas ? (
-      <AtlasExplorer client:load initial={atlas} lens={lens} />
+      <AtlasExplorer client:load initial={atlas} lens={lens} scope={scope} />
     ) : (
       <div class="missing">
         <h1>Map</h1>

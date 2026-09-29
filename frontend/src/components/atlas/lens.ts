@@ -11,8 +11,13 @@
  *
  *   /map?mode=lens&links=supports,contradicts&kinds=framework&books=<id>&genres=paper&cross=1
  *        &proposed=1&others=hide&group=book&q=loop&sel=concept:<id>&from=<ref>&to=<ref>
+ *        &collection=<slug>
+ *
+ * `collection` is not a lens filter: the server sends only that collection's documents,
+ * their chapters and the concepts they touch, so it holds in either mode.
  */
 import { GENRES, type Genre } from '../../lib/api/types/documents';
+import { collectionParam } from '../collections/path';
 import { CONCEPT_KINDS, type ConceptKind } from '../../lib/api/types/graph';
 import { LINK_KINDS, type LinkKind } from '../graph/styles';
 
@@ -48,6 +53,8 @@ export interface LensState {
   /** A path being traced: its start, and its other end once picked. */
   pathFrom: string | null;
   pathTo: string | null;
+  /** A collection's slug: the atlas is fetched for its documents only. */
+  collection: string | null;
 }
 
 /** The part of the lens that decides what is in play (not the selection, not the layout). */
@@ -67,6 +74,7 @@ export const DEFAULT_LENS: LensState = {
   selected: null,
   pathFrom: null,
   pathTo: null,
+  collection: null,
 };
 
 function list<T extends string>(raw: string | null, allowed: readonly T[]): T[] | null {
@@ -91,6 +99,7 @@ export function lensFromParams(params: URLSearchParams): LensState {
     selected: params.get('sel'),
     pathFrom: params.get('from'),
     pathTo: params.get('from') ? params.get('to') : null,
+    collection: collectionParam(params),
   };
 }
 
@@ -109,6 +118,7 @@ export function lensToParams(lens: LensState): URLSearchParams {
   if (lens.selected) params.set('sel', lens.selected);
   if (lens.pathFrom) params.set('from', lens.pathFrom);
   if (lens.pathFrom && lens.pathTo) params.set('to', lens.pathTo);
+  if (lens.collection) params.set('collection', lens.collection);
   return params;
 }
 

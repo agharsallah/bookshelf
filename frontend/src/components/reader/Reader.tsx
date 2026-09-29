@@ -53,6 +53,8 @@ import type { PaperReading } from './paper/types';
 import { useAttention } from '../../lib/activity/useAttention';
 import { useAutoHide, useFocusChrome, useFullscreen, useMediaQuery } from './useReaderLayout';
 import styles from './Reader.module.css';
+import { CollectionTrail, NextInCollection, type ReaderCollection } from './CollectionTrail';
+import { readHref as collectionReadHref } from '../collections/path';
 
 export interface ReaderProps {
   document: { id: string; slug: string; title: string; language?: string };
@@ -74,6 +76,8 @@ export interface ReaderProps {
   truncated: boolean;
   /** A paper's passes, unit roles, claim marks, notation and review questions; absent for books. */
   paper?: PaperReading | null;
+  /** The collection this is read in (`?collection=`), kept in every reader link. */
+  collection?: ReaderCollection | null;
 }
 
 /** Where the contents rail fits beside the text, and where one pane shows at a time (Reader.module.css). */
@@ -90,7 +94,7 @@ function firstTab(panes: Panes): Tab {
 const NO_TERMS: LexTerm[] = [];
 const NO_RECALLS: RecallPublic[] = [];
 
-export function Reader({ document: doc, unit, units, panes, notes: initialNotes, codeHtml, lexicon = NO_TERMS, modelMarks = null, recalls = NO_RECALLS, unread = false, initialAnchor, truncated, paper: paperData = null }: ReaderProps) {
+export function Reader({ document: doc, unit, units, panes, notes: initialNotes, codeHtml, lexicon = NO_TERMS, modelMarks = null, recalls = NO_RECALLS, unread = false, initialAnchor, truncated, paper: paperData = null, collection = null }: ReaderProps) {
   const sourceRef = useRef<HTMLDivElement>(null);
   const paneRef = useRef<HTMLDivElement>(null);
   const [tab, setTab] = useState<Tab>(() => firstTab(panes));
@@ -202,7 +206,8 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
 
   useEffect(() => (paneRef.current ? paintPaneNotes(paneRef.current, paneNotes) : undefined), [paneNotes, tab, view]);
 
-  const readHref = useCallback((anchor: string) => `/documents/${doc.slug}/read/${anchor}`, [doc.slug]);
+  const trail = collection?.slug ?? null;
+  const readHref = useCallback((anchor: string) => (trail ? collectionReadHref(doc.slug, trail, anchor) : `/documents/${doc.slug}/read/${anchor}`), [doc.slug, trail]);
   const index = units.findIndex((u) => u.anchor === unit.anchor);
   const prev = units[index - 1] ?? null;
   const next = units[index + 1] ?? null;
@@ -363,6 +368,7 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
   const navigator = (
     <Navigator
       slug={doc.slug}
+      readHref={readHref}
       units={units}
       current={unit.anchor}
       sections={navSections}
@@ -439,6 +445,7 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
         <aside className={styles.navColumn}>{navigator}</aside>
 
         <article className={styles.source} ref={sourceRef} aria-label="Text">
+          {collection ? <CollectionTrail collection={collection} documentId={doc.id} /> : null}
           {truncated ? <p className={styles.notice}>This chapter is very long; only its first 2,000 blocks are shown.</p> : null}
           {flat.length === 0 ? <p className={styles.notice}>This chapter has no text blocks.</p> : null}
           {paper.render(({ node }, i) => (
@@ -469,6 +476,8 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
             {recall.footer}
             {next ? (
               <a href={readHref(next.anchor)}>Next: {next.heading}</a>
+            ) : collection ? (
+              <NextInCollection collection={collection} documentId={doc.id} />
             ) : (
               <a href={`/documents/${doc.slug}`}>Back to the document</a>
             )}

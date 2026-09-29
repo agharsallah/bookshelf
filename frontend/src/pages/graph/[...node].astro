@@ -25,7 +25,7 @@ let problem: ProblemInfo | null = null;
 let missing = false;
 try {
   hood = await serverApi().get<Neighborhood>('graph/neighborhood', {
-    query: { node: ref, depth: view.depth, include_proposed: view.proposed },
+    query: { node: ref, depth: view.depth, include_proposed: view.proposed, collection: view.collection },
   });
 } catch (error) {
   missing = error instanceof ApiError && error.status === 404;

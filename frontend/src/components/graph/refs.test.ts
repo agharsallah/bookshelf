@@ -22,6 +22,12 @@ describe('graph refs in URLs', () => {
     expect(viewFromParams(new URLSearchParams('depth=7'))).toEqual({ depth: 1, proposed: false });
   });
 
+  it('carries a collection through the URL, and ignores a malformed one', () => {
+    expect(graphHref(`concept:${DOC}`, { collection: 'fine-tuning' })).toBe(`/graph/concept/${DOC}?collection=fine-tuning`);
+    expect(viewFromParams(new URLSearchParams('collection=fine-tuning')).collection).toBe('fine-tuning');
+    expect(viewFromParams(new URLSearchParams('collection=../x')).collection).toBeUndefined();
+  });
+
   it('accepts a bare id and rejects malformed paths', () => {
     expect([refFromPath(DOC), refFromPath('planet/x'), refFromPath(`node/${DOC}`), refFromPath(`concept/${DOC}/extra`)]).toEqual([
       DOC,

@@ -1,0 +1,36 @@
+/* The collection trail above the text: one quiet line that wraps on narrow screens. */
+.trail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  align-items: baseline;
+  margin-block-end: var(--space-5);
+  padding-block-end: var(--space-2);
+  border-block-end: 1px solid var(--rule);
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.trail a {
+  max-inline-size: 22rem;
+  overflow: hidden;
+  color: inherit;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trail a:hover {
+  color: var(--ink);
+}
+
+.trail .name {
+  color: var(--accent);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.place {
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}

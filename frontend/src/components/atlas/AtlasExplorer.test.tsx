@@ -59,6 +59,19 @@ describe('<AtlasExplorer>', () => {
     expect(screen.getByText('8 marks, 9 connections')).toBeTruthy();
   });
 
+  it('maps one collection, and fetches the whole shelf when asked', async () => {
+    const { api, calls } = fakeApi({ 'GET graph/atlas': () => shelf() });
+    const scoped = { ...DEFAULT_LENS, collection: 'queues' };
+    render(<AtlasExplorer initial={shelf()} lens={scoped} scope={{ slug: 'queues', name: 'Queues' }} api={api} />);
+
+    expect(screen.getByRole('heading', { name: 'Map of Queues' })).toBeTruthy();
+    await userEvent.click(screen.getByRole('button', { name: 'Show the whole shelf' }));
+
+    await waitFor(() => expect(calls.find((c) => c.path === 'graph/atlas')?.query).toEqual({ include_proposed: false }));
+    expect(screen.getByRole('heading', { name: 'Map' })).toBeTruthy();
+    expect(location.search).not.toContain('collection');
+  });
+
   it('proposed links are another atlas: the toggle fetches it, and bridges can be asked for', async () => {
     const proposed = shelf();
     proposed.edges.push({ ...proposed.edges[6]!, id: 'p1', relation: 'contradicts', status: 'proposed', src: ids.law, dst: ids.batch });

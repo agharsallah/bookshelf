@@ -29,6 +29,17 @@
   line-height: 1.5;
 }
 
+.scopeClear {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+}
+
 .tools {
   display: flex;
   flex-wrap: wrap;

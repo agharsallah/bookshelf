@@ -18,6 +18,7 @@ describe('lens URL', () => {
       selected: 'concept:law',
       pathFrom: 'concept:law',
       pathTo: 'concept:wip',
+      collection: 'fine-tuning',
     };
     expect(lensFromParams(lensToParams(lens))).toEqual(lens);
   });
@@ -27,8 +28,11 @@ describe('lens URL', () => {
   });
 
   it('drops values it does not know instead of trusting them', () => {
-    const lens = lensFromParams(new URLSearchParams('mode=weird&links=supports,nonsense&kinds=alien&books=not-a-uuid&genres=poem,paper&others=explode'));
+    const lens = lensFromParams(
+      new URLSearchParams('mode=weird&links=supports,nonsense&kinds=alien&books=not-a-uuid&genres=poem,paper&others=explode&collection=Not A Slug'),
+    );
     expect(lens).toMatchObject({
+      collection: null,
       mode: 'map',
       links: ['supports'],
       kinds: [],

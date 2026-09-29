@@ -4,6 +4,7 @@
  * to look at them: open a concept in the graph to see its neighbourhood, or the map
  * (`/map`) for the whole shelf at chapter grain. In workshop mode the merge queue sits
  * beside the index, where proposed `same_as` merges wait for a human decision.
+ * `?collection=<slug>` narrows the index to the concepts that collection's documents name.
  */
 import { ActivityBeacon } from '../../lib/activity/ActivityBeacon';
 import BaseLayout from '../../layouts/BaseLayout.astro';
@@ -13,14 +14,19 @@ import { Problem, problemOf, type ProblemInfo } from '../../components/common/Pr
 import type { Page } from '../../lib/api/types';
 import type { ConceptSummary, MergeProposal } from '../../lib/api/types/graph';
 import { serverApi } from '../../lib/api/server';
+import { collectionParam } from '../../components/collections/path';
+import { getCollection } from '../../lib/collections/api';
 
 export const prerender = false;
 
 const api = serverApi();
-const [concepts, proposals] = await Promise.allSettled([
-  api.get<Page<ConceptSummary>>('concepts', { query: { limit: 40 } }),
+const collection = collectionParam(Astro.url.searchParams);
+const [concepts, proposals, scoped] = await Promise.allSettled([
+  api.get<Page<ConceptSummary>>('concepts', { query: { limit: 40, collection } }),
   api.get<MergeProposal[]>('concepts/merge-proposals', { query: { limit: 50 } }),
+  collection ? getCollection(api, collection) : Promise.resolve(null),
 ]);
+const scope = scoped.status === 'fulfilled' ? scoped.value : null;
 const initial = concepts.status === 'fulfilled' ? concepts.value : null;
 const conceptsProblem: ProblemInfo | null = concepts.status === 'rejected' ? problemOf(concepts.reason) : null;
 const queue = proposals.status === 'fulfilled' ? proposals.value : null;
@@ -31,7 +37,13 @@ const queueProblem: ProblemInfo | null = proposals.status === 'rejected' ? probl
   <ActivityBeacon client:load surface="explore" detail="concepts" />
   <div class="page">
     <header class="head">
-      <h1>Concepts</h1>
+      <h1>{scope ? `Concepts in ${scope.name}` : 'Concepts'}</h1>
+      {scope && (
+        <p class="scope">
+          Only the ideas named in the {scope.document_ids.length} documents of <a href={`/collections/${scope.slug}`}>{scope.name}</a>.{' '}
+          <a href="/graph">See every concept</a>
+        </p>
+      )}
       <p class="lede">
         The ideas, frameworks, people and terms your books name, each grounded in the passages that use it. Open one to
         read its gloss and evidence, or open it in the graph to see what it connects to, one neighbourhood at a time.
@@ -41,7 +53,7 @@ const queueProblem: ProblemInfo | null = proposals.status === 'rejected' ? probl
 
     <div class="columns">
       <section aria-label="All concepts">
-        {conceptsProblem ? <Problem title="Concepts could not be loaded." problem={conceptsProblem} /> : <ConceptBrowser client:load initial={initial} />}
+        {conceptsProblem ? <Problem title="Concepts could not be loaded." problem={conceptsProblem} /> : <ConceptBrowser client:load initial={initial} collection={collection} />}
       </section>
 
       <section class="merges workshop-only" aria-labelledby="merge-title">
@@ -69,6 +81,14 @@ const queueProblem: ProblemInfo | null = proposals.status === 'rejected' ? probl
 
   h1 {
     font-size: var(--text-2xl);
+  }
+
+  .scope {
+    padding: var(--space-2) var(--space-3);
+    border-inline-start: 3px solid var(--accent);
+    background: var(--accent-wash);
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
   }
 
   .lede {

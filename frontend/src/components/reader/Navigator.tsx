@@ -26,9 +26,12 @@ export interface NavigatorProps {
   /** 0–1 through the current chapter. */
   progress: number;
   onSection: (anchor: string) => void;
+  /** A chapter's link; defaults to the plain reader URL (the reader passes one that keeps `?collection=`). */
+  readHref?: (anchor: string) => string;
 }
 
-export function Navigator({ slug, units, current, sections, activeSection, progress, onSection }: NavigatorProps) {
+export function Navigator({ slug, units, current, sections, activeSection, progress, onSection, readHref }: NavigatorProps) {
+  const href = readHref ?? ((anchor: string) => `/documents/${slug}/read/${anchor}`);
   return (
     <nav className={styles.nav} aria-label="Chapters">
       <div
@@ -46,7 +49,7 @@ export function Navigator({ slug, units, current, sections, activeSection, progr
           const here = unit.anchor === current;
           return (
             <li key={unit.anchor} data-current={here ? '' : undefined}>
-              <a href={`/documents/${slug}/read/${unit.anchor}`} aria-current={here ? 'page' : undefined}>
+              <a href={href(unit.anchor)} aria-current={here ? 'page' : undefined}>
                 {unit.heading}
               </a>
               {here && sections.length > 0 ? (

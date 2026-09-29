@@ -94,7 +94,7 @@ export function GraphExplorer({ focus: initialFocus, view: initialView, initial,
     <div className={styles.explorer} aria-busy={loading}>
       <header className={styles.toolbar}>
         <div className={styles.focusHead}>
-          <a className={styles.back} href="/graph">
+          <a className={styles.back} href={view.collection ? `/graph?collection=${view.collection}` : '/graph'}>
             Concepts
           </a>
           <h1 className={`${styles.focusTitle} book-title`}>{title}</h1>
@@ -116,6 +116,12 @@ export function GraphExplorer({ focus: initialFocus, view: initialView, initial,
             <input type="checkbox" checked={view.proposed} onChange={(e) => changeView({ proposed: e.target.checked })} />
             Include proposed links
           </label>
+          {view.collection ? (
+            <label className={styles.toggle}>
+              <input type="checkbox" checked onChange={() => changeView({ collection: null })} />
+              Only the collection <a href={`/collections/${view.collection}`}>{view.collection}</a>
+            </label>
+          ) : null}
         </div>
         <p className={styles.count} aria-live="polite">
           {loading ? 'Loading… ' : ''}
