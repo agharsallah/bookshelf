@@ -85,13 +85,44 @@ export function hasFilters(filters: LibraryFilters): boolean {
   return FILTER_KEYS.some((key) => filters[key] !== null);
 }
 
-/** Every tag on the shelf with its count, most used first, then alphabetical. */
-export function tagCloud(documents: readonly { tags: readonly string[] }[]): { tag: string; count: number }[] {
+export interface TagCount {
+  tag: string;
+  count: number;
+}
+
+/**
+ * Tags that name one work rather than a topic (`arxiv:2210.03629`, `doi:10.1145/…`): as a
+ * filter each finds a single book, so the cloud leaves them out and the search box finds them.
+ */
+const IDENTIFIER_TAG = /^(arxiv|doi|isbn|openalex|pmid|pmcid|url):/i;
+
+export const isIdentifierTag = (tag: string): boolean => IDENTIFIER_TAG.test(tag);
+
+/** Every topic tag on the shelf with its count, most used first, then alphabetical. */
+export function tagCloud(documents: readonly { tags: readonly string[] }[]): TagCount[] {
   const counts = new Map<string, number>();
-  for (const doc of documents) for (const tag of doc.tags) counts.set(tag, (counts.get(tag) ?? 0) + 1);
+  for (const doc of documents) {
+    for (const tag of doc.tags) if (!isIdentifierTag(tag)) counts.set(tag, (counts.get(tag) ?? 0) + 1);
+  }
   return [...counts]
     .map(([tag, count]) => ({ tag, count }))
     .sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag));
+}
+
+/** How many tags show before the rest fold away. */
+export const TOP_TAGS = 8;
+
+/**
+ * The cloud split into the most used tags, shown at once, and the rest, folded behind a
+ * disclosure. The tag in use always shows, so the filter that is set stays in sight.
+ */
+export function splitTags(cloud: readonly TagCount[], active: string | null, limit = TOP_TAGS): { top: TagCount[]; more: TagCount[] } {
+  if (cloud.length <= limit) return { top: [...cloud], more: [] };
+  const top = cloud.slice(0, limit);
+  const more = cloud.slice(limit);
+  const pinned = more.findIndex((t) => t.tag === active);
+  if (pinned >= 0) top.push(...more.splice(pinned, 1));
+  return { top, more };
 }
 
 /** What a filter looks at in a book (its facet buckets included), or a shelf item's data attributes. */
@@ -112,7 +143,7 @@ const folded = (text: string) => text.toLocaleLowerCase();
 
 /**
  * Whether a book passes the filters: the facets, tag and state exactly, and
- * case-insensitive substrings of the title or authors (`q`) and of the authors (`author`).
+ * case-insensitive substrings of the title, authors or tags (`q`) and of the authors (`author`).
  */
 export function matchesFilters(book: Filterable, filters: LibraryFilters): boolean {
   if (filters.tag !== null && !book.tags.includes(filters.tag)) return false;
@@ -126,7 +157,8 @@ export function matchesFilters(book: Filterable, filters: LibraryFilters): boole
   if (filters.author !== null && !authors.includes(folded(filters.author))) return false;
   if (filters.q !== null) {
     const words = folded(filters.q);
-    if (!folded(book.title).includes(words) && !authors.includes(words)) return false;
+    const found = folded(book.title).includes(words) || authors.includes(words) || book.tags.some((t) => folded(t).includes(words));
+    if (!found) return false;
   }
   return true;
 }

@@ -9,6 +9,7 @@ import {
   noMatchMessage,
   parseFilters,
   resultSummary,
+  splitTags,
   tagCloud,
   type LibraryFilters,
 } from './filters';
@@ -76,6 +77,31 @@ describe('tagCloud', () => {
       { tag: 'c', count: 1 },
     ]);
   });
+
+  it('leaves out tags that name a single work', () => {
+    const docs = [{ tags: ['agents', 'arxiv:2210.03629', 'DOI:10.1145/3442188'] }, { tags: ['agents', 'arxiv:2305.14314'] }];
+    expect(tagCloud(docs)).toEqual([{ tag: 'agents', count: 2 }]);
+  });
+});
+
+describe('splitTags', () => {
+  const cloud = ['a', 'b', 'c', 'd', 'e'].map((tag, i) => ({ tag, count: 5 - i }));
+
+  it('shows every tag when they fit', () => {
+    expect(splitTags(cloud, null, 5)).toEqual({ top: cloud, more: [] });
+  });
+
+  it('shows the most used and folds the rest', () => {
+    const { top, more } = splitTags(cloud, null, 2);
+    expect(top.map((t) => t.tag)).toEqual(['a', 'b']);
+    expect(more.map((t) => t.tag)).toEqual(['c', 'd', 'e']);
+  });
+
+  it('keeps the tag in use in sight', () => {
+    const { top, more } = splitTags(cloud, 'd', 2);
+    expect(top.map((t) => t.tag)).toEqual(['a', 'b', 'd']);
+    expect(more.map((t) => t.tag)).toEqual(['c', 'e']);
+  });
 });
 
 const none = NO_FILTERS;
@@ -97,10 +123,11 @@ describe('matchesFilters', () => {
     expect(matchesFilters(book, none)).toBe(true);
   });
 
-  it('matches words in the title and the authors, ignoring case', () => {
+  it('matches words in the title, the authors and the tags, ignoring case', () => {
     expect(matchesFilters(book, { ...none, q: 'in sys' })).toBe(true);
     expect(matchesFilters(book, { ...none, q: 'MEADOWS' })).toBe(true);
     expect(matchesFilters(book, { ...none, q: 'flow' })).toBe(false);
+    expect(matchesFilters({ ...book, tags: ['arxiv:2210.03629'] }, { ...none, q: '2210.03629' })).toBe(true);
     expect(matchesFilters(book, { ...none, author: 'meadows' })).toBe(true);
     expect(matchesFilters(book, { ...none, author: 'Reinertsen' })).toBe(false);
   });

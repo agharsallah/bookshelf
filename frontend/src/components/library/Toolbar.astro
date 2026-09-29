@@ -11,7 +11,7 @@ import { DOCUMENT_STATUSES } from '../../lib/api/types/documents';
 import { pipelineProgress } from '../../lib/documents/pipeline';
 import { DIMENSION_LABELS, DIMENSIONS } from './facets';
 import type { CollectionPublic } from '../../lib/api/types/collections';
-import { activeFilters, libraryHref, NO_FILTERS, resultSummary, type CollectionNames, type LibraryFilters } from './filters';
+import { activeFilters, libraryHref, NO_FILTERS, resultSummary, splitTags, type CollectionNames, type LibraryFilters, type TagCount } from './filters';
 import type { LibraryItem } from './items';
 import { SORTS, type Sort } from './sort';
 import { VIEWS } from './view';
@@ -19,7 +19,7 @@ import { VIEWS } from './view';
 interface Props {
   filters: LibraryFilters;
   sort: Sort;
-  tags: { tag: string; count: number }[];
+  tags: TagCount[];
   collections: CollectionPublic[];
   items: Pick<LibraryItem, 'collections'>[];
   names: CollectionNames;
@@ -32,12 +32,17 @@ const { filters, sort, tags, collections, items, names, shown, total, filtered }
 const onShelf = (slug: string) => items.filter((i) => i.collections.includes(slug)).length;
 const VIEW_LABELS = { shelf: 'Shelf', list: 'List' } as const;
 const HIDDEN = ['genre', 'reading', 'study', 'theme', 'tag', 'author', 'collection'] as const;
+const { top, more } = splitTags(tags, filters.tag);
+const tagGroups = [
+  { key: 'top', list: top },
+  { key: 'more', list: more },
+] as const;
 ---
 
 <search class="toolbar">
   <form method="get" action="/library" class="controls" data-filters>
     <label class="find">
-      <span class="visually-hidden">Find a title or author</span>
+      <span class="visually-hidden">Find a title, author or tag</span>
       <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
         <circle cx="7" cy="7" r="4.6" fill="none" stroke="currentColor" stroke-width="1.5"></circle>
         <path d="M10.5 10.5 14 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
@@ -46,7 +51,7 @@ const HIDDEN = ['genre', 'reading', 'study', 'theme', 'tag', 'author', 'collecti
         type="search"
         name="q"
         value={filters.q ?? ''}
-        placeholder="Find a title or author"
+        placeholder="Find a title, author or tag"
         maxlength="200"
         autocomplete="off"
       />
@@ -143,19 +148,35 @@ const HIDDEN = ['genre', 'reading', 'study', 'theme', 'tag', 'author', 'collecti
     {
       tags.length > 0 && (
         <nav class="tags" aria-label="Tags">
-          <ul>
-            {tags.map(({ tag, count }) => {
-              const active = filters.tag === tag;
-              return (
-                <li>
-                  <a href={libraryHref({ ...filters, tag: active ? null : tag }, sort)} aria-current={active ? 'true' : undefined} data-tag={tag}>
-                    {tag}
-                    <span class="count">{count}</span>
-                  </a>
-                </li>
-              );
-            })}
-          </ul>
+          {tagGroups.map(({ key, list }) => {
+            const chips = (
+              <ul>
+                {list.map(({ tag, count }) => {
+                  const active = filters.tag === tag;
+                  return (
+                    <li>
+                      <a href={libraryHref({ ...filters, tag: active ? null : tag }, sort)} aria-current={active ? 'true' : undefined} data-tag={tag}>
+                        {tag}
+                        <span class="count">{count}</span>
+                      </a>
+                    </li>
+                  );
+                })}
+              </ul>
+            );
+            if (key === 'top') return chips;
+            return (
+              list.length > 0 && (
+                <details class="more">
+                  <summary>
+                    <span class="closed">+ {list.length} more</span>
+                    <span class="opened">Fewer tags</span>
+                  </summary>
+                  {chips}
+                </details>
+              )
+            );
+          })}
         </nav>
       )
     }
@@ -331,6 +352,7 @@ const HIDDEN = ['genre', 'reading', 'study', 'theme', 'tag', 'author', 'collecti
     gap: var(--space-2) var(--space-4);
   }
 
+  .tags,
   .tags ul,
   .active {
     display: flex;
@@ -341,7 +363,8 @@ const HIDDEN = ['genre', 'reading', 'study', 'theme', 'tag', 'author', 'collecti
     list-style: none;
   }
 
-  .tags a {
+  .tags a,
+  .more summary {
     display: inline-flex;
     align-items: baseline;
     gap: var(--space-2);
@@ -356,7 +379,8 @@ const HIDDEN = ['genre', 'reading', 'study', 'theme', 'tag', 'author', 'collecti
       border-color var(--dur-1) var(--ease-out);
   }
 
-  .tags a:hover {
+  .tags a:hover,
+  .more summary:hover {
     border-color: var(--rule-strong);
     color: var(--ink);
   }
@@ -365,6 +389,40 @@ const HIDDEN = ['genre', 'reading', 'study', 'theme', 'tag', 'author', 'collecti
     border-color: var(--accent);
     background: var(--accent-wash);
     color: var(--ink);
+  }
+
+  /* The less used tags fold away; opened, they take a row of their own and scroll past a few lines. */
+  .more summary {
+    border-style: dashed;
+    color: var(--ink-3);
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .more summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .more[open] {
+    display: grid;
+    flex-basis: 100%;
+    justify-items: start;
+    gap: var(--space-2);
+  }
+
+  .more ul {
+    max-block-size: 11rem;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .more .opened,
+  .more[open] .closed {
+    display: none;
+  }
+
+  .more[open] .opened {
+    display: inline;
   }
 
   /* Collections are the reader's own groupings: a solid dot sets them apart from tags. */

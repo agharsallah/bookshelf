@@ -10,7 +10,7 @@ import { GENRE_LABELS } from '../../lib/api/types/documents';
 import { pipelineProgress } from '../../lib/documents/pipeline';
 import { dyeStyle } from './book-style';
 import { NO_THEME } from './facets';
-import { libraryHref, NO_FILTERS } from './filters';
+import { isIdentifierTag, libraryHref, NO_FILTERS } from './filters';
 import type { LibraryItem } from './items';
 import { readingLabel } from './progress';
 import { DEFAULT_SORT } from './sort';
@@ -23,6 +23,7 @@ const { doc, reading, materials, buckets, colours, current } = Astro.props;
 const href = `/documents/${doc.slug}`;
 const pages = pagesOf(doc);
 const titleId = `lectern-${doc.id}`;
+const tags = doc.tags.filter((tag) => !isIdentifierTag(tag));
 const facts = [
   GENRE_LABELS[doc.genre],
   doc.year,
@@ -143,9 +144,9 @@ const subtitle = doc.title.slice(shortTitle(doc.title).length).replace(/^\s*[:â€
     </div>
 
     {
-      doc.tags.length > 0 && (
+      tags.length > 0 && (
         <ul class={styles.tags} aria-label="Tags">
-          {doc.tags.map((tag) => (
+          {tags.map((tag) => (
             <li>
               <a href={libraryHref({ ...NO_FILTERS, tag }, DEFAULT_SORT)} data-tag={tag}>
                 {tag}
