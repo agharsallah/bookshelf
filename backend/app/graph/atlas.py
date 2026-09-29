@@ -29,6 +29,7 @@ response says when it was cut. Derived on read, never stored: the atlas is only 
 import math
 import uuid
 from collections import defaultdict
+from collections.abc import Collection
 from dataclasses import dataclass, field
 from itertools import combinations
 from typing import Literal
@@ -110,10 +111,18 @@ def share_weight(chapters_naming: int) -> float:
 
 
 class _Builder:
-    def __init__(self, session: Session, include_proposed: bool) -> None:
+    def __init__(
+        self,
+        session: Session,
+        include_proposed: bool,
+        document_ids: Collection[uuid.UUID] | None = None,
+    ) -> None:
         self.session = session
         self.statuses = [EdgeStatus.ACCEPTED] + ([EdgeStatus.PROPOSED] if include_proposed else [])
-        self.docs = {d.id: d for d in session.exec(select(Document)).all()}
+        documents = select(Document)
+        if document_ids is not None:
+            documents = documents.where(col(Document.id).in_(document_ids))
+        self.docs = {d.id: d for d in session.exec(documents).all()}
         self.concepts = {
             str(c.id): c
             for c in session.exec(select(Concept).where(col(Concept.merged_into).is_(None))).all()
@@ -237,6 +246,15 @@ class _Builder:
                     concept_end.books.add(other.document_id)
                     concept_end.passages += len(edge.evidence)
 
+    def keep_scoped(self) -> None:
+        """Scoped to some documents: drop concepts none of their chapters touch, which
+        concept-to-concept edges alone would otherwise pull in."""
+        for ref in [r for r, n in self.nodes.items() if n.kind == "concept" and not n.books]:
+            del self.nodes[ref]
+        self.folded = {
+            k: e for k, e in self.folded.items() if e.src in self.nodes and e.dst in self.nodes
+        }
+
     def budget(self) -> bool:
         """Keep the best-connected concepts and chapters. True when something was cut."""
         degree: dict[str, float] = defaultdict(float)
@@ -315,9 +333,18 @@ class _Builder:
         return out
 
 
-def atlas(session: Session, *, include_proposed: bool = False) -> Atlas:
-    builder = _Builder(session, include_proposed)
+def atlas(
+    session: Session,
+    *,
+    include_proposed: bool = False,
+    document_ids: Collection[uuid.UUID] | None = None,
+) -> Atlas:
+    """The shelf at chapter grain; with `document_ids`, only those documents, their
+    chapters, and the concepts those chapters touch."""
+    builder = _Builder(session, include_proposed, document_ids)
     builder.fold()
+    if document_ids is not None:
+        builder.keep_scoped()
     truncated = builder.budget()
     for document_id in builder.docs:  # every book is on the map, linked or not yet
         builder._document(document_id)

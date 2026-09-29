@@ -19,7 +19,7 @@ column pairs, so it touches only the neighborhood, not the table.
 import math
 import uuid
 from collections import defaultdict
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Collection, Sequence
 from dataclasses import dataclass, field
 
 from sqlalchemy import text
@@ -27,7 +27,7 @@ from sqlmodel import Session, col, select
 
 from app.graph.evidence import Label, labels
 from app.graph.refs import Ref
-from app.models import Concept, Edge
+from app.models import Claim, Concept, Edge
 from app.models.enums import EdgeStatus, EntityKind, Relation
 
 MAX_DEPTH = 2
@@ -135,6 +135,30 @@ def _seeds(session: Session, focus: Ref) -> list[Ref]:
     return [focus, *(Ref(EntityKind.NODE, row[0]) for row in rows)]
 
 
+def _in_scope(
+    session: Session, refs: Collection[Ref], focus: Ref, document_ids: Collection[uuid.UUID]
+) -> set[Ref]:
+    """The refs that belong to `document_ids`: their passages, the documents themselves and
+    their claims. Concepts and artifacts belong to no one document, so they stay."""
+    docs = {str(d) for d in document_ids}
+    claim_ids = [uuid.UUID(r.id) for r in refs if r.kind is EntityKind.CLAIM]
+    claim_docs = {
+        str(c.id): str(c.document_id)
+        for c in session.exec(select(Claim).where(col(Claim.id).in_(claim_ids)))
+    }
+
+    def inside(ref: Ref) -> bool:
+        if ref == focus:
+            return True
+        if ref.kind in (EntityKind.NODE, EntityKind.DOCUMENT):
+            return ref.id.partition("#")[0] in docs
+        if ref.kind is EntityKind.CLAIM:
+            return claim_docs.get(ref.id) in docs
+        return True
+
+    return {r for r in refs if inside(r)}
+
+
 def neighborhood(
     session: Session,
     focus: Ref,
@@ -142,7 +166,10 @@ def neighborhood(
     depth: int = 1,
     include_proposed: bool = False,
     cap: int = NODE_CAP,
+    document_ids: Collection[uuid.UUID] | None = None,
 ) -> Neighborhood:
+    """With `document_ids`, passages, documents and claims outside them are left out, and so
+    is whatever only they connected to the focus."""
     depth = min(max(depth, 1), MAX_DEPTH)
     statuses = [EdgeStatus.ACCEPTED.value] + (
         [EdgeStatus.PROPOSED.value] if include_proposed else []
@@ -157,10 +184,16 @@ def neighborhood(
     reached = {Ref(EntityKind(k), i): d for k, i, d in rows}
     merged = _merged(session, [r for r in reached if r.kind is EntityKind.CONCEPT])
     reached = {r: d for r, d in reached.items() if r not in merged}
+    if document_ids is not None:
+        kept_refs = _in_scope(session, reached, focus, document_ids)
+        reached = {r: d for r, d in reached.items() if r in kept_refs}
 
     ids = session.execute(_INDUCED, {**_arrays(list(reached)), "statuses": statuses}).all()
     rows_e = session.exec(select(Edge).where(col(Edge.id).in_([r[0] for r in ids]))).all()
     edges = _collapse(rows_e, fold)
+    if document_ids is not None:  # reached only through a passage that was left out
+        linked = {focus} | {e.src for e in edges} | {e.dst for e in edges}
+        reached = {r: d for r, d in reached.items() if fold(r) in linked}
 
     nodes: dict[Ref, GraphNode] = {}
     for ref, d in reached.items():

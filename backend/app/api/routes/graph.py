@@ -30,8 +30,11 @@ from app.schemas.graph import (
     EdgeUpdate,
     Neighborhood,
 )
+from app.services import collections
 
 router = APIRouter(tags=["graph"])
+
+COLLECTION = "A collection id or slug: keep only what belongs to its documents."
 
 
 def _edge(session: SessionDep, edge_id: uuid.UUID) -> Edge:
@@ -54,12 +57,19 @@ def get_neighborhood(
     ),
     depth: int = Query(default=1, ge=1, le=MAX_DEPTH),
     include_proposed: bool = Query(default=False, description="Also walk proposed edges."),
+    collection: str | None = Query(default=None, max_length=200, description=COLLECTION),
 ) -> Neighborhood:
     try:
         focus = resolve_ref(session, node)
     except RefError as exc:
         raise NotFoundError(str(exc)) from exc
-    hood = neighborhood(session, focus, depth=depth, include_proposed=include_proposed)
+    hood = neighborhood(
+        session,
+        focus,
+        depth=depth,
+        include_proposed=include_proposed,
+        document_ids=collections.scope(session, collection),
+    )
     return views.neighborhood_out(hood)
 
 
@@ -67,11 +77,16 @@ def get_neighborhood(
 def get_atlas(
     session: SessionDep,
     include_proposed: bool = Query(default=False, description="Also fold proposed edges."),
+    collection: str | None = Query(default=None, max_length=200, description=COLLECTION),
 ) -> Atlas:
     """Every book, every chapter taking part in the graph, and every live concept, with
     `contains` (book → chapter), the stored relations folded up to chapters, and derived
-    `shares` lines between chapters that lean on the same concepts."""
-    return views.atlas_out(atlas.atlas(session, include_proposed=include_proposed))
+    `shares` lines between chapters that lean on the same concepts. With `collection`: only
+    its documents, their chapters and the concepts those chapters touch."""
+    scope = collections.scope(session, collection)
+    return views.atlas_out(
+        atlas.atlas(session, include_proposed=include_proposed, document_ids=scope)
+    )
 
 
 @router.post(

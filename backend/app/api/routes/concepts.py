@@ -25,6 +25,7 @@ from app.schemas.graph import (
     MergeProposal,
     MergeRequest,
 )
+from app.services import collections
 
 router = APIRouter(prefix="/concepts", tags=["concepts"])
 
@@ -44,12 +45,18 @@ def list_concepts(
     sort: views.ConceptSort = Query(
         default="alpha", description="`alpha` by name, `connected` most edges, `recent` newest."
     ),
+    collection: str | None = Query(
+        default=None, max_length=200, description="Only concepts linked to its members."
+    ),
     limit: LimitDep = 20,
     offset: OffsetDep = 0,
 ) -> Page[ConceptSummary]:
     """Live (unmerged) concepts with their `edge_count`. With `q`: exact name, name prefix,
-    exact alias, alias prefix, then substring matches, in that order (`sort` breaks ties)."""
-    items, total = views.search_concepts(session, q, kind, limit, offset, sort)
+    exact alias, alias prefix, then substring matches, in that order (`sort` breaks ties).
+    With `collection` (id or slug): only concepts linked to a passage, claim or evidence
+    anchor in one of its documents."""
+    scope = collections.scope(session, collection)
+    items, total = views.search_concepts(session, q, kind, limit, offset, sort, scope)
     return Page(items=items, total=total, limit=limit, offset=offset)
 
 

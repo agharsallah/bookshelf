@@ -6,6 +6,7 @@ batches (`app.graph.evidence`), never per edge.
 
 import uuid
 from collections import defaultdict
+from collections.abc import Sequence
 from typing import Any, Literal
 
 from sqlalchemy import Label, func, literal_column, text
@@ -99,6 +100,15 @@ EDGE_COUNT: Label[int] = literal_column(
           and not (e.src_kind = 'concept' and e.dst_kind = 'concept' and {_SRC} and {_DST}))"""  # noqa: S608  (constants only)
 ).label("edge_count")
 
+# The concept (or one merged into it) has an accepted edge whose other end sits in one of
+# `:documents` (a passage `<doc>#<anchor>` or the document itself), or whose evidence does.
+_IN_DOCUMENTS = f"""exists (select 1 from edges e where e.status = 'accepted'
+      and ((e.src_kind = 'concept' and {_SRC}) or (e.dst_kind = 'concept' and {_DST}))
+      and (split_part(e.src_id, '#', 1) = any(cast(:documents as text[]))
+           or split_part(e.dst_id, '#', 1) = any(cast(:documents as text[]))
+           or exists (select 1 from unnest(e.evidence) as ev
+                      where split_part(ev, '#', 1) = any(cast(:documents as text[])))))"""  # noqa: S608  (constants only)
+
 ConceptSort = Literal["alpha", "connected", "recent"]
 
 
@@ -109,13 +119,18 @@ def search_concepts(
     limit: int,
     offset: int,
     sort: ConceptSort = "alpha",
+    document_ids: Sequence[uuid.UUID] | None = None,
 ) -> tuple[list[ConceptSummary], int]:
     """Live concepts with their `edge_count`. With `q`, match rank comes first and `sort`
     breaks ties; `alpha` (default) is by name, `connected` most edges first, `recent`
-    newest first."""
+    newest first. With `document_ids`, only concepts linked to those documents."""
     query = select(Concept, EDGE_COUNT).where(col(Concept.merged_into).is_(None))
     if kind is not None:
         query = query.where(Concept.kind == kind)
+    if document_ids is not None:
+        query = query.where(
+            text(_IN_DOCUMENTS).bindparams(documents=[str(d) for d in document_ids])
+        )
     alpha = func.lower(Concept.canonical)
     orders: dict[str, list[Any]] = {
         "alpha": [alpha],
