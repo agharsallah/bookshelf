@@ -2,12 +2,12 @@
  * The pipeline, live (§7): jobs from `GET /jobs` seeded server-side, then kept current by
  * `/jobs/stream` through the shared `useJobStream` hook. Tallies by state (which filter),
  * per-document stage bars and jobs by kind, running work with elapsed time (queued jobs
- * can be cancelled), failures grouped by cause with "Retry all", and documents the run
- * ceiling paused, with Resume.
+ * can be cancelled), failures grouped by cause with "Retry all", documents the run
+ * ceiling paused, with Resume, and queue controls: pause/resume all, and a running cap.
  */
 import { useCallback, useMemo, useState } from 'react';
 import { browserApi, type ApiClient } from '../../lib/api/client';
-import { JOB_KINDS, JOB_STATES, type JobKind, type JobPublic, type JobState } from '../../lib/api/types/jobs';
+import { JOB_KINDS, JOB_STATES, type JobKind, type JobPublic, type JobState, type QueueStatus } from '../../lib/api/types/jobs';
 import { useJobStream } from '../../lib/hooks/useJobStream';
 import { sortedJobs } from '../../lib/jobs/stream';
 import { PausedNotice } from '../common/PausedNotice';
@@ -17,6 +17,7 @@ import { FailureGroups } from './FailureGroups';
 import { RecentRow, RunningRow } from './JobRows';
 import { KindBars } from './KindBars';
 import { QueueBanner } from './QueueBanner';
+import { QueueControls } from './QueueControls';
 import { countStates, filterJobs, KIND_LABELS, stageProgress, type JobFilters } from './model';
 import { Bumped, Swatch } from './StateBar';
 import { StageTrack } from './StageTrack';
@@ -26,6 +27,8 @@ import styles from './Pipeline.module.css';
 export interface PipelineViewProps {
   jobs: JobPublic[];
   documents: DocumentLabel[];
+  /** `GET /jobs/queue` at page load: shown until the stream's first `queue` event. */
+  queue?: QueueStatus | null;
   initialFilters?: JobFilters;
   api?: ApiClient;
   /** Off in tests: no EventSource. */
@@ -35,8 +38,12 @@ export interface PipelineViewProps {
 const STREAM_WORDS = { connecting: 'Connecting…', live: 'Live', reconnecting: 'Reconnecting…', closed: 'Offline' } as const;
 const RECENT = 25;
 
-export function PipelineView({ jobs: seed, documents: initialDocuments, initialFilters = {}, api = browserApi, live = true }: PipelineViewProps) {
-  const { jobs: byId, status, queue, track } = useJobStream({ seed, enabled: live });
+export function PipelineView({ jobs: seed, documents: initialDocuments, queue: initialQueue = null, initialFilters = {}, api = browserApi, live = true }: PipelineViewProps) {
+  const { jobs: byId, status, queue: streamed, track } = useJobStream({ seed, enabled: live });
+  // A control change shows at once; the stream's next `queue` event replaces it.
+  const [changed, setChanged] = useState<{ over: QueueStatus | null; queue: QueueStatus } | null>(null);
+  const latest = streamed ?? initialQueue;
+  const queue = changed && changed.over === latest ? changed.queue : latest;
   const [documents, setDocuments] = useState(initialDocuments);
   const [filters, setFilters] = useState<JobFilters>(initialFilters);
   const all = useMemo(() => sortedJobs(byId), [byId]);
@@ -82,6 +89,8 @@ export function PipelineView({ jobs: seed, documents: initialDocuments, initialF
           ))}
         </ul>
       </div>
+
+      {queue ? <QueueControls queue={queue} api={api} onChanged={(next) => setChanged({ over: latest, queue: next })} /> : null}
 
       <QueueBanner queue={queue} />
 

@@ -9,7 +9,7 @@ import { Problem, problemOf, type ProblemInfo } from '../components/common/Probl
 import { PipelineView } from '../components/pipeline/PipelineView';
 import { loadDocuments, type DocumentLabel } from '../components/review/api';
 import type { Page } from '../lib/api/types';
-import type { JobPublic } from '../lib/api/types/jobs';
+import type { JobPublic, QueueStatus } from '../lib/api/types/jobs';
 import { serverApi } from '../lib/api/server';
 
 export const prerender = false;
@@ -27,8 +27,9 @@ const pages = await Promise.allSettled(
 const firstPage = pages[0];
 if (firstPage?.status === 'rejected') problem = problemOf(firstPage.reason);
 const jobs: JobPublic[] = pages.flatMap((p) => (p.status === 'fulfilled' ? p.value.items : []));
-const docs = await Promise.allSettled([loadDocuments(api)]);
-if (docs[0]?.status === 'fulfilled') documents = docs[0].value;
+const [docs, queueStatus] = await Promise.allSettled([loadDocuments(api), api.get<QueueStatus>('jobs/queue')]);
+if (docs.status === 'fulfilled') documents = docs.value;
+const queue = queueStatus.status === 'fulfilled' ? queueStatus.value : null;
 ---
 
 <BaseLayout title="Pipeline" description="What the pipeline is doing, live.">
@@ -45,7 +46,7 @@ if (docs[0]?.status === 'fulfilled') documents = docs[0].value;
       problem ? (
         <Problem title="The job queue could not be loaded." problem={problem} />
       ) : (
-        <PipelineView client:load jobs={jobs} documents={documents} initialFilters={{ document: documentFilter }} />
+        <PipelineView client:load jobs={jobs} documents={documents} queue={queue} initialFilters={{ document: documentFilter }} />
       )
     }
   </div>

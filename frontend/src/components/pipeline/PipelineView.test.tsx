@@ -1,7 +1,7 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
-import type { JobPublic } from '../../lib/api/types/jobs';
+import type { JobPublic, QueueStatus } from '../../lib/api/types/jobs';
 import { fakeApi } from '../review/testing/fakeApi';
 import { PipelineView } from './PipelineView';
 
@@ -16,6 +16,7 @@ function job(overrides: Partial<JobPublic>): JobPublic {
 const failed = job({ id: 'f1', kind: 'derive', anchor: 'ch03', skill: 'make-quiz', state: 'failed', error: 'schema: <root>: bad' });
 const queued = job({ id: 'q1', kind: 'summarize', anchor: 'ch04', state: 'queued', finished_at: null });
 const systems = { id: 'd1', slug: 'systems', title: 'Systems', status: 'distilling' };
+const idle: QueueStatus = { workers: [], queued: 1, running: 1, unclaimed_kinds: [], paused: false, max_running: null, slots: 2 };
 const paused = { reason: '400 skill runs reached the ceiling of 400', at: '2026-09-23T10:00:00Z', runs: 400, limit: 400 };
 
 describe('<PipelineView>', () => {
@@ -87,5 +88,52 @@ describe('<PipelineView>', () => {
     render(<PipelineView jobs={[job({}), failed]} documents={[]} api={fakeApi().api} live={false} />);
     await userEvent.click(screen.getByRole('button', { name: /1 failed/ }));
     expect(screen.getByText('Nothing finished yet.')).toBeTruthy();
+  });
+
+  it('pauses every worker, saying what finishes and what waits, then resumes', async () => {
+    const { api, calls } = fakeApi({ 'PATCH jobs/queue': (call) => ({ ...idle, ...(call.body as object) }) });
+    render(<PipelineView jobs={[{ ...queued, queue_position: 1 }]} documents={[systems]} queue={idle} api={api} live={false} />);
+    const controls = screen.getByRole('region', { name: 'Queue controls' });
+    const running = screen.getByRole('region', { name: /Running and queued/ });
+    expect(within(running).getByText(/Queued, next in line/)).toBeTruthy();
+
+    await userEvent.click(within(controls).getByRole('button', { name: 'Pause all' }));
+
+    await waitFor(() => expect(within(controls).getByRole('status').textContent).toBe('Paused. 1 running job finishes, then nothing starts. 1 queued waits until you resume.'));
+    expect(within(running).getByText(/Paused, next in line/)).toBeTruthy();
+    await userEvent.click(within(controls).getByRole('button', { name: 'Resume all' }));
+
+    await waitFor(() => expect(within(controls).getByRole('button', { name: 'Pause all' })).toBeTruthy());
+    expect(calls.map((c) => c.body)).toEqual([{ paused: true }, { paused: false }]);
+  });
+
+  it('caps the jobs running at once, and says when the workers have too few slots for it', async () => {
+    const { api, calls } = fakeApi({ 'PATCH jobs/queue': (call) => ({ ...idle, ...(call.body as object) }) });
+    render(<PipelineView jobs={[]} documents={[]} queue={idle} api={api} live={false} />);
+    const controls = screen.getByRole('region', { name: 'Queue controls' });
+    expect(within(controls).getByRole('status').textContent).toBe('Up to 2 jobs run at once.');
+
+    await userEvent.selectOptions(within(controls).getByRole('combobox', { name: /Run at most/ }), '1');
+    await waitFor(() => expect(within(controls).getByRole('status').textContent).toBe('Up to 1 job runs at once.'));
+    await userEvent.selectOptions(within(controls).getByRole('combobox', { name: /Run at most/ }), '4');
+    await waitFor(() => expect(within(controls).getByRole('status').textContent).toMatch(/Up to 2 jobs run at once\. The workers have 2 slots: raise BOOKSHELF_WORKER_CONCURRENCY/));
+    await userEvent.selectOptions(within(controls).getByRole('combobox', { name: /Run at most/ }), 'every slot (2)');
+
+    expect(calls.map((c) => c.body)).toEqual([{ max_running: 1 }, { max_running: 4 }, { max_running: null }]);
+  });
+
+  it('keeps the queue as it was and says why when a change fails', async () => {
+    const { api } = fakeApi({
+      'PATCH jobs/queue': () => {
+        throw new Error('Missing API key.');
+      },
+    });
+    render(<PipelineView jobs={[]} documents={[]} queue={idle} api={api} live={false} />);
+    const controls = screen.getByRole('region', { name: 'Queue controls' });
+
+    await userEvent.click(within(controls).getByRole('button', { name: 'Pause all' }));
+
+    await waitFor(() => expect(within(controls).getByText('The queue was not changed.')).toBeTruthy());
+    expect(within(controls).getByRole('button', { name: 'Pause all' })).toBeTruthy();
   });
 });

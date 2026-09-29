@@ -1,10 +1,11 @@
 /**
  * Job and pipeline control (`POST /jobs`, `DELETE /jobs/{id}`, `POST /jobs/{id}/retry`,
- * `POST /documents/{ref}/resume`), through an injected client so islands stay testable.
+ * `POST /documents/{ref}/resume`, `PATCH /jobs/queue`), through an injected client so
+ * islands stay testable.
  */
 import type { ApiClient } from '../api/client';
 import type { DocumentResumed, ResumeRequest } from '../api/types/documents';
-import type { JobAccepted, JobCreate, JobPublic } from '../api/types/jobs';
+import type { JobAccepted, JobCreate, JobPublic, QueueControlsUpdate, QueueStatus } from '../api/types/jobs';
 
 type Api = Pick<ApiClient, 'post' | 'delete'>;
 
@@ -25,4 +26,9 @@ export function retryJob(api: Api, id: string): Promise<JobAccepted> {
 /** Lift a run-ceiling pause; the jobs the ceiling stopped are queued again. */
 export function resumeDocument(api: Api, ref: string, request: ResumeRequest = {}): Promise<DocumentResumed> {
   return api.post<DocumentResumed>(`documents/${encodeURIComponent(ref)}/resume`, request);
+}
+
+/** Pause or resume every worker, or cap how many jobs run at once; answers the new status. */
+export function setQueueControls(api: Pick<ApiClient, 'patch'>, update: QueueControlsUpdate): Promise<QueueStatus> {
+  return api.patch<QueueStatus>('jobs/queue', update);
 }
