@@ -78,17 +78,17 @@ const e2e = stats?.end_to_end;
             title="Chapters"
             lede="Tokens and compute time per chapter on one scale; tokens per 1k words and seconds per page make chapters of different lengths comparable."
           >
-            <ChapterTable chapters={stats.chapters} />
+            <ChapterTable client:visible chapters={stats.chapters} />
           </StatsSection>
           <StatsSection id="skills" title="Skills" lede="What each skill cost here, how often it failed or needed a second try, and how its outputs scored.">
-            <SkillTable skills={stats.skills} />
+            <SkillTable client:visible skills={stats.skills} />
           </StatsSection>
           <div class="pair">
             <StatsSection id="passes" title="Passes" lede="Bursts of activity more than 30 minutes apart: the initial run, then re-runs and study material.">
-              <PassTable passes={stats.passes} />
+              <PassTable client:visible passes={stats.passes} />
             </StatsSection>
             <StatsSection id="models" title="Models">
-              <ModelTable models={stats.models} />
+              <ModelTable client:visible models={stats.models} />
             </StatsSection>
           </div>
         </>

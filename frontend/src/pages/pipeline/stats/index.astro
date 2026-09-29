@@ -46,18 +46,18 @@ const since = stats?.telemetry_since ? new Date(stats.telemetry_since).toLocaleD
           <StatsSection id="insights" title="What to improve" lede="Rules over the skill and book figures, most severe first.">
             <InsightList insights={stats.insights} />
           </StatsSection>
-          <StatsSection id="books" title="Books">
-            <BookTable books={stats.books} />
+          <StatsSection id="books" title="Books" lede="Most recently active first. Click a column to sort it, again to flip it.">
+            <BookTable client:load books={stats.books} />
           </StatsSection>
           <StatsSection
             id="skills"
             title="Skills"
             lede="Across every book. Second tries, repairs and flags come from each output's gate report; tokens per word out is what one word of distillation costs."
           >
-            <SkillTable skills={stats.skills} />
+            <SkillTable client:visible skills={stats.skills} />
           </StatsSection>
           <StatsSection id="models" title="Models">
-            <ModelTable models={stats.models} />
+            <ModelTable client:visible models={stats.models} />
           </StatsSection>
           <p class="foot">
             Tokens are input + output as the CLI reports them.{' '}
