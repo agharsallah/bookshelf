@@ -49,6 +49,7 @@ class DocumentFilters:
     author: str | None = None
     q: str | None = None
     genre: Genre | None = None
+    ids: Sequence[uuid.UUID] | None = None  # a collection's members; empty matches nothing
 
 
 def _filtered[Q: SelectOfScalar[Any]](query: Q, filters: DocumentFilters) -> Q:
@@ -58,6 +59,8 @@ def _filtered[Q: SelectOfScalar[Any]](query: Q, filters: DocumentFilters) -> Q:
         query = query.where(Document.status == filters.status)
     if filters.genre:
         query = query.where(Document.genre == filters.genre)
+    if filters.ids is not None:
+        query = query.where(col(Document.id).in_(filters.ids))
     if filters.author:
         authors = func.array_to_string(col(Document.authors), " ")
         query = query.where(authors.ilike(contains_pattern(filters.author), escape="\\"))

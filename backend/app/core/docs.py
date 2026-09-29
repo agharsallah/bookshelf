@@ -44,6 +44,10 @@ TAGS_METADATA: list[dict[str, object]] = [
     {"name": "paper candidates", "description": "What to read next: ranked, explained."},
     {"name": "paper claims", "description": "Claim tracker: claims, cross-paper relations."},
     {"name": "paper sets", "description": "Groups of papers, synthesized and compared."},
+    {
+        "name": "collections",
+        "description": "Hand-gathered groups of books, papers and articles around one topic.",
+    },
     {"name": "reader stats", "description": "How you read, listen, annotate and remember."},
     {"name": "recalls", "description": "Chapters recalled from memory, predictions; graded."},
     {"name": "reviews", "description": "Spaced retrieval reviews (FSRS) and flashcard marks."},

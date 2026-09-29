@@ -28,7 +28,7 @@ from app.schemas.document import (
 )
 from app.schemas.job import JobPublic
 from app.schemas.node import ANCHOR_PATTERN, DocumentTree, NodePublic, TreeNode
-from app.services import covers, documents, fetch, ingest, tree
+from app.services import collections, covers, documents, fetch, ingest, tree
 from app.services.media import IMAGE_TYPES
 
 router = APIRouter(prefix="/documents", tags=["documents"])
@@ -88,8 +88,18 @@ def list_documents(
     author: Annotated[str | None, Query(max_length=200, description="Substring match.")] = None,
     q: Annotated[str | None, Query(max_length=200, description="Title substring.")] = None,
     genre: Annotated[Genre | None, Query(description="book | paper | article.")] = None,
+    collection: Annotated[
+        str | None, Query(max_length=200, description="A collection id or slug.")
+    ] = None,
 ) -> Page[DocumentSummary]:
-    filters = documents.DocumentFilters(tag=tag, status=status_, author=author, q=q, genre=genre)
+    filters = documents.DocumentFilters(
+        tag=tag,
+        status=status_,
+        author=author,
+        q=q,
+        genre=genre,
+        ids=collections.scope(session, collection),
+    )
     rows, total = documents.list_documents(session, filters, limit=limit, offset=offset)
     stats = documents.document_stats(session, [d.id for d in rows])
     return Page(

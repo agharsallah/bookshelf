@@ -99,6 +99,8 @@ AUTH = {"X-API-Key": API_KEY}
 # ~10x cheaper than TRUNCATE, whose fixed per-table cost dominated the suite's runtime.
 _TABLES = (
     "app_settings",
+    "collection_members",
+    "collections",
     "paper_syntheses",
     "paper_sets",
     "reading_candidates",

@@ -9,6 +9,7 @@ from app.api.routes import (
     activity,
     artifacts,
     audio,
+    collections,
     concepts,
     documents,
     exports,
@@ -45,6 +46,7 @@ api_router.include_router(paper_compare.router)  # /papers/compare is not a ref
 api_router.include_router(paper_claims.router)  # /papers/claims/relate is not a ref
 api_router.include_router(papers.router)  # after every fixed /papers/<word> router
 api_router.include_router(paper_sets.router)
+api_router.include_router(collections.router)
 api_router.include_router(documents.router)
 api_router.include_router(nodes.router)
 api_router.include_router(notes.router)
