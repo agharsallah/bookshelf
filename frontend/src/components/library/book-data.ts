@@ -13,7 +13,7 @@ export interface ShelfBook {
   keys: SortKeys;
 }
 
-export function bookAttributes(doc: DocumentSummary, buckets: Buckets, keys: SortKeys): Record<string, string> {
+export function bookAttributes(doc: DocumentSummary, buckets: Buckets, keys: SortKeys, collections: readonly string[] = []): Record<string, string> {
   return {
     'data-book': doc.slug,
     'data-title': doc.title,
@@ -24,6 +24,7 @@ export function bookAttributes(doc: DocumentSummary, buckets: Buckets, keys: Sor
     'data-reading': buckets.reading,
     'data-study': buckets.study,
     'data-theme': buckets.theme,
+    'data-collections': JSON.stringify(collections),
     'data-title-key': keys.title,
     'data-author-key': keys.author,
     'data-added': keys.added,
@@ -60,6 +61,7 @@ export function bookFromData(data: DOMStringMap): ShelfBook {
       reading: data.reading ?? '',
       study: data.study ?? '',
       theme: data.theme ?? '',
+      collections: list(data.collections),
     },
     keys: {
       title: data.titleKey ?? '',

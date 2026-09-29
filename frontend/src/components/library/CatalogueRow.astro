@@ -16,7 +16,7 @@ import styles from './Catalogue.module.css';
 
 type Props = LibraryItem & { index: number };
 
-const { doc, index, reading, materials, buckets, colours, keys, current, hidden } = Astro.props;
+const { doc, collections, index, reading, materials, buckets, colours, keys, current, hidden } = Astro.props;
 const progress = pipelineProgress(doc.status);
 const waiting = waitingReview(doc);
 const href = `/documents/${doc.slug}`;
@@ -33,7 +33,7 @@ const read = readingLabel(reading);
   data-current={current ? '' : undefined}
   hidden={hidden}
   aria-labelledby={titleId}
-  {...bookAttributes(doc, buckets, keys)}
+  {...bookAttributes(doc, buckets, keys, collections)}
 >
   <span class={styles.cloth} aria-hidden="true"></span>
   <div class={styles.main}>

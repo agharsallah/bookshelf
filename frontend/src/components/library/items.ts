@@ -14,6 +14,8 @@ import { sortBy, sortKeys, type Sort, type SortKeys } from './sort';
 
 export interface LibraryItem {
   doc: DocumentSummary;
+  /** Slugs of the collections holding it. */
+  collections: string[];
   reading: ShelfReading;
   materials: AvailableMaterial[] | null;
   buckets: Buckets;
@@ -30,21 +32,27 @@ export function libraryItems(
   filters: LibraryFilters,
   sort: Sort,
   palette: Palette = shelfPalette(documents),
+  memberships: Readonly<Record<string, string[]>> = {},
 ): LibraryItem[] {
   const readingOf = (doc: DocumentSummary) => extras[doc.slug]?.reading ?? NOT_READ;
   const current = currentBook(Object.fromEntries(documents.map((d) => [d.slug, readingOf(d)])));
   const items = documents.map((doc) => {
     const reading = readingOf(doc);
     const buckets = bucketsOf(doc, reading);
+    const collections = memberships[doc.id] ?? [];
     return {
       doc,
+      collections,
       reading,
       materials: extras[doc.slug]?.materials ?? null,
       buckets,
       colours: bookColours(palette, buckets),
       keys: sortKeys(doc, reading),
       current: doc.slug === current,
-      hidden: !matchesFilters({ ...doc, genre: buckets.kind, reading: buckets.reading, study: buckets.study, theme: buckets.theme }, filters),
+      hidden: !matchesFilters(
+        { ...doc, genre: buckets.kind, reading: buckets.reading, study: buckets.study, theme: buckets.theme, collections },
+        filters,
+      ),
     };
   });
   return sortBy(items, (item) => item.keys, sort);

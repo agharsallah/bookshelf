@@ -4,7 +4,8 @@
  * JavaScript the same matching runs in the browser as the reader types, and the URL
  * is kept in step (history.replaceState) so the view stays shareable. `genre`,
  * `reading`, `study` and `theme` are the overview's facets (`facets.ts`); `status` is
- * the workshop's pipeline state; `author` is kept for links that name one.
+ * the workshop's pipeline state; `author` is kept for links that name one; `collection`
+ * is a hand-gathered collection's slug (`/collections`).
  */
 import { DOCUMENT_STATUSES, GENRE_LABELS, GENRES, type DocumentStatus, type Genre } from '../../lib/api/types/documents';
 import { pipelineProgress } from '../../lib/documents/pipeline';
@@ -23,9 +24,11 @@ export interface LibraryFilters {
   author: string | null;
   /** Words in the title or the authors. */
   q: string | null;
+  /** A collection's slug: only its members. */
+  collection: string | null;
 }
 
-export const FILTER_KEYS = ['q', 'genre', 'reading', 'study', 'theme', 'tag', 'status', 'author'] as const satisfies readonly (keyof LibraryFilters)[];
+export const FILTER_KEYS = ['q', 'genre', 'reading', 'study', 'theme', 'tag', 'status', 'author', 'collection'] as const satisfies readonly (keyof LibraryFilters)[];
 export type FilterKey = (typeof FILTER_KEYS)[number];
 
 export const NO_FILTERS: LibraryFilters = {
@@ -37,9 +40,10 @@ export const NO_FILTERS: LibraryFilters = {
   theme: null,
   author: null,
   q: null,
+  collection: null,
 };
 
-const MAX = { tag: 64, theme: 48, author: 200, q: 200 } as const;
+const MAX = { tag: 64, theme: 48, author: 200, q: 200, collection: 80 } as const;
 
 function clean(value: string | null, max: number): string | null {
   const trimmed = value?.trim() ?? '';
@@ -61,6 +65,7 @@ export function parseFilters(params: URLSearchParams): LibraryFilters {
     theme: clean(params.get('theme'), MAX.theme),
     author: clean(params.get('author'), MAX.author),
     q: clean(params.get('q'), MAX.q),
+    collection: clean(params.get('collection'), MAX.collection),
   };
 }
 
@@ -99,6 +104,8 @@ export interface Filterable {
   reading: string;
   study: string;
   theme: string;
+  /** Slugs of the collections holding it. */
+  collections: readonly string[];
 }
 
 const folded = (text: string) => text.toLocaleLowerCase();
@@ -114,6 +121,7 @@ export function matchesFilters(book: Filterable, filters: LibraryFilters): boole
   if (filters.reading !== null && book.reading !== filters.reading) return false;
   if (filters.study !== null && book.study !== filters.study) return false;
   if (filters.theme !== null && book.theme !== filters.theme) return false;
+  if (filters.collection !== null && !book.collections.includes(filters.collection)) return false;
   const authors = folded(book.authors.join(' '));
   if (filters.author !== null && !authors.includes(folded(filters.author))) return false;
   if (filters.q !== null) {
@@ -138,8 +146,11 @@ export interface ActiveFilter {
   remove: string;
 }
 
+/** A collection's name by slug, for chips and messages; an unknown slug shows as itself. */
+export type CollectionNames = Readonly<Record<string, string>>;
+
 /** The filters that are set, as removable chips, in the order they are written to the URL. */
-export function activeFilters(filters: LibraryFilters): ActiveFilter[] {
+export function activeFilters(filters: LibraryFilters, names: CollectionNames = {}): ActiveFilter[] {
   const label = (key: FilterKey, value: string): string => {
     if (key === 'q') return `“${value}”`;
     if (key === 'author') return `by ${value}`;
@@ -148,6 +159,7 @@ export function activeFilters(filters: LibraryFilters): ActiveFilter[] {
     if (key === 'study') return bucketOf(FIXED_PALETTE, 'study', value).label;
     if (key === 'theme') return value === NO_THEME ? NO_THEME_LABEL : value;
     if (key === 'status') return pipelineProgress(value as DocumentStatus).label;
+    if (key === 'collection') return `in ${names[value] ?? value}`;
     return value;
   };
   return FILTER_KEYS.flatMap((key) => {
@@ -170,7 +182,7 @@ const STUDY_PHRASES: Record<StudyBucket, string> = {
 };
 
 /** "No papers match “bert” you have finished." for an empty result; a genre names its own kind. */
-export function noMatchMessage(filters: LibraryFilters): string {
+export function noMatchMessage(filters: LibraryFilters, names: CollectionNames = {}): string {
   const noun = filters.genre !== null ? `${GENRE_LABELS[filters.genre].toLowerCase()}s` : 'books';
   const parts = [
     filters.q !== null ? `match “${filters.q}”` : null,
@@ -180,6 +192,7 @@ export function noMatchMessage(filters: LibraryFilters): string {
     filters.theme === NO_THEME ? 'without a theme yet' : filters.theme !== null ? `under “${filters.theme}”` : null,
     filters.tag !== null ? `tagged “${filters.tag}”` : null,
     filters.status !== null ? `in the state “${pipelineProgress(filters.status).label}”` : null,
+    filters.collection !== null ? `in “${names[filters.collection] ?? filters.collection}”` : null,
   ].filter(Boolean);
   if (parts.length) return `No ${noun} ${parts.join(' ')}.`;
   return filters.genre !== null ? `No ${noun} on the shelf yet.` : 'No books on the shelf yet.';

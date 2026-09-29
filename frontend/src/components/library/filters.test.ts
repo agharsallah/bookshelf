@@ -26,7 +26,13 @@ describe('parseFilters', () => {
       theme: 'Machine learning',
       author: 'Meadows',
       q: 'loops',
+      collection: null,
     });
+  });
+
+  it('reads a collection slug', () => {
+    expect(parse('collection=fine-tuning').collection).toBe('fine-tuning');
+    expect(parse('collection=%20').collection).toBeNull();
   });
 
   it('drops blanks and unknown values', () => {
@@ -84,6 +90,7 @@ describe('matchesFilters', () => {
     reading: 'finished',
     study: 'drafts',
     theme: 'Systems thinking',
+    collections: ['fine-tuning', 'rlhf'],
   };
 
   it('passes every book when nothing is set', () => {
@@ -113,6 +120,12 @@ describe('matchesFilters', () => {
     expect(matchesFilters(book, { ...none, theme: 'Systems thinking' })).toBe(true);
     expect(matchesFilters(book, { ...none, theme: 'none' })).toBe(false);
   });
+
+  it('keeps only the members of a collection', () => {
+    expect(matchesFilters(book, { ...none, collection: 'rlhf' })).toBe(true);
+    expect(matchesFilters(book, { ...none, collection: 'fine' })).toBe(false);
+    expect(matchesFilters({ ...book, collections: [] }, { ...none, collection: 'rlhf' })).toBe(false);
+  });
 });
 
 describe('libraryHref', () => {
@@ -137,6 +150,9 @@ describe('noMatchMessage', () => {
     );
     expect(noMatchMessage({ ...none, theme: 'Career' })).toBe('No books under “Career”.');
     expect(noMatchMessage({ ...none, theme: 'none' })).toBe('No books without a theme yet.');
+    expect(noMatchMessage({ ...none, genre: 'paper', collection: 'fine-tuning' }, { 'fine-tuning': 'Fine-tuning' })).toBe(
+      'No papers in “Fine-tuning”.',
+    );
   });
 });
 
@@ -150,6 +166,12 @@ describe('activeFilters', () => {
       { key: 'tag', label: 'career', remove: 'Remove the filter career' },
     ]);
     expect(activeFilters(none)).toEqual([]);
+  });
+
+  it('names a collection by its name, or its slug when unknown', () => {
+    const names = { rlhf: 'RLHF' };
+    expect(activeFilters({ ...none, collection: 'rlhf' }, names)[0]?.label).toBe('in RLHF');
+    expect(activeFilters({ ...none, collection: 'gone' }, names)[0]?.label).toBe('in gone');
   });
 });
 

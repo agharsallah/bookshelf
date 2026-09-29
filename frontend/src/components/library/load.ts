@@ -9,7 +9,9 @@ import { fetchAll } from '../../lib/api/fetch-all';
 import { serverApi } from '../../lib/api/server';
 import type { Page } from '../../lib/api/types';
 import type { ArtifactListItem } from '../../lib/api/types/artifacts';
+import type { CollectionPublic } from '../../lib/api/types/collections';
 import type { DocumentSummary, LibraryFile, ReadingPosition } from '../../lib/api/types/documents';
+import { listCollections } from '../../lib/collections/api';
 import { availableMaterials, MATERIALS, type AvailableMaterial } from '../../lib/documents/study';
 import { mapLimit, NOT_READ, shelfReading, type ShelfReading } from './progress';
 
@@ -29,9 +31,19 @@ export interface LibraryData {
   files: LibraryFile[] | null;
   filesProblem: ProblemInfo | null;
   extras: Record<string, BookExtras>;
+  /** Every collection, by name; empty when they could not be loaded. */
+  collections: CollectionPublic[];
 }
 
-async function readingOf(doc: DocumentSummary): Promise<ShelfReading> {
+/** Each document's collections (slugs, by collection name), keyed by document id. */
+export function membershipsOf(collections: readonly CollectionPublic[]): Record<string, string[]> {
+  const out: Record<string, string[]> = {};
+  for (const c of collections) for (const id of c.document_ids) (out[id] ??= []).push(c.slug);
+  return out;
+}
+
+/** Best effort: a failure reads as not started. */
+export async function readingOf(doc: DocumentSummary): Promise<ShelfReading> {
   try {
     const positions = await serverApi().get<ReadingPosition[]>(`documents/${encodeURIComponent(doc.slug)}/reading`);
     return shelfReading(positions, doc.counts.chapters);
@@ -60,9 +72,10 @@ async function materialsOf(doc: DocumentSummary): Promise<AvailableMaterial[] | 
 
 export async function loadLibrary(): Promise<LibraryData> {
   const api = serverApi();
-  const [shelf, pending] = await Promise.allSettled([
+  const [shelf, pending, collections] = await Promise.allSettled([
     fetchAll<DocumentSummary>(api, 'documents'),
     api.get<Page<LibraryFile>>('library', { query: { limit: 100 } }),
+    listCollections(api),
   ]);
   const documents = shelf.status === 'fulfilled' ? shelf.value.items : [];
   const withMaterials = documents.length <= MATERIALS_BOOK_LIMIT;
@@ -76,5 +89,6 @@ export async function loadLibrary(): Promise<LibraryData> {
     files: pending.status === 'fulfilled' ? pending.value.items : null,
     filesProblem: pending.status === 'rejected' ? problemOf(pending.reason) : null,
     extras: Object.fromEntries(extras),
+    collections: collections.status === 'fulfilled' ? collections.value : [],
   };
 }

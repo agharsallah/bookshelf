@@ -1,0 +1,188 @@
+---
+/**
+ * One collection: its books, papers and articles as a reading path (order, progress, a
+ * note each), where to pick up, and the ways to look at it as a whole: the library
+ * narrowed to it, its map, its concepts, and a search inside it. Reading a member from here
+ * keeps the collection in the reader's URL, so the reader offers the next one.
+ */
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { Problem } from '../../components/common/Problem';
+import CollectionDetails from '../../components/collections/CollectionDetails';
+import CollectionPath, { type PathEntry, type ShelfEntry } from '../../components/collections/CollectionPath';
+import { genreSummary, readHref, upNext } from '../../components/collections/path';
+import { mapLimit, readingLabel } from '../../components/library/progress';
+import { readingOf } from '../../components/library/load';
+import { fetchAll } from '../../lib/api/fetch-all';
+import { serverApi } from '../../lib/api/server';
+import type { DocumentSummary } from '../../lib/api/types/documents';
+import { getCollection } from '../../lib/collections/api';
+import { load } from '../../lib/documents/server';
+
+export const prerender = false;
+
+const ref = Astro.params.ref ?? '';
+const loaded = await load(async () => {
+  const [collection, shelf] = await Promise.all([getCollection(serverApi(), ref), fetchAll<DocumentSummary>(serverApi(), 'documents')]);
+  const readings = await mapLimit(collection.members, 6, (m) => readingOf(m.document));
+  return { collection, shelf: shelf.items, readings };
+});
+if (!loaded.ok && loaded.notFound) Astro.response.status = 404;
+
+const data = loaded.ok ? loaded.value : null;
+const entry = (d: DocumentSummary): ShelfEntry => ({ id: d.id, slug: d.slug, title: d.title, authors: d.authors, genre: d.genre });
+const members: PathEntry[] = data
+  ? data.collection.members.map((m, i) => {
+      const reading = data.readings[i] ?? { share: 0, lastRead: null, resume: null };
+      return { ...entry(m.document), share: reading.share, progress: readingLabel(reading), resume: reading.resume, note: m.note };
+    })
+  : [];
+const next = upNext(members, Object.fromEntries(members.map((m) => [m.slug, { share: m.share, lastRead: null, resume: m.resume }])));
+const slug = data?.collection.slug ?? ref;
+const searchHref = `/search?${members.map((m) => `doc=${m.id}`).join('&')}`;
+---
+
+<BaseLayout title={data?.collection.name ?? 'Collection'} description={data?.collection.description ?? 'A collection of books, papers and articles.'}>
+  {
+    !data ? (
+      <div class="missing">
+        {!loaded.ok && loaded.notFound ? (
+          <>
+            <h1>No such collection</h1>
+            <p>
+              No collection is called “{ref}”. <a href="/collections">See every collection</a>
+            </p>
+          </>
+        ) : (
+          !loaded.ok && <Problem title="The collection could not be loaded." problem={loaded.problem} />
+        )}
+      </div>
+    ) : (
+      <article class="collection">
+        <header class="head">
+          <nav class="crumbs" aria-label="Breadcrumb">
+            <a href="/collections">
+              <span aria-hidden="true">←</span> Collections
+            </a>
+          </nav>
+          <CollectionDetails client:load slug={slug} name={data.collection.name} description={data.collection.description} />
+          <p class="summary">{genreSummary(members)}</p>
+          {next && (
+            <a class="read" href={readHref(next.slug, slug, next.resume)}>
+              <span>{next.share > 0 ? 'Continue with' : members.every((m) => m.share === 0) ? 'Start with' : 'Next up'}</span>
+              <span class="read-where">{next.title}</span>
+            </a>
+          )}
+        </header>
+
+        <nav class="lenses" aria-label="Look at the collection as a whole">
+          <a href={`/library?collection=${slug}`}>
+            <strong>On the shelf</strong>
+            <span>The library, narrowed to it</span>
+          </a>
+          <a href={`/map?collection=${slug}`}>
+            <strong>Map</strong>
+            <span>Its chapters and the ideas between them</span>
+          </a>
+          <a href={`/graph?collection=${slug}`}>
+            <strong>Concepts</strong>
+            <span>Every idea its documents name</span>
+          </a>
+          <a href={searchHref}>
+            <strong>Search inside</strong>
+            <span>Ask only these documents</span>
+          </a>
+        </nav>
+
+        <section class="path" aria-labelledby="path-heading">
+          <h2 id="path-heading">Reading path</h2>
+          <CollectionPath client:load collection={slug} members={members} shelf={data.shelf.map(entry)} />
+        </section>
+      </article>
+    )
+  }
+</BaseLayout>
+
+<style>
+  .collection {
+    display: grid;
+    gap: var(--space-6);
+    max-inline-size: 56rem;
+  }
+
+  .head {
+    display: grid;
+    gap: var(--space-3);
+    justify-items: start;
+  }
+
+  .crumbs,
+  .summary {
+    color: var(--ink-2);
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+  }
+
+  .crumbs a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .read {
+    display: inline-grid;
+    gap: var(--space-1);
+    padding: var(--space-3) var(--space-5);
+    border-radius: var(--radius-m);
+    background: var(--accent);
+    color: var(--paper);
+    font-family: var(--font-ui);
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  .read-where {
+    font-family: var(--font-read);
+    font-weight: 400;
+  }
+
+  .lenses {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+    gap: var(--space-3);
+  }
+
+  .lenses a {
+    display: grid;
+    gap: var(--space-1);
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-m);
+    color: var(--ink);
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+    text-decoration: none;
+    transition: border-color var(--dur-1) var(--ease-out);
+  }
+
+  .lenses a:hover {
+    border-color: var(--accent);
+  }
+
+  .lenses span {
+    color: var(--ink-2);
+  }
+
+  .path {
+    display: grid;
+    gap: var(--space-3);
+  }
+
+  .path h2 {
+    font-size: var(--text-lg);
+    font-weight: 600;
+  }
+
+  .missing {
+    display: grid;
+    gap: var(--space-2);
+  }
+</style>

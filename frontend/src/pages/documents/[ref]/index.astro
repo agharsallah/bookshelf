@@ -7,6 +7,7 @@
  * when the outline was guessed (`needs_review`), the fix-up editor, opened first.
  */
 import BaseLayout from '../../../layouts/BaseLayout.astro';
+import AddToCollection from '../../../components/collections/AddToCollection';
 import ChapterStrip from '../../../components/document/ChapterStrip';
 import DocumentActions from '../../../components/document/DocumentActions';
 import StudyShelf from '../../../components/document/StudyShelf.astro';
@@ -131,6 +132,7 @@ const added = data ? new Date(data.doc.created_at).toLocaleDateString('en-GB', {
             initial={{ title: data.doc.title, authors: data.doc.authors, year: data.doc.year, tags: data.doc.tags }}
             facts={facts}
           />
+          <AddToCollection client:visible documentId={data.doc.id} />
           <div class="reading">
             <div class="primary-actions">
               {parsed && resume ? (

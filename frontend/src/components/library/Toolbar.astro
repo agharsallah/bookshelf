@@ -10,7 +10,9 @@
 import { DOCUMENT_STATUSES } from '../../lib/api/types/documents';
 import { pipelineProgress } from '../../lib/documents/pipeline';
 import { DIMENSION_LABELS, DIMENSIONS } from './facets';
-import { activeFilters, libraryHref, NO_FILTERS, resultSummary, type LibraryFilters } from './filters';
+import type { CollectionPublic } from '../../lib/api/types/collections';
+import { activeFilters, libraryHref, NO_FILTERS, resultSummary, type CollectionNames, type LibraryFilters } from './filters';
+import type { LibraryItem } from './items';
 import { SORTS, type Sort } from './sort';
 import { VIEWS } from './view';
 
@@ -18,14 +20,18 @@ interface Props {
   filters: LibraryFilters;
   sort: Sort;
   tags: { tag: string; count: number }[];
+  collections: CollectionPublic[];
+  items: Pick<LibraryItem, 'collections'>[];
+  names: CollectionNames;
   shown: number;
   total: number;
   filtered: boolean;
 }
 
-const { filters, sort, tags, shown, total, filtered } = Astro.props;
+const { filters, sort, tags, collections, items, names, shown, total, filtered } = Astro.props;
+const onShelf = (slug: string) => items.filter((i) => i.collections.includes(slug)).length;
 const VIEW_LABELS = { shelf: 'Shelf', list: 'List' } as const;
-const HIDDEN = ['genre', 'reading', 'study', 'theme', 'tag', 'author'] as const;
+const HIDDEN = ['genre', 'reading', 'study', 'theme', 'tag', 'author', 'collection'] as const;
 ---
 
 <search class="toolbar">
@@ -98,7 +104,7 @@ const HIDDEN = ['genre', 'reading', 'study', 'theme', 'tag', 'author'] as const;
       <p class="summary" aria-live="polite" data-summary>{resultSummary(shown, total, filtered)}</p>
       <ul class="active" aria-label="Filters in use" data-active-filters>
         {
-          activeFilters(filters).map((f) => (
+          activeFilters(filters, names).map((f) => (
             <li>
               <a href={libraryHref({ ...filters, [f.key]: null }, sort)} data-remove={f.key} aria-label={f.remove}>
                 {f.label}
@@ -112,6 +118,28 @@ const HIDDEN = ['genre', 'reading', 'study', 'theme', 'tag', 'author'] as const;
       </ul>
       <a class="clear" href={libraryHref(NO_FILTERS, sort)} data-clear hidden={!filtered}>Clear all</a>
     </div>
+    <nav class="tags collections" aria-label="Collections">
+      <ul>
+        {collections.map((c) => {
+          const active = filters.collection === c.slug;
+          return (
+            <li>
+              <a
+                href={libraryHref({ ...filters, collection: active ? null : c.slug }, sort)}
+                aria-current={active ? 'true' : undefined}
+                data-collection={c.slug}
+              >
+                {c.name}
+                <span class="count">{onShelf(c.slug)}</span>
+              </a>
+            </li>
+          );
+        })}
+        <li>
+          <a class="manage" href="/collections">{collections.length ? 'All collections' : 'Start a collection'}</a>
+        </li>
+      </ul>
+    </nav>
     {
       tags.length > 0 && (
         <nav class="tags" aria-label="Tags">
@@ -337,6 +365,21 @@ const HIDDEN = ['genre', 'reading', 'study', 'theme', 'tag', 'author'] as const;
     border-color: var(--accent);
     background: var(--accent-wash);
     color: var(--ink);
+  }
+
+  /* Collections are the reader's own groupings: a solid dot sets them apart from tags. */
+  .collections a:not(.manage)::before {
+    content: '';
+    inline-size: 0.5em;
+    block-size: 0.5em;
+    border-radius: 50%;
+    background: var(--accent);
+    align-self: center;
+  }
+
+  .collections .manage {
+    border-style: dashed;
+    color: var(--ink-3);
   }
 
   .count {

@@ -1,0 +1,130 @@
+---
+/**
+ * Every collection, by name: what it is for, what is in it (books, papers and articles
+ * alike), and a form to start a new one. A collection gathers by hand what you are
+ * studying around one topic; the library, the map and the concepts can narrow to it.
+ */
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { Problem } from '../../components/common/Problem';
+import NewCollection from '../../components/collections/NewCollection';
+import { genreSummary } from '../../components/collections/path';
+import { fetchAll } from '../../lib/api/fetch-all';
+import { serverApi } from '../../lib/api/server';
+import type { DocumentSummary } from '../../lib/api/types/documents';
+import { listCollections } from '../../lib/collections/api';
+import { load } from '../../lib/documents/server';
+
+export const prerender = false;
+
+const loaded = await load(async () => {
+  const [collections, shelf] = await Promise.all([listCollections(serverApi()), fetchAll<DocumentSummary>(serverApi(), 'documents')]);
+  const byId = new Map(shelf.items.map((d) => [d.id, d]));
+  return collections.map((c) => ({ ...c, members: c.document_ids.flatMap((id) => byId.get(id) ?? []) }));
+});
+const collections = loaded.ok ? loaded.value : null;
+---
+
+<BaseLayout title="Collections" description="What you are studying, gathered by hand across books, papers and articles.">
+  <div class="collections">
+    <header class="head">
+      <p class="crumbs"><a href="/library">Library</a></p>
+      <h1>Collections</h1>
+      <p class="lede">
+        Gather the books, papers and articles you are studying around one topic, put them in the order you want to read them, then read, map
+        and search them together.
+      </p>
+    </header>
+
+    {!loaded.ok && <Problem title="The collections could not be loaded." problem={loaded.problem} />}
+
+    {
+      collections && collections.length > 0 && (
+        <ul class="list">
+          {collections.map((c) => (
+            <li>
+              <h2>
+                <a href={`/collections/${c.slug}`}>{c.name}</a>
+              </h2>
+              {c.description && <p class="description">{c.description}</p>}
+              <p class="meta">{genreSummary(c.members)}</p>
+              {c.members.length > 0 && (
+                <p class="members">
+                  {c.members.slice(0, 5).map((m) => m.title).join('; ')}
+                  {c.members.length > 5 ? `; and ${c.members.length - 5} more` : ''}
+                </p>
+              )}
+            </li>
+          ))}
+        </ul>
+      )
+    }
+
+    <section class="start" aria-labelledby="start-heading">
+      <h2 id="start-heading">{collections?.length ? 'Start another' : 'Start your first collection'}</h2>
+      <NewCollection client:visible />
+    </section>
+  </div>
+</BaseLayout>
+
+<style>
+  .collections {
+    display: grid;
+    gap: var(--space-6);
+    max-inline-size: 52rem;
+  }
+
+  .head {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .crumbs,
+  .meta,
+  .members {
+    color: var(--ink-2);
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+  }
+
+  h1 {
+    font-size: var(--text-2xl);
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+
+  .lede,
+  .description {
+    color: var(--ink-2);
+    font-family: var(--font-read);
+  }
+
+  .list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    border-block-start: 1px solid var(--rule);
+  }
+
+  .list li {
+    display: grid;
+    gap: var(--space-1);
+    padding-block: var(--space-4);
+    border-block-end: 1px solid var(--rule);
+  }
+
+  .list h2 {
+    font-family: var(--font-read);
+    font-size: var(--text-lg);
+    font-weight: 500;
+  }
+
+  .start {
+    display: grid;
+    gap: var(--space-3);
+  }
+
+  .start h2 {
+    font-size: var(--text-lg);
+    font-weight: 600;
+  }
+</style>

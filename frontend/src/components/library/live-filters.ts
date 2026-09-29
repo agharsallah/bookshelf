@@ -10,6 +10,7 @@ import { bookFromData, type ShelfBook } from './book-data';
 import { parseDimension, type Dimension } from './facets';
 import {
   activeFilters,
+  type CollectionNames,
   FILTER_KEYS,
   hasFilters,
   libraryHref,
@@ -103,6 +104,17 @@ function chip(key: string, label: string, remove: string, href: string): HTMLLIE
   return li;
 }
 
+/** The collection names the page wrote on the library root (`data-collection-names`). */
+export function collectionNames(root: HTMLElement): CollectionNames {
+  try {
+    const value: unknown = JSON.parse(root.dataset.collectionNames ?? '{}');
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+    return Object.fromEntries(Object.entries(value).filter((e): e is [string, string] => typeof e[1] === 'string'));
+  } catch {
+    return {};
+  }
+}
+
 export interface RenderOptions {
   /** A display change (view, dye, grouping) to make in the same step, so it animates with the books. */
   change?: () => void;
@@ -118,6 +130,7 @@ export function wireFilters(root: HTMLElement): Render | null {
   if (!form) return null;
   const lists = readLists(root);
   const total = lists[0]?.books.length ?? 0;
+  const names = collectionNames(root);
   // The server renders in this order, ungrouped.
   let arranged = `${formState(form).sort}|`;
   let chips = '';
@@ -133,7 +146,7 @@ export function wireFilters(root: HTMLElement): Render | null {
     const none = root.querySelector<HTMLElement>('[data-no-match]');
     if (none) none.hidden = !(filtered && shown === 0 && total > 0);
     const noneText = root.querySelector<HTMLElement>('[data-no-match-text]');
-    if (noneText) noneText.textContent = noMatchMessage(filters);
+    if (noneText) noneText.textContent = noMatchMessage(filters, names);
 
     for (const el of root.querySelectorAll<HTMLAnchorElement>('a[data-tag]')) {
       const tag = el.dataset.tag ?? null;
@@ -141,6 +154,13 @@ export function wireFilters(root: HTMLElement): Render | null {
       if (active) el.setAttribute('aria-current', 'true');
       else el.removeAttribute('aria-current');
       el.href = libraryHref({ ...filters, tag: active ? null : tag }, sort);
+    }
+    for (const el of root.querySelectorAll<HTMLAnchorElement>('a[data-collection]')) {
+      const slug = el.dataset.collection ?? null;
+      const active = filters.collection === slug;
+      if (active) el.setAttribute('aria-current', 'true');
+      else el.removeAttribute('aria-current');
+      el.href = libraryHref({ ...filters, collection: active ? null : slug }, sort);
     }
     for (const el of root.querySelectorAll<HTMLAnchorElement>('a[data-facet-filter]')) {
       const key = el.dataset.facetFilter as keyof LibraryFilters;
@@ -157,7 +177,7 @@ export function wireFilters(root: HTMLElement): Render | null {
       }
     }
 
-    const active = activeFilters(filters);
+    const active = activeFilters(filters, names);
     const signature = JSON.stringify(active);
     const holder = root.querySelector<HTMLElement>('[data-active-filters]');
     if (holder && signature !== chips) {
@@ -235,13 +255,15 @@ export function wireFilters(root: HTMLElement): Render | null {
     if (event instanceof MouseEvent && (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0)) return;
     const segment = target.closest<HTMLElement>('[data-segment]');
     const link =
-      target.closest<HTMLAnchorElement>('a[data-tag], a[data-facet-filter], a[data-remove], a[data-clear]') ??
+      target.closest<HTMLAnchorElement>('a[data-tag], a[data-collection], a[data-facet-filter], a[data-remove], a[data-clear]') ??
       segment?.closest('[data-facet]')?.querySelector<HTMLAnchorElement>(`a[data-facet-filter][data-value="${CSS.escape(segment.dataset.segment ?? '')}"]`) ??
       null;
     if (!link) return;
     event.preventDefault();
     if (link.dataset.tag !== undefined) {
       setField(form, 'tag', fieldValue(form, 'tag') === link.dataset.tag ? '' : link.dataset.tag);
+    } else if (link.dataset.collection !== undefined) {
+      setField(form, 'collection', fieldValue(form, 'collection') === link.dataset.collection ? '' : link.dataset.collection);
     } else if (link.dataset.facetFilter) {
       const name = link.dataset.facetFilter;
       setField(form, name, fieldValue(form, name) === link.dataset.value ? '' : (link.dataset.value ?? ''));

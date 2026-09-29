@@ -24,7 +24,7 @@ type Props = LibraryItem & {
   selected: boolean;
 };
 
-const { doc, index, reading, buckets, colours, keys, current, hidden, selected } = Astro.props;
+const { doc, collections, index, reading, buckets, colours, keys, current, hidden, selected } = Astro.props;
 const look = spineLook(doc);
 const fit = titleFit(doc.title, doc.authors, look);
 const progress = pipelineProgress(doc.status);
@@ -46,7 +46,7 @@ const facts = [doc.year, doc.kind === 'article' ? 'Article' : pages.pages ? `${p
   data-kind={doc.kind}
   data-current={current ? '' : undefined}
   hidden={hidden}
-  {...bookAttributes(doc, buckets, keys)}
+  {...bookAttributes(doc, buckets, keys, collections)}
 >
   <a
     class={styles.spine}

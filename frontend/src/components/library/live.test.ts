@@ -20,8 +20,10 @@ const books = [
   summary('flow', { title: 'The Principles of Flow', authors: ['Donald Reinertsen'], tags: ['flow'], created_at: '2026-02-01', genre: 'paper' }),
 ];
 
+const COLLECTIONS: Record<string, string[]> = { flow: ['queues'] };
+
 function item(doc: (typeof books)[number], withSpine: boolean): string {
-  const attrs = Object.entries(bookAttributes(doc, bucketsOf(doc, NOT_READ), sortKeys(doc, NOT_READ)))
+  const attrs = Object.entries(bookAttributes(doc, bucketsOf(doc, NOT_READ), sortKeys(doc, NOT_READ), COLLECTIONS[doc.slug]))
     .map(([k, v]) => `${k}='${v}'`)
     .join(' ');
   const inner = withSpine ? `<a href="/documents/${doc.slug}" data-spine>${doc.title}</a>` : doc.title;
@@ -34,13 +36,14 @@ const dividers = [divider('kind', 'book', 0), divider('kind', 'paper', 1), divid
 
 function mount(): HTMLElement {
   document.body.innerHTML = `
-    <div class="library view-shelf by-kind group-off sticker-year" data-library>
+    <div class="library view-shelf by-kind group-off sticker-year" data-library data-collection-names='{"queues":"Queues"}'>
       <form data-filters>
         <input type="search" name="q" value="" />
         <select name="sort"><option value="read" selected>Recently read</option><option value="title">Title</option><option value="progress">Most read</option></select>
         <input type="hidden" name="genre" value="" />
         <input type="hidden" name="theme" value="" />
         <input type="hidden" name="tag" value="" />
+        <input type="hidden" name="collection" value="" />
         <button type="submit" data-apply>Filter</button>
       </form>
       <div data-facet="kind">
@@ -51,6 +54,7 @@ function mount(): HTMLElement {
       <button type="button" data-by="theme" aria-pressed="false">Theme</button>
       <button type="button" data-group aria-pressed="false">Group</button>
       <a href="/library?tag=flow" data-tag="flow">flow</a>
+      <a href="/library?collection=queues" data-collection="queues">Queues</a>
       <p data-summary>2 books</p>
       <ul data-active-filters></ul>
       <a href="/library" data-clear hidden>Clear all</a>
@@ -147,6 +151,20 @@ describe('filters', () => {
     click(chip);
     expect(visible(root)).toEqual(['systems', 'flow']);
     expect(chip?.hasAttribute('aria-current')).toBe(false);
+  });
+
+  it('toggle a collection chip, naming it on the filter chip', () => {
+    const root = mount();
+    const chip = root.querySelector('a[data-collection]');
+    click(chip);
+    expect(visible(root)).toEqual(['flow']);
+    expect(location.search).toBe('?collection=queues');
+    expect(chip?.getAttribute('aria-current')).toBe('true');
+    expect(root.querySelector('[data-active-filters] a')?.textContent).toBe('in Queues');
+
+    click(chip);
+    expect(visible(root)).toEqual(['systems', 'flow']);
+    expect(location.search).toBe('');
   });
 
   it('filter to a bucket from its legend or its bar segment, and drop it from its chip', () => {

@@ -2,7 +2,7 @@
 /**
  * The library: every book on the shelf, dyed by what matters to you (kind, reading,
  * study material or theme), as spines beside a lectern or as a catalogue list. Filters
- * and order live in query params (q, genre, reading, study, theme, tag, status, sort); display
+ * and order live in query params (q, genre, reading, study, theme, tag, status, collection, sort); display
  * choices (view, dye, grouping) are the reader's own, in localStorage. Every book is
  * rendered and the filters hide the rest, so the page's script can filter as you type;
  * without JavaScript the GET form and links do the same through the server. "Add a
@@ -22,7 +22,7 @@ import Toolbar from '../../components/library/Toolbar.astro';
 import { facet, shelfPalette } from '../../components/library/facets';
 import { hasFilters, libraryHref, NO_FILTERS, noMatchMessage, parseFilters, tagCloud } from '../../components/library/filters';
 import { libraryItems } from '../../components/library/items';
-import { loadLibrary } from '../../components/library/load';
+import { loadLibrary, membershipsOf } from '../../components/library/load';
 import { shelfSentence } from '../../components/library/overview';
 import { parseSort, stickerFor } from '../../components/library/sort';
 import { defaultClasses, viewBootstrapScript } from '../../components/library/view';
@@ -40,9 +40,10 @@ const add = params.get('add');
 const addGenre = GENRES.find((g) => g === add) ?? null;
 const addOpen = add !== null;
 
-const { documents, problem, files, filesProblem, extras } = await loadLibrary();
+const { documents, problem, files, filesProblem, extras, collections } = await loadLibrary();
 const palette = shelfPalette(documents);
-const items = libraryItems(documents, extras, filters, sort, palette);
+const items = libraryItems(documents, extras, filters, sort, palette, membershipsOf(collections));
+const collectionNames = Object.fromEntries(collections.map((c) => [c.slug, c.name]));
 const total = documents.length;
 const shown = items.filter((item) => !item.hidden).length;
 const waiting = files?.length ?? 0;
@@ -54,7 +55,11 @@ const onShelf = shelfSentence(facet(palette, 'kind', items.map((i) => i.buckets)
 ---
 
 <BaseLayout title="Library" description="Every book and article on your shelf.">
-  <div class:list={['library', ...defaultClasses(), `sticker-${stickerFor(sort)}`]} data-library>
+  <div
+    class:list={['library', ...defaultClasses(), `sticker-${stickerFor(sort)}`]}
+    data-library
+    data-collection-names={JSON.stringify(collectionNames)}
+  >
     <script is:inline data-astro-rerun set:html={viewBootstrapScript} />
     <header class="head">
       <div class="heading">
@@ -73,10 +78,20 @@ const onShelf = shelfSentence(facet(palette, 'kind', items.map((i) => i.buckets)
       <div class="desk">
         <div class="main">
           <Overview items={items} filters={filters} sort={sort} palette={palette} />
-          <Toolbar filters={filters} sort={sort} tags={tags} shown={shown} total={total} filtered={filtered} />
+          <Toolbar
+            filters={filters}
+            sort={sort}
+            tags={tags}
+            collections={collections}
+            items={items}
+            names={collectionNames}
+            shown={shown}
+            total={total}
+            filtered={filtered}
+          />
 
           <div class="no-match" data-no-match hidden={shown > 0}>
-            <p class="no-match-text" data-no-match-text>{noMatchMessage(filters)}</p>
+            <p class="no-match-text" data-no-match-text>{noMatchMessage(filters, collectionNames)}</p>
             <p>
               Try fewer words, or <a href={clearHref} data-clear>clear the filters</a> to see the whole shelf.
             </p>
