@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { artifact } from './fixtures';
-import { compareAnchors, filterQueue, flatOrder, groupQueue, isSuperseded } from './queue';
+import { compareAnchors, filterQueue, flatOrder, groupQueue, isLowConfidence, isSuperseded } from './queue';
 
 describe('compareAnchors', () => {
   it.each([
@@ -55,6 +55,25 @@ describe('filterQueue', () => {
     [{ type: '' as const, skill: '' }, ['note', 'summary']],
   ])('%o keeps %o', (filters, ids) => {
     expect(filterQueue(items, filters).map((i) => i.id)).toEqual(ids);
+  });
+});
+
+describe('low confidence', () => {
+  const flagged = artifact({ id: 'flagged', gates: { grounding: 1, flags: ['low_confidence'] } });
+  const bodied = artifact({ id: 'bodied', type: 'figure_description', body: { confidence: 'low' } });
+  const sure = artifact({ id: 'sure', body: { confidence: 'high' } });
+
+  it.each([
+    [flagged, true],
+    [bodied, true],
+    [sure, false],
+  ])('isLowConfidence(%#) → %s', (item, expected) => {
+    expect(isLowConfidence(item)).toBe(expected);
+  });
+
+  it('the filter keeps only low-confidence items, and an empty value keeps all', () => {
+    expect(filterQueue([flagged, bodied, sure], { confidence: 'low' }).map((i) => i.id)).toEqual(['flagged', 'bodied']);
+    expect(filterQueue([flagged, bodied, sure], { confidence: '' })).toHaveLength(3);
   });
 });
 

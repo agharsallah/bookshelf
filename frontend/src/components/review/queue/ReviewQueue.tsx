@@ -110,7 +110,7 @@ export function ReviewQueue({ items: initial, documents, headings, skills, api =
     [byId, verdict],
   );
 
-  /** Bulk approval never overrides a gate: only drafts that pass every one qualify. */
+  /** Drafts that pass every gate: what "Approve all" and "Approve N passing" send. */
   const passing = useCallback(
     (ids: readonly string[]) =>
       ids.filter((id) => {
@@ -209,13 +209,31 @@ export function ReviewQueue({ items: initial, documents, headings, skills, api =
       </div>
 
       {triage.selected.length > 0 ? (
-        <div className={styles.bulk} role="region" aria-label="Bulk approval">
+        <div className={styles.bulk} role="region" aria-label="Bulk review">
           <p>
-            {triage.selected.length} selected; {approvable.length} {approvable.length === 1 ? 'is a draft that passes' : 'are drafts that pass'} every gate.
+            {triage.selected.length} selected; {approvable.length} {approvable.length === 1 ? 'passes' : 'pass'} every gate.
           </p>
-          <button type="button" className={`btn btn-primary ${styles.small}`} disabled={approvable.length === 0} onClick={() => act('approve', approvable)}>
-            Approve {approvable.length}
+          <button
+            type="button"
+            className={`btn btn-primary ${styles.small}`}
+            title={approvable.length < triage.selected.length ? 'Approves every selected item, including those that fail a gate.' : undefined}
+            onClick={() => act('approve', triage.selected)}
+          >
+            Approve {triage.selected.length}
           </button>
+          {approvable.length > 0 && approvable.length < triage.selected.length ? (
+            <button type="button" className={`btn ${styles.small}`} onClick={() => act('approve', approvable)}>
+              Approve {approvable.length} passing
+            </button>
+          ) : null}
+          <button type="button" className={`btn ${styles.small}`} onClick={() => act('reject', triage.selected)}>
+            Reject {triage.selected.length}
+          </button>
+          {triage.selected.length < order.length ? (
+            <button type="button" className={`btn ${styles.small}`} onClick={() => dispatch({ type: 'selectOnly', ids: order })}>
+              Select all {order.length} shown
+            </button>
+          ) : null}
           <button type="button" className={`btn btn-quiet ${styles.small}`} onClick={() => dispatch({ type: 'clearSelection' })}>
             Clear selection
           </button>

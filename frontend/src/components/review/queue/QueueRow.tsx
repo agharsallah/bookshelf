@@ -34,7 +34,7 @@ export const QueueRow = forwardRef<HTMLButtonElement, QueueRowProps>(function Qu
         type="checkbox"
         className={styles.check}
         checked={selected}
-        aria-label={`Select ${label} for bulk approval`}
+        aria-label={`Select ${label} for bulk review`}
         tabIndex={-1}
         onChange={() => onToggle(item.id)}
       />

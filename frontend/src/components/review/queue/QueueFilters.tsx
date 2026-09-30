@@ -1,5 +1,5 @@
 /**
- * Narrow the queue by type, skill, tier or document. Options come from what is queued;
+ * Narrow the queue by type, skill, tier, document or low confidence. Options come from what is queued;
  * each select names itself by its "All …" option, and a set filter is inked.
  */
 import { TIERS, type ArtifactListItem, type ArtifactType, type Tier } from '../../../lib/api/types/artifacts';
@@ -18,7 +18,7 @@ export function QueueFilters({ items, titles, value, onChange }: QueueFiltersPro
   const types = facet(items, 'type');
   const skills = facet(items, 'skill');
   const documents = facet(items, 'document_id');
-  const active = Boolean(value.type || value.skill || value.tier || value.document);
+  const active = Boolean(value.type || value.skill || value.tier || value.document || value.confidence);
   return (
     <form className={styles.filters} role="search" aria-label="Filter the queue" onSubmit={(e) => e.preventDefault()}>
       <label>
@@ -63,6 +63,17 @@ export function QueueFilters({ items, titles, value, onChange }: QueueFiltersPro
               {titles[d] ?? d}
             </option>
           ))}
+        </select>
+      </label>
+      <label>
+        <span className="visually-hidden">Confidence</span>
+        <select
+          data-set={value.confidence ? '' : undefined}
+          value={value.confidence ?? ''}
+          onChange={(e) => onChange({ ...value, confidence: e.target.value as 'low' | '' })}
+        >
+          <option value="">Any confidence</option>
+          <option value="low">Low confidence</option>
         </select>
       </label>
       {active ? (

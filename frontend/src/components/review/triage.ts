@@ -52,7 +52,7 @@ export const SHORTCUTS: readonly Shortcut[] = [
   { keys: ['r'], label: 'Reject' },
   { keys: ['e'], label: 'Edit' },
   { keys: ['Enter'], label: 'Open full review' },
-  { keys: ['x'], label: 'Select for bulk approval' },
+  { keys: ['x'], label: 'Select for bulk review' },
   { keys: ['u'], label: 'Undo the last action' },
   { keys: ['?'], label: 'Show or hide shortcuts' },
   { keys: ['Esc'], label: 'Close help, clear selection' },

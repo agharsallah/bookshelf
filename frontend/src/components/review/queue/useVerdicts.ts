@@ -43,7 +43,7 @@ export function useVerdicts({ api, push, label, hide, restore, settleItems }: Ve
       counter.current += 1;
       const key = `${verdict}:${counter.current}`;
       const first = targets[0];
-      const what = targets.length === 1 && first ? label(first) : `${targets.length} drafts`;
+      const what = targets.length === 1 && first ? label(first) : `${targets.length} items`;
       hide(targets.map((t) => t.id));
 
       const sent = Promise.allSettled(targets.map((t) => reviewArtifact(api, t.id, { action: verdict })));

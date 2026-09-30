@@ -9,6 +9,8 @@ export interface QueueFilters {
   skill?: string;
   tier?: Tier | '';
   document?: string;
+  /** `low` keeps only artifacts the skill reported low confidence in. */
+  confidence?: 'low' | '';
 }
 
 export interface QueueGroup<T extends ArtifactPublic = ArtifactPublic> {
@@ -51,13 +53,19 @@ function compareItems(a: ArtifactPublic, b: ArtifactPublic): number {
   );
 }
 
+/** The skill reported low confidence: a `low_confidence` gate flag, or `confidence: low` in the body. */
+export function isLowConfidence(artifact: Pick<ArtifactPublic, 'gates' | 'body'>): boolean {
+  return Boolean(artifact.gates.flags?.includes('low_confidence')) || artifact.body.confidence === 'low';
+}
+
 export function filterQueue<T extends ArtifactPublic>(items: readonly T[], filters: QueueFilters): T[] {
   return items.filter(
     (item) =>
       (!filters.type || item.type === filters.type) &&
       (!filters.skill || item.skill === filters.skill) &&
       (!filters.tier || item.tier === filters.tier) &&
-      (!filters.document || item.document_id === filters.document),
+      (!filters.document || item.document_id === filters.document) &&
+      (filters.confidence !== 'low' || isLowConfidence(item)),
   );
 }
 

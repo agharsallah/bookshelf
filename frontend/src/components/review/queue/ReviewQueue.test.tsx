@@ -87,12 +87,57 @@ describe('<ReviewQueue>', () => {
     expect(navigate).toHaveBeenCalledWith('/review/second');
   });
 
-  it('bulk approval only counts selected drafts that pass every gate', async () => {
+  it('a mixed selection can approve only the drafts that pass every gate', async () => {
     const { calls, queue, user } = setup();
     await user.click(within(queue).getByRole('checkbox', { name: /Section note 1\.1/ }));
     await user.click(within(queue).getByRole('checkbox', { name: /Section note 1\.3/ }));
-    await user.click(screen.getByRole('button', { name: 'Approve 1' }));
+    expect(screen.getByText('2 selected; 1 passes every gate.')).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: 'Approve 1 passing' }));
     await waitFor(() => expect(calls.map((c) => c.path)).toEqual(['artifacts/third/review']));
+  });
+
+  it.each(['approve', 'reject'] as const)('%s sends every selected item at once, gates or not, and undoes together', async (action) => {
+    const { calls, queue, row, user } = setup();
+    await user.click(within(queue).getByRole('checkbox', { name: /Section note 1\.1/ }));
+    await user.click(within(queue).getByRole('checkbox', { name: /Section note 1\.2/ }));
+    await user.click(screen.getByRole('button', { name: `${action === 'approve' ? 'Approve' : 'Reject'} 2` }));
+
+    await waitFor(() => expect(calls.map((c) => c.path).sort()).toEqual(['artifacts/first/review', 'artifacts/second/review']));
+    expect(calls.every((c) => (c.body as { action: string }).action === action)).toBe(true);
+    expect(within(queue).queryByRole('button', { name: /Section note 1\.[12]/ })).toBeNull();
+    expect(screen.queryByRole('region', { name: 'Bulk review' })).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    await waitFor(() => expect(row('1.1')).toBeTruthy());
+    expect(row('1.2')).toBeTruthy();
+  });
+
+  it('after one selection, "select all shown" selects every item the filters leave', async () => {
+    const { calls, queue, user } = setup();
+    expect(screen.queryByRole('button', { name: /Select all/ })).toBeNull();
+    await user.click(within(queue).getByRole('checkbox', { name: /Section note 1\.2/ }));
+    await user.click(screen.getByRole('button', { name: 'Select all 3 shown' }));
+
+    expect(within(queue).getAllByRole('checkbox').every((box) => (box as HTMLInputElement).checked)).toBe(true);
+    expect(screen.getByText('3 selected; 2 pass every gate.')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /Select all/ })).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Approve 2 passing' }));
+    await waitFor(() => expect(calls.map((c) => c.path).sort()).toEqual(['artifacts/second/review', 'artifacts/third/review']));
+  });
+
+  it('filters to low confidence, so select all only takes what the filter shows', async () => {
+    const { api } = fakeApi({});
+    const low = artifact({ id: 'low', anchor: 'ch02/s01', gates: { grounding: 1, flags: ['low_confidence'] } });
+    const lowFigure = artifact({ id: 'low-figure', anchor: 'ch02/s02', body: { confidence: 'low' } });
+    render(<ReviewQueue items={[...items, low, lowFigure]} documents={[{ id: 'doc1', slug: 'doc', title: 'Systems' }]} headings={{}} skills={[]} api={api} navigate={vi.fn()} />);
+    const user = userEvent.setup();
+    const queue = screen.getByRole('navigation', { name: 'Queue' });
+
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Confidence' }), 'low');
+    expect(within(queue).getAllByRole('checkbox')).toHaveLength(2);
+    await user.click(within(queue).getByRole('checkbox', { name: /Section note 2\.1/ }));
+    await user.click(screen.getByRole('button', { name: 'Select all 2 shown' }));
+    expect(screen.getByText(/^2 selected;/)).toBeTruthy();
   });
 
   it('approve all sends every shown draft that passes its gates and leaves needs-review items', async () => {
