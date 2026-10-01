@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from app.models.enums import NodeKind
 from app.pipeline.parse.model import Crop, Heading, ParsedNode
 from app.pipeline.parse.pdf import geometry as geo
+from app.pipeline.parse.pdf.equations import EQUATION_NO
 from app.pipeline.parse.pdf.layout import Block
 from app.pipeline.parse.text import (
     LISTING_CAPTION,
@@ -26,7 +27,6 @@ from app.pipeline.parse.text import (
 Placed = Block | ParsedNode | Heading
 
 _SENTENCE_END = re.compile(r"[.!?:;\"\u201d\u2019)\]]$")
-_EQUATION_NO = re.compile(r"\s*\((\d+(?:\.\d+)*)\)\s*$")
 _LONG_WORD = re.compile(r"[A-Za-z]{4,}")
 _FOOTNOTE = re.compile(r"^(\d{1,3}|[*\u2020\u2021\u00a7])\s*(\S.*)$")
 
@@ -97,6 +97,8 @@ _MIN_FORMULA_CHARS = 3  # a lone `→` or `x` set apart is typography, not a for
 
 
 def is_display_math(block: Block) -> bool:
+    if block.pieces > 1:  # glued from a formula's pieces by `equations.merge_equations`
+        return True
     text = block.text
     if len("".join(text.split())) < _MIN_FORMULA_CHARS:
         return False
@@ -223,10 +225,11 @@ class _Builder:
         elif m := LISTING_CAPTION.match(text):
             self.listing_caption(block, m.group(1))
         elif is_display_math(block):
-            number = _EQUATION_NO.search(text)
-            formula = _EQUATION_NO.sub("", text) if number else text
-            node = _leaf(NodeKind.MATH, block, formula, inline=False,
-                         latex=latex_from_text(formula),
+            number = EQUATION_NO.search(text)
+            formula = EQUATION_NO.sub("", text) if number else text
+            # Glued pieces read in no reliable order: only the crop shows the formula.
+            latex = latex_from_text(formula) if block.pieces == 1 else None
+            node = _leaf(NodeKind.MATH, block, formula, inline=False, latex=latex,
                          equation_no=number.group(1) if number else None,
                          page=block.page, bbox=list(block.bbox))  # fmt: skip
             node.crop = Crop(block.page, geo.pad(block.bbox, 2))

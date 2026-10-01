@@ -20,6 +20,7 @@ from app.pipeline.parse.model import ParsedDocument, ParsedNode, ParseError
 from app.pipeline.parse.override import OverrideChapter
 from app.pipeline.parse.pdf import geometry as geo
 from app.pipeline.parse.pdf import mupdf
+from app.pipeline.parse.pdf.equations import merge_equations
 from app.pipeline.parse.pdf.furniture import strip_furniture
 from app.pipeline.parse.pdf.headings import (
     DetectedOutline,
@@ -102,7 +103,7 @@ def _stream(
         warnings.extend(found.warnings)
         prose, page_notes = split_footnotes(found.blocks, height, body)
         notes.extend(page_notes)
-        mixed: list[Block | Region] = [*prose, *found.regions]
+        mixed: list[Block | Region] = [*merge_equations(prose), *found.regions]
         ordered, columns = reading_order(mixed, lambda it: it.bbox, width, area)
         for item, column in zip(ordered, columns, strict=True):
             if isinstance(item, Block):

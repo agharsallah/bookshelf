@@ -49,11 +49,13 @@ class Line:
 
 @dataclass
 class Block:
-    """Consecutive lines that read as one unit. `column` is set by `reading_order()`."""
+    """Consecutive lines that read as one unit. `column` is set by `reading_order()`;
+    `pieces` > 1 marks a display formula glued from several MuPDF blocks (`equations`)."""
 
     page: int
     lines: list[Line]
     column: tuple[float, float] = (0.0, 0.0)
+    pieces: int = 1
 
     @cached_property
     def bbox(self) -> Bbox:
