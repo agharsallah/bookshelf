@@ -33,7 +33,7 @@ import { Navigator, type NavSection, type NavUnit } from './Navigator';
 import type { LexTerm } from './lexicon';
 import type { Panes } from './panes';
 import { minutesLeft, timeLeftLabel, wordCount } from './progress';
-import { figureItems } from './figures';
+import { figureItems, figureShelf } from './figures';
 import { canDragMeasure, isCentred, readerLayout } from './layout';
 import { MeasureHandle } from './MeasureHandle';
 import { clampSize, prefsVars, WIDTH_REM } from './prefs';
@@ -165,6 +165,7 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
   const activeSection = active ? (sectionOf.get(active) ?? null) : null;
   const progress = active ? ((order.get(active) ?? 0) + 1) / Math.max(1, anchors.length) : 0;
   const figures = useMemo(() => figureItems(nodes), [nodes]);
+  const figureList = useMemo(() => figureShelf(nodes, panes.figures), [nodes, panes.figures]);
   const words = useMemo(() => flat.map(({ node }) => wordCount(node.text ?? '')), [flat]);
   const timeLeft = timeLeftLabel(minutesLeft(words, active ? (order.get(active) ?? 0) : 0));
   const recall = useRecallMode({
@@ -497,6 +498,8 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
             onCite={onCite}
             citeHref={readHref}
             onMagnify={openDrawing}
+            figures={figureList}
+            onOpenFigure={openFigure}
             notes={
               <NotesPanel
                 notes={wireNotes}

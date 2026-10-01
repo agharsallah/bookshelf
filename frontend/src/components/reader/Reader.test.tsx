@@ -45,13 +45,13 @@ const panes: Panes = {
   figures: [],
 };
 
-function renderReader(notes: NoteDetail[] = []) {
+function renderReader(notes: NoteDetail[] = [], chapterPanes: Panes = panes) {
   return render(
     <Reader
       document={{ id: 'doc-1', slug: 'flow', title: 'Flow' }}
       unit={unit}
       units={[{ anchor: 'ch01', heading: 'Stocks and flows' }]}
-      panes={panes}
+      panes={chapterPanes}
       notes={notes}
       codeHtml={{}}
       initialAnchor={null}
@@ -394,5 +394,35 @@ describe('<Reader>', () => {
     await userEvent.click(within(lightbox).getByRole('button', { name: 'Show in text' }));
     expect(screen.queryByRole('dialog', { name: 'Figure 1.1 The loop' })).toBeNull();
     await waitFor(() => expect(block('ch01/s01/f001').classList.contains('is-flashing')).toBe(true));
+  });
+
+  it('lists the original figures in the pane, with a line mapping each to the text', async () => {
+    renderReader();
+    await userEvent.click(screen.getByRole('tab', { name: /^Figures/ }));
+    const panel = screen.getByRole('tabpanel');
+    expect(within(panel).getByRole('img', { name: 'Figure 1.1 The loop' }).getAttribute('src')).toBe('/api/media/flow/ch01/f001.png');
+    expect(within(panel).getByText('Original, figure 1 of 1, p. 2')).toBeTruthy();
+    expect(within(panel).getByText('Not explained yet')).toBeTruthy();
+
+    await userEvent.click(within(panel).getByRole('button', { name: 'Show in text' }));
+    expect(block('ch01/s01/f001').classList.contains('is-flashing')).toBe(true);
+
+    await userEvent.click(within(panel).getByRole('button', { name: 'Magnify the original: Figure 1.1 The loop' }));
+    expect(screen.getByRole('dialog', { name: 'Figure 1.1 The loop' })).toBeTruthy();
+  });
+
+  it('puts a figure\'s explanation under its original', async () => {
+    const explanation = {
+      id: 'fd1', anchor: 'ch01/s01/f001', type: 'figure_description' as const, standing: 'approved' as const, version: 1, origin: 'skill' as const, title: 'Figure 1.1 The loop',
+      blocks: [{ type: 'paragraph' as const, spans: [{ text: 'A reinforcing loop between queue and starts.', cites: [] }] }],
+    };
+    renderReader([], { ...panes, figures: [explanation] });
+    await userEvent.click(screen.getByRole('tab', { name: /^Figures/ }));
+    const panel = screen.getByRole('tabpanel');
+    expect(within(panel).getByText('Explained below')).toBeTruthy();
+    const original = panel.querySelector('[data-original="ch01/s01/f001"]')!;
+    const description = within(panel).getByText('A reinforcing loop between queue and starts.');
+    expect(original.compareDocumentPosition(description) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(panel.querySelectorAll('[data-scope]')).toHaveLength(1);
   });
 });

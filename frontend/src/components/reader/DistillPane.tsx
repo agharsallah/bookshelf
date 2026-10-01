@@ -1,7 +1,7 @@
 /**
  * The right pane: what the shelf knows about this chapter, in tabs — the chapter
- * distillation, the summary, section notes, explanations of figures/tables/code,
- * and your notes. Unapproved artifacts carry a "draft" badge. The pane stays put
+ * distillation, the summary, section notes, the chapter's original figures with
+ * the explanations made of them (and of its tables and code), and your notes. Unapproved artifacts carry a "draft" badge. The pane stays put
  * unless following is turned on, then it tracks the section being read on the left. Passages of the distillation and
  * summary can be highlighted and annotated, like the source text.
  */
@@ -12,6 +12,8 @@ import { isUnder } from '../../lib/documents/tree';
 import { Blocks } from '../blocks/Blocks';
 import type { MagnifyHandler } from '../blocks/MagnifyContext';
 import { scrollPaneTo } from './dom';
+import type { FigureShelfItem } from './figures';
+import { OriginalFigureView } from './OriginalFigureView';
 import { NOTABLE_ATTR, NOTABLE_TARGET_ATTR } from './paneMarks';
 import type { PaneEntry, Panes } from './panes';
 import styles from './DistillPane.module.css';
@@ -41,6 +43,10 @@ export interface DistillPaneProps {
   citeHref: (anchor: string) => string;
   /** Open a drawn figure (diagram, chart) in the lightbox. */
   onMagnify: MagnifyHandler;
+  /** The Figures tab: originals paired with their explanations (figures.ts `figureShelf`). */
+  figures: readonly FigureShelfItem<PaneEntry>[];
+  /** Open one of the chapter's original figures in the lightbox. */
+  onOpenFigure: (anchor: string) => void;
 }
 
 function Badge({ entry }: { entry: PaneEntry }) {
@@ -55,7 +61,20 @@ function Badge({ entry }: { entry: PaneEntry }) {
 /** The distillation and summary take highlights and notes (paneMarks.ts). */
 const NOTABLE_TYPES = new Set(['chapter_distillation', 'chapter_summary']);
 
-function Entry({ entry, heading, onCite, citeHref, onMagnify }: { entry: PaneEntry; heading: boolean } & Pick<DistillPaneProps, 'onCite' | 'citeHref' | 'onMagnify'>) {
+type EntryActions = Pick<DistillPaneProps, 'onCite' | 'citeHref' | 'onMagnify'>;
+
+function EntryTitle({ anchor, title, onCite }: { anchor: string; title: string | null; onCite: (anchor: string) => void }) {
+  return (
+    <h3 className={styles.entryTitle}>
+      <button type="button" className={styles.scope} onClick={() => onCite(anchor)}>
+        {anchorLabel(anchor)}
+      </button>
+      {title ?? ''}
+    </h3>
+  );
+}
+
+function Entry({ entry, heading, onCite, citeHref, onMagnify }: { entry: PaneEntry; heading: boolean } & EntryActions) {
   const notable = NOTABLE_TYPES.has(entry.type);
   return (
     <section
@@ -63,16 +82,27 @@ function Entry({ entry, heading, onCite, citeHref, onMagnify }: { entry: PaneEnt
       data-scope={entry.anchor}
       {...(notable ? { [NOTABLE_ATTR]: entry.id, [NOTABLE_TARGET_ATTR]: entry.type } : {})}
     >
-      {heading ? (
-        <h3 className={styles.entryTitle}>
-          <button type="button" className={styles.scope} onClick={() => onCite(entry.anchor)}>
-            {anchorLabel(entry.anchor)}
-          </button>
-          {entry.title ?? ''}
-        </h3>
-      ) : null}
+      {heading ? <EntryTitle anchor={entry.anchor} title={entry.title} onCite={onCite} /> : null}
       <Badge entry={entry} />
       <Blocks blocks={entry.blocks as RenderBlock[]} onCite={onCite} citeHref={citeHref} onMagnify={onMagnify} />
+    </section>
+  );
+}
+
+/** An original figure over the explanation mapped to it; a table or code explanation alone. */
+function FigureEntry({ item, onOpenFigure, ...actions }: { item: FigureShelfItem<PaneEntry> } & EntryActions & Pick<DistillPaneProps, 'onOpenFigure'>) {
+  const { anchor, original, explanation } = item;
+  if (!original) return explanation ? <Entry entry={explanation} heading {...actions} /> : null;
+  return (
+    <section className={styles.entry} data-scope={anchor}>
+      <EntryTitle anchor={anchor} title={explanation?.title ?? original.caption ?? `Figure ${original.n}`} onCite={actions.onCite} />
+      <OriginalFigureView anchor={anchor} figure={original} explained={explanation !== null} onOpen={onOpenFigure} onShow={actions.onCite} />
+      {explanation ? (
+        <>
+          <Badge entry={explanation} />
+          <Blocks blocks={explanation.blocks as RenderBlock[]} onCite={actions.onCite} citeHref={actions.citeHref} onMagnify={actions.onMagnify} />
+        </>
+      ) : null}
     </section>
   );
 }
@@ -81,7 +111,7 @@ const EMPTY: Record<Exclude<Tab, 'notes'>, string> = {
   distillation: 'No distillation yet. It is written from the section notes once they exist.',
   summary: 'No summary yet. Queue one from the document page.',
   sections: 'No section notes yet.',
-  figures: 'No figures, tables or code explained in this chapter yet.',
+  figures: 'No figures in this chapter, and no tables or code explained yet.',
 };
 
 export function DistillPane(props: DistillPaneProps) {
@@ -91,7 +121,7 @@ export function DistillPane(props: DistillPaneProps) {
     distillation: panes.distillation ? 1 : 0,
     summary: panes.summary ? 1 : 0,
     sections: panes.sections.length,
-    figures: panes.figures.length,
+    figures: props.figures.length,
     notes: props.notesCount,
   };
 
@@ -137,7 +167,7 @@ export function DistillPane(props: DistillPaneProps) {
   };
 
   const single = tab === 'distillation' ? panes.distillation : tab === 'summary' ? panes.summary : null;
-  const list = tab === 'sections' ? panes.sections : tab === 'figures' ? panes.figures : [];
+  const actions: EntryActions = { onCite: props.onCite, citeHref: props.citeHref, onMagnify: props.onMagnify };
 
   return (
     <div className={styles.pane}>
@@ -167,9 +197,11 @@ export function DistillPane(props: DistillPaneProps) {
         {tab === 'notes' ? (
           props.notes
         ) : single ? (
-          <Entry entry={single} heading={false} onCite={props.onCite} citeHref={props.citeHref} onMagnify={props.onMagnify} />
-        ) : list.length > 0 ? (
-          list.map((entry) => <Entry key={entry.id} entry={entry} heading onCite={props.onCite} citeHref={props.citeHref} onMagnify={props.onMagnify} />)
+          <Entry entry={single} heading={false} {...actions} />
+        ) : tab === 'sections' && panes.sections.length > 0 ? (
+          panes.sections.map((entry) => <Entry key={entry.id} entry={entry} heading {...actions} />)
+        ) : tab === 'figures' && props.figures.length > 0 ? (
+          props.figures.map((item) => <FigureEntry key={item.anchor} item={item} onOpenFigure={props.onOpenFigure} {...actions} />)
         ) : (
           <p className={styles.empty}>{EMPTY[tab]}</p>
         )}
