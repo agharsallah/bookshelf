@@ -36,9 +36,15 @@ function fakeApi() {
 afterEach(cleanup);
 
 describe('<DueToday>', () => {
-  it('renders nothing when nothing is due', () => {
-    const { container } = render(<DueToday initial={{ items: [], total: 0 }} api={fakeApi()} />);
-    expect(container.innerHTML).toBe('');
+  it('says nothing is due, without a count, when no card is due', () => {
+    render(<DueToday initial={{ items: [], total: 0 }} api={fakeApi()} />);
+    expect(screen.getByRole('status').textContent).toMatch(/^Nothing is due today/);
+    expect(screen.queryByText(/to review|reviewed/)).toBeNull();
+  });
+
+  it('says the cards could not be loaded when they failed to load', () => {
+    render(<DueToday initial={null} api={fakeApi()} />);
+    expect(screen.getByRole('status').textContent).toMatch(/could not be loaded/);
   });
 
   it('shows the prompt alone, reveals the cited answer only after an attempt, and rates to the next card', async () => {

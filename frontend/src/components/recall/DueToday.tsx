@@ -1,9 +1,9 @@
 /**
- * Due today (island, on the Desk): the review items due across every book, one at a
+ * Due today (island, on Today): the review items due across every book, one at a
  * time. Each is retrieval, not rereading: you see the prompt alone, type an answer, and
  * only then can the cited passage be revealed; your self-rating tells FSRS when it comes
- * back. Ctrl/⌘+Enter reveals; 1–4 rate once it is revealed. Renders nothing when nothing
- * is due.
+ * back. Ctrl/⌘+Enter reveals; 1–4 rate once it is revealed. Says so when nothing is due,
+ * or when the cards could not be loaded (`initial` null).
  */
 import { useAttention } from '../../lib/activity/useAttention';
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
@@ -17,7 +17,8 @@ import { dueCards, rateReview, revealAnswer, type RecallApi } from './api';
 import styles from './DueToday.module.css';
 
 export interface DueTodayProps {
-  initial: DueCards;
+  /** Null when the due cards could not be loaded. */
+  initial: DueCards | null;
   api?: RecallApi;
 }
 
@@ -35,8 +36,8 @@ const RATINGS: readonly { rating: Rating; label: string }[] = [
 ];
 
 export function DueToday({ initial, api = browserApi }: DueTodayProps) {
-  const [cards, setCards] = useState<DueCard[]>(initial.items);
-  const [total, setTotal] = useState(initial.total);
+  const [cards, setCards] = useState<DueCard[]>(initial?.items ?? []);
+  const [total, setTotal] = useState(initial?.total ?? 0);
   const [reviewed, setReviewed] = useState(0);
   const [attempt, setAttempt] = useState('');
   const [revealed, setRevealed] = useState<Revealed | null>(null);
@@ -49,8 +50,6 @@ export function DueToday({ initial, api = browserApi }: DueTodayProps) {
   useEffect(() => {
     if (revealed) good.current?.focus();
   }, [revealed]);
-
-  if (initial.total === 0) return null;
 
   const reveal = async () => {
     if (!card || !attempt.trim()) return;
@@ -102,7 +101,7 @@ export function DueToday({ initial, api = browserApi }: DueTodayProps) {
         <h2 id="due-title" className={`section-title ${styles.title}`}>
           Due today
         </h2>
-        <span className={styles.count}>{card ? `${total} to review` : `${reviewed} reviewed`}</span>
+        {(card || reviewed > 0) && <span className={styles.count}>{card ? `${total} to review` : `${reviewed} reviewed`}</span>}
       </div>
       {card ? (
         <ReaderCites slug={card.document.slug}>
@@ -149,7 +148,11 @@ export function DueToday({ initial, api = browserApi }: DueTodayProps) {
         </ReaderCites>
       ) : (
         <p className={styles.done} role="status">
-          All done for today. What you reviewed comes back when it is due.
+          {!initial
+            ? 'Your review cards could not be loaded. Reload the page to try again.'
+            : reviewed > 0
+              ? 'All done for today. What you reviewed comes back when it is due.'
+              : 'Nothing is due today. Cards from your recalls and flashcards come back here on the day they are due.'}
         </p>
       )}
     </section>
