@@ -79,8 +79,8 @@ export function ReaderToolbar(props: ReaderToolbarProps) {
             <PaneIcon />
           </button>
         </span>
-        <button type="button" className={styles.lock} aria-pressed={locked} onClick={onLock} title="Keep the right pane where it is while you scroll">
-          {locked ? 'Unlock pane' : 'Lock pane'}
+        <button type="button" className={styles.lock} aria-pressed={locked} onClick={onLock} title="Make the right pane follow your reading position as you scroll">
+          {locked ? 'Follow reading' : 'Stop following'}
         </button>
         <button
           ref={settings.button}

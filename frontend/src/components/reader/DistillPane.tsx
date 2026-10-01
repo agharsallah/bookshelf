@@ -1,8 +1,8 @@
 /**
  * The right pane: what the shelf knows about this chapter, in tabs — the chapter
  * distillation, the summary, section notes, explanations of figures/tables/code,
- * and your notes. Unapproved artifacts carry a "draft" badge. Unless locked, the
- * pane follows the section being read on the left. Passages of the distillation and
+ * and your notes. Unapproved artifacts carry a "draft" badge. The pane stays put
+ * unless following is turned on, then it tracks the section being read on the left. Passages of the distillation and
  * summary can be highlighted and annotated, like the source text.
  */
 import { useEffect, useRef, type KeyboardEvent, type ReactNode, type RefObject } from 'react';

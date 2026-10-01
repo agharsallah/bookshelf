@@ -1,6 +1,6 @@
 /**
  * The reader island: one chapter, source blocks on the left and what the shelf
- * knows about them on the right, kept in step as you scroll (unless locked).
+ * knows about them on the right, staying put unless you turn on following.
  * Cite chips scroll to and flash their passage; hovering a passage lights up what
  * cites it. Select text (of the source, the distillation or the summary) to highlight
  * or annotate it; your notes list covers the chapter or the whole book. The URL follows the block in
@@ -98,7 +98,7 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
   const sourceRef = useRef<HTMLDivElement>(null);
   const paneRef = useRef<HTMLDivElement>(null);
   const [tab, setTab] = useState<Tab>(() => firstTab(panes));
-  const [locked, setLocked] = useState(false);
+  const [locked, setLocked] = useState(true);
   const [view, setView] = useState<ReaderView>('source');
   const [contentsOpen, setContentsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
