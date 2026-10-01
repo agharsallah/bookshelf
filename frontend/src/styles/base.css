@@ -110,6 +110,29 @@ samp {
   border: 0;
 }
 
+/* A placeholder shape while content loads (skeletons, island fallbacks): a quiet block
+   with a slow shimmer, still where motion is reduced. Size it where it is used. */
+.skeleton-bone {
+  display: block;
+  border-radius: var(--radius-m);
+  background: linear-gradient(90deg, var(--paper-sunken), var(--paper-raised), var(--paper-sunken));
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s linear infinite;
+}
+
+@keyframes skeleton-shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-bone {
+    animation: none;
+    background: var(--paper-sunken);
+  }
+}
+
 /* Hidden outside workshop mode (lib/workshop.ts): re-runs, job history, gate scores. */
 /* Room at the bottom of the page for the now-playing bar (NowPlayingBar), while it shows. */
 html[data-now-playing] {
