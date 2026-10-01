@@ -71,6 +71,13 @@ export default defineConfig({
     },
   ],
 
+  // ClientRouter prefetches every link; on hover that server-renders each page you pass
+  // over (dozens of backend calls apiece). On tap it still starts just before the click.
+  prefetch: {
+    prefetchAll: true,
+    defaultStrategy: 'tap',
+  },
+
   integrations: [react()],
 
   adapter: node({
