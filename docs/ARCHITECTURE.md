@@ -949,7 +949,7 @@ starts at the block you are on.
 ### Remembering it
 
 Reading once is not remembering. Three light habits, each at a moment the reader is already
-at, with no screen of its own beyond the Desk's review card:
+at, with no screen of its own beyond the review card on Today:
 
 ```mermaid
 flowchart LR
@@ -960,7 +960,7 @@ flowchart LR
   G["grade-recall<br/>vs the chapter's key ideas"]:::derived
   RV["review_items<br/>FSRS schedule"]:::derived
   FC["flashcard marks"]:::human
-  D["Desk: due today<br/>prompt → typed answer → reveal → rate"]:::human
+  D["Today: due today<br/>prompt → typed answer → reveal → rate"]:::human
   P --> G
   R --> G --> RV
   G -- "gaps marked in the reader" --> R
@@ -1167,7 +1167,7 @@ Keep Astro as the shell and routing layer; add React islands only where interact
 |---|---|---|
 | **Library** | Astro, server-rendered; one small script (`components/library/live.ts`) | Spines dyed by kind, reading, study material or theme with a colour key, facet bars that filter, grouping behind divider cards, eight orders, a lectern for the picked book (its cover, card and study material), list view, ingest dialog. Filters and order in the URL, display choices in localStorage; everything works without the script |
 | **Reader** | React island | Two panes — source blocks left, distillation right — anchor-synced scrolling, highlight/note creation. The right pane's Figures tab lists the chapter's original figures (the images cropped from the source, magnifiable) in reading order, each with a line under it mapping it to the text (its place among the chapter's figures, its page, "Show in text") and to its `describe-figure` explanation, which follows it; table and code explanations sit between them by anchor. Reading settings (font, size, spacing, width), panes you can put away, focus mode and full screen, passages colour-coded by role (quote, example, exercise…), all kept per browser. "Mark what matters" (`h`) colours the source itself: core ideas, key points and defined terms, drawn in as each block scrolls into view, each opening a card with why it was marked, and a meter of the key ideas reached. The marks are `mark-salience`'s when that chapter has run it (a manual `derive` per chapter), otherwise inferred from what the distillation, notes and summary cite and from the book's concepts and glossary. Saves your place in the chapter as you read (server-side, so it follows you across devices); the document page offers "Continue reading" and shows progress per chapter and for the book. Listen (`l`) reads the chapter aloud as written, marking and following the passage being read. Recall (`r`, or at the chapter's end) hides the text while you write what you remember, then shows the grade and marks the gaps; an unread chapter first asks what you expect it to argue (§9 "Remembering it"). Genuinely interactive |
-| **Desk** | Astro + one React island | The home page; "Due today" runs the spaced reviews across every book inline, one card at a time (prompt, typed answer, reveal, rate 1–4), and is absent when nothing is due |
+| **Today** | Astro + two React islands | The home page, a daily session: the date and the week behind it (seven bars of time, today marked, the streak), one line saying what the day holds, "Due today" running the spaced reviews across every book inline, one card at a time (prompt, typed answer, reveal, rate 1–4), "From your margins" bringing back one passage you marked (the same all day, "Show another" draws a different one) with your note and a link to its place, the book to pick up with the others still open, and the next paper. Browsing the shelf, study material and statistics live in Library and You, not here |
 | **Brief** | Astro, static | Renders one approved artifact. Server-rendered, instant, printable |
 | **Guide** | Astro + one React island | The book guide with its charts (arc strip, chapter rows, theme heatmap, stat tiles), server-rendered then hydrated: a cite, chapter title or heatmap cell opens the passage in place (a drawer with the whole chapter, the cited block marked, previous / next chapter, "Open in reader"; its left edge drags wider with the reader's own width grip, and its width and typography are the reader's saved preferences); diagrams and charts magnify in the reader's lightbox. ⌘/Ctrl/middle click still opens the reader |
 | **Search** | React island | Query box, intent badge, grouped results, cited answer with click-through |
@@ -1185,11 +1185,12 @@ backend calls before Astro sends it. Four rules keep that from showing:
 
 - **Slow pages load as a server island.** A page whose data takes many calls returns its shell
   at once with a placeholder, and renders the rest in one deferred request (`server:defer`).
-  The Desk does this: its books, due cards, next paper and counts all load in `Desk.astro`.
-- **The costliest island is cached in process.** Astro's route cache (`memoryCache`,
-  `lib/route-cache.ts`) keeps the rendered Desk for 30 s, then serves it stale for up to five
-  minutes while a fresh render replaces it. Every write in the app goes through the `/api`
-  proxy, which drops the cached Desk, so your own changes show at once; work done by jobs shows
+  Today does this: its books, due cards, passage and next paper load in `Today.astro`, and
+  the slower week of reader statistics in `Week.astro`, so neither waits on the other.
+- **The costliest islands are cached in process.** Astro's route cache (`memoryCache`,
+  `lib/route-cache.ts`) keeps Today's rendered islands for 30 s, then serves them stale for up
+  to five minutes while a fresh render replaces them. Every write in the app goes through the
+  `/api` proxy, which drops the cached Today, so your own changes show at once; work done by jobs shows
   once the entry ages out. A failed load is never kept. Island URLs carry their component
   encrypted afresh on every render (`e`), so the cache key leaves `e` out; this works only for
   an island without props. Reader and workshop pages are not cached: they change as you use them.

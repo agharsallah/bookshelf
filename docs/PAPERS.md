@@ -535,7 +535,7 @@ under two papers); `GET …/synthesis` adds `sources` for its `<slug>:<anchor>` 
 | Compare | `/papers/compare?ids=` | results matrix + bar chart per metric, "synthesize" → set |
 | Set | `/papers/sets/[id]` | synthesis with cross-paper cites |
 | Map / graph | existing | claim nodes, method/dataset/metric/task concept colours, `cites` edges |
-| Desk | existing | one "next paper" card when candidates exist |
+| Today | existing | one "next paper" card when candidates exist |
 
 Charts reuse `src/components/charts/` and the guide's stat tiles; the assessment is a bar chart,
 not a radar.
@@ -558,7 +558,7 @@ lowers the score, `rating` below 3 stars, grows left of a zero line). Add to she
 `/papers/compare?ids=` (comma-separated or repeated) is a GET picker form, the matrix, one bar
 chart per (dataset, metric) coloured by paper, and "Save as set and synthesize".
 `/papers/sets` and `/papers/sets/[id]`: set-page sigla follow set order; the version switcher
-probes `?version=n+1` until a 404 (**deviation**: no versions endpoint). The Desk shows one
+probes `?version=n+1` until a 404 (**deviation**: no versions endpoint). Today shows one
 "Next paper" card (best `suggested`, else the best queued). The map: paper concept kinds get
 a colour *and* a glyph inside the ring (no four series tokens stay CVD-apart, so the glyph
 carries it); atlas document and chapter nodes carry `genre`, and the lens filters by it
