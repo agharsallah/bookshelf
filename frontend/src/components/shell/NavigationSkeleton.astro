@@ -1,0 +1,170 @@
+---
+/**
+ * What `<main>` shows while a slow page loads (lib/navigation-loading.ts): the page's
+ * content gives way to a skeleton shaped like the page being opened, set by
+ * `<html data-navigating>`. Four shapes: the reader's contents and two panes, a
+ * document's title over its contents and side cards, a grid of cards, and a plain page.
+ */
+const lines = (n: number) => Array.from({ length: n }, (_, i) => i);
+---
+
+<div class="nav-skeleton">
+  <p class="visually-hidden" role="status">Loading the page</p>
+
+  <div class="shape" data-kind="page" aria-hidden="true">
+    <span class="skeleton-bone title"></span>
+    <span class="skeleton-bone lede"></span>
+    <span class="skeleton-bone block"></span>
+    <span class="skeleton-bone block"></span>
+    <span class="skeleton-bone block short"></span>
+  </div>
+
+  <div class="shape" data-kind="grid" aria-hidden="true">
+    <span class="skeleton-bone title"></span>
+    <span class="skeleton-bone toolbar"></span>
+    <div class="cards">{lines(14).map(() => <span class="skeleton-bone card" />)}</div>
+  </div>
+
+  <div class="shape" data-kind="document" aria-hidden="true">
+    <span class="skeleton-bone title wide"></span>
+    <span class="skeleton-bone lede"></span>
+    <div class="columns">
+      <div class="rows">{lines(8).map(() => <span class="skeleton-bone row" />)}</div>
+      <div class="rows">
+        <span class="skeleton-bone block"></span>
+        <span class="skeleton-bone block short"></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="shape" data-kind="reader" aria-hidden="true">
+    <span class="skeleton-bone toolbar"></span>
+    <div class="panes">
+      <div class="rows contents">{lines(10).map(() => <span class="skeleton-bone line" />)}</div>
+      <div class="text">{lines(14).map(() => <span class="skeleton-bone line" />)}</div>
+      <div class="text">{lines(8).map(() => <span class="skeleton-bone line" />)}</div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .nav-skeleton,
+  .shape {
+    display: none;
+  }
+
+  /* The page being left steps aside for the skeleton until the new one is swapped in. */
+  :global(html[data-navigating] #main > *:not(.nav-skeleton)) {
+    display: none !important;
+  }
+
+  :global(html[data-navigating]) .nav-skeleton {
+    display: block;
+  }
+
+  /* The page being left may be a narrow one; these pages open wide (main--wide). */
+  :global(html[data-navigating='reader'] #main),
+  :global(html[data-navigating='document'] #main),
+  :global(html[data-navigating='grid'] #main) {
+    max-width: 80rem;
+  }
+
+  :global(html[data-navigating='page']) .shape[data-kind='page'],
+  :global(html[data-navigating='grid']) .shape[data-kind='grid'],
+  :global(html[data-navigating='document']) .shape[data-kind='document'],
+  :global(html[data-navigating='reader']) .shape[data-kind='reader'] {
+    display: grid;
+    gap: var(--space-5);
+  }
+
+  .title {
+    inline-size: min(28rem, 60%);
+    block-size: 2.75rem;
+  }
+
+  .title.wide {
+    inline-size: min(40rem, 85%);
+    block-size: 3.5rem;
+  }
+
+  .lede {
+    inline-size: min(36rem, 75%);
+    block-size: 1.25rem;
+  }
+
+  .toolbar {
+    block-size: 2.5rem;
+  }
+
+  .block {
+    block-size: 7rem;
+  }
+
+  .short {
+    inline-size: 70%;
+    block-size: 3.5rem;
+  }
+
+  /* Two full rows whatever the width: the cards past them are clipped. */
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+    grid-auto-rows: 13rem;
+    gap: var(--space-4);
+    max-block-size: calc(2 * 13rem + var(--space-4));
+    overflow: hidden;
+  }
+
+  .columns {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 20rem;
+    gap: var(--space-7);
+    align-items: start;
+  }
+
+  .panes {
+    display: grid;
+    grid-template-columns: 13rem minmax(0, 3fr) minmax(0, 2fr);
+    gap: var(--space-7);
+  }
+
+  .contents .line {
+    inline-size: 80%;
+    margin-block-end: var(--space-2);
+  }
+
+  .rows,
+  .text {
+    display: grid;
+    gap: var(--space-3);
+  }
+
+  .row {
+    block-size: 2.25rem;
+  }
+
+  .line {
+    block-size: 0.95rem;
+  }
+
+  /* Ragged like set text: every fifth line ends a paragraph. */
+  .line:nth-child(5n) {
+    inline-size: 55%;
+    margin-block-end: var(--space-3);
+  }
+
+  .line:nth-child(3n + 1) {
+    inline-size: 94%;
+  }
+
+  @media (max-width: 60rem) {
+    .columns,
+    .panes {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .contents {
+      display: none;
+    }
+  }
+</style>

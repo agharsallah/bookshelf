@@ -9,12 +9,17 @@
  * playing on the next (`NowPlayingBar`, kept across swaps). Page scripts therefore run
  * through `onPage` (lib/page.ts), and the theme and mode are written to `<html>` again
  * after each swap, which replaces its attributes with the new page's.
+ *
+ * While a slow page loads, a bar runs along the top and `<main>` shows a skeleton shaped
+ * like the page being opened (NavigationProgress, NavigationSkeleton).
  */
 import { Font } from 'astro:assets';
 import { ClientRouter } from 'astro:transitions';
 import { PUBLIC_APP_NAME } from 'astro:env/client';
 import '../styles/base.css';
 import ApiStatus from '../components/shell/ApiStatus.astro';
+import NavigationProgress from '../components/shell/NavigationProgress.astro';
+import NavigationSkeleton from '../components/shell/NavigationSkeleton.astro';
 import ThemeToggle from '../components/shell/ThemeToggle.astro';
 import WorkshopToggle from '../components/shell/WorkshopToggle.astro';
 import CommandPalette from '../components/search/CommandPalette';
@@ -59,6 +64,7 @@ const afterSwapScript = `document.addEventListener('astro:after-swap', () => { $
   </head>
   <body>
     <a class="skip-link" href="#main">Skip to content</a>
+    <NavigationProgress />
 
     <header class="masthead">
       <div class="masthead-inner">
@@ -107,6 +113,7 @@ const afterSwapScript = `document.addEventListener('astro:after-swap', () => { $
 
     <main id="main" class:list={['main', `main--${width}`]} tabindex="-1">
       <slot />
+      <NavigationSkeleton />
     </main>
 
     <NowPlayingBar client:only="react" transition:persist="now-playing" />

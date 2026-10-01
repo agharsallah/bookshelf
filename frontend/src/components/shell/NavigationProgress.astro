@@ -1,0 +1,57 @@
+---
+/**
+ * The thin bar along the top while the next page loads (lib/navigation-loading.ts). It
+ * creeps most of the way across and finishes when the page arrives; persisted across
+ * swaps so that last run is seen. Decorative: the skeleton and `aria-busy` on `<main>`
+ * carry the state for assistive tech.
+ */
+---
+
+<div class="nav-progress" data-nav-progress aria-hidden="true" transition:persist="nav-progress"></div>
+
+<script>
+  import { trackNavigation } from '../../lib/navigation-loading';
+
+  trackNavigation();
+</script>
+
+<style>
+  .nav-progress {
+    position: fixed;
+    inset: 0 0 auto;
+    z-index: 200;
+    block-size: 3px;
+    background: var(--accent);
+    transform: scaleX(0);
+    transform-origin: left;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  /* Most of the way, slowing as it goes, so a long wait still reads as progress. */
+  .nav-progress[data-state='loading'] {
+    opacity: 1;
+    transform: scaleX(0.85);
+    transition:
+      transform 8s cubic-bezier(0.1, 0.7, 0.2, 1),
+      opacity 150ms linear;
+  }
+
+  .nav-progress[data-state='done'] {
+    opacity: 0;
+    transform: scaleX(1);
+    transition:
+      transform 200ms var(--ease-out),
+      opacity 250ms linear 150ms;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .nav-progress[data-state] {
+      transition: none;
+    }
+
+    .nav-progress[data-state='loading'] {
+      transform: scaleX(1);
+    }
+  }
+</style>
