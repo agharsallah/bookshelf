@@ -11,7 +11,7 @@ import { followSystem, setTheme, storedTheme } from '../../lib/theme';
 import { readVoice, saveVoice } from '../../lib/voice';
 import { isWorkshop, setWorkshop } from '../../lib/workshop';
 import { readPref, savePref, VIEWS, type LibraryView } from '../library/view';
-import { ALIGNS, FONTS, LEADINGS, prefsVars, SIZES, SPACINGS, WIDTHS } from '../reader/prefs';
+import { ALIGNS, FONTS, LEADINGS, MARGINS, prefsVars, SIZES, SPACINGS, WIDTHS } from '../reader/prefs';
 import { useReaderPrefs } from '../reader/usePrefs';
 import { AutoRunSection } from './AutoRunSection';
 import { Check, Row, Section, Segmented, titled } from './Controls';
@@ -100,6 +100,9 @@ export function Settings() {
         </Row>
         <Row label="Alignment">
           <Segmented label="Alignment" value={prefs.align} options={titled(ALIGNS)} onChange={(align) => update({ align })} />
+        </Row>
+        <Row label="Page margins">
+          <Segmented label="Page margins" value={prefs.margins} options={titled(MARGINS)} onChange={(margins) => update({ margins })} />
         </Row>
         <Row label="Aids">
           <div className={styles.checks}>

@@ -1,6 +1,6 @@
 /**
  * The "Aa" panel: how the text is set (font, size, line and paragraph spacing,
- * width, alignment) and the reading aids. Every change applies at once and is
+ * width, alignment, page margins) and the reading aids. Every change applies at once and is
  * remembered; "Reset" returns the typography to the defaults.
  */
 import { useEffect, useRef, type ReactNode, type RefObject } from 'react';
@@ -11,6 +11,7 @@ import {
   FONTS,
   isDefaultType,
   LEADINGS,
+  MARGINS,
   SIZES,
   SPACINGS,
   WIDTHS,
@@ -26,6 +27,7 @@ const LEADING_LABELS = { tight: 'Tight', normal: 'Normal', loose: 'Loose', airy:
 const SPACING_LABELS = { compact: 'Compact', normal: 'Normal', roomy: 'Roomy' } as const;
 const WIDTH_LABELS = { narrow: 'Narrow', normal: 'Normal', wide: 'Wide' } as const;
 const ALIGN_LABELS = { start: 'Ragged', justify: 'Justified' } as const;
+const MARGIN_LABELS = { normal: 'Normal', narrow: 'Narrow' } as const;
 
 function Segmented<T extends string>({
   label,
@@ -115,6 +117,7 @@ export function ReadingSettings({ prefs, onChange, onClose, opener }: ReadingSet
       <Segmented label="Paragraphs" options={SPACINGS} labels={SPACING_LABELS} value={prefs.spacing} onChange={(spacing) => onChange({ spacing })} />
       <Segmented label="Width" options={WIDTHS} labels={WIDTH_LABELS} value={prefs.width} onChange={(width) => onChange({ width, measure: null })} />
       <Segmented label="Alignment" options={ALIGNS} labels={ALIGN_LABELS} value={prefs.align} onChange={(align) => onChange({ align })} />
+      <Segmented label="Margins" options={MARGINS} labels={MARGIN_LABELS} value={prefs.margins} onChange={(margins) => onChange({ margins })} />
       <div className={styles.aids}>
         <AidSwitch
           label="Colour-code passages"
@@ -152,8 +155,8 @@ export function ReadingSettings({ prefs, onChange, onClose, opener }: ReadingSet
           className={styles.reset}
           disabled={isDefaultType(prefs)}
           onClick={() => {
-            const { font, size: s, leading, spacing, width, align, measure } = DEFAULT_PREFS;
-            onChange({ font, size: s, leading, spacing, width, align, measure });
+            const { font, size: s, leading, spacing, width, align, margins, measure } = DEFAULT_PREFS;
+            onChange({ font, size: s, leading, spacing, width, align, margins, measure });
           }}
         >
           Reset typography

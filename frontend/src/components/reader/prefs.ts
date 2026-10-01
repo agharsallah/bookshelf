@@ -1,6 +1,6 @@
 /**
  * Reader preferences: how the text is set (font, size, leading, paragraph spacing,
- * measure, alignment), which panes are shown, and the reading aids (focus mode,
+ * measure, alignment, page margins), which panes are shown, and the reading aids (focus mode,
  * colour-coded passages, what-matters marks, spotlight). One JSON object in localStorage, validated
  * field by field on the way in so a stale or hand-edited value never breaks the page.
  */
@@ -10,12 +10,14 @@ export const LEADINGS = ['tight', 'normal', 'loose', 'airy'] as const;
 export const SPACINGS = ['compact', 'normal', 'roomy'] as const;
 export const WIDTHS = ['narrow', 'normal', 'wide'] as const;
 export const ALIGNS = ['start', 'justify'] as const;
+export const MARGINS = ['normal', 'narrow'] as const;
 
 export type ReaderFont = (typeof FONTS)[number];
 export type Leading = (typeof LEADINGS)[number];
 export type Spacing = (typeof SPACINGS)[number];
 export type Width = (typeof WIDTHS)[number];
 export type Align = (typeof ALIGNS)[number];
+export type Margins = (typeof MARGINS)[number];
 
 /** Text sizes in rem, smallest first; `size` is an index into this. */
 export const SIZES = [0.9375, 1, 1.0625, 1.125, 1.25, 1.375, 1.5] as const;
@@ -27,6 +29,8 @@ export interface ReaderPrefs {
   spacing: Spacing;
   width: Width;
   align: Align;
+  /** How far the reader's frame may spread on a large screen: `narrow` leaves thin side margins. */
+  margins: Margins;
   /** A dragged text width in px, used while a side pane is shown; null: the `width` preset. */
   measure: number | null;
   /** The dragged width of the passage drawer (the book guide's cites), px; null: its default. */
@@ -56,6 +60,7 @@ export const DEFAULT_PREFS: Readonly<ReaderPrefs> = Object.freeze({
   spacing: 'normal',
   width: 'normal',
   align: 'start',
+  margins: 'normal',
   measure: null,
   passage: null,
   contents: true,
@@ -82,6 +87,8 @@ const LEADING_VALUES: Record<Leading, string> = { tight: '1.45', normal: '1.62',
 const SPACING_VALUES: Record<Spacing, string> = { compact: '0.5em', normal: '0.9em', roomy: '1.5em' };
 /** The text column in rem, block gutters included. */
 export const WIDTH_REM: Record<Width, number> = { narrow: 34, normal: 40, wide: 48 };
+/** The widest the reader's frame gets; `narrow` lets it run to the screen's edge gutters. */
+const FRAME_VALUES: Record<Margins, string> = { normal: '92rem', narrow: '100vw' };
 
 function oneOf<T extends string>(options: readonly T[], value: unknown, fallback: T): T {
   return typeof value === 'string' && (options as readonly string[]).includes(value) ? (value as T) : fallback;
@@ -126,6 +133,7 @@ export function parsePrefs(raw: string | null): ReaderPrefs {
     spacing: oneOf(SPACINGS, data.spacing, d.spacing),
     width: oneOf(WIDTHS, data.width, d.width),
     align: oneOf(ALIGNS, data.align, d.align),
+    margins: oneOf(MARGINS, data.margins, d.margins),
     measure: measure(data.measure),
     passage: measure(data.passage),
     contents: flag(data.contents, d.contents),
@@ -149,6 +157,7 @@ export function isDefaultType(prefs: ReaderPrefs): boolean {
     prefs.spacing === d.spacing &&
     prefs.width === d.width &&
     prefs.align === d.align &&
+    prefs.margins === d.margins &&
     prefs.measure === d.measure
   );
 }
@@ -165,5 +174,6 @@ export function prefsVars(prefs: ReaderPrefs, dragged = false): Record<string, s
     '--reader-gap': SPACING_VALUES[prefs.spacing],
     '--reader-measure': dragged && prefs.measure !== null ? `${prefs.measure}px` : `${WIDTH_REM[prefs.width]}rem`,
     '--reader-align': prefs.align,
+    '--reader-frame': FRAME_VALUES[prefs.margins],
   };
 }

@@ -7,7 +7,8 @@
  * focus mode centres it at the chosen width with the site chrome gone.
  */
 .reader {
-  --bleed: min(100vw - 2.5rem, 92rem);
+  /* `--reader-frame` is the margins preference (prefs.ts). */
+  --bleed: min(100vw - 2.5rem, var(--reader-frame, 92rem));
   /* The site masthead's height (BaseLayout), which the sticky toolbar sits under. */
   --masthead: 3.5rem;
   --toolbar: 4.5rem;

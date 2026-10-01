@@ -43,7 +43,20 @@ describe('prefsVars', () => {
       '--reader-gap': '1.5em',
       '--reader-measure': '34rem',
       '--reader-align': 'justify',
+      '--reader-frame': '92rem',
     });
+  });
+});
+
+describe('margins', () => {
+  it('narrow lets the frame run to the screen edge; an unknown stored value falls back to normal', () => {
+    expect(prefsVars({ ...DEFAULT_PREFS, margins: 'narrow' })['--reader-frame']).toBe('100vw');
+    expect(parsePrefs('{"margins": "narrow"}').margins).toBe('narrow');
+    expect(parsePrefs('{"margins": "none"}').margins).toBe('normal');
+  });
+
+  it('counts as typography, so Reset brings it back', () => {
+    expect(isDefaultType({ ...DEFAULT_PREFS, margins: 'narrow' })).toBe(false);
   });
 });
 
