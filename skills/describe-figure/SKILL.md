@@ -42,28 +42,39 @@ image, and what you say it means must be said by the surrounding text.
    `context`, find the block that introduces or discusses the figure ("Figure 3.1 shows…");
    that block frames the takeaway.
 3. **Classify `kind`.**
-   - `chart`: quantities on axes — bar, line, scatter, area, pie, histogram.
-   - `diagram`: boxes and arrows — flows, feedback loops, system maps, 2×2 matrices, hierarchies, timelines.
+   - `chart`: quantities on axes — bar, line, scatter, area, pie, histogram, heatmap.
+   - `diagram`: boxes and arrows — flows, feedback loops, system maps, 2×2 matrices, Venn diagrams, hierarchies, timelines.
    - `table`: a picture of a grid of values or labels.
-   - `photo`: a photograph, illustration, screenshot or cartoon with no data or structure to transcribe.
+   - `photo`: a photograph, illustration, screenshot or cartoon with no data or structure to
+     transcribe — including a screenshot of text (a terminal, code, a chat or agent transcript).
 4. **Transcribe by kind** (the first block is the transcription):
    - **chart →** one `chart` block. `kind` is `bar`, `line` or `scatter` (area/histogram → `bar`
      or `line`, whichever preserves the reading). `x.label` and `y.label` as printed, units
      included ("Utilization (%)"). `x.values` in axis order; one `series` per plotted line or bar
      group, named from the legend, with `values` aligned to `x.values`; `null` for a point you
      cannot read. Read values to the precision the gridlines allow (between 4 and 5 is `4.5`,
-     never `4.37`). At least two points. A pie becomes a `table` (segment, share). If axes or
+     never `4.37`). At least two points. A pie becomes a `table` (segment, share); a heatmap
+     becomes a `table` (row label, then one column per printed column label). If axes or
      values are unreadable, fall back to a `table` of what you can read, with approximate
      values written as text ("≈ 40"), and set `confidence: low`.
    - **diagram →** one `diagram` block. One node per box or free-standing label, `label`
-     verbatim (≤ 120 chars), `id` a short identifier (`stock`, `inflow`, `q1`). One edge per
+     verbatim, `id` a short identifier (`stock`, `inflow`, `q1`). A `label` holds **at most
+     120 characters — about 15 words**; count before you write it. A box that prints more (a
+     sentence, a prompt, a command, a code line) gets its title or first words as the label,
+     ending in `…`, and its full text goes verbatim in a `bullets` block after the diagram,
+     one item per such box, starting with the shortened label. Edge labels hold at most 80
+     characters. One edge per
      arrow, in the direction drawn, `label` copied from the arrow ("+", "−", "delay"). Undirected
      lines become edges in reading order. `direction` `LR` or `TD` to match the layout. A 2×2
      matrix is four nodes plus the two axis labels as nodes with edges to the quadrants they
-     define — or a `table` if that reads more faithfully.
+     define — or a `table` if that reads more faithfully. A Venn diagram of counts becomes a
+     `table` (region, value), one row per labelled region.
    - **table →** one `table` block, `header` and `rows` verbatim; each cell is a span citing the figure anchor.
    - **photo →** one `paragraph` describing what is shown that matters to the caption's point
      (subject, setting, what is labelled). No speculation about people's identities or intent.
+     For a screenshot of text, the paragraph says what the exchange or listing does, and an
+     optional `bullets` block quotes at most eight of its key lines verbatim (commands,
+     results); never transcribe a whole listing.
 5. **Optionally add one reading aid** after the transcription: a `paragraph` or `bullets` on how
    to read an unusual encoding (log scale, dual axis, shaded confidence band, a legend colour
    that carries meaning). Skip it when the figure is self-explanatory.
@@ -92,10 +103,12 @@ image, and what you say it means must be said by the surrounding text.
    image cites `element.anchor`; what the text says cites the `context` block that says it.
    `chart`, `diagram` and `table` blocks carry `cites: ["<element.anchor>"]`. Never construct,
    guess or shorten an anchor.
-5. **Missing or unreadable image:** return a minimal valid object — `kind` guessed from the
-   caption, `caption`, a one-sentence `alt`, one `paragraph` restating only what the caption and
-   context say (cited), the takeaway only if the context states it, and `confidence: low`.
-   Never fill the gap with plausible data.
+5. **Missing or unreadable image** (no file, a blank crop, a crop that holds only a legend or
+   colour bar): return a minimal valid object — `kind` guessed from the caption, `caption`, a
+   one-sentence `alt`, one `paragraph` restating only what the caption and context say
+   (cited), the takeaway only if the context states it, and `confidence: low`. Only at
+   `confidence: low` may a `chart`, `diagram` or `table` figure go without its transcription
+   block. Never fill the gap with plausible data.
 6. Do not set a block-level `confidence` higher than the top-level `confidence`.
 
 ## Output
@@ -104,7 +117,16 @@ One JSON object: `{"kind", "caption", "alt", "blocks", "takeaway", "confidence"}
 `blocks` holds 1–6 render blocks (`paragraph`, `bullets`, `table`, `chart`, `diagram`) with
 the transcription first, and `takeaway` is a single span `{"text", "cites"}`.
 
-Text always lives in spans, never in a bare `text` field on a block:
+The reply must parse as strict JSON. Figures are full of quotation marks and backslashes
+(`search_dir "notes"`, `C:\data`, `"fk"`), and one unescaped `"` inside a string breaks
+the whole reply. Inside every string value:
+
+- write a double quote as `\"` — `{"text": "It runs search_dir \"notes\" next."}`;
+- write a backslash as `\\`, a line break as `\n`, and never a raw tab or newline;
+- no trailing commas, no comments, no `NaN` — `null` for a value you cannot read.
+
+Table `header` cells are plain strings (`["Region", "Count"]`), never spans. Text always
+lives in spans, never in a bare `text` field on a block:
 
 - `paragraph`: `{"type": "paragraph", "spans": [{"text": "…", "cites": ["<element anchor>"]}]}`
 - `bullets`: `{"type": "bullets", "items": [[{"text": "…", "cites": ["<anchor>"]}], …]}`

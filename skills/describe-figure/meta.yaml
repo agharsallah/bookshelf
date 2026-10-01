@@ -1,5 +1,5 @@
 name: describe-figure
-version: 3  # v3: caption up to 1500 characters (paper captions are often longer than 500)
+version: 4  # v4: JSON escaping, long box labels, heatmap/Venn → table, low-confidence paragraph fallback
 description: Turn one figure into usable content — charts into data, diagrams into structure, pictures into description — with a cited takeaway.
 tier: explore
 job_kind: describe_figure

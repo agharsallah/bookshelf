@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://bookshelf.local/skills/describe-figure/schema.json",
   "title": "describe-figure output",
-  "description": "A figure transcribed by kind: chart -> chart (or table fallback), diagram -> diagram, table -> table, photo -> paragraph; plus caption, alt text, a cited takeaway and self-reported confidence.",
+  "description": "A figure transcribed by kind: chart -> chart (or table fallback), diagram -> diagram (or table, or paragraph), table -> table, photo -> paragraph; at low confidence (image missing or unreadable) one cited paragraph is enough. Plus caption, alt text, a cited takeaway and self-reported confidence.",
   "type": "object",
   "required": ["kind", "caption", "alt", "blocks", "takeaway", "confidence"],
   "additionalProperties": false,
@@ -29,7 +29,10 @@
   },
   "allOf": [
     {
-      "if": { "properties": { "kind": { "const": "chart" } } },
+      "if": {
+        "properties": { "kind": { "const": "chart" }, "confidence": { "not": { "const": "low" } } },
+        "required": ["kind", "confidence"]
+      },
       "then": {
         "properties": {
           "blocks": {
@@ -39,15 +42,21 @@
       }
     },
     {
-      "if": { "properties": { "kind": { "const": "diagram" } } },
+      "if": {
+        "properties": { "kind": { "const": "diagram" }, "confidence": { "not": { "const": "low" } } },
+        "required": ["kind", "confidence"]
+      },
       "then": {
         "properties": {
-          "blocks": { "contains": { "properties": { "type": { "enum": ["diagram", "paragraph"] } }, "required": ["type"] } }
+          "blocks": { "contains": { "properties": { "type": { "enum": ["diagram", "table", "paragraph"] } }, "required": ["type"] } }
         }
       }
     },
     {
-      "if": { "properties": { "kind": { "const": "table" } } },
+      "if": {
+        "properties": { "kind": { "const": "table" }, "confidence": { "not": { "const": "low" } } },
+        "required": ["kind", "confidence"]
+      },
       "then": {
         "properties": {
           "blocks": { "contains": { "properties": { "type": { "const": "table" } }, "required": ["type"] } }

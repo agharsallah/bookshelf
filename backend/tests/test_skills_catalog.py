@@ -374,6 +374,29 @@ def test_skill_schema_enforces_its_shape(
     assert not _validator(name).is_valid(example)
 
 
+def _unreadable_chart(out: dict[str, Any]) -> None:
+    """Hard rule 5: no image to read, so one cited paragraph at `confidence: low`."""
+    out["blocks"], out["confidence"] = [_para()], "low"
+
+
+def _venn_as_table(out: dict[str, Any]) -> None:
+    out["kind"] = "diagram"
+    cell = {"text": "AutoCodeRover only", "cites": ["ch03/s01/f001"]}
+    out["blocks"] = [{"type": "table", "header": ["Region", "Resolved"], "rows": [[cell, cell]]}]
+
+
+RELAXATIONS: list[Callable[[dict[str, Any]], None]] = [_unreadable_chart, _venn_as_table]
+
+
+@pytest.mark.parametrize("mutate", RELAXATIONS, ids=[m.__name__ for m in RELAXATIONS])
+def test_describe_figure_accepts_the_fallbacks_its_prompt_asks_for(
+    mutate: Callable[[dict[str, Any]], None],
+) -> None:
+    example = copy.deepcopy(_json("describe-figure", "example.json"))
+    mutate(example)
+    assert [e.message for e in _validator("describe-figure").iter_errors(example)] == []
+
+
 def test_link_concepts_vocabularies_match_the_database_enums() -> None:
     props = _json("link-concepts", "schema.json")["properties"]
     kinds = props["concepts"]["items"]["properties"]["kind"]["enum"]
