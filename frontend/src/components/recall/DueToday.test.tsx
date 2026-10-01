@@ -2,6 +2,7 @@ import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { DueCard } from '../../lib/api/types/recalls';
+import type { RecallApi } from './api';
 import { DueToday } from './DueToday';
 
 vi.mock('../../lib/api/client', () => ({ browserApi: {} }));
@@ -15,8 +16,9 @@ const card = (id: string, prompt: string): DueCard => ({
   due: '2026-09-28T00:00:00Z',
 });
 
+/** Spies for assertions, typed as a `RecallApi` so the generic `post` accepts the canned replies. */
 function fakeApi() {
-  return {
+  const api = {
     get: vi.fn(),
     put: vi.fn(),
     delete: vi.fn(),
@@ -28,6 +30,7 @@ function fakeApi() {
       ),
     ),
   };
+  return api as typeof api & RecallApi;
 }
 
 afterEach(cleanup);
