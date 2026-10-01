@@ -37,6 +37,7 @@ from collections.abc import Callable, Collection, Mapping, Sequence
 from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
 from types import FrameType
 
+from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import Session
 
 from app.core.config import get_settings
@@ -292,7 +293,15 @@ class Worker:
             running: set[Future[JobState]] = set()
             while not self.stop.is_set():
                 self.beat()
-                job = self.claim() if len(running) < self.concurrency else None
+                try:
+                    job = self.claim() if len(running) < self.concurrency else None
+                except SQLAlchemyError:
+                    # A dropped connection (network change, laptop sleep) must not end the
+                    # loop: the thread would be gone until a restart. Wait a poll, retry.
+                    if once:
+                        raise
+                    logger.warning("Claiming a job failed; retrying", exc_info=True)
+                    job = None
                 if job is not None:
                     running.add(pool.submit(self.execute, job))
                     continue

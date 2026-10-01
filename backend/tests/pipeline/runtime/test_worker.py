@@ -5,12 +5,15 @@ import argparse
 import json
 import threading
 import time
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
 from sqlalchemy import text
+from sqlalchemy.exc import OperationalError
 from sqlmodel import Session, select
 
+from app.api.routes import job_events
 from app.core.config import get_settings
 from app.db.session import engine
 from app.jobs import queue
@@ -163,6 +166,48 @@ def test_job_stream_sends_a_snapshot_then_ends(client, session: Session):
     assert (health["workers"], health["queued"], health["unclaimed_kinds"]) == ([], 1, ["export"])
     sent = json.loads(events[1]["data"])
     assert (sent["id"], sent["state"], sent["queue_position"]) == (str(job.id), "queued", 1)
+
+
+def failing_once[**P, R](fn: Callable[P, R]) -> Callable[P, R]:
+    """`fn`, except that its first call raises what a dropped connection raises."""
+    calls = 0
+
+    def wrapped(*args: P.args, **kwargs: P.kwargs) -> R:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise OperationalError("select 1", {}, Exception("Can't assign requested address"))
+        return fn(*args, **kwargs)
+
+    return wrapped
+
+
+def test_the_loop_outlives_a_dropped_database_connection(session: Session, monkeypatch):
+    queue.enqueue(session, JobSpec(kind=JobKind.EXPORT, anchor="after-the-blip"))
+
+    def export(ctx: JobContext) -> HandlerResult:
+        worker.stop.set()
+        return HandlerResult()
+
+    worker = Worker(concurrency=1, poll_seconds=0.01, handlers={JobKind.EXPORT: export})
+    monkeypatch.setattr(worker, "claim", failing_once(worker.claim))
+
+    assert worker.run() == 1
+    assert jobs_by_anchor(session)["after-the-blip"].state == JobState.DONE
+
+
+def test_the_job_stream_retries_a_failed_poll_instead_of_ending(client, session, monkeypatch):
+    queue.enqueue(session, JobSpec(kind=JobKind.EXPORT, anchor="ch01"))
+    monkeypatch.setattr(job_events, "_poll", failing_once(job_events._poll))
+    monkeypatch.setattr(job_events, "POLL_SECONDS", 0.01)
+
+    with client.stream("GET", "/api/v1/jobs/stream", params={"max_seconds": 0.2}) as response:
+        text = "".join(response.iter_text())
+
+    events = [
+        line.removeprefix("event: ") for line in text.splitlines() if line.startswith("event:")
+    ]
+    assert events == ["queue", "job", "end"]
 
 
 def test_outbox_file_imports_as_an_interactive_artifact(session, book, skills_dir, tmp_path):

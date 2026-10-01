@@ -13,6 +13,7 @@ Docs: https://fastapi.tiangolo.com/tutorial/server-sent-events/
 """
 
 import asyncio
+import logging
 import time
 import uuid
 from collections.abc import AsyncIterator
@@ -21,6 +22,7 @@ from datetime import UTC, datetime, timedelta
 from fastapi import APIRouter, Query
 from fastapi.concurrency import run_in_threadpool
 from fastapi.sse import EventSourceResponse, ServerSentEvent
+from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import Session, col, or_, select
 
 from app.core import lifecycle
@@ -28,6 +30,8 @@ from app.models import Job
 from app.models.enums import JobState
 from app.schemas.job import JobPublic, QueueStatus
 from app.services.queue_view import public_jobs, queue_status
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 
@@ -84,16 +88,20 @@ async def stream_jobs(
     seen: dict[uuid.UUID, Fingerprint] = {}
     last_health: tuple[object, ...] | None = None
     while True:
-        jobs, status = await run_in_threadpool(_poll, document_id, since)
-        if (health := _health(status)) != last_health:
-            last_health = health
-            yield ServerSentEvent(event="queue", data=status)
-        for job in changes(jobs, seen):
-            yield ServerSentEvent(
-                event="job",
-                id=f"{job.id}:{job.attempts}:{job.state.value}",
-                data=job,
-            )
+        try:
+            jobs, status = await run_in_threadpool(_poll, document_id, since)
+        except SQLAlchemyError:  # a dropped connection: keep the stream, retry next poll
+            logger.warning("Job stream poll failed; retrying", exc_info=True)
+        else:
+            if (health := _health(status)) != last_health:
+                last_health = health
+                yield ServerSentEvent(event="queue", data=status)
+            for job in changes(jobs, seen):
+                yield ServerSentEvent(
+                    event="job",
+                    id=f"{job.id}:{job.attempts}:{job.state.value}",
+                    data=job,
+                )
         if lifecycle.stopping.is_set():
             yield ServerSentEvent(event="end", data={"reason": "shutdown"})
             return
