@@ -1181,7 +1181,14 @@ Keep Astro as the shell and routing layer; add React islands only where interact
 ### Rendering and speed
 
 Every page is rendered on demand (`@astrojs/node`, standalone), and a page waits on its
-backend calls before Astro sends it. Four rules keep that from showing:
+backend calls before Astro sends it. Five rules keep that from showing:
+
+- **A slow navigation shows where it is going.** `ClientRouter` waits for the whole next page
+  before swapping, so `lib/navigation-loading.ts` follows its lifecycle: after 120 ms a bar
+  runs along the top (`NavigationProgress`, persisted across swaps so it finishes), and after
+  350 ms `<main>` gives way to a skeleton shaped like the page being opened — the reader's
+  three columns, a document, a grid of cards or a plain page (`NavigationSkeleton`), marked
+  `aria-busy`. A page that arrives sooner shows neither. Placeholders share `.skeleton-bone`.
 
 - **Slow pages load as a server island.** A page whose data takes many calls returns its shell
   at once with a placeholder, and renders the rest in one deferred request (`server:defer`).
@@ -1194,8 +1201,14 @@ backend calls before Astro sends it. Four rules keep that from showing:
   once the entry ages out. A failed load is never kept. Island URLs carry their component
   encrypted afresh on every render (`e`), so the cache key leaves `e` out; this works only for
   an island without props. Reader and workshop pages are not cached: they change as you use them.
-- **Links prefetch on tap.** `ClientRouter` prefetches every link; on hover that would render
-  each page the pointer crosses, so the strategy is `tap`.
+- **Links prefetch on tap, and the click reuses it.** `ClientRouter` prefetches every link; on
+  hover that would render each page the pointer crosses, so the strategy is `tap`. The router
+  then fetches the page itself, and with no cache headers the server rendered it twice; so a
+  prefetch response alone (`Sec-Purpose: prefetch`) is private and kept 10 s
+  (`lib/prefetch-cache.ts`, applied in the middleware), and the router's fetch waits for it and
+  is served from the browser cache. Ordinary requests stay uncached, so a page you return to is
+  rendered afresh. Links you nearly always follow once pointed at, the reader's previous and
+  next chapter, prefetch on hover.
 - **Hydrate late what is not needed at once.** `client:load` is for what you use right away;
   islands further down the page use `client:visible`, and the attention beacon `client:idle`.
   A `workshop-only` island with `client:visible` never loads in reading mode, because it is
