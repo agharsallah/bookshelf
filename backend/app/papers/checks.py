@@ -17,6 +17,8 @@ model. Human edits keep D15's bypass (schema only). A new paper skill adds one e
                        (both app.papers.extraction_checks)
     explain-math       formulas from the input with their LaTeX, every symbol explained,
                        the worked arithmetic right, diagrams whole (app.papers.math_checks)
+    describe-math      the LaTeX typesets: balanced, math mode only, the same in the math
+                       block (app.papers.latex_checks; a pipeline skill for every document)
 """
 
 import re
@@ -25,6 +27,7 @@ from typing import Any
 
 from app.papers.claims import check_claims
 from app.papers.extraction_checks import check_citations, check_results
+from app.papers.latex_checks import check_math_description
 from app.papers.math_checks import check_math_explainer
 from app.pipeline.bodies import cited_anchors
 from app.pipeline.selectors import Selection
@@ -116,6 +119,7 @@ CHECKS: dict[str, Check] = {
     "extract-results": check_results,  # app.papers.extraction_checks
     "classify-citations": check_citations,
     "explain-math": check_math_explainer,  # app.papers.math_checks
+    "describe-math": check_math_description,  # app.papers.latex_checks
 }
 
 

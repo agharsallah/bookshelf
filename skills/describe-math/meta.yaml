@@ -1,5 +1,5 @@
 name: describe-math
-version: 1
+version: 2  # v2: fragments, symbols from lead-in prose and the formula itself, how-it-is-built bullets, typesetting gate
 description: Transcribe one formula to LaTeX and explain what it means, symbol by symbol, in the book's own terms.
 tier: explore
 job_kind: describe_math

@@ -8,6 +8,10 @@
         {
           "text": "Expected time in the queue is roughly the product of three factors: how busy the server is, how variable the work is, and how long each item takes.",
           "cites": ["ch03/s02/m001", "ch03/s02/p006"]
+        },
+        {
+          "text": "The text calls it Kingman's approximation and uses it to separate the three things that make you wait.",
+          "cites": ["ch03/s02/p006"]
         }
       ],
       "cites": ["ch03/s02/m001"]
@@ -41,6 +45,29 @@
       "type": "definition",
       "term": "t_s",
       "spans": [{ "text": "Mean service time.", "cites": ["ch03/s02/p007"] }]
+    },
+    {
+      "type": "bullets",
+      "items": [
+        [
+          {
+            "text": "ρ/(1 − ρ), the utilization factor: it grows without bound as ρ approaches 1, so a nearly full server makes the wait explode.",
+            "cites": ["ch03/s02/m001", "ch03/s02/p007"]
+          }
+        ],
+        [
+          {
+            "text": "(c_a² + c_s²)/2, the variability factor: the average of the two squared coefficients of variation; it is 0 when neither arrivals nor service vary.",
+            "cites": ["ch03/s02/m001", "ch03/s02/p007"]
+          }
+        ],
+        [
+          {
+            "text": "t_s scales the product to the mean service time, so the wait is measured in the same unit as the work.",
+            "cites": ["ch03/s02/m001", "ch03/s02/p007"]
+          }
+        ]
+      ]
     },
     {
       "type": "callout",
