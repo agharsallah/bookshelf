@@ -397,7 +397,7 @@ stateDiagram-v2
 | Stage | Job | Input | Output | Tier (D16) | Human touchpoint |
 |---|---|---|---|---|---|
 | 1 | `parse` | original file | `nodes` tree incl. `figure` blocks | none (Python) | fix chapter boundaries if the outline was guessed |
-| 2 | `describe_figure` · `explain_code` · `describe_math` · `explain_table` | one non-prose block + caption + ±2 blocks | per-kind explanation artifact (§8) | explore, vision where needed | flag misread charts / mis-split tables |
+| 2 | `describe_figure` · `explain_code` · `describe_math` · `explain_table` | one non-prose block + caption + the nearest 2 substantive blocks each side | per-kind explanation artifact (§8) | explore, vision where needed | flag misread charts / mis-split tables |
 | 3 | `summarize` | one chapter's blocks | `chapter_summary` (short) | explore | — |
 | 4 | `distil_section` | one section's blocks (+ figure descriptions) | `section_note` | distil | — |
 | 5 | `distil_chapter` | that chapter's section notes | `chapter_distillation` | distil | review & approve |

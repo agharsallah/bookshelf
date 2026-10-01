@@ -24,7 +24,11 @@ from app.pipeline.catalogue import shelf_themes
 from app.pipeline.tree import Tree, block, document_envelope, scope_envelope
 
 _OUTLINE_PAGES, _OUTLINE_LINES = 30, 25
-_CONTEXT_BLOCKS = 2
+# An element's context: on each side, the nearest blocks up to `_CONTEXT_BLOCKS` that say
+# something (≥ `_SUBSTANTIVE_WORDS` words), looking no further than `_CONTEXT_REACH` blocks.
+# A formula MuPDF shattered, or a figure among its stray labels, still reaches the prose
+# that introduces it and the "where …" paragraph that defines its symbols.
+_CONTEXT_BLOCKS, _CONTEXT_REACH, _SUBSTANTIVE_WORDS = 2, 8, 8
 _MAX_CONCEPTS = 500
 # The library card reads the front matter: title, copyright and preface pages.
 _FRONT_PAGES, _FRONT_BLOCKS, _FRONT_CHARS = 12, 40, 600
@@ -209,7 +213,7 @@ def element_context(ctx: Context) -> Selection:
         raise SelectorError(f"{node.anchor} is a {node.kind.value}, not an element")
     leaves = ctx.tree.leaves()
     at = next(i for i, n in enumerate(leaves) if n.id == node.id)
-    around = leaves[max(at - _CONTEXT_BLOCKS, 0) : at] + leaves[at + 1 : at + 1 + _CONTEXT_BLOCKS]
+    around = _neighbours(leaves[:at][::-1])[::-1] + _neighbours(leaves[at + 1 :])
     element: dict[str, Any] = {
         "anchor": node.anchor,
         "kind": node.kind.value,
@@ -231,6 +235,18 @@ def element_context(ctx: Context) -> Selection:
         images=images,
         element=element,
     )
+
+
+def _neighbours(leaves: list[Node]) -> list[Node]:
+    """The first leaves of `leaves` (nearest first) up to the context budget."""
+    taken: list[Node] = []
+    substantive = 0
+    for leaf in leaves[:_CONTEXT_REACH]:
+        if substantive == _CONTEXT_BLOCKS:
+            break
+        taken.append(leaf)
+        substantive += count_words(leaf.text or "") >= _SUBSTANTIVE_WORDS
+    return taken
 
 
 def _media_relative(path: Path, media_dir: Path) -> str:

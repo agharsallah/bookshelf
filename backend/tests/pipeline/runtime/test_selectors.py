@@ -6,10 +6,10 @@ import pytest
 from sqlmodel import Session
 
 from app.models import Artifact, Document
-from app.models.enums import ArtifactType, Origin, Review
+from app.models.enums import ArtifactType, NodeKind, Origin, Review
 from app.pipeline.hashing import input_hash
 from app.pipeline.selectors import SelectorError, select_inputs
-from tests.pipeline.runtime.conftest import add_document, body, paragraph, span
+from tests.pipeline.runtime.conftest import add_document, add_nodes, body, paragraph, span
 
 
 def store(session: Session, doc: Document, kind: ArtifactType, anchor: str, version: int = 1, *,
@@ -73,6 +73,33 @@ def test_element_context_carries_neighbours_and_the_image(session, book):
     assert selection.images == (Path("/media/f001.png"),)
     assert [b["anchor"] for b in selection.inputs["context"]] == [
         "ch01/s01/p001", "ch01/s02/p001", "ch02/p001",
+    ]  # fmt: skip
+
+
+def test_element_context_reaches_past_formula_fragments_to_the_defining_prose(session):
+    """A formula MuPDF shattered sits among glyph fragments; the context still reaches the
+    paragraph that introduces it and the one that defines its symbols."""
+    doc = add_document(session, slug="deepseek-r1")
+    intro = "For each question q, GRPO samples a group of outputs from the old policy."
+    where = "where A_i is the advantage, computed from a group of rewards for each output."
+    rate = "We set the learning rate to 3e-6 and the KL coefficient to 0.001."
+    fragments = [(f"ch01/p{n:03}", NodeKind.PARAGRAPH, "i=1", {}) for n in range(2, 5)]
+    add_nodes(session, doc, [
+        ("ch01", NodeKind.CHAPTER, "GRPO", {}),
+        ("ch01/p001", NodeKind.PARAGRAPH, intro, {}),
+        *fragments,
+        ("ch01/m001", NodeKind.MATH, "πθ(oi|q) Ai, clip", {}),
+        ("ch01/q001", NodeKind.QUOTE, "� min", {}),
+        ("ch01/p005", NodeKind.PARAGRAPH, where, {}),
+        ("ch01/p006", NodeKind.PARAGRAPH, rate, {}),
+        ("ch01/p007", NodeKind.PARAGRAPH, "Rewards are the source of the training signal.", {}),
+    ])  # fmt: skip
+
+    context = select(session, "element_context", doc, "ch01/m001").inputs["context"]
+
+    assert [b["anchor"] for b in context] == [
+        "ch01/p001", "ch01/p002", "ch01/p003", "ch01/p004",
+        "ch01/q001", "ch01/p005", "ch01/p006",
     ]  # fmt: skip
 
 
