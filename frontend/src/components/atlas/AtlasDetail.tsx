@@ -2,20 +2,22 @@
  * The margin beside the map: whatever is selected, and the way back to the content.
  *
  * - a **concept**: its gloss, how far it reaches, every chapter it appears in (each opens
- *   the reader there), its related ideas, and links to its page and its neighbourhood;
+ *   at the passage that names it), its related ideas, and links to its page and its neighbourhood;
  * - a **chapter**: "Read this chapter", the ideas it discusses, and the chapters that
  *   share them — the links between sections, each readable in one click;
  * - a **book**: its chapters and the ideas it leans on most;
  * - a **line**: a stored relation shows its evidence passages (`EdgeEvidence`); a
  *   "shares" line shows what the two chapters have in common.
  *
- * Buttons move the selection across the map (it glides there); links leave for the page.
+ * Buttons move the selection across the map (it glides there); "Read" opens the passage in
+ * a drawer beside the map (ReadInPlace, hosted by the explorer); other links leave for the page.
  */
 import type { ReactNode } from 'react';
 import type { ApiClient } from '../../lib/api/client';
 import { GENRE_LABELS } from '../../lib/api/types/documents';
 import type { AtlasEdge, AtlasNode } from '../../lib/api/types/graph';
-import { conceptHref, documentHref, readerHref } from '../search/links';
+import { ReadLink } from '../guide/ReadInPlace';
+import { conceptHref, documentHref } from '../search/links';
 import { EdgeEvidence } from '../graph/EdgeEvidence';
 import { KindMark, RelationMark } from '../graph/Legend';
 import type { ModelEdge } from '../graph/model';
@@ -39,9 +41,29 @@ export interface AtlasDetailProps {
 
 const LIST_MAX = 12;
 
-function readHref(node: AtlasNode): string | null {
+interface ReadProps {
+  node: AtlasNode;
+  /** The passage to open; the chapter's top when absent. */
+  passage?: string | null;
+  className: string;
+  label?: string;
+  children: ReactNode;
+}
+
+/** Read a chapter in place (at `passage` when given); a book links to its page. */
+function Read({ node, passage, className, label, children }: ReadProps) {
   if (!node.document) return null;
-  return node.kind === 'chapter' ? readerHref(node.document.slug, node.anchor) : documentHref(node.document.slug);
+  if (node.kind !== 'chapter' || !node.anchor)
+    return (
+      <a className={className} href={documentHref(node.document.slug)} aria-label={label}>
+        {children}
+      </a>
+    );
+  return (
+    <ReadLink className={className} slug={node.document.slug} anchor={passage ?? node.anchor} aria-label={label}>
+      {children}
+    </ReadLink>
+  );
 }
 
 function Pick({ node, onSelect, note }: { node: AtlasNode; onSelect: (id: string) => void; note?: string }) {
@@ -54,17 +76,14 @@ function Pick({ node, onSelect, note }: { node: AtlasNode; onSelect: (id: string
 }
 
 function ChapterRow({ link, onSelect }: { link: Appearance; onSelect: (id: string) => void }) {
-  const href = readHref(link.node);
   const how = link.relations.map((r) => LINK_STYLES[r].label.toLowerCase()).join(', ');
   const passages = link.passages ? ` · ${link.passages} ${link.passages === 1 ? 'passage' : 'passages'}` : '';
   return (
     <li className={styles.row}>
       <Pick node={link.node} onSelect={onSelect} note={`${how}${passages}`} />
-      {href ? (
-        <a className={styles.read} href={href} aria-label={`Read ${link.node.label}`}>
-          Read
-        </a>
-      ) : null}
+      <Read node={link.node} passage={link.passage} className={styles.read} label={`Read ${link.node.label}`}>
+        Read
+      </Read>
     </li>
   );
 }
@@ -137,7 +156,6 @@ function ChapterDetail({ index, node, onSelect }: { index: AtlasIndex; node: Atl
   const ideas = relatedIdeas(index, node.id);
   const shared = sharedWith(index, node.id);
   const echoes = echoesOf(index, node.id);
-  const href = readHref(node);
   const book = node.document ? index.byId.get(`document:${node.document.id}`) : undefined;
   return (
     <>
@@ -147,11 +165,9 @@ function ChapterDetail({ index, node, onSelect }: { index: AtlasIndex; node: Atl
         </p>
       ) : null}
       <div className={graph.panelActions}>
-        {href ? (
-          <a className={graph.action} href={href}>
-            Read this chapter
-          </a>
-        ) : null}
+        <Read node={node} className={graph.action}>
+          Read this chapter
+        </Read>
         <a className={graph.actionLink} href={graphHref(node.id)}>
           Explore its neighbourhood
         </a>
@@ -174,15 +190,9 @@ function ChapterDetail({ index, node, onSelect }: { index: AtlasIndex; node: Atl
                 onSelect={onSelect}
                 note={e.chapter.document?.id === node.document?.id ? `${e.edge.evidence_count} passages` : (e.chapter.sublabel ?? undefined)}
               />
-              {e.chapter.document ? (
-                <a
-                  className={styles.read}
-                  href={readerHref(e.chapter.document.slug, e.passage ?? e.chapter.anchor)}
-                  aria-label={`Read the echo in ${e.chapter.label}`}
-                >
-                  Read the echo
-                </a>
-              ) : null}
+              <Read node={e.chapter} passage={e.passage} className={styles.read} label={`Read the echo in ${e.chapter.label}`}>
+                Read the echo
+              </Read>
             </li>
           ))}
         </ul>
@@ -197,11 +207,9 @@ function ChapterDetail({ index, node, onSelect }: { index: AtlasIndex; node: Atl
                   onSelect={onSelect}
                   note={s.chapter.document?.id === node.document?.id ? undefined : (s.chapter.sublabel ?? undefined)}
                 />
-                {readHref(s.chapter) ? (
-                  <a className={styles.read} href={readHref(s.chapter) ?? undefined} aria-label={`Read ${s.chapter.label}`}>
-                    Read
-                  </a>
-                ) : null}
+                <Read node={s.chapter} className={styles.read} label={`Read ${s.chapter.label}`}>
+                  Read
+                </Read>
               </div>
               <p className={styles.via}>via {s.concepts.map((c) => c.label).join(', ')}</p>
             </li>
@@ -215,16 +223,13 @@ function ChapterDetail({ index, node, onSelect }: { index: AtlasIndex; node: Atl
 function BookDetail({ index, node, onSelect }: { index: AtlasIndex; node: AtlasNode; onSelect: (id: string) => void }) {
   const chapters = chaptersOf(index, node.id);
   const ideas = bookIdeas(index, node.id);
-  const href = readHref(node);
   return (
     <>
       {node.sublabel ? <p className={graph.panelMeta}>{node.sublabel}</p> : null}
       <div className={graph.panelActions}>
-        {href ? (
-          <a className={graph.action} href={href}>
-            Open the book
-          </a>
-        ) : null}
+        <Read node={node} className={graph.action}>
+          Open the book
+        </Read>
       </div>
       {chapters.length === 0 ? <p className={graph.panelMeta}>None of its chapters is linked to an idea yet.</p> : null}
       <Section title="Ideas it leans on" count={ideas.length}>
@@ -241,9 +246,9 @@ function BookDetail({ index, node, onSelect }: { index: AtlasIndex; node: AtlasN
           {chapters.map((l) => (
             <li key={l.edge.id} className={styles.row}>
               <Pick node={l.node} onSelect={onSelect} note={`${l.node.degree - 1} links`} />
-              <a className={styles.read} href={readHref(l.node) ?? undefined} aria-label={`Read ${l.node.label}`}>
+              <Read node={l.node} className={styles.read} label={`Read ${l.node.label}`}>
                 Read
-              </a>
+              </Read>
             </li>
           ))}
         </ul>
@@ -280,9 +285,9 @@ function SharesDetail({ index, edge, onSelect }: { index: AtlasIndex; edge: Atla
           chapter ? (
             <li key={chapter.id} className={styles.row}>
               <Pick node={chapter} onSelect={onSelect} note={chapter.sublabel ?? undefined} />
-              <a className={styles.read} href={readHref(chapter) ?? undefined} aria-label={`Read ${chapter.label}`}>
+              <Read node={chapter} className={styles.read} label={`Read ${chapter.label}`}>
                 Read
-              </a>
+              </Read>
             </li>
           ) : null,
         )}

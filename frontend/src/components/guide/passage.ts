@@ -3,14 +3,34 @@
  * chapter, and loading the chapter's text once per page visit.
  */
 import { browserApi, type ApiClient } from '../../lib/api/client';
-import type { NodeSubtree, TreeNode } from '../../lib/api/types/documents';
-import { flatten, isUnder, type FlatNode } from '../../lib/documents/tree';
+import type { DocumentTree, NodeSubtree, TreeNode } from '../../lib/api/types/documents';
+import { flatten, isUnder, readingUnits, type FlatNode } from '../../lib/documents/tree';
+import { chapterLabel } from './guide';
 
 /** A chapter the panel can show: its address, title and the book's number for it. */
 export interface PassageUnit {
   anchor: string;
   heading: string;
   label: string;
+}
+
+/** Where a passage can open in place: every chapter, with the book's number for it. */
+export function passageUnitsOf(nodes: readonly TreeNode[]): PassageUnit[] {
+  return readingUnits(nodes).map((u) => ({ anchor: u.anchor, heading: u.heading ?? u.anchor, label: chapterLabel(u.anchor) }));
+}
+
+const outlines = new Map<string, Promise<PassageUnit[]>>();
+
+/** A document's chapters (`GET /documents/{slug}/tree`), fetched once per page visit. */
+export function loadUnits(slug: string, api: Pick<ApiClient, 'get'> = browserApi): Promise<PassageUnit[]> {
+  let loading = outlines.get(slug);
+  if (!loading) {
+    loading = api.get<DocumentTree>(`documents/${encodeURIComponent(slug)}/tree`, { query: { depth: 4 } }).then((tree) => passageUnitsOf(tree.nodes));
+    // A failed load is not remembered, so opening a passage again retries.
+    loading.catch(() => outlines.delete(slug));
+    outlines.set(slug, loading);
+  }
+  return loading;
 }
 
 /** The chapter that holds `anchor`, or null when it lies outside every chapter. */
@@ -63,7 +83,8 @@ export function loadChapter(slug: string, anchor: string, api: Pick<ApiClient, '
   return loading;
 }
 
-/** For tests: forget every loaded chapter. */
+/** For tests: forget every loaded chapter and outline. */
 export function clearChapterCache(): void {
   cache.clear();
+  outlines.clear();
 }

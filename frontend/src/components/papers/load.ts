@@ -4,15 +4,12 @@
  */
 import type { Page } from '../../lib/api/types';
 import type { ArtifactListItem } from '../../lib/api/types/artifacts';
-import type { TreeNode } from '../../lib/api/types/documents';
 import type { JobPublic } from '../../lib/api/types/jobs';
 import type { PaperDetail, PaperRatingPublic } from '../../lib/api/types/papers';
 import { serverApi } from '../../lib/api/server';
 import { getArtifacts, getOutline } from '../../lib/documents/server';
-import { readingUnits } from '../../lib/documents/tree';
 import { getPaper, listRatings } from '../../lib/papers/api';
-import { chapterLabel } from '../guide/guide';
-import type { PassageUnit } from '../guide/passage';
+import { passageUnitsOf, type PassageUnit } from '../guide/passage';
 
 export interface PaperPageData {
   paper: PaperDetail;
@@ -29,11 +26,6 @@ export async function loadPaper(ref: string): Promise<PaperPageData> {
 /** Where a cite can open in place: every section of the paper, numbered as in the paper. */
 export async function passageUnits(slug: string): Promise<PassageUnit[]> {
   return passageUnitsOf((await getOutline(slug)).nodes);
-}
-
-/** The same, from an outline already loaded (`getOutline`). */
-export function passageUnitsOf(nodes: readonly TreeNode[]): PassageUnit[] {
-  return readingUnits(nodes).map((u) => ({ anchor: u.anchor, heading: u.heading ?? u.anchor, label: chapterLabel(u.anchor) }));
 }
 
 /** Every version of one paper artifact type (the tab picks which to show). */

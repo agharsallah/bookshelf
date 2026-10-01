@@ -49,11 +49,20 @@ function inReadingOrder(index: AtlasIndex) {
     (shelf.get(a.node.document?.id ?? '') ?? 0) - (shelf.get(b.node.document?.id ?? '') ?? 0) || a.node.ordinal - b.node.ordinal;
 }
 
+/** The first of a line's evidence passages that lies in `chapter` (the anchor alone), or null. */
+function passageIn(chapter: AtlasNode, edge: AtlasEdge): string | null {
+  const prefix = `${chapter.document?.id ?? ''}#${chapter.anchor ?? ''}`;
+  const hit = edge.evidence.find((ref) => ref === prefix || ref.startsWith(`${prefix}/`));
+  return hit ? (hit.split('#')[1] ?? null) : null;
+}
+
 /** One chapter a concept appears in, with every way it links there. */
 export interface Appearance extends Link {
   relations: AtlasRelation[];
   /** Evidence passages over all those links. */
   passages: number;
+  /** The passage to open first: the strongest link's first evidence in the chapter. */
+  passage: string | null;
 }
 
 /** The chapters that link to a concept, once each, book by book in reading order. */
@@ -64,7 +73,8 @@ export function appearances(index: AtlasIndex, conceptId: string): Appearance[] 
     if (seen) {
       seen.relations.push(l.relation);
       seen.passages += l.edge.evidence_count;
-    } else byChapter.set(l.node.id, { ...l, relations: [l.relation], passages: l.edge.evidence_count });
+      seen.passage ??= passageIn(l.node, l.edge);
+    } else byChapter.set(l.node.id, { ...l, relations: [l.relation], passages: l.edge.evidence_count, passage: passageIn(l.node, l.edge) });
   }
   return [...byChapter.values()].sort(inReadingOrder(index));
 }
@@ -102,11 +112,7 @@ export interface Echo {
 export function echoesOf(index: AtlasIndex, chapterId: string): Echo[] {
   return links(index, chapterId, (n, e) => e.relation === 'echoes' && n.kind === 'chapter')
     .sort(byStrength)
-    .map((l) => {
-      const prefix = `${l.node.document?.id ?? ''}#${l.node.anchor ?? ''}`;
-      const hit = l.edge.evidence.find((ref) => ref === prefix || ref.startsWith(`${prefix}/`));
-      return { chapter: l.node, passage: hit ? (hit.split('#')[1] ?? null) : null, edge: l.edge };
-    });
+    .map((l) => ({ chapter: l.node, passage: passageIn(l.node, l.edge), edge: l.edge }));
 }
 
 /** The ideas a book leans on most, over all its chapters. */

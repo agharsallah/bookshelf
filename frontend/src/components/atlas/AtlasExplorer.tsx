@@ -6,8 +6,8 @@
  * - **Lens**: filter and highlight one aspect (connection types, kinds, books, ideas
  *   that cross books); dim or hide the rest; group the layout by book.
  *
- * Click a mark or a line to see it in the margin, with the way back to its content;
- * double-click a mark to open it (a chapter in the reader, a concept on its page, a book
+ * Click a mark or a line to see it in the margin, with the way back to its content ("Read"
+ * opens the passage in a drawer beside the map, ReadInPlace); double-click a mark to open it (a chapter in the reader, a concept on its page, a book
  * on its page). Picking something from the margin or the list glides the map to it.
  * The view lives in the URL, so a lens can be bookmarked.
  */
@@ -15,6 +15,7 @@ import { navigate } from 'astro:transitions/client';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Problem, problemOf, type ProblemInfo } from '../common/Problem';
 import { browserApi, type ApiClient } from '../../lib/api/client';
+import { ReadInPlace } from '../guide/ReadInPlace';
 import type { Atlas, BridgeQueued } from '../../lib/api/types/graph';
 import { conceptHref, documentHref, readerHref } from '../search/links';
 import type { Selection } from '../graph/controller';
@@ -56,7 +57,7 @@ function isNodeRef(id: string): boolean {
   return /^(concept|document|node):/.test(id);
 }
 
-export function AtlasExplorer({ initial, lens: initialLens, scope: initialScope = null, api = browserApi }: AtlasExplorerProps) {
+function Explorer({ initial, lens: initialLens, scope: initialScope = null, api = browserApi }: AtlasExplorerProps) {
   const [scope, setScope] = useState(initialScope);
   const [atlas, setAtlas] = useState(initial);
   const [lens, setLens] = useState(initialLens);
@@ -308,6 +309,15 @@ export function AtlasExplorer({ initial, lens: initialLens, scope: initialScope 
         <AtlasList model={view.model} lens={view.lens} selected={selectedNode?.id ?? null} onSelect={pick} onHighlight={setHighlight} />
       </details>
     </div>
+  );
+}
+
+/** The explorer, hosting the drawer its "Read" links open in. */
+export function AtlasExplorer(props: AtlasExplorerProps) {
+  return (
+    <ReadInPlace>
+      <Explorer {...props} />
+    </ReadInPlace>
   );
 }
 

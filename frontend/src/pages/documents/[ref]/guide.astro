@@ -7,7 +7,8 @@
 import { ActivityBeacon } from '../../../lib/activity/ActivityBeacon';
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import GuideSheet from '../../../components/guide/GuideSheet.astro';
-import { chapterLabel, chapterRows, glance, parseGuide, readableMap, unitOf } from '../../../components/guide/guide';
+import { passageUnitsOf } from '../../../components/guide/passage';
+import { chapterRows, glance, parseGuide, readableMap, unitOf } from '../../../components/guide/guide';
 import { Problem } from '../../../components/common/Problem';
 import { pickBest } from '../../../lib/documents/artifacts';
 import StudySwitcher from '../../../components/study/StudySwitcher.astro';
@@ -39,7 +40,7 @@ const loaded = await load(async () => {
   const readable = readingUnits(tree.nodes);
   const rows = chapterRows(readable.map(unitOf), guide.journey);
   // Where a cite can open in place: every chapter, with the book's number for it.
-  const units = readable.map((u) => ({ anchor: u.anchor, heading: u.heading ?? u.anchor, label: chapterLabel(u.anchor) }));
+  const units = passageUnitsOf(tree.nodes);
   const at = best.artifact.reviewed_at ?? best.artifact.created_at;
   return {
     doc,

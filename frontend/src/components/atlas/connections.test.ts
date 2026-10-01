@@ -39,6 +39,15 @@ describe('appearances', () => {
     expect(queues?.node.label).toBe('Queues');
     expect(queues?.relations).toEqual(['mentions', 'defines']);
     expect(queues?.passages).toBe(5);
+    expect(queues?.passage).toBeNull();
+  });
+
+  it('opens the passage in that chapter where the concept appears', () => {
+    const atlas = shelf();
+    const queues = atlas.nodes[2]!;
+    const evidence = ['other#ch01/p001', `${queues.document?.id}#${queues.anchor}/p004`];
+    atlas.edges.push({ ...atlas.edges[3]!, id: 'm9', relation: 'mentions', evidence_count: 9, evidence });
+    expect(appearances(indexAtlas(atlas), ids.law)[0]?.passage).toBe(`${queues.anchor}/p004`);
   });
 });
 
