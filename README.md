@@ -35,6 +35,7 @@ cd backend && uv run python -m app.jobs.worker
 cd frontend
 pnpm install
 pnpm dev                               # http://localhost:4321
+# or the production build: pnpm build && pnpm serve   (same port, reads frontend/.env)
 ```
 
 ## Adding books

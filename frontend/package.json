@@ -9,6 +9,7 @@
     "dev": "astro dev",
     "build": "astro check && astro build",
     "preview": "astro preview",
+    "serve": "node --env-file=.env dist/server/entry.mjs",
     "astro": "astro",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
