@@ -1,0 +1,96 @@
+---
+/**
+ * Everything on the Desk that needs the backend, rendered as a server island
+ * (`server:defer` in pages/index.astro): the book you are in, what is due, the study
+ * material, the shelf, and at a glance the next paper, what waits for you and pages
+ * read. The page itself returns at once with a placeholder; this loads in one request
+ * of its own (dozens of backend calls), and is the response the route cache keeps.
+ */
+import { Problem } from '../common/Problem';
+import DeskHero from './DeskHero.astro';
+import NeedsYou from './NeedsYou.astro';
+import PagesRead from './PagesRead.astro';
+import StudyDesk from './StudyDesk.astro';
+import YourShelf from './YourShelf.astro';
+import { pagesChart, pickHero, shelfOrder, studyGroups } from './desk';
+import { loadDesk, loadDue, loadNeeds } from './load';
+import DueToday from '../recall/DueToday';
+import NextPaperCard from '../papers/next/NextPaperCard.astro';
+import { loadNextPaper } from '../papers/next/desk';
+import { serverApi } from '../../lib/api/server';
+import { load } from '../../lib/documents/server';
+
+const [loaded, needs, due, nextPaper] = await Promise.all([load(loadDesk), loadNeeds(), loadDue(), loadNextPaper(serverApi())]);
+const books = loaded.ok ? loaded.value : [];
+const hero = pickHero(books);
+const shelf = shelfOrder(books);
+const groups = studyGroups(books);
+const chart = pagesChart(books);
+---
+
+<div class="desk">
+  {
+    !loaded.ok ? (
+      <>
+        <Problem title="Your books could not be loaded." problem={loaded.problem} />
+        <NeedsYou counts={needs} />
+      </>
+    ) : (
+      <>
+        <DeskHero hero={hero} />
+        {books.length > 0 && (
+          <div class="columns">
+            <div class="main">
+              {due && due.total > 0 && <DueToday client:load initial={due} />}
+              <StudyDesk groups={groups} />
+              <YourShelf books={shelf} />
+            </div>
+            <aside class="side" aria-label="At a glance">
+              {nextPaper && <NextPaperCard candidate={nextPaper} />}
+              <NeedsYou counts={needs} />
+              <PagesRead chart={chart} />
+            </aside>
+          </div>
+        )}
+        {books.length === 0 && <NeedsYou counts={needs} />}
+      </>
+    )
+  }
+</div>
+
+<style>
+  .desk {
+    display: grid;
+    gap: var(--space-6);
+  }
+
+  .columns {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 20rem;
+    gap: var(--space-7);
+    align-items: start;
+  }
+
+  .main {
+    display: grid;
+    gap: var(--space-7);
+  }
+
+  .side {
+    position: sticky;
+    inset-block-start: var(--space-5);
+    display: grid;
+    gap: var(--space-6);
+  }
+
+  @media (max-width: 60rem) {
+    .columns {
+      grid-template-columns: minmax(0, 1fr);
+      gap: var(--space-6);
+    }
+
+    .side {
+      position: static;
+    }
+  }
+</style>

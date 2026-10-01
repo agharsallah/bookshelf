@@ -3,98 +3,20 @@
  * The Desk, the home page: back into the book you are in, what is due for review
  * across every book, the study material the library has made, every book with how far
  * you read it, pages read at a glance, and in workshop mode what waits for you. Each part degrades alone when its data fails.
+ *
+ * The page returns at once with a placeholder; everything that needs the backend loads
+ * as one server island (components/desk/Desk.astro).
  */
 import BaseLayout from '../layouts/BaseLayout.astro';
-import { Problem } from '../components/common/Problem';
-import DeskHero from '../components/desk/DeskHero.astro';
-import NeedsYou from '../components/desk/NeedsYou.astro';
-import PagesRead from '../components/desk/PagesRead.astro';
-import StudyDesk from '../components/desk/StudyDesk.astro';
-import YourShelf from '../components/desk/YourShelf.astro';
-import { pagesChart, pickHero, shelfOrder, studyGroups } from '../components/desk/desk';
-import { loadDesk, loadDue, loadNeeds } from '../components/desk/load';
-import DueToday from '../components/recall/DueToday';
-import NextPaperCard from '../components/papers/next/NextPaperCard.astro';
-import { loadNextPaper } from '../components/papers/next/desk';
-import { serverApi } from '../lib/api/server';
-import { load } from '../lib/documents/server';
+import Desk from '../components/desk/Desk.astro';
+import DeskPlaceholder from '../components/desk/DeskPlaceholder.astro';
 
 export const prerender = false;
-
-const [loaded, needs, due, nextPaper] = await Promise.all([load(loadDesk), loadNeeds(), loadDue(), loadNextPaper(serverApi())]);
-const books = loaded.ok ? loaded.value : [];
-const hero = pickHero(books);
-const shelf = shelfOrder(books);
-const groups = studyGroups(books);
-const chart = pagesChart(books);
 ---
 
 <BaseLayout title="Desk" description="Back to your book, and what you can study.">
-  <div class="desk">
-    <h1 class="visually-hidden">Desk</h1>
-    {
-      !loaded.ok ? (
-        <>
-          <Problem title="Your books could not be loaded." problem={loaded.problem} />
-          <NeedsYou counts={needs} />
-        </>
-      ) : (
-        <>
-          <DeskHero hero={hero} />
-          {books.length > 0 && (
-            <div class="columns">
-              <div class="main">
-                {due && due.total > 0 && <DueToday client:load initial={due} />}
-                <StudyDesk groups={groups} />
-                <YourShelf books={shelf} />
-              </div>
-              <aside class="side" aria-label="At a glance">
-                {nextPaper && <NextPaperCard candidate={nextPaper} />}
-                <NeedsYou counts={needs} />
-                <PagesRead chart={chart} />
-              </aside>
-            </div>
-          )}
-          {books.length === 0 && <NeedsYou counts={needs} />}
-        </>
-      )
-    }
-  </div>
+  <h1 class="visually-hidden">Desk</h1>
+  <Desk server:defer>
+    <DeskPlaceholder slot="fallback" />
+  </Desk>
 </BaseLayout>
-
-<style>
-  .desk {
-    display: grid;
-    gap: var(--space-6);
-  }
-
-  .columns {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 20rem;
-    gap: var(--space-7);
-    align-items: start;
-  }
-
-  .main {
-    display: grid;
-    gap: var(--space-7);
-  }
-
-  .side {
-    position: sticky;
-    inset-block-start: var(--space-5);
-    display: grid;
-    gap: var(--space-6);
-  }
-
-  @media (max-width: 60rem) {
-    .columns {
-      grid-template-columns: minmax(0, 1fr);
-      gap: var(--space-6);
-    }
-
-    .side {
-      position: static;
-    }
-  }
-</style>

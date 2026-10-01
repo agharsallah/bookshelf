@@ -1,0 +1,86 @@
+---
+/**
+ * What the Desk shows while its server island (Desk.astro) loads: the hero and the two
+ * columns as quiet shimmering blocks in the same layout, so nothing jumps when the
+ * real content replaces them. The blocks are hidden from assistive tech; a status
+ * says the desk is loading.
+ */
+---
+
+<div class="placeholder" role="status">
+  <span class="visually-hidden">Loading your desk</span>
+  <div class="hero" aria-hidden="true"></div>
+  <div class="columns" aria-hidden="true">
+    <div class="main">
+      <span></span>
+      <span></span>
+      <span class="short"></span>
+    </div>
+    <div class="side">
+      <span></span>
+      <span class="short"></span>
+    </div>
+  </div>
+</div>
+
+<style>
+  .placeholder {
+    display: grid;
+    gap: var(--space-6);
+  }
+
+  .columns {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 20rem;
+    gap: var(--space-7);
+    align-items: start;
+  }
+
+  .main,
+  .side {
+    display: grid;
+    gap: var(--space-5);
+  }
+
+  .hero,
+  span:not(.visually-hidden) {
+    display: block;
+    border-radius: var(--radius-m);
+    background: linear-gradient(90deg, var(--paper-sunken), var(--paper-raised), var(--paper-sunken));
+    background-size: 200% 100%;
+    animation: shimmer 1.4s linear infinite;
+  }
+
+  .hero {
+    block-size: 14rem;
+  }
+
+  span:not(.visually-hidden) {
+    block-size: 7rem;
+  }
+
+  span.short {
+    inline-size: 70%;
+    block-size: 3rem;
+  }
+
+  @keyframes shimmer {
+    to {
+      background-position: -200% 0;
+    }
+  }
+
+  @media (max-width: 60rem) {
+    .columns {
+      grid-template-columns: minmax(0, 1fr);
+      gap: var(--space-6);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hero,
+    span:not(.visually-hidden) {
+      animation: none;
+    }
+  }
+</style>
