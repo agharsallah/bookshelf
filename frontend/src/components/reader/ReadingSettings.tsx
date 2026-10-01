@@ -148,6 +148,12 @@ export function ReadingSettings({ prefs, onChange, onClose, opener }: ReadingSet
           on={prefs.predict}
           onToggle={() => onChange((p) => ({ predict: !p.predict }))}
         />
+        <AidSwitch
+          label="Continuous reading"
+          hint="Keep scrolling into the next chapter (no listening or recall)"
+          on={prefs.continuous}
+          onToggle={() => onChange((p) => ({ continuous: !p.continuous }))}
+        />
       </div>
       <div className={styles.footer}>
         <button

@@ -33,8 +33,8 @@ export interface ReaderToolbarProps {
     onFocus: () => void;
     fullscreen: { active: boolean; supported: boolean; toggle: () => void };
   };
-  /** The chapter read aloud (ChapterListen): whether its player is open. */
-  listen: { open: boolean; onToggle: () => void };
+  /** The chapter read aloud (ChapterListen): whether its player is open; null hides it (continuous reading). */
+  listen: { open: boolean; onToggle: () => void } | null;
   hidden: boolean;
   /** 0–1 through the chapter, drawn along the toolbar's lower edge (still visible when it is tucked away). */
   progress: number;
@@ -93,9 +93,11 @@ export function ReaderToolbar(props: ReaderToolbarProps) {
         >
           <TypeIcon />
         </button>
-        <button type="button" className={styles.icon} aria-pressed={listen.open} aria-label="Listen" title="Listen: the chapter read aloud (l)" onClick={listen.onToggle}>
-          <ListenIcon />
-        </button>
+        {listen ? (
+          <button type="button" className={styles.icon} aria-pressed={listen.open} aria-label="Listen" title="Listen: the chapter read aloud (l)" onClick={listen.onToggle}>
+            <ListenIcon />
+          </button>
+        ) : null}
         <button type="button" className={styles.icon} aria-pressed={layout.focus} aria-label="Focus mode" title="Focus mode: just the text (f)" onClick={layout.onFocus}>
           <FocusIcon />
         </button>

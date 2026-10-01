@@ -251,6 +251,14 @@
   margin-inline: 3.25rem 2.25rem;
 }
 
+/* Continuous reading: where an added chapter begins. */
+.continued {
+  margin-block: var(--space-8) var(--space-4);
+  margin-inline: 3.25rem 2.25rem;
+  padding-block-start: var(--space-6);
+  border-block-start: 1px solid var(--rule);
+}
+
 .notice {
   margin-block-end: var(--space-4);
   color: var(--ink-3);
@@ -364,6 +372,7 @@
   }
 
   .notice,
+  .continued,
   .end {
     margin-inline: 0;
   }

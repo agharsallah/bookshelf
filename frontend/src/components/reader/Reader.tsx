@@ -8,9 +8,12 @@
  * Listen (l) opens a player that reads the chapter aloud and marks the passage it is on.
  * Recall (r, or at the chapter's end) hides the text while you write what you remember,
  * and an unread chapter first asks what you expect it to argue (components/recall).
+ * Continuous reading (a reading setting) adds the next chapters below as you reach the end
+ * (useContinuous); the toolbar, progress and saved place follow the chapter in view, and
+ * listening and recall, which work on one chapter, are off meanwhile.
  */
 import { navigate } from 'astro:transitions/client';
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import type { NoteDetail } from '../../lib/api/types/notes';
 import type { RecallPublic } from '../../lib/api/types/recalls';
 import type { TreeNode } from '../../lib/api/types/documents';
@@ -48,6 +51,7 @@ import { useFollowUrl } from './useFollowUrl';
 import { useReaderEvents } from './useReaderEvents';
 import { useSalienceMode } from './useSalienceMode';
 import { useSavePosition } from './useSavePosition';
+import { chapterOf, useContinuous } from './useContinuous';
 import { activePass, usePaperMode } from './paper/usePaperMode';
 import type { PaperReading } from './paper/types';
 import { useAttention } from '../../lib/activity/useAttention';
@@ -128,15 +132,27 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
   const nodes = useMemo(() => flat.map((f) => f.node), [flat]);
   const anchors = useMemo(() => flat.map((f) => f.node.anchor), [flat]);
   const order = useMemo(() => new Map(anchors.map((a, i) => [a, i])), [anchors]);
-  const texts = useMemo(() => new Map(flat.map((f) => [f.node.anchor, f.node.text ?? ''])), [flat]);
+  const index = units.findIndex((u) => u.anchor === unit.anchor);
+  const endRef = useRef<HTMLElement>(null);
+  // Not in three-pass mode, which reshapes the chapter's text.
+  const continuous = prefs.continuous && activePass(paperData, prefs, doc.id) === null;
+  const { chapters: added } = useContinuous({
+    enabled: continuous,
+    slug: doc.slug,
+    following: index >= 0 ? units.slice(index + 1) : [],
+    stopped: truncated,
+    sentinel: endRef,
+  });
+  const addedFlat = useMemo(() => added.flatMap((c) => c.flat), [added]);
+  const texts = useMemo(() => new Map([...flat, ...addedFlat].map((f) => [f.node.anchor, f.node.text ?? ''])), [flat, addedFlat]);
   const chapterNotes = useMemo(() => wireNotes.filter((n) => isUnder(n.anchor, unit.anchor)), [wireNotes, unit.anchor]);
   // Ranges are code points on the wire and UTF-16 offsets in the DOM (lib/codepoints).
   const notes = useMemo(
     () =>
-      chapterNotes
-        .filter((n) => n.target === 'source')
+      wireNotes
+        .filter((n) => n.target === 'source' && (isUnder(n.anchor, unit.anchor) || chapterOf(added, n.anchor)))
         .map((n) => (n.range ? { ...n, range: toUtf16Range(texts.get(n.anchor) ?? '', n.range) } : n)),
-    [chapterNotes, texts],
+    [wireNotes, unit.anchor, added, texts],
   );
   // Notes on the distillation and summary are painted over the pane (paneMarks.ts).
   const paneNotes = useMemo(() => chapterNotes.filter((n) => n.target !== 'source' && !n.detached), [chapterNotes]);
@@ -161,13 +177,18 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
   }, [notes]);
   const blockNotes = useMemo(() => notedBlocks(notes), [notes]);
 
-  const active = useAnchorSync(sourceRef, SOURCE_ATTR, [flat.length]);
-  const activeSection = active ? (sectionOf.get(active) ?? null) : null;
-  const progress = active ? ((order.get(active) ?? 0) + 1) / Math.max(1, anchors.length) : 0;
-  const figures = useMemo(() => figureItems(nodes), [nodes]);
+  const active = useAnchorSync(sourceRef, SOURCE_ATTR, [flat.length, added.length]);
+  // The added chapter being read, if any; `reading` is the chapter in view either way.
+  const here = chapterOf(added, active);
+  const reading = here?.unit ?? unit;
+  const activeSection = active && !here ? (sectionOf.get(active) ?? null) : null;
+  const at = !active ? 0 : here ? here.flat.findIndex((f) => f.node.anchor === active) : (order.get(active) ?? 0);
+  const progress = active ? (at + 1) / Math.max(1, (here?.flat ?? flat).length) : 0;
+  const figures = useMemo(() => figureItems([...nodes, ...addedFlat.map((f) => f.node)]), [nodes, addedFlat]);
   const figureList = useMemo(() => figureShelf(nodes, panes.figures), [nodes, panes.figures]);
   const words = useMemo(() => flat.map(({ node }) => wordCount(node.text ?? '')), [flat]);
-  const timeLeft = timeLeftLabel(minutesLeft(words, active ? (order.get(active) ?? 0) : 0));
+  const hereWords = useMemo(() => (here ? here.flat.map(({ node }) => wordCount(node.text ?? '')) : words), [here, words]);
+  const timeLeft = timeLeftLabel(minutesLeft(hereWords, at));
   const recall = useRecallMode({
     document: doc,
     unit: { anchor: unit.anchor, heading: unit.heading ?? unit.anchor },
@@ -209,16 +230,18 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
 
   const trail = collection?.slug ?? null;
   const readHref = useCallback((anchor: string) => (trail ? collectionReadHref(doc.slug, trail, anchor) : `/documents/${doc.slug}/read/${anchor}`), [doc.slug, trail]);
-  const index = units.findIndex((u) => u.anchor === unit.anchor);
-  const prev = units[index - 1] ?? null;
-  const next = units[index + 1] ?? null;
+  const readingIndex = units.findIndex((u) => u.anchor === reading.anchor);
+  const prev = units[readingIndex - 1] ?? null;
+  const next = units[readingIndex + 1] ?? null;
+  // After the last chapter on the page: what the end of the text links to.
+  const afterShown = units[units.findIndex((u) => u.anchor === (added.at(-1)?.unit ?? unit).anchor) + 1] ?? null;
   // Papers only: three-pass mode and claim marks (paper/usePaperMode); inert for a book.
   const paper = usePaperMode({ paper: paperData, document: doc, unit, flat, prefs, setPrefs, sourceRef, readHref, onCite: (a) => onCite(a), initialAnchor });
 
   useFollowUrl(active, readHref, initialAnchor);
-  useSavePosition(doc.slug, unit.anchor, active, progress);
+  useSavePosition(doc.slug, reading.anchor, active, progress);
   // Reading time goes to the block being read; with the text hidden, it is recall time.
-  useAttention(recall.hidden ? { surface: 'recall', document: doc.slug, unit: unit.anchor } : { surface: 'read', document: doc.slug, unit: unit.anchor, anchor: active ?? undefined });
+  useAttention(recall.hidden ? { surface: 'recall', document: doc.slug, unit: unit.anchor } : { surface: 'read', document: doc.slug, unit: reading.anchor, anchor: active ?? undefined });
 
   // Land on the anchor from the URL.
   useEffect(() => {
@@ -238,9 +261,11 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
   const openNote = useCallback((id: string) => {
     setTab('notes');
     setView('distil');
+    // A note in an added chapter is only in the whole book's list.
+    if (!chapterNotes.some((n) => n.id === id)) setNotesScope('book');
     setFocusedNote(id);
     requestAnimationFrame(() => paneRef.current?.querySelector<HTMLElement>(`[data-note-id="${CSS.escape(id)}"]`)?.focus());
-  }, []);
+  }, [chapterNotes]);
 
   /** Show what a note marks: its passage in the text, its block on the pane, or its chapter. */
   const revealNote = (note: NoteDetail) => {
@@ -265,7 +290,7 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
   useReaderEvents({
     sourceRef,
     paneRef,
-    anchors: paper.anchors(anchors),
+    anchors: paper.anchors(addedFlat.length ? [...anchors, ...addedFlat.map((f) => f.node.anchor)] : anchors),
     activeAnchor: active,
     linkFor: readHref,
     prevHref: prev ? readHref(prev.anchor) : null,
@@ -325,10 +350,10 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
         setPrefs((p) => ({ spotlight: !p.spotlight }));
         break;
       case 'listen':
-        setListening((l) => !l);
+        if (!continuous) setListening((l) => !l);
         break;
       case 'recall':
-        recall.open();
+        if (!continuous) recall.open();
         break;
       case 'passes':
         paper.toggle();
@@ -371,8 +396,8 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
       slug={doc.slug}
       readHref={readHref}
       units={units}
-      current={unit.anchor}
-      sections={navSections}
+      current={reading.anchor}
+      sections={here ? [] : navSections}
       activeSection={activeSection}
       progress={progress}
       onSection={(anchor) => {
@@ -405,7 +430,7 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
     >
       <ReaderToolbar
         book={{ title: doc.title, href: `/documents/${doc.slug}` }}
-        chapter={unit.heading ?? unit.anchor}
+        chapter={reading.heading ?? reading.anchor}
         prev={prev}
         next={next}
         readHref={readHref}
@@ -425,7 +450,7 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
           button: settingsButton,
           panel: <ReadingSettings prefs={prefs} onChange={setPrefs} onClose={closeSettings} opener={settingsButton} />,
         }}
-        listen={{ open: listening, onToggle: () => runAction('listen') }}
+        listen={continuous ? null : { open: listening, onToggle: () => runAction('listen') }}
         layout={{
           rail: showRail,
           pane: showPane,
@@ -462,6 +487,25 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
               margin={paper.margin(node.anchor)}
             />
           ))}
+          {added.map((c) => {
+            const marked = pageMarkers(c.flat);
+            return (
+              <Fragment key={c.unit.anchor}>
+                <h2 className={styles.continued}>{c.unit.heading ?? c.unit.anchor}</h2>
+                {c.flat.map(({ node }, i) => (
+                  <SourceBlock
+                    key={node.anchor}
+                    node={node}
+                    marks={marksFor(marks, node.anchor)}
+                    page={marked[i] ?? null}
+                    hasBlockNote={blockNotes.has(node.anchor)}
+                    level={node.depth - c.unit.depth}
+                  />
+                ))}
+                {c.truncated ? <p className={styles.notice}>This chapter is very long; only its first 2,000 blocks are shown.</p> : null}
+              </Fragment>
+            );
+          })}
           {canDragMeasure(layout) ? (
             <MeasureHandle
               column={sourceRef}
@@ -472,11 +516,11 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
             />
           ) : null}
           {salience.meter}
-          <footer className={styles.end}>
+          <footer className={styles.end} ref={endRef}>
             {paper.footer}
-            {recall.footer}
-            {next ? (
-              <a href={readHref(next.anchor)}>Next: {next.heading}</a>
+            {continuous ? null : recall.footer}
+            {afterShown ? (
+              <a href={readHref(afterShown.anchor)}>Next: {afterShown.heading}</a>
             ) : collection ? (
               <NextInCollection collection={collection} documentId={doc.id} />
             ) : (
@@ -526,7 +570,7 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
       {salience.card}
       {recall.overlay}
       {paper.overlay}
-      {listening ? (
+      {listening && !continuous ? (
         <ChapterListen
           documentId={doc.id}
           bookTitle={doc.title}

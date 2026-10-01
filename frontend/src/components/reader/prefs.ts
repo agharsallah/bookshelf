@@ -49,6 +49,8 @@ export interface ReaderPrefs {
   spotlight: boolean;
   /** Before an unread chapter, guess what it argues from its headings. */
   predict: boolean;
+  /** The chapters that follow are added below as you reach the end, so the book reads in one scroll. */
+  continuous: boolean;
   /** Papers read in three-pass mode: document id → the pass on (absent: the mode is off). */
   paperPasses: Readonly<Record<string, 1 | 2 | 3>>;
 }
@@ -70,6 +72,7 @@ export const DEFAULT_PREFS: Readonly<ReaderPrefs> = Object.freeze({
   salience: false,
   spotlight: false,
   predict: true,
+  continuous: false,
   paperPasses: Object.freeze({}),
 });
 
@@ -143,6 +146,7 @@ export function parsePrefs(raw: string | null): ReaderPrefs {
     salience: flag(data.salience, d.salience),
     spotlight: flag(data.spotlight, d.spotlight),
     predict: flag(data.predict, d.predict),
+    continuous: flag(data.continuous, d.continuous),
     paperPasses: paperPasses(data.paperPasses),
   };
 }
