@@ -1178,6 +1178,30 @@ Keep Astro as the shell and routing layer; add React islands only where interact
 | **Papers** | Astro + islands | Paper shelf, paper tabs (card · explain · claims · results · references · notation · review · club), reading queue, compare, sets, three-pass reader mode ([PAPERS.md](PAPERS.md) §8) |
 | **You** | Astro + React islands | Reader statistics (§12 "Reader statistics"): `/you` for the shelf, `/you/{slug}` for one book, with a window (7 / 30 / 90 days, a year, all time) |
 
+### Rendering and speed
+
+Every page is rendered on demand (`@astrojs/node`, standalone), and a page waits on its
+backend calls before Astro sends it. Four rules keep that from showing:
+
+- **Slow pages load as a server island.** A page whose data takes many calls returns its shell
+  at once with a placeholder, and renders the rest in one deferred request (`server:defer`).
+  The Desk does this: its books, due cards, next paper and counts all load in `Desk.astro`.
+- **The costliest island is cached in process.** Astro's route cache (`memoryCache`,
+  `lib/route-cache.ts`) keeps the rendered Desk for 30 s, then serves it stale for up to five
+  minutes while a fresh render replaces it. Every write in the app goes through the `/api`
+  proxy, which drops the cached Desk, so your own changes show at once; work done by jobs shows
+  once the entry ages out. A failed load is never kept. Island URLs carry their component
+  encrypted afresh on every render (`e`), so the cache key leaves `e` out; this works only for
+  an island without props. Reader and workshop pages are not cached: they change as you use them.
+- **Links prefetch on tap.** `ClientRouter` prefetches every link; on hover that would render
+  each page the pointer crosses, so the strategy is `tap`.
+- **Hydrate late what is not needed at once.** `client:load` is for what you use right away;
+  islands further down the page use `client:visible`, and the attention beacon `client:idle`.
+  A `workshop-only` island with `client:visible` never loads in reading mode, because it is
+  hidden.
+
+The Node server does not compress responses. Behind a proxy (Caddy, nginx), let the proxy do it.
+
 ### Reader statistics
 
 The pipeline statistics (§14) describe the machine; these describe the reader: how long you
