@@ -133,21 +133,91 @@
 }
 
 .bookName {
+  display: -webkit-box;
   flex: 1;
   min-inline-size: 0;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow-wrap: anywhere;
 }
 
 /* A long shelf scrolls inside the lens instead of pushing the rest of it away. */
 .bookList {
   display: grid;
+  align-content: start;
   min-inline-size: 0;
-  max-block-size: 18rem;
+  max-block-size: 22rem;
   gap: var(--space-1);
   overflow-y: auto;
   overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+/* One row: the tick and title, and an "only" that shows on hover or focus. */
+.bookRow {
+  display: flex;
+  align-items: flex-start;
+  min-inline-size: 0;
+  gap: var(--space-2);
+}
+
+.bookRow .check {
+  flex: 1;
+  align-items: flex-start;
+}
+
+.bookRow .check input {
+  margin-block-start: 0.2em;
+}
+
+.bookRow .solo {
+  flex: none;
+  font-size: var(--text-xs);
+  opacity: 0;
+}
+
+.bookRow:hover .solo,
+.bookRow:focus-within .solo {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .bookRow .solo {
+    opacity: 1;
+  }
+}
+
+.bookSection {
+  display: grid;
+  gap: var(--space-1);
+}
+
+/* A kind's heading stays in view while its documents scroll under it. */
+.bookSectionHead {
+  position: sticky;
+  z-index: 1;
+  inset-block-start: 0;
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin: 0;
+  padding-block: var(--space-1);
+  border-block-end: 1px solid var(--rule);
+  background: var(--paper);
+  color: var(--ink-3);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+.bookSectionHead .linkish {
+  font-weight: 400;
+}
+
+.hit {
+  background: var(--marker-soft);
+  color: inherit;
 }
 
 .find {

@@ -85,6 +85,49 @@ describe('<BookFilter>', () => {
     expect(group.getByText('No title matches.')).toBeTruthy();
   });
 
+  it('"only" on a row keeps that document alone, leaving the documents of a hidden kind as they were', async () => {
+    const { group, seen, ticked } = setup(documents(3, 1), { genres: ['book'] });
+    await userEvent.click(group.getByRole('button', { name: 'Only Book 1' }));
+    expect(ticked()).toEqual(['Book 1']);
+    expect(seen.at(-1)).toEqual(['00000000-0000-4000-8000-000000000001', '00000000-0000-4000-8000-000000000003']);
+  });
+
+  it('"only these" keeps the titles that match and turns the rest of the list off', async () => {
+    const { group, ticked } = setup(documents(FIND_FROM, 0));
+    const find = group.getByRole('searchbox', { name: 'Find in documents' });
+    expect(group.queryByRole('button', { name: 'only these' })).toBeNull();
+
+    await userEvent.type(find, 'book 1');
+    await userEvent.click(group.getByRole('button', { name: 'only these' }));
+    await userEvent.type(find, '{Escape}');
+    expect((find as HTMLInputElement).value).toBe('');
+    expect(ticked()).toEqual(['Book 1']);
+  });
+
+  it('marks the match in each title', async () => {
+    const { group } = setup(documents(FIND_FROM, 0));
+    await userEvent.type(group.getByRole('searchbox', { name: 'Find in documents' }), 'ok 3');
+    expect(group.getByText('ok 3').tagName).toBe('MARK');
+  });
+
+  it('a list mixing kinds has a section per kind, each with its own all and none', async () => {
+    const { group, ticked } = setup(documents(2, 2));
+    const papers = within(group.getByRole('region', { name: 'Papers' }));
+    expect(papers.getAllByRole('checkbox').map((c) => c.closest('label')?.textContent)).toEqual(['Paper 2', 'Paper 3']);
+    expect(within(group.getByRole('region', { name: 'Books' })).getAllByRole('checkbox')).toHaveLength(2);
+
+    await userEvent.click(group.getByRole('button', { name: 'No papers' }));
+    expect(ticked()).toEqual(['Book 0', 'Book 1']);
+    expect(papers.getByText('0 of 2')).toBeTruthy();
+    await userEvent.click(group.getByRole('button', { name: 'All papers' }));
+    expect(ticked()).toHaveLength(4);
+  });
+
+  it('a list of one kind has no sections', () => {
+    const { group } = setup(documents(2, 2), { genres: ['paper'] });
+    expect(group.queryByRole('region')).toBeNull();
+  });
+
   it('a short shelf has no box to find a book', () => {
     const { group } = setup(documents(FIND_FROM - 1, 0));
     expect(group.queryByRole('searchbox')).toBeNull();

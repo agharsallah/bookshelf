@@ -142,6 +142,14 @@ export function toggleMany<T extends string>(current: T[] | null, values: readon
   return next.length === all.length ? null : next;
 }
 
+/**
+ * Keep only `keep` among `among`: the rest of `among` goes off, values outside it stay as
+ * they were (a book of a hidden kind keeps its tick). Back to `null` once every value is on.
+ */
+export function keepOnly<T extends string>(current: T[] | null, keep: readonly T[], among: readonly T[], all: readonly T[]): T[] | null {
+  return toggleMany(toggleMany(current, among, false, all), keep, true, all);
+}
+
 /** Whether any filter is narrowing the view (the query aside). */
 export function isFiltering(lens: LensState): boolean {
   return lens.mode === 'lens' && (lens.links !== null || lens.kinds !== null || lens.books !== null || lens.genres !== null || lens.crossBook);

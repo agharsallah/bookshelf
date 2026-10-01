@@ -7,7 +7,7 @@
  * what to do with the rest (dim or hide), and whether to group by book. Every change is
  * immediate; counts come from the whole atlas, so a filter never hides its own way back.
  */
-import { GENRES, type Genre } from '../../lib/api/types/documents';
+import { GENRE_PLURALS, GENRES } from '../../lib/api/types/documents';
 import type { ConceptKind } from '../../lib/api/types/graph';
 import { KindMark, RelationMark } from '../graph/Legend';
 import { BookFilter } from './BookFilter';
@@ -40,8 +40,6 @@ const KIND_LABELS: Record<KindKey, string> = {
   metric: 'Metrics',
   task: 'Tasks',
 };
-
-const GENRE_PLURALS: Record<Genre, string> = { book: 'Books', paper: 'Papers', article: 'Articles' };
 
 function kindMark(key: KindKey) {
   if (key === 'document') return <KindMark kind="document" />;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cleared, DEFAULT_LENS, isFiltering, lensFromParams, lensToParams, toggle, toggleMany } from './lens';
+import { cleared, DEFAULT_LENS, isFiltering, keepOnly, lensFromParams, lensToParams, toggle, toggleMany } from './lens';
 
 describe('lens URL', () => {
   it('round-trips a lens through the query string', () => {
@@ -60,6 +60,15 @@ describe('toggleMany', () => {
     expect(toggleMany(off, ['a', 'd'], false, all)).toEqual([]);
     expect(toggleMany(off, ['c'], true, all)).toEqual(['a', 'c', 'd']);
     expect(toggleMany(off, ['b', 'c'], true, all)).toBeNull();
+  });
+});
+
+describe('keepOnly', () => {
+  const all = ['a', 'b', 'c', 'd'] as const;
+  it('keeps the chosen values among a few, leaving the values outside them as they were', () => {
+    expect(keepOnly<'a' | 'b' | 'c' | 'd'>(null, ['b'], ['a', 'b', 'c'], all)).toEqual(['b', 'd']);
+    expect(keepOnly<'a' | 'b' | 'c' | 'd'>(['a'], ['b'], ['b', 'c'], all)).toEqual(['a', 'b']);
+    expect(keepOnly<'a' | 'b' | 'c' | 'd'>(['b', 'd'], ['a', 'b', 'c', 'd'], all, all)).toBeNull();
   });
 });
 

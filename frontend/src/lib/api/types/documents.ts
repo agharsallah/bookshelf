@@ -12,6 +12,7 @@ export const GENRES = ['book', 'paper', 'article'] as const;
 export type Genre = (typeof GENRES)[number];
 
 export const GENRE_LABELS: Record<Genre, string> = { book: 'Book', paper: 'Paper', article: 'Article' };
+export const GENRE_PLURALS: Record<Genre, string> = { book: 'Books', paper: 'Papers', article: 'Articles' };
 
 /** How a document's kind reads in the UI ("EPUB, 312 pages"). */
 export const KIND_LABELS: Record<DocumentKind, string> = { pdf: 'PDF', epub: 'EPUB', article: 'Article' };
