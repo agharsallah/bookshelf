@@ -198,7 +198,8 @@ create table documents (
   language      text default 'en',
   status        text not null,               -- see §7 state machine
   tags          text[] not null default '{}',
-  created_at    timestamptz not null default now()
+  created_at    timestamptz not null default now(),
+  archived_at   timestamptz                  -- set: off the shelf, nothing lost (§18)
 );
 
 -- STRUCTURE ------------------------------------------------------------
@@ -1286,12 +1287,15 @@ a pile of plausible AI text. It ships in phase 1, with the first distillation.
 ```
 POST   /documents                      ingest {path: 'library/x.pdf'} | {url}   → 202 + job
 GET    /library                        files in library/ not yet ingested
-GET    /documents                      list, filter by tag/status/author
+GET    /documents                      list, filter by tag/status/author; ?archived=true lists the archived
 GET    /documents/{id}                 metadata + pipeline state
 GET    /documents/{id}/tree            outline; ?depth=, ?include=blocks
 PATCH  /documents/{id}/outline         manual chapter/section fix-up
 POST   /documents/{id}/outline/confirm accept a guessed outline as is (needs_review → parsed)
 POST   /documents/{id}/resume          lift a run-ceiling pause {max_runs?}
+POST   /documents/{id}/archive         off the shelf, nothing lost (hidden, purged from search, work held)
+POST   /documents/{id}/restore         back on the shelf: held work requeued, re-indexed if it was
+DELETE /documents/{id}                 delete for good; ?file=true also deletes the original in library/
 GET    /documents/{id}/blocks          paginated, ?anchor_prefix=
 
 GET    /documents/{id}/reading         reading positions, most recently read first
@@ -1546,6 +1550,7 @@ The design above is a guideline. Where the build diverged, the reason is recorde
 | Concept lists | typeahead | `edge_count` (accepted edges, merged concepts folded in) and `sort=alpha|connected|recent`, one query | Find the well-connected concepts to start a walk from |
 | SSE lifetimes | poll `/jobs` | `/jobs/stream` and `/search/answer` end at once when shutdown begins (SIGINT/SIGTERM chained in the lifespan, `app/core/lifecycle.py`); streams are bounded (`max_seconds`, 180 s answer run) | A `fastapi dev` reload otherwise waits for every open stream |
 | URL ingest | fetch with limits | plus an SSRF guard: every request and redirect hop resolves the host and refuses loopback/private/link-local/multicast/reserved/unspecified addresses (IPv4, IPv6, IPv4-mapped) | Ingest by URL must not become a probe into the local network |
+| Archive and delete | delete only; originals never deleted (D13) | `documents.archived_at` (migration `20261001120000_document_archive`): an archived document leaves the library listing, search (points purged by the same `embed` purge job a delete uses; lexical search, address resolution, suggestions and search refs skip it at once), the review queue and the paper shelf; its queued jobs are skipped as `held: document archived` and `claim()` takes nothing for it; restore requeues the held jobs and, if it had been embedded, queues an `embed`. The idea graph is left as it is. `DELETE` also removes the document's media folder, and with `?file=true` its original (only a path inside `library/`) | Putting a book away must be reversible; withdrawing graph edges would lose human curation a restore cannot bring back. Deleting "everything" has to be possible, but keeping the file stays the default so it can be re-added |
 | Re-parse media | — | a re-parse deletes files under `media_dir/<slug>/` no node references any more | Stale crops would otherwise accumulate forever |
 | Pipeline statistics | `jobs.cost_tokens` / `duration_ms` only | a `model_runs` row per CLI call (`app/telemetry/recorder.py`, migration `20260928100300_model_runs`), aggregated on request by `app/stats` into per-book, per-chapter, per-stage and per-skill figures plus rule-based insights (`GET /stats`, `GET /documents/{ref}/stats`, pages `/pipeline/stats`, `/pipeline/stats/{slug}`) | The job row keeps only the finishing attempt's input + output: retries, failed attempts, cache tokens and cost were invisible, so skills could not be compared or improved on evidence |
 | Remembering it | quizzes and flashcards only | recalls, predictions, grades and an FSRS review queue (migration `20260928085522_recall_and_reviews`); grading is a Python job (`grade_recall`, `app/recall/grading.py`) running the `grade-recall` utility skill, not an artifact, because a grade belongs to one recall rather than to a document scope; flashcard marks moved from localStorage to `review_items` (a browser's old marks are sent up once) | Recall has to be graded against the book with cites, reviews have to be due across every book, and a mark in one browser should not be lost in another |
