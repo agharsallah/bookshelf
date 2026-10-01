@@ -6,9 +6,12 @@ right in substance but slip on its nesting: a paragraph with a bare `text` inste
 list of spans instead of one. The retry prompt names the fix, yet the same slip often comes
 back, and the job fails with good content in hand.
 
-Each repair here is unambiguous and keeps every word and cite; nothing is invented. What
-cannot be repaired this way is left alone for the schema gate to reject as before, and all
-soft gates (grounding, compression, ...) still run on the repaired output.
+Each repair here is unambiguous and keeps every word and cite; nothing is invented. The one
+exception is a diagram label past the contract's limit: it is cut at a word boundary and
+marked with "…" (a verbatim box of prose is not a node label, and the retry rarely counts
+characters better than the first reply). What cannot be repaired this way is left alone for
+the schema gate to reject as before, and all soft gates (grounding, compression, ...) still
+run on the repaired output.
 """
 
 import json
@@ -40,6 +43,35 @@ def _allowed_keys() -> dict[str, frozenset[str]]:
     }
 
 
+@lru_cache(maxsize=1)
+def _label_limits() -> tuple[int, int]:
+    """The render contract's max length for a diagram node label and an edge label."""
+    diagram = json.loads(RENDER_BLOCKS.read_text(encoding="utf-8"))["$defs"]["diagram"]
+    props = diagram["properties"]
+    node = props["nodes"]["items"]["properties"]["label"]["maxLength"]
+    edge = props["edges"]["items"]["properties"]["label"]["maxLength"]
+    return node, edge
+
+
+def _shortened(label: str, limit: int) -> str:
+    """`label` cut to at most `limit` characters at a word boundary, ending in "…"."""
+    head = label[: limit - 1]
+    if " " in head.strip() and not label[limit - 1].isspace():
+        head = head.rsplit(" ", 1)[0]
+    return head.rstrip(" ,;:.-\u2013\u2014") + "…"  # also en and em dashes
+
+
+def _shorten_labels(items: Any, limit: int) -> int:
+    """Shorten every over-long `label` in a list of nodes or edges; returns how many."""
+    count = 0
+    for item in items if isinstance(items, list) else []:
+        label = item.get("label") if isinstance(item, dict) else None
+        if isinstance(label, str) and len(label) > limit:
+            item["label"] = _shortened(label, limit)
+            count += 1
+    return count
+
+
 def _span(text: str, cites: object = None) -> dict[str, Any]:
     return {"text": text, "cites": cites if isinstance(cites, list) else []}
 
@@ -61,6 +93,16 @@ def _as_spans(item: Any) -> Any:
     if isinstance(item, str) and item.strip():
         return [_span(item)]
     return item
+
+
+def _header_text(label: Any) -> Any:
+    """A column label is a string; accept one span or a list of spans."""
+    if isinstance(label, list) and label:
+        merged = _merged(label)
+        return merged["text"] if merged is not None else label
+    if isinstance(label, dict) and isinstance(label.get("text"), str):
+        return label["text"]
+    return label
 
 
 def _as_cell(cell: Any) -> Any:
@@ -129,8 +171,7 @@ def _repair_block(block: dict[str, Any], fixes: list[str]) -> None:
             fixes.append("table: cells → spans")
     if kind == "table" and isinstance(block.get("header"), list):
         # Column labels are plain strings; a cite on a label adds nothing the rows lack.
-        header = [h["text"] if isinstance(h, dict) and isinstance(h.get("text"), str) else h
-                  for h in block["header"]]  # fmt: skip
+        header = [_header_text(h) for h in block["header"]]
         if header != block["header"]:
             block["header"] = header
             fixes.append("table: header spans → strings")
@@ -139,6 +180,12 @@ def _repair_block(block: dict[str, Any], fixes: list[str]) -> None:
         if edges != block["edges"]:
             block["edges"] = edges
             fixes.append("diagram: source/target → from/to")
+    if kind == "diagram":
+        node_limit, edge_limit = _label_limits()
+        shortened = _shorten_labels(block.get("nodes"), node_limit)
+        shortened += _shorten_labels(block.get("edges"), edge_limit)
+        if shortened:
+            fixes.append(f"diagram: {shortened} over-long label(s) shortened")
     allowed = _allowed_keys().get(kind)
     if allowed is not None and "cites" not in allowed and isinstance(block.get("cites"), list):
         _push_block_cites(block, block.pop("cites"))

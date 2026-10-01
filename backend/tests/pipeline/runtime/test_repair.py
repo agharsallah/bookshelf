@@ -58,6 +58,11 @@ SCHEMA = {"type": "object", "required": ["blocks"], "properties": {"blocks": BLO
             "table: header spans → strings",
         ),
         (
+            {"type": "table", "header": [[span("Series", "ch16/f002")], "Shape"], "rows": []},
+            {"type": "table", "header": ["Series", "Shape"], "rows": []},
+            "table: header spans → strings",
+        ),
+        (
             {"type": "diagram", "cites": ["ch03/f001"], "nodes": [{"id": "a", "label": "A"},
              {"id": "b", "label": "B"}], "edges": [{"source": "a", "target": "b", "label": "x"}]},
             {"type": "diagram", "cites": ["ch03/f001"], "nodes": [{"id": "a", "label": "A"},
@@ -83,8 +88,8 @@ SCHEMA = {"type": "object", "required": ["blocks"], "properties": {"blocks": BLO
         ),
     ],
     ids=["paragraph-text", "bullet-items", "paragraph-items", "table-cells", "tone-as-type",
-         "bullets-with-spans", "header-spans", "diagram-edge-aliases", "steps-block-cites",
-         "heading-cites", "heading-spans"],
+         "bullets-with-spans", "header-spans", "header-span-lists", "diagram-edge-aliases",
+         "steps-block-cites", "heading-cites", "heading-spans"],
 )  # fmt: skip
 def test_slips_are_repaired_into_valid_blocks(slipped, repaired, fix):
     output = {"blocks": [slipped]}
@@ -94,6 +99,24 @@ def test_slips_are_repaired_into_valid_blocks(slipped, repaired, fix):
 
     assert output == {"blocks": [repaired]}
     assert fix in fixes
+    assert gates.schema_errors(SCHEMA, output) == []
+
+
+def test_over_long_diagram_labels_are_cut_at_a_word_and_marked():
+    box = "Agent receives the issue text and the repository, then plans " * 3
+    diagram = {"type": "diagram", "cites": ["ch01/f002"],
+               "nodes": [{"id": "a", "label": box}, {"id": "b", "label": "Env"}],
+               "edges": [{"from": "a", "to": "b", "label": "observation " * 10}]}  # fmt: skip
+    output = {"blocks": [diagram]}
+
+    fixes = repair_blocks(output)
+
+    [node, short], [edge] = diagram["nodes"], diagram["edges"]
+    assert len(node["label"]) <= 120 and len(edge["label"]) <= 80
+    assert node["label"].endswith("…") and box.startswith(node["label"][:-1])
+    assert box[len(node["label"]) - 1] == " "  # cut after a whole word
+    assert short["label"] == "Env"
+    assert fixes == ["diagram: 2 over-long label(s) shortened"]
     assert gates.schema_errors(SCHEMA, output) == []
 
 
