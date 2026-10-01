@@ -6,6 +6,7 @@
  */
 import type { ApiClient } from '../../lib/api/client';
 import type { JobAccepted, JobKind, JobPublic } from '../../lib/api/types/jobs';
+import type { Genre } from '../../lib/api/types/documents';
 import type { SkillPublic } from '../../lib/api/types/skills';
 import { enqueueJob } from '../../lib/jobs/api';
 import { problemOf } from '../common/Problem';
@@ -81,11 +82,30 @@ export function takesChoices(skill: Pick<SkillPublic, 'params'>): boolean {
   return Object.keys(skill.params ?? {}).length > 0;
 }
 
-/** The catalogue's one-click derive skills for one scope, in a stable order. Book-wide, that
- * includes chapter skills (quiz, FAQ, quotes, flashcards) that can also run on the whole book. */
-export function deriveSkills(skills: readonly SkillPublic[], scope: DeriveScope): SkillPublic[] {
+/** The derive skills written for papers (`genre: paper` in their meta.yaml, docs/PAPERS.md P2). */
+const PAPER_SKILLS: ReadonlySet<string> = new Set([
+  'simplify-paper',
+  'extract-claims',
+  'extract-results',
+  'classify-citations',
+  'assess-paper',
+  'review-paper',
+  'make-notation',
+  'make-journal-club',
+  'explain-math',
+]);
+
+/** Whether a skill suits a document of `genre`: a paper skill only a paper, the
+ * genre-neutral ones (quiz, FAQ, glossary…) every genre (backend `app_settings.eligible`). */
+export function suitsGenre(skill: Pick<SkillPublic, 'name'>, genre: Genre): boolean {
+  return genre === 'paper' || !PAPER_SKILLS.has(skill.name);
+}
+
+/** The catalogue's one-click derive skills for one scope and genre, in a stable order. Book-wide,
+ * that includes chapter skills (quiz, FAQ, quotes, flashcards) that can also run on the whole book. */
+export function deriveSkills(skills: readonly SkillPublic[], scope: DeriveScope, genre: Genre): SkillPublic[] {
   return skills
-    .filter((s) => s.job_kind === 'derive' && runsAt(s, scope) && !takesChoices(s))
+    .filter((s) => s.job_kind === 'derive' && runsAt(s, scope) && suitsGenre(s, genre) && !takesChoices(s))
     .sort((a, b) => deriveLabel(a).localeCompare(deriveLabel(b)));
 }
 

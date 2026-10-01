@@ -70,8 +70,8 @@ const unitName = (unit: (typeof units)[number]) =>
   [unit.meta.front_matter ? null : anchorLabel(unit.anchor), unit.heading].filter(Boolean).join(' · ');
 // Study material waits for a confirmed outline: it reads the chapters as parsed.
 const deriving = data !== null && data.doc.status !== 'needs_review';
-const chapterDerive = data && deriving ? deriveSkills(data.skills, 'chapter') : [];
-const documentDerive = data && deriving ? deriveSkills(data.skills, 'document') : [];
+const chapterDerive = data && deriving ? deriveSkills(data.skills, 'chapter', data.doc.genre) : [];
+const documentDerive = data && deriving ? deriveSkills(data.skills, 'document', data.doc.genre) : [];
 const listenable = Boolean(data?.skills.some((s) => s.narrate));
 const distilled = Object.values(statuses).some((s) => s.distillation === 'approved');
 const made = data ? madeIndex(data.artifacts, [...chapterDerive, ...documentDerive], madeKey) : {};

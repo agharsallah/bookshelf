@@ -28,15 +28,26 @@ const catalogue = [
   skill('extract-quotes', { artifact_type: 'quote_set', selector: 'scope_blocks', document_selector: 'document_quotes' }),
   skill('make-mindmap', { artifact_type: null, selector: 'scope_blocks' }),
   skill('distil-chapter', { job_kind: 'distil_chapter', artifact_type: 'chapter_distillation' }),
+  skill('assess-paper', { artifact_type: 'paper_assessment', scope: 'document', selector: 'paper_assessment' }),
 ];
 
 describe('derive skills', () => {
   it('keeps only derive skills of the scope, ordered by what they make', () => {
-    expect(deriveSkills(catalogue, 'chapter').map(deriveLabel)).toEqual(['Make a quiz', 'make-mindmap', 'Pick quotes']);
+    expect(deriveSkills(catalogue, 'chapter', 'book').map(deriveLabel)).toEqual(['Make a quiz', 'make-mindmap', 'Pick quotes']);
   });
 
   it('offers chapter skills with a document selector book-wide too', () => {
-    expect(deriveSkills(catalogue, 'document').map((s) => s.name)).toEqual(['make-glossary', 'make-quiz', 'extract-quotes']);
+    expect(deriveSkills(catalogue, 'document', 'book').map((s) => s.name)).toEqual(['make-glossary', 'make-quiz', 'extract-quotes']);
+  });
+
+  it('offers paper skills on a paper only, alongside the genre-neutral ones', () => {
+    expect(deriveSkills(catalogue, 'document', 'paper').map((s) => s.name)).toEqual([
+      'assess-paper',
+      'make-glossary',
+      'make-quiz',
+      'extract-quotes',
+    ]);
+    expect(deriveSkills(catalogue, 'document', 'article').map((s) => s.name)).not.toContain('assess-paper');
   });
 
   it('checks the distillation prerequisite against the input of the scope that runs', () => {
