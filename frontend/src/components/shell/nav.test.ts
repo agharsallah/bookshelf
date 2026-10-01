@@ -5,7 +5,7 @@ import { NAV, isCurrent, loadNavCounts, pipelineSignal } from './nav';
 const item = (href: string) => NAV.find((i) => i.href === href)!;
 
 describe('isCurrent', () => {
-  it('marks the desk only on the home page, not on every page by prefix', () => {
+  it('marks Today only on the home page, not on every page by prefix', () => {
     expect(isCurrent(item('/'), '/')).toBe(true);
     expect(isCurrent(item('/'), '/library')).toBe(false);
   });

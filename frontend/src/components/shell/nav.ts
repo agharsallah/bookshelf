@@ -20,7 +20,7 @@ export interface NavItem {
 }
 
 export const NAV: readonly NavItem[] = [
-  { href: '/', label: 'Desk' },
+  { href: '/', label: 'Today' },
   { href: '/library', label: 'Library', also: ['/documents'] },
   { href: '/papers', label: 'Papers', claims: /^\/documents\/[^/]+\/paper(\/|$)/ },
   { href: '/collections', label: 'Collections' },

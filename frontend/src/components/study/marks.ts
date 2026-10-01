@@ -1,6 +1,6 @@
 /**
  * Where flashcard marks live: the review queue (`/reviews/flashcards/{artifact}`), so a
- * card you marked comes back on the Desk when FSRS says it is due. Marks a browser kept
+ * card you marked comes back on Today when FSRS says it is due. Marks a browser kept
  * in localStorage, before they moved there, are sent up once and then forgotten locally.
  */
 import { flashcardMarks, markFlashcard, type RecallApi } from '../recall/api';

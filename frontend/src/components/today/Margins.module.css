@@ -1,0 +1,142 @@
+/* From your margins: a passage on a sheet, your highlighter drawn across it again. */
+
+.margins {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+}
+
+.head :global(.section-title) {
+  font-size: var(--text-lg);
+}
+
+.sheet {
+  display: grid;
+  gap: var(--space-5);
+  margin: 0;
+  padding: var(--space-6) var(--space-6) var(--space-5);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-l);
+  background: var(--paper-raised);
+  box-shadow: var(--shadow-lift);
+}
+
+.passage {
+  max-inline-size: 34em;
+  margin: 0;
+  font-family: var(--font-read);
+  font-size: var(--text-md);
+  line-height: 1.55;
+}
+
+/* Quotation marks hang in the margin, so the words line up with the text below. */
+.passage p::before {
+  content: '“';
+  margin-inline-start: -0.45em;
+  inline-size: 0.45em;
+  display: inline-block;
+  color: var(--ink-3);
+}
+
+.passage p::after {
+  content: '”';
+  color: var(--ink-3);
+}
+
+/*
+ * The note's own colour, as the reader lays it. The fragments of a wrapped line share
+ * one background (`slice`), so growing it sweeps line after line like a pen.
+ */
+.mark {
+  --hl: var(--hl-sage);
+  padding-block: 0.06em;
+  background: linear-gradient(var(--hl), var(--hl)) no-repeat 0 0 / 100% 100%;
+  color: var(--ink);
+  box-decoration-break: slice;
+  -webkit-box-decoration-break: slice;
+}
+
+.mark[data-color='amber'] {
+  --hl: var(--hl-amber);
+}
+
+.mark[data-color='rose'] {
+  --hl: var(--hl-rose);
+}
+
+.mark[data-color='sky'] {
+  --hl: var(--hl-sky);
+}
+
+.mark[data-color='violet'] {
+  --hl: var(--hl-violet);
+}
+
+/* The one moment on this page: the stroke drawn across the passage as it appears. */
+@media (prefers-reduced-motion: no-preference) {
+  .mark {
+    animation: stroke calc(var(--dur-4) * 2.2) var(--ease-stroke) 240ms both;
+  }
+}
+
+@keyframes stroke {
+  from {
+    background-size: 0% 100%;
+  }
+}
+
+.yours {
+  max-inline-size: 60ch;
+  padding-inline-start: var(--space-4);
+  border-inline-start: 2px solid var(--rule-strong);
+  color: var(--ink-2);
+  font-family: var(--font-read);
+  font-size: var(--text-base);
+  font-style: italic;
+  line-height: var(--leading-read);
+}
+
+.source {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3) var(--space-5);
+  padding-block-start: var(--space-4);
+  border-block-start: 1px solid var(--rule);
+}
+
+.where {
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.where cite {
+  color: var(--ink-2);
+  font-style: normal;
+}
+
+.none {
+  max-inline-size: 52ch;
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+}
+
+@media (max-width: 40rem) {
+  .sheet {
+    padding: var(--space-5) var(--space-5) var(--space-4);
+  }
+
+  .source :global(.btn) {
+    flex: 1 1 100%;
+  }
+}

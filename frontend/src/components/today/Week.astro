@@ -1,0 +1,111 @@
+---
+/**
+ * The week behind today (a server island of its own, `server:defer` in pages/index.astro):
+ * seven small bars of time with your books, today's day marked, and the week's time and
+ * streak in a line. Reader statistics are slow to compute, so the rest of Today never
+ * waits on them; when they cannot load the strip is simply absent.
+ */
+import { formatTime } from '../you/format';
+import { TODAY_CACHE } from '../../lib/route-cache';
+import { loadWeek } from './load';
+import { localDate, weekDays } from './today';
+
+const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+const stats = await loadWeek(tz);
+if (stats && Astro.cache.enabled) Astro.cache.set(TODAY_CACHE);
+const days = stats ? weekDays(stats.daily, localDate()) : [];
+const streak = stats?.totals.current_streak ?? 0;
+const seconds = stats?.totals.seconds ?? 0;
+const summary =
+  seconds === 0 ? 'No reading yet this week.' : `${formatTime(seconds)} this week${streak > 1 ? `, ${streak} days in a row` : ''}.`;
+---
+
+{
+  stats && (
+    <a class="week" href="/you" aria-label={`Your week: ${summary} Open your reading statistics.`}>
+      <ol class="days" aria-hidden="true">
+        {days.map((day) => (
+          <li class="day" data-today={day.today ? '' : undefined} data-empty={day.seconds === 0 ? '' : undefined} title={`${day.name}: ${day.seconds ? formatTime(day.seconds) : 'no reading'}`}>
+            <span class="bar" style={`--h: ${day.height.toFixed(3)}`} />
+            <span class="initial">{day.initial}</span>
+          </li>
+        ))}
+      </ol>
+      <span class="summary">{summary}</span>
+    </a>
+  )
+}
+
+<style>
+  .week {
+    display: grid;
+    justify-items: end;
+    gap: var(--space-2);
+    padding: var(--space-2);
+    margin: calc(var(--space-2) * -1);
+    border-radius: var(--radius-m);
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .week:hover {
+    background: var(--paper-sunken);
+  }
+
+  .days {
+    display: grid;
+    grid-template-columns: repeat(7, 1.25rem);
+    gap: var(--space-1);
+    padding: 0;
+    margin: 0;
+    list-style: none;
+  }
+
+  .day {
+    display: grid;
+    grid-template-rows: 2.5rem auto;
+    justify-items: center;
+    gap: var(--space-1);
+  }
+
+  .bar {
+    align-self: end;
+    inline-size: 0.5rem;
+    block-size: max(3px, calc(var(--h) * 100%));
+    border-radius: var(--radius-pill);
+    background: var(--accent);
+  }
+
+  .day[data-empty] .bar {
+    background: var(--rule-strong);
+  }
+
+  .initial {
+    padding-inline: 0.2em;
+    color: var(--ink-3);
+    font-family: var(--font-ui);
+    font-size: var(--text-xs);
+    line-height: 1.4;
+  }
+
+  /* Today wears the highlighter, as where you are does everywhere else. */
+  .day[data-today] .initial {
+    border-radius: var(--radius-s);
+    background: var(--marker);
+    color: var(--marker-ink);
+    font-weight: 700;
+  }
+
+  .summary {
+    color: var(--ink-2);
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+    font-variant-numeric: tabular-nums;
+  }
+
+  @media (max-width: 40rem) {
+    .week {
+      justify-items: start;
+    }
+  }
+</style>

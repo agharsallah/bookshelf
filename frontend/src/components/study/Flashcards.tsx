@@ -5,7 +5,7 @@
  *
  * Keys: Space/Enter turns, ←/→ move, K "I knew it", L "Still learning". Each mark is a
  * self-rating kept in the review queue (./marks.ts): it survives a reload, and the card
- * comes back on the Desk when it is due.
+ * comes back on Today when it is due.
  */
 import { useCallback, useEffect, useReducer, useRef, useState, type RefObject } from 'react';
 import { browserApi } from '../../lib/api/client';

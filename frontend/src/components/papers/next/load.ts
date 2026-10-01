@@ -1,5 +1,5 @@
 /**
- * The Desk's "Next paper" card (docs/PAPERS.md §8): the best candidate of the reading
+ * Today's "Next paper" card (docs/PAPERS.md §8): the best candidate of the reading
  * queue, with its reason. Null when there is none or the queue cannot be read, so the
  * card is simply absent.
  */

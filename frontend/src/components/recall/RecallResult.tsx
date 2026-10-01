@@ -37,7 +37,7 @@ export function RecallResult({ grade }: RecallResultProps) {
           <p>
             <Spans spans={[{ text: question.text, cites: question.cites }]} />
           </p>
-          <p className={styles.hint}>It is waiting in today’s reviews on the Desk, with the passage that answers it.</p>
+          <p className={styles.hint}>It is waiting in your reviews on Today, with the passage that answers it.</p>
         </section>
       ) : null}
       {byStatus(grade).map(([status, ideas]) => (

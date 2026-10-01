@@ -1,22 +1,72 @@
 ---
 /**
- * The Desk, the home page: back into the book you are in, what is due for review
- * across every book, the study material the library has made, every book with how far
- * you read it, pages read at a glance, and in workshop mode what waits for you. Each part degrades alone when its data fails.
+ * Today, the home page: the date, the week behind it, and what the day holds. That
+ * means the cards due for review across every book, a passage from your margins, the
+ * book to pick up and the others still open, and the next paper.
  *
- * The page returns at once with a placeholder; everything that needs the backend loads
- * as one server island (components/desk/Desk.astro).
+ * The page returns at once with the date and placeholders. Everything that needs the
+ * backend loads as two server islands: the week (components/today/Week.astro, slow
+ * reader statistics) and the rest (components/today/Today.astro).
  */
 import BaseLayout from '../layouts/BaseLayout.astro';
-import Desk from '../components/desk/Desk.astro';
-import DeskPlaceholder from '../components/desk/DeskPlaceholder.astro';
+import Today from '../components/today/Today.astro';
+import TodayPlaceholder from '../components/today/TodayPlaceholder.astro';
+import Week from '../components/today/Week.astro';
 
 export const prerender = false;
+
+const date = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
 ---
 
-<BaseLayout title="Desk" description="Back to your book, and what you can study.">
-  <h1 class="visually-hidden">Desk</h1>
-  <Desk server:defer>
-    <DeskPlaceholder slot="fallback" />
-  </Desk>
+<BaseLayout title="Today" description="What is due for review, a passage from your margins, and the book to pick up.">
+  <div class="page">
+    <header class="day">
+      <h1 class="date">{date}</h1>
+      <Week server:defer>
+        <span slot="fallback" class="week-placeholder" aria-hidden="true"></span>
+      </Week>
+    </header>
+    <Today server:defer>
+      <TodayPlaceholder slot="fallback" />
+    </Today>
+  </div>
 </BaseLayout>
+
+<style>
+  .page {
+    display: grid;
+    gap: var(--space-3);
+  }
+
+  .day {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    justify-content: space-between;
+    gap: var(--space-4) var(--space-6);
+    padding-block-start: var(--space-4);
+  }
+
+  /* The day, set like the first line of a page in the book's voice. */
+  .date {
+    font-family: var(--font-read);
+    font-size: var(--text-2xl);
+    font-weight: 480;
+    letter-spacing: -0.025em;
+    line-height: 1;
+  }
+
+  .week-placeholder {
+    display: block;
+    inline-size: 9.5rem;
+    block-size: 4.5rem;
+    border-radius: var(--radius-m);
+    background: var(--paper-sunken);
+  }
+
+  @media (max-width: 40rem) {
+    .date {
+      font-size: var(--text-xl);
+    }
+  }
+</style>

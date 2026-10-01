@@ -1,0 +1,230 @@
+---
+/**
+ * Pick up: the book you are in, the chapter and how far, the book as a strip of
+ * chapters with yours marked, one button back into the reader, and the other books you
+ * are part way through. Falls back to the newest book to start, or an invitation to add one.
+ */
+import ChapterStrip from '../document/ChapterStrip';
+import { percent, type ContinueTarget } from '../../lib/documents/reading';
+import { readShare, unitName, type Hero, type TodayBook } from './today';
+
+interface Props {
+  hero: Hero;
+  others: (TodayBook & { resume: ContinueTarget })[];
+}
+
+const { hero, others } = Astro.props;
+const book = 'book' in hero ? hero.book : null;
+const slug = book?.doc.slug ?? '';
+const read = (anchor: string) => `/documents/${slug}/read/${anchor}`;
+const view =
+  hero.kind === 'continue'
+    ? {
+        heading: 'Pick up where you left off',
+        where: unitName(hero.target.unit),
+        progress: hero.target.progress > 0 ? `${percent(hero.target.progress)}% into it` : 'Not begun yet',
+        action: { label: hero.target.kind === 'continue' ? 'Continue reading' : 'Read the next chapter', href: read(hero.target.anchor) },
+      }
+    : hero.kind === 'start'
+      ? { heading: 'Start a book', where: unitName(hero.unit), progress: 'Not opened yet', action: { label: 'Start reading', href: read(hero.unit.anchor) } }
+      : hero.kind === 'finished'
+        ? {
+            heading: 'Your last book',
+            where: 'You have read it all',
+            progress: null,
+            action: book?.units[0] ? { label: 'Read it again', href: read(book.units[0].anchor) } : null,
+          }
+        : null;
+const current = hero.kind === 'continue' ? hero.target.unit.anchor : hero.kind === 'start' ? hero.unit.anchor : null;
+---
+
+<section class="pickup" aria-labelledby="pickup-title">
+  {
+    book && view ? (
+      <>
+        <h2 id="pickup-title" class="section-title">
+          {view.heading}
+        </h2>
+        <div class="book">
+          <a class="book-title title" href={`/documents/${slug}`}>
+            {book.doc.title}
+          </a>
+          {book.doc.authors.length > 0 && <p class="authors">{book.doc.authors.join(', ')}</p>}
+        </div>
+        <p class="where">
+          <span class="chapter">{view.where}</span>
+          {view.progress && <span class="far">{view.progress}</span>}
+        </p>
+        <div class="strip">
+          <ChapterStrip slug={slug} units={book.units} positions={book.positions} current={current} label="The book, chapter by chapter, and how far you have read" />
+          {book.progress.total > 0 && hero.kind !== 'start' && (
+            <p class="share">
+              {readShare(book.progress.progress)}, {book.progress.finished} of {book.progress.total} chapters finished
+            </p>
+          )}
+        </div>
+        {view.action && (
+          <a class="btn btn-primary go" href={view.action.href}>
+            {view.action.label}
+          </a>
+        )}
+      </>
+    ) : (
+      <>
+        <h2 id="pickup-title" class="section-title">
+          {hero.kind === 'waiting' ? 'Your books are on their way' : 'Nothing to read yet'}
+        </h2>
+        <p class="empty">
+          {hero.kind === 'waiting'
+            ? 'None of your books has its chapters yet. They open here as soon as parsing finishes.'
+            : 'Add a book or an article to the library. Once its chapters are split, it opens here, ready to read.'}
+        </p>
+        <a class="btn btn-primary go" href={hero.kind === 'waiting' ? '/library' : '/library?add=1'}>
+          {hero.kind === 'waiting' ? 'Open the library' : 'Add a book'}
+        </a>
+      </>
+    )
+  }
+  {
+    others.length > 0 && (
+      <div class="others">
+        <h3 class="others-title">Also open</h3>
+        <ul>
+          {others.map((other) => (
+            <li>
+              <a class="book-title" href={`/documents/${other.doc.slug}/read/${other.resume.anchor}`}>
+                {other.doc.title}
+              </a>
+              <span class="other-share">{readShare(other.progress.progress, 'read')}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    )
+  }
+</section>
+
+<style>
+  .pickup {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-4);
+    min-inline-size: 0;
+    padding: var(--space-5);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-m);
+    background: var(--paper-raised);
+  }
+
+  .section-title {
+    color: var(--ink-2);
+    font-size: var(--text-ui);
+  }
+
+  .book {
+    display: grid;
+    gap: var(--space-1);
+  }
+
+  .title {
+    color: var(--ink);
+    font-size: var(--text-lg);
+    line-height: var(--leading-tight);
+    text-decoration: none;
+    overflow-wrap: anywhere;
+  }
+
+  .title:hover {
+    color: var(--accent);
+  }
+
+  .authors {
+    color: var(--ink-2);
+    font-family: var(--font-read);
+    font-style: italic;
+  }
+
+  .where {
+    display: grid;
+    gap: var(--space-1);
+    font-family: var(--font-ui);
+  }
+
+  .chapter {
+    font-weight: 600;
+  }
+
+  .far,
+  .share {
+    color: var(--ink-3);
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .strip {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .go {
+    min-block-size: 2.75rem;
+  }
+
+  .empty {
+    color: var(--ink-2);
+    font-family: var(--font-ui);
+  }
+
+  .others {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-2);
+    padding-block-start: var(--space-4);
+    border-block-start: 1px solid var(--rule);
+  }
+
+  .others-title {
+    color: var(--ink-3);
+    font-size: var(--text-sm);
+    font-weight: 600;
+  }
+
+  .others ul {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-2);
+    padding: 0;
+    margin: 0;
+    list-style: none;
+  }
+
+  .others li {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+
+  .others a {
+    min-inline-size: 0;
+    overflow: hidden;
+    color: var(--ink);
+    text-decoration: none;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .others a:hover {
+    color: var(--accent);
+    text-decoration: underline;
+  }
+
+  .other-share {
+    flex: none;
+    color: var(--ink-3);
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+    font-variant-numeric: tabular-nums;
+  }
+</style>

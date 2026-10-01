@@ -1,0 +1,111 @@
+---
+/**
+ * Everything on Today that needs the backend but the week, rendered as a server island
+ * (`server:defer` in pages/index.astro): the line that says what today holds, the cards
+ * due for review, a passage from your margins, the book to pick up with the others still
+ * open, and the next paper. It takes no props, so the route cache finds it again
+ * (lib/route-cache.ts). Each part degrades alone when its data fails.
+ */
+import { Problem } from '../common/Problem';
+import NextPaperCard from '../papers/next/NextPaperCard.astro';
+import { loadNextPaper } from '../papers/next/load';
+import DueToday from '../recall/DueToday';
+import { serverApi } from '../../lib/api/server';
+import { load } from '../../lib/documents/server';
+import { TODAY_CACHE } from '../../lib/route-cache';
+import { loadBooks, loadDue, loadMargin } from './load';
+import Margins from './Margins';
+import PickUp from './PickUp.astro';
+import { alsoReading, dayPlan, localDate, pickHero, type BookIndex } from './today';
+
+const today = localDate();
+const books = load(loadBooks);
+const index = books.then((loaded): BookIndex => (loaded.ok ? Object.fromEntries(loaded.value.map((b) => [b.doc.id, { slug: b.doc.slug, title: b.doc.title }])) : {}));
+const [loaded, due, nextPaper, margin, titles] = await Promise.all([
+  books,
+  loadDue(),
+  loadNextPaper(serverApi()),
+  index.then((i) => loadMargin(i, today)),
+  index,
+]);
+// Only a Today that loaded is kept: a backend outage should not linger after it ends.
+if (loaded.ok && Astro.cache.enabled) Astro.cache.set(TODAY_CACHE);
+const hero = pickHero(loaded.ok ? loaded.value : []);
+const others = loaded.ok ? alsoReading(loaded.value, hero) : [];
+---
+
+<div class="today">
+  {
+    loaded.ok ? (
+      <p class="plan">{dayPlan(hero, due?.total ?? null)}</p>
+    ) : (
+      <Problem title="Your books could not be loaded." problem={loaded.problem} />
+    )
+  }
+  <div class="columns">
+    <div class="main">
+      <DueToday client:load initial={due} />
+      {margin && <Margins client:visible initial={margin.note} total={margin.total} books={titles} now={new Date().toISOString()} />}
+    </div>
+    <aside class="side" aria-label="Your reading">
+      {loaded.ok && <PickUp hero={hero} others={others} />}
+      {nextPaper && <NextPaperCard candidate={nextPaper} />}
+    </aside>
+  </div>
+</div>
+
+<style>
+  .today {
+    display: grid;
+    gap: var(--space-6);
+  }
+
+  .plan {
+    max-inline-size: 60ch;
+    color: var(--ink-2);
+    font-family: var(--font-read);
+    font-size: var(--text-md);
+    line-height: 1.4;
+  }
+
+  .columns {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 22rem;
+    gap: var(--space-7);
+    align-items: start;
+  }
+
+  .main {
+    display: grid;
+    gap: var(--space-7);
+  }
+
+  .side {
+    position: sticky;
+    inset-block-start: var(--space-5);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-5);
+  }
+
+  /* One column: the book to pick up first, the next paper last. */
+  @media (max-width: 60rem) {
+    .columns {
+      grid-template-columns: minmax(0, 1fr);
+      gap: var(--space-6);
+    }
+
+    .main,
+    .side {
+      display: contents;
+    }
+
+    .side > :global(:first-child) {
+      order: -1;
+    }
+
+    .side > :global(:not(:first-child)) {
+      order: 1;
+    }
+  }
+</style>

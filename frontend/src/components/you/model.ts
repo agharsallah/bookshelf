@@ -19,7 +19,7 @@ export const SURFACES: readonly (Series & { key: Surface; hint: string })[] = [
   { key: 'listen', label: 'Listening', color: SLOTS[1], hint: 'chapters read aloud and episodes' },
   { key: 'study', label: 'Study', color: SLOTS[2], hint: 'quiz, flashcards, FAQ, glossary, quotes' },
   { key: 'recall', label: 'Recall', color: SLOTS[3], hint: 'chapters written from memory' },
-  { key: 'review', label: 'Review', color: SLOTS[4], hint: 'spaced reviews at the desk' },
+  { key: 'review', label: 'Review', color: SLOTS[4], hint: 'spaced reviews on Today' },
   { key: 'distill', label: 'Brief & guide', color: SLOTS[5], hint: 'what the pipeline wrote' },
   { key: 'explore', label: 'Exploring', color: OTHER, hint: 'search, concepts, the map' },
 ];
