@@ -5,7 +5,7 @@ tier: explore
 job_kind: explain_table
 artifact_type: table_explanation
 scope: block
-selector: element_context   # the runtime only queues tables with > 6 rows or no caption (§8)
+selector: element_context   # queued only for tables with > 6 rows or no caption, never prose cut into cells (§8)
 vision: false
 gates:
   grounding_min: 0.9        # every span can cite the table anchor

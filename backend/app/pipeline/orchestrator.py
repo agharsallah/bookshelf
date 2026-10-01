@@ -48,6 +48,7 @@ from app.models.enums import (
     Review,
 )
 from app.pipeline import artifacts
+from app.pipeline.parse.text import is_prose_grid
 from app.pipeline.skills import load_catalogue
 from app.pipeline.tree import Tree
 from app.retrieval.points import INDEXED_TYPES
@@ -173,8 +174,11 @@ def element_job(node: Node) -> JobKind | None:
     if node.kind is NodeKind.MATH and not meta.get("inline"):
         return JobKind.DESCRIBE_MATH
     if node.kind is NodeKind.TABLE:
-        table = meta.get("table")
-        rows = meta.get("rows") or (table.get("rows") if isinstance(table, dict) else None) or []
+        table = found if isinstance(found := meta.get("table"), dict) else {}
+        rows = meta.get("rows") or table.get("rows") or []
+        header = meta.get("header") or table.get("header") or []
+        if is_prose_grid(header, rows):
+            return None  # prose the extractor cut into cells: nothing to compare
         if len(rows) > _TABLE_ROWS_WITHOUT_EXPLANATION or not meta.get("caption"):
             return JobKind.EXPLAIN_TABLE
     return None

@@ -244,6 +244,25 @@ def test_status_never_moves_backwards(session, make_job):
     assert status(session, doc) is DocumentStatus.LINKED
 
 
+# An ALFWorld prompt from the Reflexion paper, as `find_tables()` cut it into cells.
+PROSE_GRID = {
+    "header": ["Envir", "onment", ": You are in the", "middle of a room.", "Look",
+               "ing quickly around", "you, you see a bed", "1, a", "desk"],
+    "rows": [
+        ["2, a d", "esk 1, a", "drawer 6, a dra", "wer 5, a drawer 4,",
+         "a drawer 3, a drawer 2, a", "", "drawer 1, a garbag", "ecan", "1, a"],
+        ["laund", "ryhamp", "er 1, a safe 1, a", "shelf 6, a shelf 5,", "a shelf",
+         "4, a shelf 3, a she", "", "", ""],
+        ["Task:", "examin", "e the mug with", "the desklamp.", "", "", "", "", ""],
+    ],
+}  # fmt: skip
+# Lowercase cells are not enough: a real table has labels in its header.
+LOWERCASE_TABLE = {
+    "header": ["Hyperparameter", "Value"],
+    "rows": [["learning rate", "1e-4"], ["batch size", "32"], ["warmup", "linear"]],
+}
+
+
 @pytest.mark.parametrize(
     ("kind", "meta", "expected"),
     [
@@ -252,6 +271,13 @@ def test_status_never_moves_backwards(session, make_job):
         (NodeKind.TABLE, {"caption": "Table 1", "rows": [[1]] * 6}, None),
         (NodeKind.TABLE, {"caption": "Table 1", "rows": [[1]] * 7}, JobKind.EXPLAIN_TABLE),
         (NodeKind.TABLE, {"rows": [[1]]}, JobKind.EXPLAIN_TABLE),
+        (NodeKind.TABLE, {"table": PROSE_GRID}, None),
+        (NodeKind.TABLE, {"table": LOWERCASE_TABLE}, JobKind.EXPLAIN_TABLE),
+        (
+            NodeKind.TABLE,
+            {"table": {"header": ["Method", "Acc."], "rows": [["ReAct", "71"]]}},
+            JobKind.EXPLAIN_TABLE,
+        ),
         (NodeKind.PARAGRAPH, {}, None),
     ],
 )

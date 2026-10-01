@@ -539,7 +539,7 @@ Consequences:
 | `describe-figure` | `figure_description` | figure block | explore (vision) | `caption`, `kind` (chart\|diagram\|table\|photo), `data` as `table` or `chart` block, `takeaway` span |
 | `explain-code` | `code_explanation` | code block | explore | `purpose` paragraph, `concepts[]`, `pitfalls` as `callout antipattern`, cites listing anchor |
 | `describe-math` | `math_description` | math block | explore (vision) | `latex`, `meaning` paragraph, `symbols[]` as `definition` blocks |
-| `explain-table` | `table_explanation` | table block (large or uncaptioned) | explore | one `paragraph` "what it shows" + `takeaway` |
+| `explain-table` | `table_explanation` | table block (large or uncaptioned; not prose the extractor cut into cells) | explore | one `paragraph` "what it shows" + `takeaway` |
 | `summarize` | `chapter_summary` · `book_summary` | chapter · document | explore | 3–5 `paragraph` blocks, ≤ 150 words |
 | `distil-section` | `section_note` | section | distil | render blocks, every span cited |
 | `distil-chapter` | `chapter_distillation` | chapter | distil | render blocks incl. `callout` tones `important` `remember` `antipattern` |
@@ -644,7 +644,7 @@ flowchart LR
   CLS --> S["sidebar / box / exercise<br/>bordered region · label"]:::out
 
   F --> DF["describe-figure<br/>(vision)"]:::sk
-  T --> DT["explain-table<br/>(only if > 6 rows or no caption)"]:::sk
+  T --> DT["explain-table<br/>(only if > 6 rows or no caption,<br/>and not prose cut into cells)"]:::sk
   C --> DC["explain-code<br/>(purpose · concepts · pitfalls)"]:::sk
   M --> DM["describe-math<br/>(vision → LaTeX + meaning)"]:::sk
 ```

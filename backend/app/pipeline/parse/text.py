@@ -204,3 +204,24 @@ def latex_from_text(text: str) -> str | None:
 def table_text(header: list[str], rows: list[list[str]]) -> str:
     """Tables as ` | `-joined lines: searchable text for a block kept as structure."""
     return "\n".join(" | ".join(cells) for cells in [header, *rows] if any(cells))
+
+
+_PROSE_GRID_SHARE = 0.5  # at least this share of cells continue a sentence: prose, not data
+_CONTINUES = re.compile(r"[a-z,.;:)]")
+
+
+def is_prose_grid(header: Sequence[object], rows: Sequence[Sequence[object]]) -> bool:
+    """A text passage the extractor cut into cells (a framed prompt, a quoted transcript),
+    not a data table.
+
+    Its cells read as one run of text: most start mid-word or mid-sentence (`onment`,
+    `, a desk`), the header row included, where a real table has labels. Such a grid has
+    no columns to compare, so explaining it as a table only restates the garbled text.
+    """
+
+    def share(cells: Sequence[object]) -> float:
+        texts = [str(c).strip() for c in cells if str(c).strip()]
+        return sum(bool(_CONTINUES.match(t)) for t in texts) / len(texts) if texts else 0.0
+
+    everything = [*header, *(c for row in rows for c in row)]
+    return share(header) >= _PROSE_GRID_SHARE and share(everything) >= _PROSE_GRID_SHARE
