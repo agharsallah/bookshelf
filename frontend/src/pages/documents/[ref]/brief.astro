@@ -59,7 +59,7 @@ const data = loaded.ok ? loaded.value : null;
 ---
 
 <BaseLayout title={data ? `Brief: ${data.doc.title}` : 'Brief'} width="wide">
-  {data && <ActivityBeacon client:load surface="distill" document={data.doc.slug} detail="brief" />}
+  {data && <ActivityBeacon client:idle surface="distill" document={data.doc.slug} detail="brief" />}
   {
     !data ? (
       !loaded.ok && loaded.notFound ? (

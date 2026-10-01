@@ -31,7 +31,7 @@ const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? o
 ---
 
 <BaseLayout title={concept?.canonical ?? 'Concept'} width="reading" description={concept?.blurb ?? 'A concept and its evidence.'}>
-  <ActivityBeacon client:load surface="explore" detail="concept" />
+  <ActivityBeacon client:idle surface="explore" detail="concept" />
   {
     concept && detail ? (
       <article class="concept">

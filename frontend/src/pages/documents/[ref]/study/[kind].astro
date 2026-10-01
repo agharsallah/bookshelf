@@ -67,7 +67,7 @@ const artifact = data?.best?.artifact;
 ---
 
 <BaseLayout title={data ? `${material.label}: ${data.doc.title}` : 'Study'} width="wide">
-  {data && <ActivityBeacon client:load surface="study" document={data.doc.slug} unit={chapter ?? undefined} detail={kind} />}
+  {data && <ActivityBeacon client:idle surface="study" document={data.doc.slug} unit={chapter ?? undefined} detail={kind} />}
   {
     !data ? (
       !known || (!loaded.ok && loaded.notFound) ? (

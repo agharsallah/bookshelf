@@ -28,7 +28,7 @@ const View = tab ? TAB_VIEWS[tab.key] : null;
 ---
 
 <BaseLayout title={data ? `${tab?.label ?? 'Paper'}: ${data.paper.title}` : 'Paper'} width="wide">
-  {data && tab && <ActivityBeacon client:load surface="study" document={data.paper.slug} detail={`paper-${tab.key}`} />}
+  {data && tab && <ActivityBeacon client:idle surface="study" document={data.paper.slug} detail={`paper-${tab.key}`} />}
   {
     data && tab && View ? (
       <>

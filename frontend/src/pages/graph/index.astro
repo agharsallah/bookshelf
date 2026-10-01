@@ -34,7 +34,7 @@ const queueProblem: ProblemInfo | null = proposals.status === 'rejected' ? probl
 ---
 
 <BaseLayout title="Concepts" description="The ideas, people and terms your books share, and how they connect.">
-  <ActivityBeacon client:load surface="explore" detail="concepts" />
+  <ActivityBeacon client:idle surface="explore" detail="concepts" />
   <div class="page">
     <header class="head">
       <h1>{scope ? `Concepts in ${scope.name}` : 'Concepts'}</h1>

@@ -1,5 +1,5 @@
 /**
- * `<ActivityBeacon client:load surface="distill" document={slug} detail="brief" />`: counts
+ * `<ActivityBeacon client:idle surface="distill" document={slug} detail="brief" />`: counts
  * attention on a page that has no island of its own to do it. Renders nothing.
  */
 import type { Where } from './log';

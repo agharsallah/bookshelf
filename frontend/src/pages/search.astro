@@ -40,7 +40,7 @@ const title = initial.q ? `“${initial.q}”` : 'Search';
 ---
 
 <BaseLayout title={title} description="Search what you have read, or ask for a cited answer.">
-  <ActivityBeacon client:load surface="explore" detail="search" />
+  <ActivityBeacon client:idle surface="explore" detail="search" />
   <div class="page">
     <header class="head">
       <h1>Search</h1>

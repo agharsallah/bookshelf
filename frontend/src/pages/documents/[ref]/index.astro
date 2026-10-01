@@ -277,7 +277,7 @@ const added = data ? new Date(data.doc.created_at).toLocaleDateString('en-GB', {
 
             <div class="card workshop-only">
               <PipelineTimeline
-                client:load
+                client:visible
                 documentId={data.doc.id}
                 slug={data.doc.slug}
                 initialStatus={data.doc.status}

@@ -53,7 +53,7 @@ const since = stats?.telemetry_since ? new Date(stats.telemetry_since).toLocaleD
             title="Over time"
             lede="What the pipeline did each day (UTC): a job counts on the day it finished, with its whole run time. Failed work is stacked on top. Hover a day for its figures."
           >
-            <ActivityChart client:load days={stats.activity} today={today} />
+            <ActivityChart client:visible days={stats.activity} today={today} />
           </StatsSection>
           <StatsSection
             id="stages"
@@ -63,7 +63,7 @@ const since = stats?.telemetry_since ? new Date(stats.telemetry_since).toLocaleD
             <StageTimeTable client:visible stages={stats.stages} />
           </StatsSection>
           <StatsSection id="books" title="Books" lede="Most recently active first. Click a column to sort it, again to flip it.">
-            <BookTable client:load books={stats.books} />
+            <BookTable client:visible books={stats.books} />
           </StatsSection>
           <StatsSection
             id="skills"

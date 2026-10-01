@@ -33,7 +33,7 @@ try {
 ---
 
 <BaseLayout title="Map" description="Your books, their chapters and the ideas they share, as one map.">
-  <ActivityBeacon client:load surface="explore" detail="map" />
+  <ActivityBeacon client:idle surface="explore" detail="map" />
   {
     atlas ? (
       <AtlasExplorer client:load initial={atlas} lens={lens} scope={scope} />

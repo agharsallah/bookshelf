@@ -36,7 +36,7 @@ const label = hood?.nodes.find((n) => n.id === hood?.focus)?.label ?? 'Graph';
 ---
 
 <BaseLayout title={label} description="One idea and what it connects to across your books.">
-  <ActivityBeacon client:load surface="explore" detail="graph" />
+  <ActivityBeacon client:idle surface="explore" detail="graph" />
   {
     hood ? (
       <GraphExplorer client:load focus={hood.focus} view={view} initial={hood} />
