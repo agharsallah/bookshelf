@@ -1,8 +1,9 @@
 /**
  * Server-side loading for the library (page frontmatter only: uses `serverApi`): the
- * whole shelf, the files waiting in `library/`, and per book its reading positions and
- * the book-wide study material. Per-book requests are best effort: a failure leaves
- * that book unread or without materials rather than failing the page.
+ * whole shelf, the files waiting in `library/`, how many books are archived, and per
+ * book its reading positions and the book-wide study material. Per-book requests are
+ * best effort: a failure leaves that book unread or without materials rather than
+ * failing the page.
  */
 import { problemOf, type ProblemInfo } from '../common/Problem';
 import { fetchAll } from '../../lib/api/fetch-all';
@@ -33,6 +34,8 @@ export interface LibraryData {
   extras: Record<string, BookExtras>;
   /** Every collection, by name; empty when they could not be loaded. */
   collections: CollectionPublic[];
+  /** How many documents are archived (off the shelf); 0 when the count failed. */
+  archived: number;
 }
 
 /** Each document's collections (slugs, by collection name), keyed by document id. */
@@ -72,10 +75,11 @@ async function materialsOf(doc: DocumentSummary): Promise<AvailableMaterial[] | 
 
 export async function loadLibrary(): Promise<LibraryData> {
   const api = serverApi();
-  const [shelf, pending, collections] = await Promise.allSettled([
+  const [shelf, pending, collections, archived] = await Promise.allSettled([
     fetchAll<DocumentSummary>(api, 'documents'),
     api.get<Page<LibraryFile>>('library', { query: { limit: 100 } }),
     listCollections(api),
+    api.get<Page<DocumentSummary>>('documents', { query: { archived: true, limit: 1 } }),
   ]);
   const documents = shelf.status === 'fulfilled' ? shelf.value.items : [];
   const withMaterials = documents.length <= MATERIALS_BOOK_LIMIT;
@@ -90,5 +94,6 @@ export async function loadLibrary(): Promise<LibraryData> {
     filesProblem: pending.status === 'rejected' ? problemOf(pending.reason) : null,
     extras: Object.fromEntries(extras),
     collections: collections.status === 'fulfilled' ? collections.value : [],
+    archived: archived.status === 'fulfilled' ? archived.value.total : 0,
   };
 }

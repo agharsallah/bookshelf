@@ -1,0 +1,68 @@
+.remove {
+  justify-self: start;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-m);
+  background: var(--paper-raised);
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.remove:hover {
+  border-color: var(--tone-important);
+  color: var(--tone-important);
+}
+
+/* An archived book: a quiet, neutral banner, like the other attention notices. */
+.notice {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-inline-start: 3px solid var(--ink-3);
+  border-radius: 0 var(--radius-m) var(--radius-m) 0;
+  background: color-mix(in oklab, var(--ink-3) 8%, var(--paper-raised));
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  line-height: var(--leading-ui);
+}
+
+.title {
+  color: var(--ink);
+  font-weight: 650;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+}
+
+.restore {
+  padding: 0.2rem var(--space-3);
+  border: 1px solid var(--ink);
+  border-radius: var(--radius-m);
+  background: var(--ink);
+  color: var(--paper);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.quiet {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--tone-important);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+}
+
+.restore:disabled,
+.quiet:disabled {
+  cursor: progress;
+  opacity: 0.6;
+}

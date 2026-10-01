@@ -3,8 +3,9 @@
  * Document overview: the title page with where you are in the book (continue reading,
  * the chapter strip), what the book became to study (brief, guide, flashcards…), and the
  * contents. Workshop mode adds the machinery: what each chapter has produced, re-runs,
- * the pipeline with live job progress, making study material, editing the details and,
- * when the outline was guessed (`needs_review`), the fix-up editor, opened first.
+ * the pipeline with live job progress, making study material, editing the details,
+ * archiving or deleting the book and, when the outline was guessed (`needs_review`), the
+ * fix-up editor, opened first. An archived book says so at the top, with Restore.
  */
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import AddToCollection from '../../../components/collections/AddToCollection';
@@ -18,6 +19,7 @@ import OutlineEditor from '../../../components/document/OutlineEditor';
 import PipelineTimeline from '../../../components/document/PipelineTimeline';
 import { Problem } from '../../../components/common/Problem';
 import PausedNotice from '../../../components/common/PausedNotice';
+import RemoveBook from '../../../components/document/RemoveBook';
 import { deriveSkills, madeKey } from '../../../components/document/jobs';
 import { outlineFromTree } from '../../../components/document/outline-model';
 import { plural } from '../../../components/library/spine';
@@ -190,6 +192,15 @@ const added = data ? new Date(data.doc.created_at).toLocaleDateString('en-GB', {
 
         <div class="columns">
           <div class="main-col">
+            {data.doc.archived_at && (
+              <RemoveBook
+                client:load
+                documentRef={data.doc.slug}
+                title={data.doc.title}
+                sourcePath={data.doc.source_path}
+                archivedAt={data.doc.archived_at}
+              />
+            )}
             {data.doc.paused && (
               <div class="workshop-only">
                 <PausedNotice client:load documentRef={data.doc.slug} paused={data.doc.paused} />
@@ -302,6 +313,20 @@ const added = data ? new Date(data.doc.created_at).toLocaleDateString('en-GB', {
                 {data.doc.source_uri ? <a href={data.doc.source_uri}>Original article</a> : data.doc.source_path}
               </p>
             </section>
+
+            {!data.doc.archived_at && (
+              <section aria-labelledby="remove-title" class="card workshop-only">
+                <h2 id="remove-title" class="side-title">Off the shelf</h2>
+                <p class="side-hint">Archive it to put it away with everything kept, or delete it for good.</p>
+                <RemoveBook
+                  client:visible
+                  documentRef={data.doc.slug}
+                  title={data.doc.title}
+                  sourcePath={data.doc.source_path}
+                  archivedAt={null}
+                />
+              </section>
+            )}
           </aside>
         </div>
       </article>

@@ -1,0 +1,80 @@
+---
+/**
+ * Archived books: off the shelf (the library, search and reviews leave them out) with
+ * nothing lost. Each can be restored as it was, or deleted for good.
+ */
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import ArchivedList from '../../components/library/ArchivedList';
+import { Problem } from '../../components/common/Problem';
+import { fetchAll } from '../../lib/api/fetch-all';
+import { serverApi } from '../../lib/api/server';
+import type { DocumentSummary } from '../../lib/api/types/documents';
+import { load } from '../../lib/documents/server';
+
+export const prerender = false;
+
+const loaded = await load(async () => {
+  const { items } = await fetchAll<DocumentSummary>(serverApi(), 'documents', { archived: true });
+  // Only what a row shows goes to the island.
+  return items.map(({ id, slug, title, authors, source_path, archived_at }) => ({
+    id,
+    slug,
+    title,
+    authors,
+    source_path,
+    archived_at,
+  }));
+});
+---
+
+<BaseLayout title="Archived" description="Books put away, ready to restore.">
+  <div class="archived">
+    <nav class="crumbs" aria-label="Breadcrumb">
+      <a href="/library"><span aria-hidden="true">←</span> Library</a>
+    </nav>
+    <header>
+      <h1>Archived</h1>
+      <p class="lede">Off the shelf, with everything kept. Restore one and it comes back as it was.</p>
+    </header>
+    {loaded.ok ? (
+      <ArchivedList client:load books={loaded.value} />
+    ) : (
+      <Problem title="The archived books could not be loaded." problem={loaded.problem} />
+    )}
+  </div>
+</BaseLayout>
+
+<style>
+  .archived {
+    display: grid;
+    gap: var(--space-5);
+    max-inline-size: 48rem;
+  }
+
+  .crumbs {
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+  }
+
+  .crumbs a {
+    color: var(--ink-3);
+    text-decoration: none;
+  }
+
+  .crumbs a:hover {
+    color: var(--accent);
+  }
+
+  h1 {
+    font-size: var(--text-2xl);
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+
+  .lede {
+    margin-block-start: var(--space-2);
+    color: var(--ink-2);
+    font-family: var(--font-read);
+    font-style: italic;
+  }
+</style>

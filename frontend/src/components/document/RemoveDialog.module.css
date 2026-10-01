@@ -1,0 +1,117 @@
+.dialog {
+  inline-size: min(32rem, calc(100vw - 2rem));
+  padding: var(--space-5);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-l);
+  background: var(--paper-raised);
+  box-shadow: var(--shadow-lift);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  line-height: var(--leading-ui);
+}
+
+.dialog[open] {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.dialog::backdrop {
+  background: color-mix(in oklab, var(--ink) 30%, transparent);
+}
+
+.title {
+  font-size: var(--text-md);
+  font-weight: 560;
+  overflow-wrap: anywhere;
+}
+
+/* One way out per box: what it does, then the button that does it. */
+.option {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-m);
+  background: var(--paper);
+}
+
+.option h3 {
+  font-size: var(--text-ui);
+  font-weight: 650;
+}
+
+.option p {
+  color: var(--ink-2);
+}
+
+.danger {
+  border-color: color-mix(in oklab, var(--tone-important) 45%, var(--rule));
+}
+
+.danger h3 {
+  color: var(--tone-important);
+}
+
+.file {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+.file code {
+  overflow-wrap: anywhere;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+
+.hint {
+  color: var(--ink-3);
+}
+
+.archive,
+.delete,
+.cancel {
+  padding: var(--space-1) var(--space-4);
+  border-radius: var(--radius-m);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.archive {
+  border: 1px solid var(--rule-strong);
+  background: var(--paper-raised);
+  color: var(--ink);
+}
+
+.archive:hover:not(:disabled) {
+  border-color: var(--ink);
+}
+
+.delete {
+  border: 1px solid var(--tone-important);
+  background: var(--tone-important);
+  color: var(--paper);
+}
+
+.cancel {
+  border: 1px solid var(--rule-strong);
+  background: none;
+  color: var(--ink-2);
+  font-weight: 400;
+}
+
+.archive:disabled,
+.delete:disabled,
+.cancel:disabled {
+  cursor: progress;
+  opacity: 0.6;
+}
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+}

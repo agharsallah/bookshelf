@@ -83,6 +83,14 @@ export interface DocumentPublic {
   tags: string[];
   created_at: string;
   updated_at: string;
+  /** When it was archived (off the shelf, nothing lost); null while on the shelf. */
+  archived_at: string | null;
+}
+
+/** `POST /documents/{ref}/restore`: back on the shelf, and the work it queued again. */
+export interface DocumentRestored {
+  document: DocumentPublic;
+  requeued: JobPublic[];
 }
 
 export interface DocumentCounts {

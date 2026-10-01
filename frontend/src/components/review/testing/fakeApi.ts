@@ -26,7 +26,7 @@ export function fakeApi(routes: Record<string, Handler> = {}) {
     post: <T>(path: string, body?: unknown) => handle({ method: 'POST', path, body }) as Promise<T>,
     put: <T>(path: string, body?: unknown) => handle({ method: 'PUT', path, body }) as Promise<T>,
     patch: <T>(path: string, body?: unknown) => handle({ method: 'PATCH', path, body }) as Promise<T>,
-    delete: <T>(path: string) => handle({ method: 'DELETE', path }) as Promise<T>,
+    delete: <T>(path: string, options?: { query?: unknown }) => handle({ method: 'DELETE', path, query: options?.query }) as Promise<T>,
     url: (path: string) => `/api/${path}`,
   };
   return { api, calls };

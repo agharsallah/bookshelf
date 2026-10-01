@@ -7,7 +7,8 @@
  * rendered and the filters hide the rest, so the page's script can filter as you type;
  * without JavaScript the GET form and links do the same through the server. "Add a
  * book" opens the ingest desk in a dialog; `?add=paper` (or `book`, `article`, `1`)
- * opens it on arrival with that genre chosen.
+ * opens it on arrival with that genre chosen. Archived books are off the shelf; a link
+ * beside the count leads to them (`/library/archived`).
  */
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import AddBookButton from '../../components/library/AddBookButton.astro';
@@ -40,7 +41,7 @@ const add = params.get('add');
 const addGenre = GENRES.find((g) => g === add) ?? null;
 const addOpen = add !== null;
 
-const { documents, problem, files, filesProblem, extras, collections } = await loadLibrary();
+const { documents, problem, files, filesProblem, extras, collections, archived } = await loadLibrary();
 const palette = shelfPalette(documents);
 const items = libraryItems(documents, extras, filters, sort, palette, membershipsOf(collections));
 const collectionNames = Object.fromEntries(collections.map((c) => [c.slug, c.name]));
@@ -64,7 +65,14 @@ const onShelf = shelfSentence(facet(palette, 'kind', items.map((i) => i.buckets)
     <header class="head">
       <div class="heading">
         <h1>Library</h1>
-        <p class="count">{total === 0 ? 'Nothing on the shelf yet' : `${onShelf} on your shelf`}</p>
+        <p class="count">
+          {total === 0 ? 'Nothing on the shelf yet' : `${onShelf} on your shelf`}
+          {archived > 0 && (
+            <a class="archived" href="/library/archived">
+              {archived} archived
+            </a>
+          )}
+        </p>
       </div>
       {total > 0 && !problem && <ShelfTotals items={items} />}
       <AddBookButton waiting={waiting} />
@@ -152,6 +160,18 @@ const onShelf = shelfSentence(facet(palette, 'kind', items.map((i) => i.buckets)
     font-family: var(--font-read);
     font-size: var(--text-base);
     font-style: italic;
+  }
+
+  .archived {
+    margin-inline-start: var(--space-3);
+    color: var(--ink-3);
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+    font-style: normal;
+  }
+
+  .archived:hover {
+    color: var(--accent);
   }
 
   .no-match {
