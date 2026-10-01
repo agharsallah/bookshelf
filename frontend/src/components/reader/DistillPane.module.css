@@ -114,6 +114,72 @@
   text-decoration: none;
 }
 
+/* An original figure in the Figures tab, above the explanation mapped to it. */
+.original {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-4);
+}
+
+.originalImage {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  padding: 0;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-m);
+  background: #fff;
+  cursor: zoom-in;
+}
+
+.originalImage:hover {
+  border-color: var(--rule-strong);
+}
+
+.originalImage img {
+  display: block;
+  max-width: 100%;
+  max-height: 22rem;
+  width: auto;
+  border-radius: var(--radius-m);
+}
+
+.originalCaption {
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  line-height: var(--leading-ui);
+}
+
+/* The line mapping the original to the text and to its explanation. */
+.mapping {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-2);
+  margin: 0;
+  padding-block-start: var(--space-2);
+  border-block-start: 1px solid var(--rule);
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+}
+
+.mapping [data-explained] {
+  color: var(--accent);
+}
+
+.mappingLink {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+  cursor: pointer;
+}
+
 .empty {
   color: var(--ink-3);
   font-family: var(--font-ui);
