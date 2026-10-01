@@ -108,8 +108,8 @@ export function ReaderToolbar(props: ReaderToolbarProps) {
           <KeyboardIcon />
         </button>
         <span className={styles.chapterNav}>
-          {prev ? <a href={readHref(prev.anchor)} aria-label={`Previous chapter: ${prev.heading}`} title="Previous chapter ([)">‹</a> : null}
-          {next ? <a href={readHref(next.anchor)} aria-label={`Next chapter: ${next.heading}`} title="Next chapter (])">›</a> : null}
+          {prev ? <a href={readHref(prev.anchor)} data-astro-prefetch="hover" aria-label={`Previous chapter: ${prev.heading}`} title="Previous chapter ([)">‹</a> : null}
+          {next ? <a href={readHref(next.anchor)} data-astro-prefetch="hover" aria-label={`Next chapter: ${next.heading}`} title="Next chapter (])">›</a> : null}
         </span>
       </div>
       <span className={styles.progressLine} aria-hidden="true" style={{ '--progress': progress } as CSSProperties} />
