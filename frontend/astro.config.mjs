@@ -1,5 +1,5 @@
 // @ts-check
-import { defineConfig, envField, fontProviders } from 'astro/config';
+import { defineConfig, envField, fontProviders, memoryCache } from 'astro/config';
 
 import react from '@astrojs/react';
 import node from '@astrojs/node';
@@ -76,6 +76,13 @@ export default defineConfig({
   prefetch: {
     prefetchAll: true,
     defaultStrategy: 'tap',
+  },
+
+  // In-process cache for on-demand responses that opt in (lib/route-cache.ts). A server
+  // island's URL carries its component encrypted afresh on every render (`e`); left out
+  // of the key, a prop-less island such as the Desk is found again on the next visit.
+  cache: {
+    provider: memoryCache({ query: { exclude: ['e'] } }),
   },
 
   integrations: [react()],

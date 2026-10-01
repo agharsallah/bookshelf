@@ -19,8 +19,11 @@ import NextPaperCard from '../papers/next/NextPaperCard.astro';
 import { loadNextPaper } from '../papers/next/desk';
 import { serverApi } from '../../lib/api/server';
 import { load } from '../../lib/documents/server';
+import { DESK_CACHE } from '../../lib/route-cache';
 
 const [loaded, needs, due, nextPaper] = await Promise.all([load(loadDesk), loadNeeds(), loadDue(), loadNextPaper(serverApi())]);
+// Only a Desk that loaded is kept: a backend outage should not linger after it ends.
+if (loaded.ok && Astro.cache.enabled) Astro.cache.set(DESK_CACHE);
 const books = loaded.ok ? loaded.value : [];
 const hero = pickHero(books);
 const shelf = shelfOrder(books);

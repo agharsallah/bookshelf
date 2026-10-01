@@ -11,10 +11,11 @@ import {
   ProxyPathError,
 } from '../../lib/api/proxy';
 import { proxyConfig } from '../../lib/api/server';
+import { staleTagsAfter } from '../../lib/route-cache';
 
 export const prerender = false;
 
-export const ALL: APIRoute = async ({ request, params, url }) => {
+export const ALL: APIRoute = async ({ request, params, url, cache }) => {
   const config = proxyConfig();
   let upstream;
   try {
@@ -40,6 +41,10 @@ export const ALL: APIRoute = async ({ request, params, url }) => {
   } catch {
     return proxyErrorResponse(502, 'upstream_unavailable', 'The Bookshelf API could not be reached.');
   }
+
+  // After the backend has the write, so the next render reads it.
+  const stale = staleTagsAfter(upstream.method);
+  if (stale.length > 0 && cache.enabled) await cache.invalidate({ tags: stale });
 
   return new Response(response.body, {
     status: response.status,
