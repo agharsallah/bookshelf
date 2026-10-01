@@ -26,6 +26,7 @@ from sqlmodel import Session, col, select
 from app.core.errors import NotFoundError
 from app.models import Artifact, Claim, Document, PaperMeta, PaperPass, PaperRating
 from app.models import PaperReference as Ref
+from app.models.document import not_archived
 from app.models.enums import ArtifactType, DocumentStatus, Genre, PaperVerdict, Review
 from app.services.documents import get_document
 from app.services.sql import contains_pattern
@@ -202,7 +203,7 @@ def _shelf() -> Select[Any]:
         .outerjoin(PaperMeta, col(PaperMeta.document_id) == Document.id)
         .outerjoin(latest, col(latest.document_id) == Document.id)
         .outerjoin(top, top.c.document_id == Document.id)
-        .where(Document.genre == Genre.PAPER)
+        .where(Document.genre == Genre.PAPER, not_archived())
     )
     return query
 
@@ -260,7 +261,7 @@ def list_papers(
 
 def facets(session: Session) -> dict[str, list[tuple[str | int, int]]]:
     """Venue and year counts over every paper, for the filter bar."""
-    papers = col(Document.genre) == Genre.PAPER
+    papers = (col(Document.genre) == Genre.PAPER) & not_archived()
     venue_count = func.count().label("n")
     venues = session.exec(
         select(PaperMeta.venue, venue_count)

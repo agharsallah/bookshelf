@@ -19,6 +19,7 @@ from app.schemas.document import (
     DocumentCreate,
     DocumentDetail,
     DocumentPublic,
+    DocumentRestored,
     DocumentResumed,
     DocumentSummary,
     DocumentUpdate,
@@ -28,7 +29,7 @@ from app.schemas.document import (
 )
 from app.schemas.job import JobPublic
 from app.schemas.node import ANCHOR_PATTERN, DocumentTree, NodePublic, TreeNode
-from app.services import collections, covers, documents, fetch, ingest, tree
+from app.services import archive, collections, covers, documents, fetch, ingest, tree
 from app.services.media import IMAGE_TYPES
 
 router = APIRouter(prefix="/documents", tags=["documents"])
@@ -91,6 +92,9 @@ def list_documents(
     collection: Annotated[
         str | None, Query(max_length=200, description="A collection id or slug.")
     ] = None,
+    archived: Annotated[
+        bool, Query(description="`true` lists the archived documents instead of the shelf.")
+    ] = False,
 ) -> Page[DocumentSummary]:
     filters = documents.DocumentFilters(
         tag=tag,
@@ -99,6 +103,7 @@ def list_documents(
         q=q,
         genre=genre,
         ids=collections.scope(session, collection),
+        archived=archived,
     )
     rows, total = documents.list_documents(session, filters, limit=limit, offset=offset)
     stats = documents.document_stats(session, [d.id for d in rows])
@@ -195,11 +200,60 @@ def update_document(ref: DocumentRef, body: DocumentUpdate, session: SessionDep)
     "/{ref}",
     status_code=status.HTTP_204_NO_CONTENT,
     dependencies=[Depends(require_api_key)],
-    summary="Delete a document (the original file is kept)",
+    summary="Delete a document for good",
+    description=(
+        "Removes the document and everything made from it: tree, notes, artifacts, jobs, "
+        "reading and review history, its search points, graph slice, narrations and media. "
+        "The original file in `library/` is kept (it can be added again) unless "
+        "`file=true`. To put a document away and keep it all, archive it instead."
+    ),
 )
-def delete_document(ref: DocumentRef, session: SessionDep) -> Response:
-    documents.delete_document(session, documents.get_document(session, ref))
+def delete_document(
+    ref: DocumentRef,
+    session: SessionDep,
+    file: Annotated[bool, Query(description="Also delete the original from `library/`.")] = False,
+) -> Response:
+    document = documents.get_document(session, ref)
+    documents.delete_document(session, document, remove_original=file)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post(
+    "/{ref}/archive",
+    response_model=DocumentPublic,
+    dependencies=[Depends(require_api_key)],
+    summary="Archive a document: off the shelf, nothing lost",
+    description=(
+        "Hides the document from the library, search and the review queue, drops it from "
+        "the search index and holds its queued work. Everything it has (notes, artifacts, "
+        "reading, recall) is kept, and `POST /documents/{ref}/restore` brings it back. "
+        "Safe on an archived document."
+    ),
+)
+def archive_document(ref: DocumentRef, session: SessionDep) -> DocumentPublic:
+    document = archive.archive(session, documents.get_document(session, ref))
+    return DocumentPublic.model_validate(document)
+
+
+@router.post(
+    "/{ref}/restore",
+    response_model=DocumentRestored,
+    dependencies=[Depends(require_api_key)],
+    summary="Restore an archived document",
+    description=(
+        "Puts the document back on the shelf, requeues the work its archive held and, "
+        "when it had been indexed, queues an `embed` so search finds it again. Safe on a "
+        "document that is not archived."
+    ),
+)
+def restore_document(ref: DocumentRef, session: SessionDep) -> DocumentRestored:
+    document = documents.get_document(session, ref)
+    requeued = archive.restore(session, document)
+    session.refresh(document)
+    return DocumentRestored(
+        document=DocumentPublic.model_validate(document),
+        requeued=[JobPublic.model_validate(j) for j in requeued],
+    )
 
 
 @router.get("/{ref}/tree", response_model=DocumentTree, summary="Get the document outline")

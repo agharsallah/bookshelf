@@ -97,7 +97,8 @@ def claim(session: Session, kinds: list[JobKind] | None = None) -> Job | None:
 
     Also picks up `running` jobs whose lock went stale (crashed worker). A queued job waits
     while an identical one (same kind, document, anchor, input_hash) is running. Nothing
-    is claimed while the queue is paused, nor past `max_running` (see the module doc).
+    is claimed while the queue is paused, nor past `max_running` (see the module doc), nor
+    for an archived document (`app.services.archive`): its work waits for a restore.
     """
     kind_filter = "and kind = any(:kinds)" if kinds else ""
     session.execute(text("select pg_advisory_xact_lock(:key)"), {"key": _CLAIM_LOCK})
@@ -118,6 +119,8 @@ def claim(session: Session, kinds: list[JobKind] | None = None) -> Job | None:
                                             = coalesce(j.input_hash, '')))
                      or (state = 'running' and locked_at < now() - :stale))
                 {kind_filter}
+                and not exists (select 1 from documents d
+                                where d.id = j.document_id and d.archived_at is not null)
                 and not coalesce((select (data -> 'queue' ->> 'paused')::boolean
                                   from app_settings where id = 1), false)
                 and (kind = any(:uncapped)

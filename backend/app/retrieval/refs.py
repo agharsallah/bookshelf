@@ -6,6 +6,7 @@ from collections.abc import Iterable
 from sqlmodel import Session, col, select
 
 from app.models import Document
+from app.models.document import not_archived
 from app.schemas.search import DocumentRef
 
 SNIPPET_CHARS = 320
@@ -18,11 +19,12 @@ def document_ref(document: Document) -> DocumentRef:
 
 
 def load_refs(session: Session, ids: Iterable[uuid.UUID | str]) -> dict[str, DocumentRef]:
-    """Refs for `ids` in one query, keyed by the id as a string."""
+    """Refs for `ids` in one query, keyed by the id as a string. Deleted and archived
+    documents have none, so a hit the index still holds for them is dropped."""
     wanted = {uuid.UUID(str(i)) for i in ids}
     if not wanted:
         return {}
-    rows = session.exec(select(Document).where(col(Document.id).in_(wanted))).all()
+    rows = session.exec(select(Document).where(col(Document.id).in_(wanted), not_archived())).all()
     return {str(d.id): document_ref(d) for d in rows}
 
 

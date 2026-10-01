@@ -11,6 +11,7 @@ from sqlalchemy import ColumnElement, case, func, or_
 from sqlmodel import Session, col, select
 
 from app.models import Concept, Document, Node
+from app.models.document import not_archived
 from app.models.enums import NodeKind
 from app.retrieval.refs import document_ref
 from app.schemas.search import SuggestItem
@@ -25,7 +26,10 @@ def suggest(session: Session, q: str, *, limit: int = 10) -> list[SuggestItem]:
     pattern = contains_pattern(q)
     documents = session.exec(
         select(Document)
-        .where(or_(col(Document.title).ilike(pattern), col(Document.slug).ilike(pattern)))
+        .where(
+            not_archived(),
+            or_(col(Document.title).ilike(pattern), col(Document.slug).ilike(pattern)),
+        )
         .order_by(_prefix_first(Document.title, q), col(Document.title))
         .limit(limit)
     ).all()
@@ -33,6 +37,7 @@ def suggest(session: Session, q: str, *, limit: int = 10) -> list[SuggestItem]:
         select(Node, Document)
         .join(Document, col(Document.id) == col(Node.document_id))
         .where(
+            not_archived(),
             col(Node.kind).in_([NodeKind.PART, NodeKind.CHAPTER]),
             col(Node.heading).ilike(pattern),
         )

@@ -15,6 +15,7 @@ from difflib import SequenceMatcher
 from sqlmodel import Session, col, select
 
 from app.models import Document, Node
+from app.models.document import not_archived
 from app.models.enums import NodeKind
 
 MATCH_THRESHOLD = 0.75
@@ -58,7 +59,7 @@ class DocumentMatch:
 
 
 def _shelf(session: Session, ids: Iterable[uuid.UUID] | None = None) -> list[Document]:
-    query = select(Document)
+    query = select(Document).where(not_archived())
     if ids is not None:
         query = query.where(col(Document.id).in_(list(ids)))
     return list(session.exec(query.order_by(col(Document.created_at))).all())

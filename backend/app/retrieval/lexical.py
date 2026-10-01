@@ -55,7 +55,7 @@ def highlights(marked: str) -> tuple[str, list[tuple[int, int]]]:
 
 def _sql(exact: bool, filters: SearchFilters) -> str:
     tsquery = "phraseto_tsquery" if exact else "websearch_to_tsquery"
-    where = ["n.tsv @@ q.q"]
+    where = ["n.tsv @@ q.q", "d.archived_at is null"]
     if exact:
         where.append(f"({_DOC_TEXT}) ilike :pattern escape '\\'")
     if filters.document_ids:

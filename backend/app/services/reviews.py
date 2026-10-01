@@ -26,6 +26,7 @@ from sqlmodel import Session, col, select
 from app.core.errors import NotFoundError
 from app.models import Artifact, Document, ReviewItem, ReviewLog
 from app.models._columns import utcnow
+from app.models.document import not_archived
 from app.models.enums import ArtifactType, ReviewSource
 from app.services.errors import InvalidInputError
 
@@ -91,12 +92,17 @@ def due_items(
 ) -> tuple[list[DueItem], int]:
     """Items due by `before` (now) across every book, most overdue first, and how many."""
     cutoff = before or utcnow()
-    due = col(ReviewItem.due) <= cutoff
-    total = session.exec(select(func.count()).select_from(ReviewItem).where(due)).one()
+    due = col(ReviewItem.due) <= cutoff  # an archived book's cards wait for its restore
+    total = session.exec(
+        select(func.count())
+        .select_from(ReviewItem)
+        .join(Document, col(Document.id) == ReviewItem.document_id)
+        .where(due, not_archived())
+    ).one()
     rows = session.exec(
         select(ReviewItem, Document)
         .join(Document, col(Document.id) == ReviewItem.document_id)
-        .where(due)
+        .where(due, not_archived())
         .order_by(col(ReviewItem.due), col(ReviewItem.created_at))
         .limit(limit)
     ).all()

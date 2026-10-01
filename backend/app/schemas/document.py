@@ -120,6 +120,9 @@ class DocumentPublic(BaseModel):
     tags: list[str]
     created_at: datetime
     updated_at: datetime
+    archived_at: Annotated[
+        datetime | None, Field(description="When it was archived; null while on the shelf.")
+    ] = None
 
 
 class DocumentCounts(BaseModel):
@@ -250,6 +253,16 @@ class DocumentResumed(BaseModel):
     document: DocumentDetail
     requeued: Annotated[
         list[JobPublic], Field(description="Jobs the ceiling had stopped, queued again.")
+    ]
+
+
+class DocumentRestored(BaseModel):
+    """The document, back on the shelf, and the work its restore queued again."""
+
+    document: DocumentPublic
+    requeued: Annotated[
+        list[JobPublic],
+        Field(description="Jobs the archive held, and the `embed` that re-indexes it."),
     ]
 
 

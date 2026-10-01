@@ -17,17 +17,20 @@ from app.core.config import get_settings
 from app.core.errors import ConflictError, NotFoundError
 from app.jobs.queue import JobSpec
 from app.models import Artifact, Document, Job, Node, Note
+from app.models.document import not_archived
 from app.models.enums import DocumentStatus, Genre, JobKind, JobState, NodeKind, Review
 from app.pipeline import catalogue
 from app.pipeline.hashing import input_hash
+from app.services import library
 from app.services.blurbs import blurbs
 from app.services.errors import InvalidInputError
 from app.services.jobs import enqueue_or_live
+from app.services.media import prune_document_media
 from app.services.sql import contains_pattern
 
 CONTAINER_KINDS = [k for k in NodeKind if k.is_container]
 LEAF_KINDS = [k for k in NodeKind if not k.is_container]
-PURGE = "purge"  # `embed` job payload key: the id of a deleted document to drop from search
+PURGE = "purge"  # `embed` job payload key: a deleted or archived document to drop from search
 
 
 def get_document(session: Session, ref: str) -> Document:
@@ -50,9 +53,11 @@ class DocumentFilters:
     q: str | None = None
     genre: Genre | None = None
     ids: Sequence[uuid.UUID] | None = None  # a collection's members; empty matches nothing
+    archived: bool = False  # the archived documents instead of the shelf
 
 
 def _filtered[Q: SelectOfScalar[Any]](query: Q, filters: DocumentFilters) -> Q:
+    query = query.where(~not_archived() if filters.archived else not_archived())
     if filters.tag:
         query = query.where(col(Document.tags).contains([filters.tag]))
     if filters.status:
@@ -191,29 +196,36 @@ def update_document(session: Session, document: Document, changes: dict[str, Any
     return document
 
 
-def delete_document(session: Session, document: Document) -> None:
-    """Delete the row; nodes, notes, artifacts and jobs cascade. The file is never touched.
+def delete_document(session: Session, document: Document, *, remove_original: bool = False) -> None:
+    """Delete the row; nodes, notes, artifacts and jobs cascade. The original file in
+    `library/` is kept unless `remove_original` (it can be ingested again later).
 
     Derived stores follow (D1): the document's part of the idea graph (its concept links'
     and diagram seeds' edges, and concepts only they kept alive) is withdrawn in the same
     transaction, and its search points, which live outside Postgres, are purged by an
-    `embed` job without a document (so it survives the cascade). Its narrations, on disk,
-    go with it.
+    `embed` job without a document (so it survives the cascade). Its narrations and media
+    (figure crops, cover), on disk, go with it.
     """
     from app.graph import pipeline as graph  # the graph imports services; keep this one-way
     from app.papers.materialize import drop_document_claim_edges
 
-    document_id = document.id
+    settings = get_settings()
+    # Resolved before the row goes, so a path that escapes the library fails the delete.
+    original = library.original_file(settings.library_dir, document) if remove_original else None
+    document_id, slug = document.id, document.slug
     drop_document_claim_edges(session, document_id)  # claim edges have no foreign key
     session.delete(document)
     session.flush()  # the cascade is gone before the graph is re-synced without it
     graph.refresh_document(session, document_id)  # commits the delete with the withdrawal
     enqueue_or_live(session, purge_job(document_id))
-    audio_store.remove_document(get_settings().audio_dir, document_id)  # its narrations
+    audio_store.remove_document(settings.audio_dir, document_id)  # its narrations
+    prune_document_media(settings.media_dir, slug, referenced=())  # its crops and cover
+    if original is not None:
+        original.unlink(missing_ok=True)
 
 
 def purge_job(document_id: uuid.UUID) -> JobSpec:
-    """The `embed` job that drops a deleted document's points from the search index."""
+    """The `embed` job that drops a deleted (or archived) document's points from search."""
     return JobSpec(
         kind=JobKind.EMBED, input_hash=f"purge:{document_id}", payload={PURGE: str(document_id)}
     )

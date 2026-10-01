@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlmodel import Field, SQLModel
+from sqlmodel import Field, SQLModel, col
 
 from app.models._columns import enum_type, jsonb, text_array, timestamptz, utcnow
 from app.models.enums import DocumentKind, DocumentStatus, Genre, NodeKind
@@ -36,6 +36,12 @@ class Document(SQLModel, table=True):
     meta: dict[str, Any] = Field(default_factory=dict, sa_column=jsonb())
     created_at: datetime = Field(default_factory=utcnow, sa_column=timestamptz())
     updated_at: datetime = Field(default_factory=utcnow, sa_column=timestamptz())
+    archived_at: datetime | None = Field(default=None, sa_column=timestamptz(nullable=True))
+
+
+def not_archived() -> Any:
+    """`where` clause: the document is not archived (`app.services.archive`)."""
+    return col(Document.archived_at).is_(None)
 
 
 class Node(SQLModel, table=True):

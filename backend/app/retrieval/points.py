@@ -19,6 +19,7 @@ from typing import Any
 from sqlmodel import Session, col, select
 
 from app.models import Artifact, Document, Node
+from app.models.document import not_archived
 from app.models.enums import ArtifactType, NodeKind, Review
 from app.pipeline.bodies import iter_objects
 from app.pipeline.hashing import canonical_json
@@ -255,4 +256,7 @@ def document_payload(document: Document) -> dict[str, Any]:
 
 
 def all_documents(session: Session) -> Iterable[Document]:
-    return session.exec(select(Document).order_by(col(Document.created_at))).all()
+    """What the index holds: every document on the shelf (archived ones are purged)."""
+    return session.exec(
+        select(Document).where(not_archived()).order_by(col(Document.created_at))
+    ).all()

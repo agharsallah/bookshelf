@@ -171,6 +171,20 @@ def test_a_deleted_document_never_comes_back_from_vector_search(
     assert {g.document.slug for g in response.groups} == {"senge-fifth-discipline"}
 
 
+def test_an_archived_document_is_left_out_of_vector_and_lexical_search(
+    session: Session, indexed: Shelf, embedder: FakeEmbedder
+) -> None:
+    """Its points stay in the index until the purge job runs; search must not wait for it."""
+    from app.services.archive import archive
+
+    archive(session, indexed.meadows)
+    vector = _search(session, embedder, "balancing feedback loops stabilize a stock")
+    lexical = _search(session, embedder, 'find "inflow exceeds outflow"')
+
+    assert {g.document.slug for g in vector.groups} == {"senge-fifth-discipline"}
+    assert lexical.groups == []
+
+
 def test_vector_hits_carry_the_document_metadata_postgres_has_now(
     session: Session, indexed: Shelf, embedder: FakeEmbedder
 ) -> None:

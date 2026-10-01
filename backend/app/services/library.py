@@ -1,9 +1,9 @@
 """The `library/` folder (D13): safe path resolution, content hashing, slugs.
 
-Originals are ingested by path and never mutated or deleted. A document's
-`source_path` is stored relative to the library's parent (`library/x.pdf`), so the
-same row resolves on any machine that checks out the repo; `resolve_source_path`
-turns it back into a file.
+Originals are ingested by path and never mutated; one is deleted only when deleting its
+document asks for it (`original_file`). A document's `source_path` is stored relative
+to the library's parent (`library/x.pdf`), so the same row resolves on any machine that
+checks out the repo; `resolve_source_path` turns it back into a file.
 """
 
 import hashlib
@@ -59,6 +59,23 @@ def resolve_source_path(library_dir: Path, source_path: str | None) -> Path:
     if not path.is_relative_to(root):
         raise SourcePathError(f"source path escapes the repository: {source_path}")
     return path
+
+
+def original_file(library_dir: Path, document: Document) -> Path | None:
+    """The document's original, for a delete that removes it too; None when it has none
+    or the file is already gone. Raises `InvalidInputError` for a stored path outside
+    `library_dir` (even inside the repository): only originals are ever deleted."""
+    if not document.source_path:
+        return None
+    try:
+        path = resolve_source_path(library_dir, document.source_path)
+    except SourcePathError:
+        path = None
+    if path is None or not path.is_relative_to(library_dir.resolve()):
+        raise InvalidInputError(
+            f"The original is not inside the library: {document.source_path}", field="file"
+        )
+    return path if path.is_file() else None
 
 
 def resolve_library_file(library_dir: Path, raw: str) -> Path:
