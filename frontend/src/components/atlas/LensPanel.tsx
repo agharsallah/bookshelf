@@ -3,13 +3,14 @@
  *
  * Connections (by type, with their mark and how many there are), the kind of document
  * (books, papers, articles, when the shelf holds more than one), kinds of thing (books,
- * chapters, and concepts by their own kind), books, "only ideas in more than one book",
+ * chapters, and concepts by their own kind), books (see BookFilter), "only ideas in more than one book",
  * what to do with the rest (dim or hide), and whether to group by book. Every change is
  * immediate; counts come from the whole atlas, so a filter never hides its own way back.
  */
 import { GENRES, type Genre } from '../../lib/api/types/documents';
 import type { ConceptKind } from '../../lib/api/types/graph';
 import { KindMark, RelationMark } from '../graph/Legend';
+import { BookFilter } from './BookFilter';
 import { LINK_KINDS, LINK_STYLES, type LinkKind } from '../graph/styles';
 import { cleared, isFiltering, KIND_KEYS, toggle, type KindKey, type LensState } from './lens';
 import { kindKey, type AtlasIndex } from './model';
@@ -132,19 +133,7 @@ export function LensPanel({ index, lens, onChange, onFindBridges, bridges }: Len
       ) : null}
 
       {index.shelf.length > 1 ? (
-        <fieldset className={styles.group}>
-          <legend>Books</legend>
-          {index.shelf.map((b) => {
-            const id = b.document?.id ?? b.id;
-            const all = index.shelf.map((x) => x.document?.id ?? x.id);
-            return (
-              <label key={id} className={styles.check}>
-                <input type="checkbox" checked={on(lens.books, id)} onChange={() => set({ books: toggle(lens.books, id, all) })} />
-                <span className={styles.bookName}>{b.label}</span>
-              </label>
-            );
-          })}
-        </fieldset>
+        <BookFilter index={index} lens={lens} legend={genres.length > 1 ? 'Documents' : 'Books'} onChange={(books) => set({ books })} />
       ) : null}
 
       <fieldset className={graph.segmented}>

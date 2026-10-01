@@ -131,6 +131,17 @@ export function toggle<T extends string>(current: T[] | null, value: T, all: rea
   return next.length === all.length ? null : next;
 }
 
+/** Turn several values of a list on or off at once; back to `null` (all) once every value is on. */
+export function toggleMany<T extends string>(current: T[] | null, values: readonly T[], turnOn: boolean, all: readonly T[]): T[] | null {
+  const on = new Set(current ?? all);
+  for (const v of values) {
+    if (turnOn) on.add(v);
+    else on.delete(v);
+  }
+  const next = all.filter((v) => on.has(v));
+  return next.length === all.length ? null : next;
+}
+
 /** Whether any filter is narrowing the view (the query aside). */
 export function isFiltering(lens: LensState): boolean {
   return lens.mode === 'lens' && (lens.links !== null || lens.kinds !== null || lens.books !== null || lens.genres !== null || lens.crossBook);

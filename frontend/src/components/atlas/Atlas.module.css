@@ -140,6 +140,26 @@
   white-space: nowrap;
 }
 
+/* A long shelf scrolls inside the lens instead of pushing the rest of it away. */
+.bookList {
+  display: grid;
+  min-inline-size: 0;
+  max-block-size: 18rem;
+  gap: var(--space-1);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.find {
+  inline-size: 100%;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-s);
+  background: var(--paper-raised);
+  color: var(--ink-2);
+  font: inherit;
+}
+
 .only {
   display: flex;
   flex-wrap: wrap;

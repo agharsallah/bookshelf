@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cleared, DEFAULT_LENS, isFiltering, lensFromParams, lensToParams, toggle } from './lens';
+import { cleared, DEFAULT_LENS, isFiltering, lensFromParams, lensToParams, toggle, toggleMany } from './lens';
 
 describe('lens URL', () => {
   it('round-trips a lens through the query string', () => {
@@ -49,6 +49,17 @@ describe('toggle', () => {
     const off = toggle<'a' | 'b' | 'c'>(null, 'b', all);
     expect(off).toEqual(['a', 'c']);
     expect(toggle(off, 'b', all)).toBeNull();
+  });
+});
+
+describe('toggleMany', () => {
+  const all = ['a', 'b', 'c', 'd'] as const;
+  it('turns several values off or on at once, leaving the others, and back to "all" once every value is on', () => {
+    const off = toggleMany<'a' | 'b' | 'c' | 'd'>(null, ['b', 'c'], false, all);
+    expect(off).toEqual(['a', 'd']);
+    expect(toggleMany(off, ['a', 'd'], false, all)).toEqual([]);
+    expect(toggleMany(off, ['c'], true, all)).toEqual(['a', 'c', 'd']);
+    expect(toggleMany(off, ['b', 'c'], true, all)).toBeNull();
   });
 });
 
