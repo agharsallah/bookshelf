@@ -85,10 +85,25 @@ def _message(error: ValidationError) -> str:
     if error.validator in _SIZE_WORDS and isinstance(error.instance, (str, list)):
         unit, bound = _SIZE_WORDS[str(error.validator)]
         return f"has {len(error.instance)} {unit}; {bound} {error.validator_value} allowed"
+    wanted = _contained_types(error)
+    if wanted:
+        return f"needs at least one block of type {' or '.join(wanted)}"
     message = error.message
     if len(message) <= _MESSAGE_MAX:
         return message
     return f"{message[:120]} … {message[-(_MESSAGE_MAX - 123) :]}"
+
+
+def _contained_types(error: ValidationError) -> list[str]:
+    """The block types a failed `contains: {properties: {type: …}}` asks for (a skill's
+    "a chart figure holds a chart or a table"); jsonschema's own message is the whole block
+    list followed by "does not contain items matching the given schema"."""
+    if error.validator != "contains" or not isinstance(error.validator_value, dict):
+        return []
+    type_rule = error.validator_value.get("properties", {}).get("type", {})
+    if "const" in type_rule:
+        return [str(type_rule["const"])]
+    return [str(t) for t in type_rule.get("enum", [])]
 
 
 def _explain(error: ValidationError) -> list[ValidationError]:

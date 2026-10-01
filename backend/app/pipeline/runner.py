@@ -132,6 +132,20 @@ def _no_constant(name: str) -> Any:
     raise OutputError([f"reply is not valid JSON: {name} is not a number JSON allows"])
 
 
+_EXCERPT = 60
+
+
+def _json_problem(exc: json.JSONDecodeError) -> str:
+    """A parse error the retry can act on. The retry prompt does not carry the rejected
+    reply, so "at char 1384" alone points nowhere: quote the text just before the failure,
+    where the usual culprit sits — a `"` copied from the source and left unescaped."""
+    before = exc.doc[max(0, exc.pos - _EXCERPT) : exc.pos]
+    return (
+        f"reply is not valid JSON: {exc.msg} at char {exc.pos}, just after {before!r}; "
+        'a double quote inside a string must be written \\"'
+    )
+
+
 def extract_json(text: str) -> dict[str, Any]:
     """Parse a reply into one JSON object: strip ``` fences, else take the outermost `{…}`."""
     fenced = _FENCE.match(text)
@@ -142,7 +156,7 @@ def extract_json(text: str) -> dict[str, Any]:
     try:
         value = json.loads(candidate[start : end + 1], parse_constant=_no_constant)
     except json.JSONDecodeError as exc:
-        raise OutputError([f"reply is not valid JSON: {exc.msg} at char {exc.pos}"]) from exc
+        raise OutputError([_json_problem(exc)]) from exc
     if not isinstance(value, dict):
         raise OutputError(["reply is not a JSON object"])
     return value

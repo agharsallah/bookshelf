@@ -115,6 +115,18 @@ def test_a_long_message_keeps_its_verdict():
     assert len(problem) < 340 and problem.endswith("is not one of ['chart', 'table']")
 
 
+def test_a_missing_required_block_type_is_named_not_dumped():
+    """A skill's `contains` rule ("a chart figure holds a chart or a table") failed with the
+    whole block list and "does not contain items matching the given schema"."""
+    wanted = {"properties": {"type": {"enum": ["chart", "table"]}}, "required": ["type"]}
+    schema = {"type": "object", "properties": {"blocks": {"contains": wanted}}}
+    output = {"blocks": [{"type": "paragraph", "text": "y" * 400}]}
+
+    assert gates.schema_errors(schema, output) == [
+        "schema: blocks: needs at least one block of type chart or table"
+    ]
+
+
 def test_an_anyof_block_list_reports_what_is_wrong_in_the_block_type_meant():
     """A skill's own block subset is an `anyOf`; the retry must name the fix ("spans"),
     not say the block matches none of the schemas."""

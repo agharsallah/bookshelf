@@ -105,6 +105,19 @@ def test_unusable_replies_raise_output_errors(text):
         extract_json(text)
 
 
+def test_a_parse_error_quotes_the_text_before_it_so_the_retry_can_find_it():
+    """The retry prompt does not carry the rejected reply; "at char 1384" pointed nowhere."""
+    reply = '{"text": "It runs search_dir "notes" next.", "cites": []}'
+
+    with pytest.raises(OutputError) as caught:
+        extract_json(reply)
+
+    [problem] = caught.value.problems
+    assert problem.startswith("reply is not valid JSON: Expecting ',' delimiter at char 30")
+    assert '\'{"text": "It runs search_dir "\'' in problem
+    assert problem.endswith('a double quote inside a string must be written \\"')
+
+
 def test_run_structured_retries_once_with_the_problems_appended():
     runner = FakeRunner("not json", '{"blocks": []}')
 
