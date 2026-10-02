@@ -219,6 +219,7 @@ create table nodes (
   page_from     int,
   page_to       int,
   meta          jsonb not null default '{}', -- table shape, figure caption + image_path, footnote refs
+  words         int generated always as (…) stored, -- whitespace-separated runs of text, for statistics
   unique (document_id, anchor)
 );
 create index on nodes (document_id, parent_id, ordinal);
@@ -1186,7 +1187,7 @@ Keep Astro as the shell and routing layer; add React islands only where interact
 ### Rendering and speed
 
 Every page is rendered on demand (`@astrojs/node`, standalone), and a page waits on its
-backend calls before Astro sends it. Five rules keep that from showing:
+backend calls before Astro sends it. Six rules keep that from showing:
 
 - **A slow navigation shows where it is going.** `ClientRouter` waits for the whole next page
   before swapping, so `lib/navigation-loading.ts` follows its lifecycle: after 120 ms a bar
@@ -1214,6 +1215,15 @@ backend calls before Astro sends it. Five rules keep that from showing:
   is served from the browser cache. Ordinary requests stay uncached, so a page you return to is
   rendered afresh. Links you nearly always follow once pointed at, the reader's previous and
   next chapter, prefetch on hover.
+- **Lists carry what the page shows, in as few calls as it can.** The backend sits across a
+  network from its database, so every call costs a round trip, and every row its bytes. The
+  review queue, the nav's queue count and a book's page list artifacts with `body=false`
+  (bodies and citations were over 90% of each row); the queue's preview fetches the focused
+  body and the next one ahead (`bodyLookup`). The nav asks for totals only (`limit=1`).
+  The library, a collection and Today read every book's reading positions in one call
+  (`GET /reading`), not one per book. `fetchAll` reads the first page for the total, then
+  the rest together. Word counts are a stored column (`nodes.words`), not a regex over every
+  node's text on each statistics request.
 - **Hydrate late what is not needed at once.** `client:load` is for what you use right away;
   islands further down the page use `client:visible`, and the attention beacon `client:idle`.
   A `workshop-only` island with `client:visible` never loads in reading mode, because it is
@@ -1304,6 +1314,7 @@ GET    /documents/{id}/blocks          paginated, ?anchor_prefix=
 
 GET    /documents/{id}/reading         reading positions, most recently read first
 PUT    /documents/{id}/reading         save a chapter's position {unit, anchor, progress}
+GET    /reading                        every document's positions, keyed by document id (one call per shelf)
 
 POST   /documents/{id}/recalls         write a recall (→ grade_recall job) or a prediction {unit, kind, raw}
 GET    /documents/{id}/recalls?unit=   recalls and predictions with their grades, newest first
@@ -1322,7 +1333,8 @@ POST   /notes                          create highlight (no raw) or note (raw �
 PATCH  /notes/{id}                     color; raw once, for a highlight
 GET    /notes?document_id=&anchor=
 
-GET    /artifacts?document_id=&type=&review=&tone=&latest=
+GET    /artifacts?document_id=&type=&review=&tone=&latest=&body=
+                                       body=false: without bodies or citations (keeps body.confidence)
 POST   /artifacts                      human-authored artifact (origin = human)
 POST   /artifacts/{id}/review          approve | reject | edit | reopen
 POST   /jobs                           enqueue {kind, document_id, anchor?, skill?, note_id?, force?,
@@ -1536,6 +1548,7 @@ The design above is a guideline. Where the build diverged, the reason is recorde
 | Forced re-runs | new `input_hash` → new version | `force` re-runs the same input and rejects the previous live artifact for it (the idempotency index allows one) | "never pay twice" stays a database invariant even for deliberate re-runs |
 | Compression gate | length vs. source | output words ÷ words of the scope's *source leaves* (element skills: the element's text or caption), not of the inputs incl. prior artifacts | A chapter distillation built from section notes would otherwise be judged against the notes |
 | Review reopen | approve / reject / edit | plus `reopen` (approved/rejected → draft; 409 if another live row covers the input). Nothing built on the verdict is withdrawn; reopened `concept_links` re-sync the graph; reopened approved content on an indexed document queues `embed` so search (approved only) drops it | Undo without cascading deletes; search and graph never show what a human took back |
+| Light lists and shelf reading | full artifact rows; positions per document; word counts computed per request | `GET /artifacts?body=false` (no body or citations, keeps `body.confidence`), `GET /reading` (every document's positions), `nodes.words` (stored generated column, migration `20261002130000_node_words`) | The review queue rendered 9.7 MB in 5–11 s, a big book's page fetched 2 MB of bodies it never showed, the library and Today made a call per book, and `/you` spent ~1 s splitting all text into words |
 | Superseded versions | append-only versions | list items carry `superseded` (a newer non-rejected version of the scope exists), `GET /artifacts?latest=true` hides them; no schema change | A human edit must retire the draft it replaced from the review queue |
 | Run ceiling | pause the document | `documents.meta.paused = {reason, at, runs, limit}` shown as `paused` on documents; skill jobs of a paused document fail before any model call (`run ceiling reached…`); `POST /documents/{ref}/resume` clears it, sets `meta.run_ceiling`, requeues what it stopped; ceiling failures are not runs; every CLI run (schema retries, failed attempts, each dedup verdict) is reserved before it starts under a lock on the document row and counted in `jobs.result.runs` | Visible and recoverable instead of a wall of failed jobs |
 | Image paths in inputs | absolute crop path | inputs (and `input_hash`, and `/skills/{name}/inputs`) carry the path relative to `.media/`; only the batch prompt resolves it, and the CLI gets `--add-dir` | `input_hash` must not depend on where the repo is checked out |
