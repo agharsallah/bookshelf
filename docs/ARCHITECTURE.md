@@ -249,6 +249,10 @@ create table reading_positions (
   updated_at    timestamptz not null default now(),
   primary key (document_id, unit)
 );
+-- A document read through, whatever its positions say (a short chapter's last lines never
+-- cross the reading line; front matter is seldom read): `documents.finished_at`, set and
+-- cleared with `PUT`/`DELETE /documents/{ref}/reading/finished`. Progress views count it as
+-- 100%; the positions are left as they are. Migration `20261002120000_document_finished`.
 
 -- Remembering it (§9). A recall is a chapter written from memory, a prediction what you
 -- expected it to argue; both immutable (trigger, D11). Grades are derived and replaceable.
@@ -1578,7 +1582,13 @@ path, with progress, notes, reordering and adding from the shelf), a collection 
 on `/library`, "Add to a collection" on a document's page, `?collection=` on `/map`, `/graph`
 and `/graph/…`. The reader keeps `?collection=` in every chapter link, shows where the
 document sits in the collection above the text, and ends the last chapter with the next
-document instead of "Back to the document" (`components/collections/path.ts`).
+document instead of "Back to the document" (`components/collections/path.ts`). "Up next"
+is the first member not read through: its positions at 100%, or marked finished, by hand
+on the path ("Mark read" / "Mark unread") or by following that end-of-document link.
+A document reached from a collection keeps it: the reader's title and "Back to the
+document" links, and on the document's page the breadcrumb (back to the collection, not
+the Library), "Continue reading", the chapter strip and the contents all carry
+`?collection=`, and the masthead marks Collections (`navPath`, `components/shell/nav.ts`).
 
 ### Settings
 
