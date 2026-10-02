@@ -3,6 +3,11 @@
 `anchor` always moves to the latest block reported (scrolling back moves your place
 back); `progress` only ever grows, so a chapter you finished stays finished. The book's
 "continue reading" is simply its most recently updated position.
+
+A document can also be marked finished as a whole (`documents.finished_at`): by hand, or
+by moving on to the next document of a collection. It stands in for the chapter positions
+when they fall short (a short chapter whose last lines never crossed the reading line, front
+matter nobody reads), and leaves them as they are.
 """
 
 from collections.abc import Sequence
@@ -13,6 +18,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlmodel import Session, col, select
 
 from app.models import Document, Node, ReadingPosition
+from app.models._columns import utcnow
 from app.models.enums import NodeKind
 from app.services.errors import InvalidInputError
 
@@ -73,3 +79,15 @@ def save_position(session: Session, document: Document, data: PositionInput) -> 
         .where(ReadingPosition.document_id == document.id, ReadingPosition.unit == data.unit)
         .execution_options(populate_existing=True)
     ).one()
+
+
+def set_finished(session: Session, document: Document, finished: bool) -> Document:
+    """Mark the document finished (keeping the first time it was) or not. Commits."""
+    if finished and document.finished_at is None:
+        document.finished_at = utcnow()
+    elif not finished:
+        document.finished_at = None
+    session.add(document)
+    session.commit()
+    session.refresh(document)
+    return document

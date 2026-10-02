@@ -123,6 +123,10 @@ class DocumentPublic(BaseModel):
     archived_at: Annotated[
         datetime | None, Field(description="When it was archived; null while on the shelf.")
     ] = None
+    finished_at: Annotated[
+        datetime | None,
+        Field(description="When it was marked read through; null while not finished."),
+    ] = None
 
 
 class DocumentCounts(BaseModel):

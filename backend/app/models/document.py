@@ -37,6 +37,8 @@ class Document(SQLModel, table=True):
     created_at: datetime = Field(default_factory=utcnow, sa_column=timestamptz())
     updated_at: datetime = Field(default_factory=utcnow, sa_column=timestamptz())
     archived_at: datetime | None = Field(default=None, sa_column=timestamptz(nullable=True))
+    # HUMAN: read through, whatever the chapter positions say (`app.services.reading`).
+    finished_at: datetime | None = Field(default=None, sa_column=timestamptz(nullable=True))
 
 
 def not_archived() -> Any:

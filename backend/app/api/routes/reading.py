@@ -7,6 +7,7 @@ from fastapi import Path as PathParam
 
 from app.api.deps import SessionDep
 from app.core.security import require_api_key
+from app.schemas.document import DocumentPublic
 from app.schemas.reading import PositionUpdate, ReadingPositionPublic
 from app.services import documents, reading
 
@@ -46,3 +47,28 @@ def save_position(
     document = documents.get_document(session, ref)
     data = reading.PositionInput(unit=body.unit, anchor=body.anchor, progress=body.progress)
     return ReadingPositionPublic.model_validate(reading.save_position(session, document, data))
+
+
+@router.put(
+    "/{ref}/reading/finished",
+    response_model=DocumentPublic,
+    dependencies=[Depends(require_api_key)],
+    summary="Mark a document finished",
+    description="Counts the document as read through, whatever its chapter positions say "
+    "(they are left as they are). Keeps the first `finished_at` when it already is.",
+)
+def finish(ref: DocumentRef, session: SessionDep) -> DocumentPublic:
+    document = reading.set_finished(session, documents.get_document(session, ref), True)
+    return DocumentPublic.model_validate(document)
+
+
+@router.delete(
+    "/{ref}/reading/finished",
+    response_model=DocumentPublic,
+    dependencies=[Depends(require_api_key)],
+    summary="Mark a document not finished",
+    description="Clears `finished_at`: progress goes back to what the chapter positions say.",
+)
+def unfinish(ref: DocumentRef, session: SessionDep) -> DocumentPublic:
+    document = reading.set_finished(session, documents.get_document(session, ref), False)
+    return DocumentPublic.model_validate(document)

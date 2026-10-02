@@ -100,3 +100,37 @@ def test_saving_needs_the_api_key(client: TestClient, session: Session):
 
 def test_an_unknown_document_is_404(client: TestClient):
     assert client.get(url("nope")).status_code == 404
+
+
+def test_marking_finished_keeps_the_first_time_and_leaves_positions(
+    client: TestClient, session: Session
+):
+    book = make_book(session)
+    save(client, book.slug, "ch01", "ch01/s01/p001", 0.3)
+
+    first = client.put(f"{url(book.slug)}/finished", headers=AUTH)
+    again = client.put(f"{url(book.slug)}/finished", headers=AUTH)
+
+    assert first.status_code == 200
+    assert first.json()["finished_at"] is not None
+    assert again.json()["finished_at"] == first.json()["finished_at"]
+    assert client.get(f"/api/v1/documents/{book.slug}").json()["finished_at"] is not None
+    assert [p["progress"] for p in client.get(url(book.slug)).json()] == [0.3]
+
+
+def test_unmarking_finished_clears_it(client: TestClient, session: Session):
+    book = make_book(session)
+    client.put(f"{url(book.slug)}/finished", headers=AUTH)
+
+    response = client.delete(f"{url(book.slug)}/finished", headers=AUTH)
+
+    assert response.status_code == 200
+    assert response.json()["finished_at"] is None
+    listed = client.get("/api/v1/documents").json()["items"]
+    assert [d["finished_at"] for d in listed] == [None]
+
+
+def test_marking_finished_needs_the_api_key(client: TestClient, session: Session):
+    book = make_book(session)
+
+    assert client.put(f"{url(book.slug)}/finished").status_code == 401
