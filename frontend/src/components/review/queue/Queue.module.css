@@ -355,6 +355,26 @@
   font-family: var(--font-read);
 }
 
+/* While the body loads: three lines of text, the last one short. */
+.bodyLoading {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.bodyLoading > :global(.skeleton-bone) {
+  block-size: 1rem;
+}
+
+.bodyLoading > :global(.skeleton-bone):last-child {
+  inline-size: 60%;
+}
+
+.bodyMissing {
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-ui);
+}
+
 .empty {
   display: grid;
   gap: var(--space-3);

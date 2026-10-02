@@ -36,17 +36,35 @@ export interface DocumentLabel {
   paused?: PausedState | null;
 }
 
+const QUEUE_STATES: readonly Review[] = ['needs_review', 'draft'];
+
 /**
  * Everything still waiting for a human: `needs_review` and `draft`, newest first per
  * state, without versions a newer live one replaces (`latest=true`, e.g. a draft a
- * human edit retired).
+ * human edit retired). Without bodies (`body=false`, which keeps only `confidence`):
+ * they are most of the payload, and the preview fetches the one in focus (`bodyLookup`).
  */
 export async function loadQueue(api: ApiClient, maxPages = 5): Promise<ArtifactListItem[]> {
-  const states: Review[] = ['needs_review', 'draft'];
   const lists = await Promise.all(
-    states.map(async (review) => (await fetchAll<ArtifactListItem>(api, 'artifacts', { review, latest: true }, maxPages)).items),
+    QUEUE_STATES.map(
+      async (review) => (await fetchAll<ArtifactListItem>(api, 'artifacts', { review, latest: true, body: false }, maxPages)).items,
+    ),
   );
   return lists.flat();
+}
+
+/** Memoised per artifact, so the preview of an item seen before shows at once; a failure is forgotten. */
+export function bodyLookup(api: ApiClient) {
+  const cache = new Map<string, Promise<ArtifactPublic['body']>>();
+  return (id: string): Promise<ArtifactPublic['body']> => {
+    let hit = cache.get(id);
+    if (!hit) {
+      hit = api.get<ArtifactPublic>(`artifacts/${id}`).then((artifact) => artifact.body);
+      hit.catch(() => cache.delete(id));
+      cache.set(id, hit);
+    }
+    return hit;
+  };
 }
 
 export async function loadDocuments(api: ApiClient): Promise<DocumentLabel[]> {

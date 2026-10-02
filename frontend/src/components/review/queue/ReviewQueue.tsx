@@ -9,7 +9,7 @@ import { anchorLabel } from '../../../lib/anchors';
 import { browserApi, type ApiClient } from '../../../lib/api/client';
 import type { ArtifactListItem } from '../../../lib/api/types/artifacts';
 import type { SkillPublic } from '../../../lib/api/types/skills';
-import type { DocumentLabel } from '../api';
+import { bodyLookup, type DocumentLabel } from '../api';
 import { ShortcutHelp } from '../../common/ShortcutHelp';
 import { Toaster, useToasts } from '../common/Toasts';
 import { deriveGates } from '../gates';
@@ -67,6 +67,14 @@ export function ReviewQueue({ items: initial, documents, headings, skills, api =
   }, [order]);
   const focusedId = currentId(triage);
   const focused = focusedId ? byId.get(focusedId) : undefined;
+
+  // The queue arrives without bodies: the preview fetches the one in focus, and the next
+  // one waits in the lookup, so stepping through the queue shows each at once.
+  const loadBody = useMemo(() => bodyLookup(api), [api]);
+  useEffect(() => {
+    const next = focusedId ? triage.order[triage.order.indexOf(focusedId) + 1] : undefined;
+    if (next) loadBody(next).catch(() => undefined);
+  }, [focusedId, triage.order, loadBody]);
 
   useEffect(() => {
     if (!wantFocus.current || !focusedId) return;
@@ -281,6 +289,7 @@ export function ReviewQueue({ items: initial, documents, headings, skills, api =
             <ArtifactPreview
               key={focused.id}
               item={focused}
+              loadBody={loadBody}
               heading={heading(focused)}
               documentTitle={titles[focused.document_id] ?? 'Untitled document'}
               thresholds={focused.skill ? thresholds[focused.skill] : null}

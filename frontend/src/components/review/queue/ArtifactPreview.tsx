@@ -1,18 +1,23 @@
 /**
  * The focused queue item, read in place: gates and verbs in the tool's voice above,
- * what approval triggers, and the body on a sheet below.
+ * what approval triggers, and the body on a sheet below. Queue items come without
+ * bodies, so the sheet shows this one's once `loadBody` has it.
  */
 import { navigate } from 'astro:transitions/client';
+import { useEffect, useState } from 'react';
 import { anchorLabel } from '../../../lib/anchors';
-import type { ArtifactListItem } from '../../../lib/api/types/artifacts';
+import type { ArtifactListItem, ArtifactPublic } from '../../../lib/api/types/artifacts';
 import type { SkillGates } from '../../../lib/api/types/skills';
 import { ArtifactBody } from '../body/ArtifactBody';
 import { GateBadges } from '../GateBadges';
 import { propagationNote, TYPE_LABELS } from '../labels';
 import styles from './Queue.module.css';
 
+type Body = ArtifactPublic['body'];
+
 export interface ArtifactPreviewProps {
   item: ArtifactListItem;
+  loadBody: (id: string) => Promise<Body>;
   heading: string | undefined;
   documentTitle: string;
   thresholds: SkillGates | null | undefined;
@@ -27,8 +32,25 @@ export function reviewHref(id: string, params?: Record<string, string>): string 
   return `/review/${id}${qs}`;
 }
 
-export function ArtifactPreview({ item, heading, documentTitle, thresholds, busy, onApprove, onReject, onEdit }: ArtifactPreviewProps) {
+/** The item's body: null while it loads, `failed` when it could not be fetched. */
+function useBody(id: string, loadBody: (id: string) => Promise<Body>): Body | null | 'failed' {
+  const [body, setBody] = useState<{ id: string; value: Body | 'failed' } | null>(null);
+  useEffect(() => {
+    let live = true;
+    loadBody(id).then(
+      (value) => live && setBody({ id, value }),
+      () => live && setBody({ id, value: 'failed' }),
+    );
+    return () => {
+      live = false;
+    };
+  }, [id, loadBody]);
+  return body?.id === id ? body.value : null;
+}
+
+export function ArtifactPreview({ item, loadBody, heading, documentTitle, thresholds, busy, onApprove, onReject, onEdit }: ArtifactPreviewProps) {
   const note = propagationNote(item.type);
+  const body = useBody(item.id, loadBody);
   return (
     <article className={styles.preview} aria-labelledby="preview-title">
       <header className={styles.previewHead}>
@@ -57,8 +79,18 @@ export function ArtifactPreview({ item, heading, documentTitle, thresholds, busy
       </div>
       {note ? <p className={styles.propagation}>After approval: {note}</p> : null}
 
-      <div className={styles.sheet}>
-        <ArtifactBody type={item.type} body={item.body} onCite={(anchor) => void navigate(reviewHref(item.id, { cite: anchor }))} />
+      <div className={styles.sheet} aria-busy={body === null || undefined}>
+        {body === 'failed' ? (
+          <p className={styles.bodyMissing}>This body could not be loaded. Open the full review to read it.</p>
+        ) : body === null ? (
+          <div className={styles.bodyLoading} aria-hidden="true">
+            <span className="skeleton-bone" />
+            <span className="skeleton-bone" />
+            <span className="skeleton-bone" />
+          </div>
+        ) : (
+          <ArtifactBody type={item.type} body={body} onCite={(anchor) => void navigate(reviewHref(item.id, { cite: anchor }))} />
+        )}
       </div>
     </article>
   );
