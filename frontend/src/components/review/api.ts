@@ -13,6 +13,7 @@ import type {
 } from '../../lib/api/types/artifacts';
 import type { JobAccepted, JobCreate } from '../../lib/api/types/jobs';
 import type { PausedState } from '../../lib/api/types/documents';
+import type { Page } from '../../lib/api/types';
 
 /** A source block as `GET /documents/{ref}/blocks` returns it (NodePublic). */
 export interface SourceBlock {
@@ -51,6 +52,16 @@ export async function loadQueue(api: ApiClient, maxPages = 5): Promise<ArtifactL
     ),
   );
   return lists.flat();
+}
+
+/** How many items wait in the queue: the totals alone, one row fetched per state. */
+export async function countQueue(api: ApiClient): Promise<number> {
+  const totals = await Promise.all(
+    QUEUE_STATES.map(
+      async (review) => (await api.get<Page<ArtifactListItem>>('artifacts', { query: { review, latest: true, body: false, limit: 1 } })).total,
+    ),
+  );
+  return totals.reduce((sum, total) => sum + total, 0);
 }
 
 /** Memoised per artifact, so the preview of an item seen before shows at once; a failure is forgotten. */

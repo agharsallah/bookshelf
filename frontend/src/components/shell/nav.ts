@@ -6,7 +6,7 @@ import type { ApiClient } from '../../lib/api/client';
 import type { Page } from '../../lib/api/types';
 import type { JobPublic } from '../../lib/api/types/jobs';
 import { collectionParam } from '../collections/path';
-import { loadQueue } from '../review/api';
+import { countQueue } from '../review/api';
 
 export interface NavItem {
   href: string;
@@ -61,13 +61,8 @@ export interface NavCounts {
 
 export async function loadNavCounts(api: ApiClient): Promise<NavCounts> {
   const jobs = (state: string) => api.get<Page<JobPublic>>('jobs', { query: { state, limit: 1 } }).then((page) => page.total);
-  const [queue, queued, running, failed] = await Promise.all([
-    loadQueue(api, 1),
-    jobs('queued'),
-    jobs('running'),
-    jobs('failed'),
-  ]);
-  return { review: queue.length, active: queued + running, failed };
+  const [review, queued, running, failed] = await Promise.all([countQueue(api), jobs('queued'), jobs('running'), jobs('failed')]);
+  return { review, active: queued + running, failed };
 }
 
 /** What the pipeline dot says: busy beats broken beats quiet. */

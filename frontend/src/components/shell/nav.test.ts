@@ -74,9 +74,19 @@ describe('loadNavCounts', () => {
     const get = vi.fn(async (path: string, options?: { query?: Record<string, unknown> }) => {
       if (path === 'jobs') return { items: [], total: totals[String(options?.query?.state)] ?? 0, limit: 1, offset: 0 };
       const review = options?.query?.review;
-      return { items: review === 'draft' ? [{}, {}, {}] : [{}], total: review === 'draft' ? 3 : 1, limit: 100, offset: 0 };
+      return { items: [{}], total: review === 'draft' ? 1281 : 236, limit: 1, offset: 0 };
     });
-    expect(await loadNavCounts({ get } as unknown as ApiClient)).toEqual({ review: 4, active: 3, failed: 5 });
+    expect(await loadNavCounts({ get } as unknown as ApiClient)).toEqual({ review: 1517, active: 3, failed: 5 });
+  });
+
+  it('asks the queue for its totals only: one row per state, without bodies', async () => {
+    const get = vi.fn(async (_path: string, _options?: { query?: Record<string, unknown> }) => ({ items: [], total: 0, limit: 1, offset: 0 }));
+    await loadNavCounts({ get } as unknown as ApiClient);
+    const queue = get.mock.calls.filter(([path]) => path === 'artifacts').map(([, options]) => options);
+    expect(queue).toEqual([
+      { query: { review: 'needs_review', latest: true, body: false, limit: 1 } },
+      { query: { review: 'draft', latest: true, body: false, limit: 1 } },
+    ]);
   });
 });
 
