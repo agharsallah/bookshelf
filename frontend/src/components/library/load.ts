@@ -1,9 +1,9 @@
 /**
  * Server-side loading for the library (page frontmatter only: uses `serverApi`): the
- * whole shelf, the files waiting in `library/`, how many books are archived, and per
- * book its reading positions and the book-wide study material. Per-book requests are
- * best effort: a failure leaves that book unread or without materials rather than
- * failing the page.
+ * whole shelf, the files waiting in `library/`, how many books are archived, every
+ * book's reading positions (one call), and per book the book-wide study material.
+ * These are best effort: a failure leaves books unread or without materials rather
+ * than failing the page.
  */
 import { problemOf, type ProblemInfo } from '../common/Problem';
 import { fetchAll } from '../../lib/api/fetch-all';
@@ -13,8 +13,9 @@ import type { ArtifactListItem } from '../../lib/api/types/artifacts';
 import type { CollectionPublic } from '../../lib/api/types/collections';
 import type { DocumentSummary, LibraryFile, ReadingPosition } from '../../lib/api/types/documents';
 import { listCollections } from '../../lib/collections/api';
+import { getShelfReading } from '../../lib/documents/server';
 import { availableMaterials, MATERIALS, type AvailableMaterial } from '../../lib/documents/study';
-import { mapLimit, NOT_READ, shelfReading, withFinished, type ShelfReading } from './progress';
+import { mapLimit, shelfReading, withFinished, type ShelfReading } from './progress';
 
 /** Past this many books the list shows a count instead of fetching each book's material. */
 export const MATERIALS_BOOK_LIMIT = 24;
@@ -45,19 +46,14 @@ export function membershipsOf(collections: readonly CollectionPublic[]): Record<
   return out;
 }
 
-/** From the chapter positions alone, ignoring the finished mark. Best effort: a failure reads as not started. */
-export async function positionsReading(doc: DocumentSummary): Promise<ShelfReading> {
-  try {
-    const positions = await serverApi().get<ReadingPosition[]>(`documents/${encodeURIComponent(doc.slug)}/reading`);
-    return shelfReading(positions, doc.counts.chapters);
-  } catch {
-    return NOT_READ;
-  }
+/** From the chapter positions alone (`getShelfReading`), ignoring the finished mark. */
+export function positionsReading(doc: DocumentSummary, shelf: Readonly<Record<string, ReadingPosition[]>>): ShelfReading {
+  return shelfReading(shelf[doc.id] ?? [], doc.counts.chapters);
 }
 
 /** How far the document is read, a finished mark counting as read through. */
-export async function readingOf(doc: DocumentSummary): Promise<ShelfReading> {
-  return withFinished(await positionsReading(doc), doc.finished_at);
+export function readingOf(doc: DocumentSummary, shelf: Readonly<Record<string, ReadingPosition[]>>): ShelfReading {
+  return withFinished(positionsReading(doc, shelf), doc.finished_at);
 }
 
 /** One small request per material type: the unfiltered list carries every chapter's bodies. */
@@ -80,17 +76,19 @@ async function materialsOf(doc: DocumentSummary): Promise<AvailableMaterial[] | 
 
 export async function loadLibrary(): Promise<LibraryData> {
   const api = serverApi();
-  const [shelf, pending, collections, archived] = await Promise.allSettled([
+  const [shelf, pending, collections, archived, positions] = await Promise.allSettled([
     fetchAll<DocumentSummary>(api, 'documents'),
     api.get<Page<LibraryFile>>('library', { query: { limit: 100 } }),
     listCollections(api),
     api.get<Page<DocumentSummary>>('documents', { query: { archived: true, limit: 1 } }),
+    getShelfReading(),
   ]);
   const documents = shelf.status === 'fulfilled' ? shelf.value.items : [];
+  const reading = positions.status === 'fulfilled' ? positions.value : {};
   const withMaterials = documents.length <= MATERIALS_BOOK_LIMIT;
   const extras = await mapLimit(documents, PARALLEL, async (doc) => {
-    const [reading, materials] = await Promise.all([readingOf(doc), withMaterials ? materialsOf(doc) : null]);
-    return [doc.slug, { reading, materials }] as const;
+    const materials = withMaterials ? await materialsOf(doc) : null;
+    return [doc.slug, { reading: readingOf(doc, reading), materials }] as const;
   });
   return {
     documents,

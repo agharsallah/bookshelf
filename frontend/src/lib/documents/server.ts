@@ -7,7 +7,7 @@ import { problemOf, type ProblemInfo } from '../../components/common/Problem';
 import { ApiError } from '../api/errors';
 import { serverApi } from '../api/server';
 import type { ArtifactListItem, ArtifactPublic, ArtifactType } from '../api/types/artifacts';
-import type { DocumentDetail, DocumentTree } from '../api/types/documents';
+import type { DocumentDetail, DocumentTree, ReadingPosition } from '../api/types/documents';
 import { fetchAll } from '../api/fetch-all';
 import { MATERIALS } from './study';
 
@@ -23,6 +23,14 @@ export async function load<T>(work: () => Promise<T>): Promise<Loaded<T>> {
 
 export function getDocument(ref: string): Promise<DocumentDetail> {
   return serverApi().get<DocumentDetail>(`documents/${encodeURIComponent(ref)}`);
+}
+
+/** Every document's reading positions, keyed by document id, in one call (a document never
+ * opened is absent). Best effort: a failure reads as nothing opened, so no page fails on it. */
+export async function getShelfReading(): Promise<Record<string, ReadingPosition[]>> {
+  return await serverApi()
+    .get<Record<string, ReadingPosition[]>>('reading')
+    .catch(() => ({}));
 }
 
 /** Containers only (parts, chapters, sections, subsections). */

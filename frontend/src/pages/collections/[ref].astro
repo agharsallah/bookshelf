@@ -10,20 +10,23 @@ import { Problem } from '../../components/common/Problem';
 import CollectionDetails from '../../components/collections/CollectionDetails';
 import CollectionPath, { type PathEntry, type ShelfEntry } from '../../components/collections/CollectionPath';
 import { genreSummary, memberReading, memberShare, readHref, upNext } from '../../components/collections/path';
-import { mapLimit } from '../../components/library/progress';
 import { positionsReading } from '../../components/library/load';
 import { fetchAll } from '../../lib/api/fetch-all';
 import { serverApi } from '../../lib/api/server';
 import type { DocumentSummary } from '../../lib/api/types/documents';
 import { getCollection } from '../../lib/collections/api';
-import { load } from '../../lib/documents/server';
+import { getShelfReading, load } from '../../lib/documents/server';
 
 export const prerender = false;
 
 const ref = Astro.params.ref ?? '';
 const loaded = await load(async () => {
-  const [collection, shelf] = await Promise.all([getCollection(serverApi(), ref), fetchAll<DocumentSummary>(serverApi(), 'documents')]);
-  const readings = await mapLimit(collection.members, 6, (m) => positionsReading(m.document));
+  const [collection, shelf, positions] = await Promise.all([
+    getCollection(serverApi(), ref),
+    fetchAll<DocumentSummary>(serverApi(), 'documents'),
+    getShelfReading(),
+  ]);
+  const readings = collection.members.map((m) => positionsReading(m.document, positions));
   return { collection, shelf: shelf.items, readings };
 });
 if (!loaded.ok && loaded.notFound) Astro.response.status = 404;

@@ -1,6 +1,6 @@
 /**
  * Server-side loading for Today (server islands only: uses `serverApi`). Every book's
- * reading positions, then outlines for the few books read most recently; a call that
+ * reading positions (one call), then outlines for the few books read most recently; a call that
  * fails leaves that book unread instead of failing the page. Due cards, today's passage
  * and the week each load alone, or come back null.
  */
@@ -11,36 +11,26 @@ import type { DocumentSummary, ReadingPosition } from '../../lib/api/types/docum
 import type { NoteDetail } from '../../lib/api/types/notes';
 import type { LibraryReaderStats } from '../../lib/api/types/readerStats';
 import type { DueCards } from '../../lib/api/types/recalls';
-import { getOutline } from '../../lib/documents/server';
+import { getOutline, getShelfReading } from '../../lib/documents/server';
 import { readingUnits } from '../../lib/documents/tree';
-import { mapLimit } from '../library/progress';
 import { dayOffset, isReadable, marginNotes, NOTE_WINDOW, todayBook, type BookIndex, type MarginNote, type TodayBook } from './today';
 
 /** Books whose outlines load: the ones read most recently, enough for Pick up and "Also open". */
 export const OUTLINE_CAP = 4;
-const PARALLEL = 8;
-
-/** Best effort: a failure reads as never opened. */
-async function positionsOf(doc: DocumentSummary): Promise<ReadingPosition[]> {
-  return await serverApi()
-    .get<ReadingPosition[]>(`documents/${encodeURIComponent(doc.slug)}/reading`)
-    .catch(() => []);
-}
 
 const lastMoved = (positions: readonly ReadingPosition[]) => positions.reduce((latest, p) => (p.updated_at > latest ? p.updated_at : latest), '');
 
 /**
- * Every book, with outlines for the few that matter today. Reading positions are cheap
- * and load for every readable book, so the book you are in is found however many papers
+ * Every book, with outlines for the few that matter today. Reading positions are one
+ * call for the whole shelf, so the book you are in is found however many papers
  * arrived since; outlines load only for the books read most recently or, when none
  * was read, the newest one to start.
  */
 export async function loadBooks(): Promise<TodayBook[]> {
-  const { items } = await fetchAll<DocumentSummary>(serverApi(), 'documents', {}, 5);
+  const [{ items }, reading] = await Promise.all([fetchAll<DocumentSummary>(serverApi(), 'documents', {}, 5), getShelfReading()]);
   const readable = items.filter(isReadable);
-  const reading = await mapLimit(readable, PARALLEL, positionsOf);
   const read = readable
-    .map((doc, i) => ({ doc, positions: reading[i] ?? [] }))
+    .map((doc) => ({ doc, positions: reading[doc.id] ?? [] }))
     .filter((b) => b.positions.length > 0)
     .sort((a, b) => lastMoved(b.positions).localeCompare(lastMoved(a.positions)))
     .slice(0, OUTLINE_CAP);
