@@ -1,4 +1,5 @@
-"""Superseded versions in the review queue: `superseded` on list items, `?latest=true`."""
+"""Superseded versions in the review queue: `superseded` on list items, `?latest=true`;
+and `?body=false`, the queue's lighter list."""
 
 from fastapi.testclient import TestClient
 from sqlmodel import Session
@@ -11,13 +12,14 @@ from tests.pipeline.runtime.conftest import body, paragraph
 
 API = "/api/v1/artifacts"
 BODY = body(paragraph("Stocks change only through flows.", "ch01/s01/p001"))
+BODY_CITES = ["ch01/s01/p001"]
 
 
 def draft(session: Session, doc: Document, version: int = 1, **fields: object) -> Artifact:
     row = Artifact(
         document_id=doc.id, anchor="ch01/s01", type=ArtifactType.SECTION_NOTE, version=version,
         origin=Origin.SKILL, skill="distil-section", skill_version="1",
-        input_hash=f"input-{version}", body=BODY, review=Review.NEEDS_REVIEW,
+        input_hash=f"input-{version}", body=BODY, citations=BODY_CITES, review=Review.NEEDS_REVIEW,
     )  # fmt: skip
     for name, value in fields.items():
         setattr(row, name, value)
@@ -41,6 +43,31 @@ def test_a_human_edit_supersedes_the_draft_and_latest_hides_it(api: TestClient, 
     assert listed(api) == {edit["id"]: False, str(old.id): True}
     assert listed(api, latest=True, review="needs_review") == {}
     assert listed(api, latest=True) == {edit["id"]: False}
+
+
+def test_body_false_lists_the_same_items_without_their_bodies(api: TestClient, session, book):
+    old = draft(session, book)
+    newer = draft(session, book, version=2)
+
+    full = api.get(API).json()["items"]
+    light = api.get(API, params={"body": False}).json()["items"]
+
+    assert [i["body"] for i in full] == [BODY, BODY]
+    assert [i["body"] for i in light] == [{}, {}]
+    assert [(i["id"], i["superseded"], i["gates"]) for i in light] == [
+        (str(newer.id), False, {}),
+        (str(old.id), True, {}),
+    ]
+    assert [i["citations"] for i in full] == [BODY_CITES, BODY_CITES]
+    assert [{**i, "body": {}, "citations": []} for i in full] == light
+
+
+def test_body_false_keeps_the_confidence_the_queue_filters_by(api: TestClient, session, book):
+    draft(session, book, body={**BODY, "confidence": "low"})
+
+    (item,) = api.get(API, params={"body": False}).json()["items"]
+
+    assert item["body"] == {"confidence": "low"}
 
 
 def test_a_rejected_newer_version_does_not_supersede_the_live_one(api: TestClient, session, book):

@@ -5,13 +5,14 @@ propagates upward through the orchestrator, e.g. a corrected section note re-que
 chapter distillation (§7).
 """
 
+import typing
 import uuid
 from typing import Any
 
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy import cast, exists, func, literal, or_
 from sqlalchemy.dialects.postgresql import JSONPATH
-from sqlalchemy.orm import aliased
+from sqlalchemy.orm import QueryableAttribute, aliased, defer
 from sqlmodel import col, select
 
 from app.api.deps import LimitDep, OffsetDep, SessionDep
@@ -60,6 +61,22 @@ def _get(session: SessionDep, artifact_id: uuid.UUID) -> Artifact:
     return artifact
 
 
+# SQLModel types the columns as their Python values; they are the mapped attributes `defer` takes.
+_HEAVY = [typing.cast(QueryableAttribute[Any], c) for c in (Artifact.body, Artifact.citations)]
+
+
+def _columns(artifact: Artifact, **override: Any) -> dict[str, Any]:
+    """The artifact's public fields; an overridden one (a deferred body) is never read."""
+    fields = (name for name in ArtifactPublic.model_fields if name not in override)
+    return {name: getattr(artifact, name) for name in fields} | override
+
+
+def _light(confidence: str | None) -> dict[str, Any]:
+    """What a list without bodies sends in their place: no citations, and of the body only
+    the confidence the review queue filters by."""
+    return {"body": {} if confidence is None else {"confidence": confidence}, "citations": []}
+
+
 @router.get("", response_model=Page[ArtifactListItem], summary="List artifacts (review queue)")
 def list_artifacts(
     session: SessionDep,
@@ -77,6 +94,13 @@ def list_artifacts(
     latest: bool = Query(
         default=False,
         description="Hide superseded rows: only versions no newer live version replaces.",
+    ),
+    body: bool = Query(
+        default=True,
+        description="`false` leaves the bodies out, and `citations` with them (the body's cites), "
+        "for lists that only show what exists (a review queue, a book's chapters): they are "
+        "most of the payload. `body` then holds only the skill's top-level `confidence`, when "
+        "it reported one.",
     ),
 ) -> Page[ArtifactListItem]:
     """Newest first. Each item says whether it is `superseded` by a newer live version of
@@ -100,18 +124,25 @@ def list_artifacts(
 
     total = session.exec(select(func.count()).select_from(Artifact).where(*filters)).one()
     matched = func.jsonb_path_query_array(Artifact.body, path, tone_vars) if tone else literal(None)
+    confidence = literal(None) if body else col(Artifact.body)["confidence"].astext
+    query = select(Artifact, matched, SUPERSEDED.label("superseded"), confidence)
+    if not body:
+        query = query.options(*(defer(c, raiseload=True) for c in _HEAVY))
     rows = session.exec(
-        select(Artifact, matched, SUPERSEDED.label("superseded"))
-        .where(*filters)
+        query.where(*filters)
         .order_by(col(Artifact.created_at).desc(), col(Artifact.version).desc())
         .offset(offset)
         .limit(limit)
     ).all()
     items = [
-        ArtifactListItem.model_validate(artifact).model_copy(
-            update={"matched_blocks": blocks, "superseded": superseded}
+        ArtifactListItem.model_validate(
+            {
+                **_columns(artifact, **({} if body else _light(confidence))),
+                "matched_blocks": blocks,
+                "superseded": superseded,
+            }
         )
-        for artifact, blocks, superseded in rows
+        for artifact, blocks, superseded, confidence in rows
     ]
     return Page(items=items, total=int(total), limit=limit, offset=offset)
 
