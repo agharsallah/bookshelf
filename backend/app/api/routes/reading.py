@@ -1,5 +1,6 @@
 """Reading progress: where you are in each chapter, and where to continue the book."""
 
+import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends
@@ -12,6 +13,7 @@ from app.schemas.reading import PositionUpdate, ReadingPositionPublic
 from app.services import documents, reading
 
 router = APIRouter(prefix="/documents", tags=["reading"])
+shelf_router = APIRouter(prefix="/reading", tags=["reading"])
 
 DocumentRef = Annotated[
     str, PathParam(min_length=1, max_length=200, description="Document uuid or slug.")
@@ -30,6 +32,20 @@ def list_positions(ref: DocumentRef, session: SessionDep) -> list[ReadingPositio
     return [
         ReadingPositionPublic.model_validate(p) for p in reading.list_positions(session, document)
     ]
+
+
+@shelf_router.get(
+    "",
+    response_model=dict[uuid.UUID, list[ReadingPositionPublic]],
+    summary="Get reading progress for every document",
+    description="Each document's positions, as `GET /documents/{ref}/reading` gives them, keyed "
+    "by document id: one call for a whole shelf. A document never opened is absent.",
+)
+def list_all_positions(session: SessionDep) -> dict[uuid.UUID, list[ReadingPositionPublic]]:
+    return {
+        document_id: [ReadingPositionPublic.model_validate(p) for p in positions]
+        for document_id, positions in reading.positions_by_document(session).items()
+    }
 
 
 @router.put(

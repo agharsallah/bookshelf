@@ -51,6 +51,7 @@ api_router.include_router(documents.router)
 api_router.include_router(nodes.router)
 api_router.include_router(notes.router)
 api_router.include_router(reading.router)
+api_router.include_router(reading.shelf_router)
 api_router.include_router(recalls.router)
 api_router.include_router(reviews.router)
 api_router.include_router(job_events.router)  # before jobs: /jobs/stream vs /jobs/{id}

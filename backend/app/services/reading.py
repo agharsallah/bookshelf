@@ -10,6 +10,8 @@ when they fall short (a short chapter whose last lines never crossed the reading
 matter nobody reads), and leaves them as they are.
 """
 
+import uuid
+from collections import defaultdict
 from collections.abc import Sequence
 from dataclasses import dataclass
 
@@ -37,6 +39,19 @@ def list_positions(session: Session, document: Document) -> Sequence[ReadingPosi
         .where(ReadingPosition.document_id == document.id)
         .order_by(col(ReadingPosition.updated_at).desc(), col(ReadingPosition.unit))
     ).all()
+
+
+def positions_by_document(session: Session) -> dict[uuid.UUID, list[ReadingPosition]]:
+    """Every document's chapter positions, each most recently read first, in one query."""
+    out: dict[uuid.UUID, list[ReadingPosition]] = defaultdict(list)
+    rows = session.exec(
+        select(ReadingPosition).order_by(
+            col(ReadingPosition.updated_at).desc(), col(ReadingPosition.unit)
+        )
+    ).all()
+    for position in rows:
+        out[position.document_id].append(position)
+    return dict(out)
 
 
 def _check(session: Session, document: Document, data: PositionInput) -> None:

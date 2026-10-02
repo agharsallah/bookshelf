@@ -56,6 +56,24 @@ def test_positions_come_most_recently_read_first(client: TestClient, session: Se
     assert units == ["ch01", "ch02"]
 
 
+def test_every_documents_positions_come_in_one_call_keyed_by_id(
+    client: TestClient, session: Session
+):
+    read, other = make_book(session), make_book(session, slug="other")
+    unread = make_book(session, slug="unread")
+    save(client, read.slug, "ch01", "ch01/s01/p001", 0.1)
+    save(client, other.slug, "ch01", "ch01/s01/p002", 0.7)
+    save(client, read.slug, "ch02", "ch02/p001", 0.5)
+
+    shelf = client.get("/api/v1/reading").json()
+
+    assert set(shelf) == {str(read.id), str(other.id)}
+    assert str(unread.id) not in shelf
+    assert shelf[str(read.id)] == client.get(url(read.slug)).json()
+    assert [p["unit"] for p in shelf[str(read.id)]] == ["ch02", "ch01"]
+    assert [p["progress"] for p in shelf[str(other.id)]] == [0.7]
+
+
 def test_the_anchor_must_lie_inside_the_unit(client: TestClient, session: Session):
     book = make_book(session)
 
