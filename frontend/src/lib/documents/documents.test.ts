@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { ArtifactPublic } from '../api/types/artifacts';
 import type { TreeNode } from '../api/types/documents';
 import { chapterStatus, pickBest, pickBestUnder } from './artifacts';
@@ -166,6 +166,30 @@ describe('fetchAll', () => {
     };
     const result = await fetchAll<number>(api, 'notes');
     expect([result.items.length, result.complete, offsets]).toEqual([130, true, [0, 100]]);
+  });
+
+  it('asks for every page after the first at once, and keeps them in order', async () => {
+    const pending: (() => void)[] = [];
+    const offsets: number[] = [];
+    const api = {
+      get: <T,>(_path: string, options?: { query?: Record<string, unknown> }) => {
+        const offset = Number(options?.query?.offset);
+        offsets.push(offset);
+        const page = { items: [offset], total: 350, limit: 100, offset } as T;
+        // Only the first page answers on its own; the others wait until all were asked for.
+        return offset === 0 ? Promise.resolve(page) : new Promise<T>((resolve) => pending.push(() => resolve(page)));
+      },
+    };
+    const result = fetchAll<number>(api, 'artifacts');
+    await vi.waitFor(() => expect(offsets).toEqual([0, 100, 200, 300]));
+    pending.reverse().forEach((answer) => answer());
+    expect((await result).items).toEqual([0, 100, 200, 300]);
+  });
+
+  it('stops at the page limit and says the list is incomplete', async () => {
+    const api = { get: <T,>() => Promise.resolve({ items: [1], total: 500, limit: 100, offset: 0 } as T) };
+    const result = await fetchAll<number>(api, 'artifacts', {}, 2);
+    expect([result.items.length, result.complete]).toEqual([2, false]);
   });
 });
 
