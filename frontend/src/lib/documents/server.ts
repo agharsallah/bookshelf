@@ -42,9 +42,10 @@ export async function getStudyArtifacts(documentId: string): Promise<ArtifactLis
   return lists.flat();
 }
 
+/** A document's artifacts; `body: false` sends them without bodies, for pages that only show what exists. */
 export async function getArtifacts(
   documentId: string,
-  filter: { type?: ArtifactType; anchor_prefix?: string; review?: ArtifactPublic['review'] } = {},
+  filter: { type?: ArtifactType; anchor_prefix?: string; review?: ArtifactPublic['review']; body?: false } = {},
 ): Promise<ArtifactListItem[]> {
   const { items } = await fetchAll<ArtifactListItem>(serverApi(), 'artifacts', { document_id: documentId, ...filter });
   return items;

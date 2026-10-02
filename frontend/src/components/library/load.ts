@@ -68,7 +68,7 @@ async function materialsOf(doc: DocumentSummary): Promise<AvailableMaterial[] | 
     const pages = await Promise.all(
       MATERIALS.map((m) =>
         serverApi().get<Page<ArtifactListItem>>('artifacts', {
-          query: { document_id: doc.id, type: m.type, latest: 'true', limit: 100 },
+          query: { document_id: doc.id, type: m.type, latest: 'true', body: false, limit: 100 },
         }),
       ),
     );

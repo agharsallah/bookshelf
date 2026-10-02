@@ -44,7 +44,8 @@ const loaded = await load(async () => {
   const doc = await getDocument(ref);
   const [tree, artifacts, jobs, skills, reading, collection] = await Promise.all([
     getOutline(doc.slug),
-    getArtifacts(doc.id),
+    // What exists per chapter and which study material is ready; no body is shown here.
+    getArtifacts(doc.id, { body: false }),
     serverApi().get<Page<JobPublic>>('jobs', { query: { document_id: doc.id, limit: 20 } }),
     // The catalogue only adds the study-material actions; the page works without it.
     serverApi()
