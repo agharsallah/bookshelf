@@ -6,7 +6,14 @@ import { fakeApi } from '../review/testing/fakeApi';
 import { CollectionPath, type PathEntry, type ShelfEntry } from './CollectionPath';
 
 const doc = (id: string, title: string, genre: ShelfEntry['genre'] = 'book'): ShelfEntry => ({ id, slug: id, title, authors: [], genre });
-const entry = (d: ShelfEntry, share = 0): PathEntry => ({ ...d, share, progress: share >= 1 ? 'Finished' : 'Not started', resume: null, note: null });
+const entry = (d: ShelfEntry, read = 0, finished = false): PathEntry => ({
+  ...d,
+  read,
+  readLabel: read >= 1 ? 'Finished' : read > 0 ? `${Math.round(read * 100)}% read` : 'Not started',
+  finished,
+  resume: null,
+  note: null,
+});
 
 const lora = doc('lora', 'LoRA', 'paper');
 const book = doc('dl', 'Deep Learning');
@@ -20,6 +27,29 @@ describe('<CollectionPath>', () => {
 
     const next = screen.getByText('Up next').closest('li') as HTMLElement;
     expect(within(next).getByRole('link', { name: 'Deep Learning' }).getAttribute('href')).toBe('/documents/dl/read?collection=ft');
+  });
+
+  it('marks a member read by hand, moving up next on, and unread again', async () => {
+    const { api, calls } = fakeApi({ 'PUT documents/lora/reading/finished': () => ({}), 'DELETE documents/lora/reading/finished': () => ({}) });
+    render(<CollectionPath collection="ft" members={[entry(lora, 0.88), entry(book)]} shelf={[]} api={api} />);
+    const first = () => screen.getAllByRole('listitem')[0] as HTMLElement;
+
+    await userEvent.click(screen.getByRole('button', { name: 'Mark LoRA read' }));
+
+    expect(within(first()).getByText('Finished')).toBeTruthy();
+    expect(within(first()).queryByText('Up next')).toBeNull();
+    expect(screen.getByText('Up next').closest('li')?.textContent).toContain('Deep Learning');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Mark LoRA unread' }));
+
+    expect(within(first()).getByText('88% read')).toBeTruthy();
+    expect(within(first()).getByText('Up next')).toBeTruthy();
+    expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual(['PUT documents/lora/reading/finished', 'DELETE documents/lora/reading/finished']);
+  });
+
+  it('offers no mark on a member its positions already finish', () => {
+    render(<CollectionPath collection="ft" members={[entry(lora, 1)]} shelf={[]} api={fakeApi().api} />);
+    expect(screen.queryByRole('button', { name: /Mark LoRA/ })).toBeNull();
   });
 
   it('reorders, saving the whole new order', async () => {

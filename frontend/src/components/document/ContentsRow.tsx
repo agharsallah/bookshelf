@@ -11,6 +11,7 @@ import type { ChapterStatus, Standing } from '../../lib/documents/artifacts';
 import type { AvailableMaterial } from '../../lib/documents/study';
 import { isFinished, percent } from '../../lib/documents/reading';
 import { pageSpan, sectionsOf } from '../../lib/documents/tree';
+import { inCollection } from '../collections/path';
 import { chapterBadge, readLink } from './contents';
 import styles from './Outline.module.css';
 
@@ -30,6 +31,8 @@ export interface ContentsRowProps {
   study?: AvailableMaterial[];
   /** The chapter you are in (where "Continue reading" goes). */
   current?: boolean;
+  /** The collection the page was reached from, kept in each reader link. */
+  collection?: string | null;
 }
 
 const STANDING_WORDS: Record<Standing, string> = {
@@ -61,8 +64,8 @@ function Chip({ label, standing }: { label: string; standing: Standing | null })
   );
 }
 
-export function ContentsRow({ unit, index, slug, status, position, open, onToggle, tools, onDistilSection, study = [], current = false }: ContentsRowProps) {
-  const read = (anchor: string) => `/documents/${slug}/read/${anchor}`;
+export function ContentsRow({ unit, index, slug, status, position, open, onToggle, tools, onDistilSection, study = [], current = false, collection = null }: ContentsRowProps) {
+  const read = (anchor: string) => inCollection(`/documents/${slug}/read/${anchor}`, collection);
   const title = unit.heading ?? `Chapter ${index + 1}`;
   const link = readLink(position, unit);
   const badge = chapterBadge(status, unit);

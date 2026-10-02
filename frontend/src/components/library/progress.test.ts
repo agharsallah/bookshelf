@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ReadingPosition } from '../../lib/api/types/documents';
-import { currentBook, mapLimit, NOT_READ, readingLabel, shelfReading } from './progress';
+import { currentBook, mapLimit, NOT_READ, readingLabel, shelfReading, withFinished } from './progress';
 
 const at = (unit: string, progress: number, updated_at: string): ReadingPosition => ({ unit, anchor: `${unit}/p001`, progress, updated_at });
 
@@ -19,6 +19,17 @@ describe('shelfReading', () => {
   it('is unread without positions and never above the whole book', () => {
     expect(shelfReading([], 10)).toEqual(NOT_READ);
     expect(shelfReading([at('a', 1, 't'), at('b', 1, 't')], 1).share).toBe(1);
+  });
+});
+
+describe('withFinished', () => {
+  it('reads a marked document as finished, keeping when it was last read', () => {
+    const partway = shelfReading([at('ch01', 0.5, '2026-09-20T00:00:00Z')], 4);
+    const marked = withFinished(partway, '2026-10-01T00:00:00Z');
+    expect(marked).toEqual({ share: 1, lastRead: '2026-09-20T00:00:00Z', resume: null });
+    expect(readingLabel(marked)).toBe('Finished');
+    expect(withFinished(NOT_READ, '2026-10-01T00:00:00Z').lastRead).toBe('2026-10-01T00:00:00Z');
+    expect(withFinished(partway, null)).toBe(partway);
   });
 });
 

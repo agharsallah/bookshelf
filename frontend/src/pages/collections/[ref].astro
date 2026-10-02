@@ -9,9 +9,9 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import { Problem } from '../../components/common/Problem';
 import CollectionDetails from '../../components/collections/CollectionDetails';
 import CollectionPath, { type PathEntry, type ShelfEntry } from '../../components/collections/CollectionPath';
-import { genreSummary, readHref, upNext } from '../../components/collections/path';
-import { mapLimit, readingLabel } from '../../components/library/progress';
-import { readingOf } from '../../components/library/load';
+import { genreSummary, memberReading, memberShare, readHref, upNext } from '../../components/collections/path';
+import { mapLimit } from '../../components/library/progress';
+import { positionsReading } from '../../components/library/load';
 import { fetchAll } from '../../lib/api/fetch-all';
 import { serverApi } from '../../lib/api/server';
 import type { DocumentSummary } from '../../lib/api/types/documents';
@@ -23,7 +23,7 @@ export const prerender = false;
 const ref = Astro.params.ref ?? '';
 const loaded = await load(async () => {
   const [collection, shelf] = await Promise.all([getCollection(serverApi(), ref), fetchAll<DocumentSummary>(serverApi(), 'documents')]);
-  const readings = await mapLimit(collection.members, 6, (m) => readingOf(m.document));
+  const readings = await mapLimit(collection.members, 6, (m) => positionsReading(m.document));
   return { collection, shelf: shelf.items, readings };
 });
 if (!loaded.ok && loaded.notFound) Astro.response.status = 404;
@@ -33,10 +33,15 @@ const entry = (d: DocumentSummary): ShelfEntry => ({ id: d.id, slug: d.slug, tit
 const members: PathEntry[] = data
   ? data.collection.members.map((m, i) => {
       const reading = data.readings[i] ?? { share: 0, lastRead: null, resume: null };
-      return { ...entry(m.document), share: reading.share, progress: readingLabel(reading), resume: reading.resume, note: m.note };
+      return {
+        ...entry(m.document),
+        ...memberReading(reading, m.document.finished_at),
+        resume: reading.resume,
+        note: m.note,
+      };
     })
   : [];
-const next = upNext(members, Object.fromEntries(members.map((m) => [m.slug, { share: m.share, lastRead: null, resume: m.resume }])));
+const next = upNext(members);
 const slug = data?.collection.slug ?? ref;
 const searchHref = `/search?${members.map((m) => `doc=${m.id}`).join('&')}`;
 ---
@@ -68,7 +73,7 @@ const searchHref = `/search?${members.map((m) => `doc=${m.id}`).join('&')}`;
           <p class="summary">{genreSummary(members)}</p>
           {next && (
             <a class="read" href={readHref(next.slug, slug, next.resume)}>
-              <span>{next.share > 0 ? 'Continue with' : members.every((m) => m.share === 0) ? 'Start with' : 'Next up'}</span>
+              <span>{memberShare(next) > 0 ? 'Continue with' : members.every((m) => memberShare(m) === 0) ? 'Start with' : 'Next up'}</span>
               <span class="read-where">{next.title}</span>
             </a>
           )}

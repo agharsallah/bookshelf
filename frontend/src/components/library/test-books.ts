@@ -21,6 +21,7 @@ export function summary(slug: string, over: Partial<DocumentSummary> = {}): Docu
     created_at: '2026-09-01T00:00:00Z',
     updated_at: '2026-09-01T00:00:00Z',
     archived_at: null,
+    finished_at: null,
     counts: { chapters: 10, blocks: 100, figures: 0, notes: 0 },
     artifacts: { draft: 0, needs_review: 0, approved: 0, rejected: 0 },
     latest_job: null,

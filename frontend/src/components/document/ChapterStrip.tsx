@@ -16,10 +16,12 @@ export interface ChapterStripProps {
   current?: string | null;
   size?: 'sm' | 'lg';
   label?: string;
+  /** The collection the page was reached from, kept in each reader link. */
+  collection?: string | null;
 }
 
-export function ChapterStrip({ slug, units, positions, current = null, size = 'sm', label = 'Chapters and how far you have read them' }: ChapterStripProps) {
-  const segments = stripSegments(slug, units, positions, current);
+export function ChapterStrip({ slug, units, positions, current = null, size = 'sm', label = 'Chapters and how far you have read them', collection = null }: ChapterStripProps) {
+  const segments = stripSegments(slug, units, positions, current, collection);
   if (segments.length === 0) return null;
   return (
     <ol className={styles.strip} data-size={size} aria-label={label}>

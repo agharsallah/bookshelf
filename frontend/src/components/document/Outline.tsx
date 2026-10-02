@@ -40,9 +40,11 @@ export interface OutlineProps {
   study?: Record<string, AvailableMaterial[]>;
   /** The chapter you are in, marked in the list. */
   current?: string | null;
+  /** The collection the page was reached from, kept in each reader link. */
+  collection?: string | null;
 }
 
-export function Outline({ documentId, slug, units, statuses, actionable, derive = [], initialJobs = [], made = {}, positions = {}, study = {}, current = null }: OutlineProps) {
+export function Outline({ documentId, slug, units, statuses, actionable, derive = [], initialJobs = [], made = {}, positions = {}, study = {}, current = null, collection = null }: OutlineProps) {
   const [open, setOpen] = useState<ReadonlySet<string>>(() => new Set());
   const run = (kind: JobKind, anchor: string) => void enqueue(browserApi, { kind, documentId, anchor });
   const { jobFor, queue, now, track } = useDeriveJobs(documentId, initialJobs);
@@ -120,6 +122,7 @@ export function Outline({ documentId, slug, units, statuses, actionable, derive 
             unit={unit}
             index={index}
             slug={slug}
+            collection={collection}
             status={statuses[unit.anchor]}
             position={positions[unit.anchor]}
             open={open.has(unit.anchor)}

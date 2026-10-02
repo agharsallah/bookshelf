@@ -1,17 +1,19 @@
 /**
  * A collection as a reading path: its members in order, each with how far you are, a note
  * on why it is there, and buttons to move it or take it out; the first unfinished one is
- * marked "up next". Below, anything else on the shelf can be added by title. Every change
+ * marked "up next". A member can be marked read (or unread) by hand, whatever its
+ * chapter positions say. Below, anything else on the shelf can be added by title. Every change
  * is saved at once and undone on failure.
  */
 import { useMemo, useState } from 'react';
 import { browserApi, type ApiClient } from '../../lib/api/client';
 import { GENRE_LABELS, type Genre } from '../../lib/api/types/documents';
 import { putMember, removeMember, reorderCollection } from '../../lib/collections/api';
+import { markFinished } from '../../lib/documents/finished';
 import { problemOf } from '../common/Problem';
 import styles from './Collections.module.css';
 import { MemberNote } from './MemberNote';
-import { moved, readHref } from './path';
+import { memberLabel, memberShare, moved, readHref, upNext, type MemberReading } from './path';
 
 export interface ShelfEntry {
   id: string;
@@ -21,11 +23,7 @@ export interface ShelfEntry {
   genre: Genre;
 }
 
-export interface PathEntry extends ShelfEntry {
-  /** 0–1 of the document read. */
-  share: number;
-  /** "12% read", "Finished", "Not started". */
-  progress: string;
+export interface PathEntry extends ShelfEntry, MemberReading {
   /** Where to pick up, when reading has started. */
   resume: string | null;
   note: string | null;
@@ -46,7 +44,7 @@ export function CollectionPath({ collection, members: initial, shelf, api = brow
   const [find, setFind] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  const next = members.find((m) => m.share < 1)?.id ?? null;
+  const next = upNext(members)?.id ?? null;
   const inside = useMemo(() => new Set(members.map((m) => m.id)), [members]);
   const matches = useMemo(() => {
     const words = find.trim().toLocaleLowerCase();
@@ -84,9 +82,15 @@ export function CollectionPath({ collection, members: initial, shelf, api = brow
 
   const add = (doc: ShelfEntry) => {
     setFind('');
-    const entry: PathEntry = { ...doc, share: 0, progress: 'Not started', resume: null, note: null };
+    const entry: PathEntry = { ...doc, read: 0, readLabel: 'Not started', finished: false, resume: null, note: null };
     void save([...members, entry], () => putMember(api, collection, doc.id));
   };
+
+  const setFinished = (m: PathEntry, finished: boolean) =>
+    void save(
+      members.map((x) => (x.id === m.id ? { ...x, finished } : x)),
+      () => markFinished(api, m.slug, finished),
+    );
 
   const setNote = (id: string, note: string | null) =>
     save(
@@ -116,10 +120,19 @@ export function CollectionPath({ collection, members: initial, shelf, api = brow
                 {m.authors.length > 0 && <p className={styles.authors}>{m.authors.join(', ')}</p>}
                 <div className={styles.progress}>
                   <span className={styles.bar} aria-hidden="true">
-                    <span style={{ inlineSize: `${Math.round(m.share * 100)}%` }} />
+                    <span style={{ inlineSize: `${Math.round(memberShare(m) * 100)}%` }} />
                   </span>
-                  <span>{m.progress}</span>
+                  <span>{memberLabel(m)}</span>
                   <a href={`/documents/${m.slug}`}>Overview</a>
+                  {m.finished ? (
+                    <button type="button" className={styles.link} onClick={() => setFinished(m, false)} aria-label={`Mark ${m.title} unread`}>
+                      Mark unread
+                    </button>
+                  ) : m.read < 1 ? (
+                    <button type="button" className={styles.link} onClick={() => setFinished(m, true)} aria-label={`Mark ${m.title} read`}>
+                      Mark read
+                    </button>
+                  ) : null}
                 </div>
                 <MemberNote note={m.note} title={m.title} onSave={(note) => setNote(m.id, note)} />
               </div>

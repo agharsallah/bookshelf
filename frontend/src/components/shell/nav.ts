@@ -5,6 +5,7 @@
 import type { ApiClient } from '../../lib/api/client';
 import type { Page } from '../../lib/api/types';
 import type { JobPublic } from '../../lib/api/types/jobs';
+import { collectionParam } from '../collections/path';
 import { loadQueue } from '../review/api';
 
 export interface NavItem {
@@ -31,6 +32,15 @@ export const NAV: readonly NavItem[] = [
   { href: '/review', label: 'Review', workshop: true, count: 'review' },
   { href: '/pipeline', label: 'Pipeline', workshop: true, count: 'pipeline' },
 ];
+
+/**
+ * The path the masthead marks: a document reached from a collection (`?collection=`)
+ * belongs to Collections, not the Library.
+ */
+export function navPath(url: Pick<URL, 'pathname' | 'searchParams'>): string {
+  const collection = collectionParam(url.searchParams);
+  return collection && url.pathname.startsWith('/documents/') ? `/collections/${collection}` : url.pathname;
+}
 
 /** Whether `path` is inside the item: its own path or one it owns, never "/" by prefix. */
 export function isCurrent(item: Pick<NavItem, 'href' | 'also' | 'claims'>, path: string): boolean {

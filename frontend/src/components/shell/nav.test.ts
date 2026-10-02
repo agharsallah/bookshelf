@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { ApiClient } from '../../lib/api/client';
-import { NAV, isCurrent, loadNavCounts, pipelineSignal } from './nav';
+import { NAV, isCurrent, loadNavCounts, navPath, pipelineSignal } from './nav';
 
 const item = (href: string) => NAV.find((i) => i.href === href)!;
 
@@ -15,6 +15,23 @@ describe('isCurrent', () => {
     expect(isCurrent(item('/graph'), '/concepts/0c00')).toBe(true);
     expect(isCurrent(item('/graph'), '/graph/concept/0c00')).toBe(true);
     expect(isCurrent(item('/search'), '/searchlight')).toBe(false);
+  });
+});
+
+describe('navPath', () => {
+  const at = (href: string) => new URL(href, 'http://localhost');
+
+  it('puts a document reached from a collection under Collections, not the Library', () => {
+    const path = navPath(at('/documents/lora/read/ch01?collection=gemma-agent'));
+    expect(path).toBe('/collections/gemma-agent');
+    expect(isCurrent(item('/collections'), path)).toBe(true);
+    expect(isCurrent(item('/library'), path)).toBe(false);
+  });
+
+  it('leaves every other page, and a malformed collection, as it is', () => {
+    expect(navPath(at('/documents/lora?collection=Not A Slug'))).toBe('/documents/lora');
+    expect(navPath(at('/documents/lora'))).toBe('/documents/lora');
+    expect(navPath(at('/library?collection=gemma-agent'))).toBe('/library');
   });
 });
 

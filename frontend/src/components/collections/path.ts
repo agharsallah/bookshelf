@@ -4,7 +4,7 @@
  * collection page, the library and the reader share it.
  */
 import { GENRE_LABELS, type Genre } from '../../lib/api/types/documents';
-import type { ShelfReading } from '../library/progress';
+import { readingLabel, type ShelfReading } from '../library/progress';
 
 /** The query param that carries a collection through the reader (`?collection=<slug>`). */
 export const COLLECTION_PARAM = 'collection';
@@ -31,9 +31,32 @@ export function placeIn<T extends { id: string }>(members: readonly T[], documen
   return { index, total: members.length, prev: members[index - 1] ?? null, next: members[index + 1] ?? null };
 }
 
+/** How far a member is read: its chapter positions, and whether it was marked finished. */
+export interface MemberReading {
+  /** 0–1 of the document read, from its chapter positions alone. */
+  read: number;
+  /** "12% read", "Finished", "Not started", from the positions alone. */
+  readLabel: string;
+  /** Marked read through (by hand, or by moving on to the next member in the reader). */
+  finished: boolean;
+}
+
+/**
+ * A member's reading from its chapter positions and its finished mark. A missing mark (an
+ * older backend that does not send it) is not finished.
+ */
+export function memberReading(positions: ShelfReading, finishedAt: string | null | undefined): MemberReading {
+  return { read: positions.share, readLabel: readingLabel(positions), finished: Boolean(finishedAt) };
+}
+
+/** 0–1 of a member read, a finished mark counting as read through. */
+export const memberShare = (m: MemberReading): number => (m.finished ? 1 : m.read);
+
+export const memberLabel = (m: MemberReading): string => (m.finished ? 'Finished' : m.readLabel);
+
 /** The first member not finished yet, else null (everything read, or an empty path). */
-export function upNext<T extends { slug: string }>(members: readonly T[], readings: Readonly<Record<string, ShelfReading>>): T | null {
-  return members.find((m) => (readings[m.slug]?.share ?? 0) < 1) ?? null;
+export function upNext<T extends MemberReading>(members: readonly T[]): T | null {
+  return members.find((m) => memberShare(m) < 1) ?? null;
 }
 
 /** "2 books, 3 papers and an article", for a collection's summary line. */
@@ -63,8 +86,13 @@ export function moved<T>(items: readonly T[], index: number, delta: number): T[]
 
 /** The reader for a member, keeping the collection in the URL so the reader offers the next one. */
 export function readHref(slug: string, collection: string, anchor?: string | null): string {
-  const path = `/documents/${encodeURIComponent(slug)}/read${anchor ? `/${anchor}` : ''}`;
-  return `${path}?${COLLECTION_PARAM}=${encodeURIComponent(collection)}`;
+  return inCollection(`/documents/${encodeURIComponent(slug)}/read${anchor ? `/${anchor}` : ''}`, collection);
+}
+
+/** `href` keeping the collection it was reached from (`?collection=`); unchanged without one. */
+export function inCollection(href: string, collection: string | null | undefined): string {
+  if (!collection) return href;
+  return `${href}${href.includes('?') ? '&' : '?'}${COLLECTION_PARAM}=${encodeURIComponent(collection)}`;
 }
 
 /** Read a collection slug from a URL's params, the way the reader and the map take it. */

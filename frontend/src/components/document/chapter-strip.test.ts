@@ -23,6 +23,11 @@ describe('stripSegments', () => {
     expect([ch03?.progress, ch03?.current, ch03?.href]).toEqual([0, false, '/documents/m/read/ch03']);
   });
 
+  it('keeps the collection the page was reached from in each link', () => {
+    const [, ch01] = stripSegments('m', units, { ch01: at('ch01', 'ch01/p9', 0.5) }, null, 'systems');
+    expect(ch01?.href).toBe('/documents/m/read/ch01/p9?collection=systems');
+  });
+
   it('names chapters by number and heading, front matter by heading only', () => {
     const [front, ch01] = stripSegments('m', units, {});
     expect([front?.title, front?.front, ch01?.title]).toEqual(['Heading front', true, '1 · Heading ch01']);

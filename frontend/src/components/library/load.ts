@@ -14,7 +14,7 @@ import type { CollectionPublic } from '../../lib/api/types/collections';
 import type { DocumentSummary, LibraryFile, ReadingPosition } from '../../lib/api/types/documents';
 import { listCollections } from '../../lib/collections/api';
 import { availableMaterials, MATERIALS, type AvailableMaterial } from '../../lib/documents/study';
-import { mapLimit, NOT_READ, shelfReading, type ShelfReading } from './progress';
+import { mapLimit, NOT_READ, shelfReading, withFinished, type ShelfReading } from './progress';
 
 /** Past this many books the list shows a count instead of fetching each book's material. */
 export const MATERIALS_BOOK_LIMIT = 24;
@@ -45,14 +45,19 @@ export function membershipsOf(collections: readonly CollectionPublic[]): Record<
   return out;
 }
 
-/** Best effort: a failure reads as not started. */
-export async function readingOf(doc: DocumentSummary): Promise<ShelfReading> {
+/** From the chapter positions alone, ignoring the finished mark. Best effort: a failure reads as not started. */
+export async function positionsReading(doc: DocumentSummary): Promise<ShelfReading> {
   try {
     const positions = await serverApi().get<ReadingPosition[]>(`documents/${encodeURIComponent(doc.slug)}/reading`);
     return shelfReading(positions, doc.counts.chapters);
   } catch {
     return NOT_READ;
   }
+}
+
+/** How far the document is read, a finished mark counting as read through. */
+export async function readingOf(doc: DocumentSummary): Promise<ShelfReading> {
+  return withFinished(await positionsReading(doc), doc.finished_at);
 }
 
 /** One small request per material type: the unfiltered list carries every chapter's bodies. */

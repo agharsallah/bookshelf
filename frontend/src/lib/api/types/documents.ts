@@ -86,6 +86,8 @@ export interface DocumentPublic {
   updated_at: string;
   /** When it was archived (off the shelf, nothing lost); null while on the shelf. */
   archived_at: string | null;
+  /** When it was marked read through (by hand, or moving on in a collection); null while not. */
+  finished_at: string | null;
 }
 
 /** `POST /documents/{ref}/restore`: back on the shelf, and the work it queued again. */

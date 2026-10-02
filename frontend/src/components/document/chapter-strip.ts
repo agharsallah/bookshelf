@@ -5,6 +5,7 @@
 import type { ReadingPosition, TreeNode } from '../../lib/api/types/documents';
 import { anchorLabel } from '../../lib/anchors';
 import { isFinished } from '../../lib/documents/reading';
+import { inCollection } from '../collections/path';
 
 export interface StripSegment {
   anchor: string;
@@ -29,6 +30,7 @@ export function stripSegments(
   units: readonly TreeNode[],
   positions: Record<string, ReadingPosition>,
   current: string | null = null,
+  collection: string | null = null,
 ): StripSegment[] {
   const total = units.reduce((sum, u) => sum + pages(u), 0) || 1;
   return units.map((unit) => {
@@ -38,7 +40,7 @@ export function stripSegments(
     const finished = isFinished(progress);
     return {
       anchor: unit.anchor,
-      href: `/documents/${slug}/read/${position && !finished ? position.anchor : unit.anchor}`,
+      href: inCollection(`/documents/${slug}/read/${position && !finished ? position.anchor : unit.anchor}`, collection),
       title: [label, unit.heading ?? unit.anchor].filter(Boolean).join(' · '),
       share: pages(unit) / total,
       progress: finished ? 1 : progress,

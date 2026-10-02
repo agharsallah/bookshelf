@@ -9,6 +9,8 @@
  */
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import AddToCollection from '../../../components/collections/AddToCollection';
+import { collectionOf } from '../../../components/collections/load';
+import { collectionParam, inCollection } from '../../../components/collections/path';
 import ChapterStrip from '../../../components/document/ChapterStrip';
 import DocumentActions from '../../../components/document/DocumentActions';
 import StudyShelf from '../../../components/document/StudyShelf.astro';
@@ -40,7 +42,7 @@ export const prerender = false;
 const ref = Astro.params.ref ?? '';
 const loaded = await load(async () => {
   const doc = await getDocument(ref);
-  const [tree, artifacts, jobs, skills, reading] = await Promise.all([
+  const [tree, artifacts, jobs, skills, reading, collection] = await Promise.all([
     getOutline(doc.slug),
     getArtifacts(doc.id),
     serverApi().get<Page<JobPublic>>('jobs', { query: { document_id: doc.id, limit: 20 } }),
@@ -52,8 +54,10 @@ const loaded = await load(async () => {
     serverApi()
       .get<ReadingPosition[]>(`documents/${encodeURIComponent(doc.slug)}/reading`)
       .catch(() => []),
+    // Reached from a collection (`?collection=`): the way back and every reader link keep it.
+    collectionOf(collectionParam(Astro.url.searchParams), doc.id),
   ]);
-  return { doc, tree, artifacts, jobs: jobs.items, skills, reading };
+  return { doc, tree, artifacts, jobs: jobs.items, skills, reading, collection };
 });
 if (!loaded.ok && loaded.notFound) Astro.response.status = 404;
 
@@ -102,6 +106,8 @@ const chapterStudy: Record<string, AvailableMaterial[]> = data
       units.map((u) => [u.anchor, availableMaterials(data.doc.slug, data.artifacts, u.anchor)]).filter(([, found]) => found.length > 0),
     )
   : {};
+const trail = data?.collection?.slug ?? null;
+const readAt = (anchor: string) => inCollection(`/documents/${data?.doc.slug ?? ref}/read/${anchor}`, trail);
 const added = data ? new Date(data.doc.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
 ---
 
@@ -124,9 +130,15 @@ const added = data ? new Date(data.doc.created_at).toLocaleDateString('en-GB', {
       <article class="document">
         <header class="title-page">
           <nav class="crumbs" aria-label="Breadcrumb">
-            <a href="/library">
-              <span aria-hidden="true">←</span> Library
-            </a>
+            {data.collection ? (
+              <a href={`/collections/${data.collection.slug}`}>
+                <span aria-hidden="true">←</span> {data.collection.name}
+              </a>
+            ) : (
+              <a href="/library">
+                <span aria-hidden="true">←</span> Library
+              </a>
+            )}
           </nav>
           <DocumentHeader
             client:visible
@@ -138,7 +150,7 @@ const added = data ? new Date(data.doc.created_at).toLocaleDateString('en-GB', {
           <div class="reading">
             <div class="primary-actions">
               {parsed && resume ? (
-                <a class="read" href={`/documents/${data.doc.slug}/read/${resume.anchor}`}>
+                <a class="read" href={readAt(resume.anchor)}>
                   <span>{resume.kind === 'continue' ? 'Continue reading' : 'Read the next chapter'}</span>
                   <span class="read-where">
                     {unitName(resume.unit)}
@@ -148,7 +160,7 @@ const added = data ? new Date(data.doc.created_at).toLocaleDateString('en-GB', {
               ) : (
                 first &&
                 parsed && (
-                  <a class="read" href={`/documents/${data.doc.slug}/read/${first.anchor}`}>
+                  <a class="read" href={readAt(first.anchor)}>
                     {started ? 'Read again' : 'Start reading'}
                   </a>
                 )
@@ -175,7 +187,7 @@ const added = data ? new Date(data.doc.created_at).toLocaleDateString('en-GB', {
                 aria-label="Progress through the book"
                 data-progress={percent(book.progress)}
               >
-                <ChapterStrip slug={data.doc.slug} units={units} positions={positions} current={resume?.unit.anchor ?? null} size="lg" />
+                <ChapterStrip slug={data.doc.slug} units={units} positions={positions} current={resume?.unit.anchor ?? null} size="lg" collection={trail} />
               </div>
             )}
           </div>
@@ -231,6 +243,7 @@ const added = data ? new Date(data.doc.created_at).toLocaleDateString('en-GB', {
                 positions={positions}
                 study={chapterStudy}
                 current={resume?.unit.anchor ?? null}
+                collection={trail}
               />
             </section>
 

@@ -28,6 +28,16 @@ export function shelfReading(positions: readonly ReadingPosition[], chapters: nu
   };
 }
 
+/**
+ * The reading with the document's finished mark folded in: read through, whatever the
+ * positions say (a short chapter's last lines that never crossed the reading line, front
+ * matter nobody reads). Unmarked, the reading is unchanged.
+ */
+export function withFinished(reading: ShelfReading, finishedAt: string | null): ShelfReading {
+  if (!finishedAt) return reading;
+  return { share: 1, lastRead: reading.lastRead ?? finishedAt, resume: null };
+}
+
 /** The book read most recently: the one that wears the bookmark ribbon. */
 export function currentBook(readings: Readonly<Record<string, ShelfReading>>): string | null {
   let best: string | null = null;

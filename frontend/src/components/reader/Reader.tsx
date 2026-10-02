@@ -58,7 +58,7 @@ import { useAttention } from '../../lib/activity/useAttention';
 import { useAutoHide, useFocusChrome, useFullscreen, useMediaQuery } from './useReaderLayout';
 import styles from './Reader.module.css';
 import { CollectionTrail, NextInCollection, type ReaderCollection } from './CollectionTrail';
-import { readHref as collectionReadHref } from '../collections/path';
+import { readHref as collectionReadHref, inCollection } from '../collections/path';
 
 export interface ReaderProps {
   document: { id: string; slug: string; title: string; language?: string };
@@ -429,7 +429,7 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
       style={prefsVars(prefs, canDragMeasure(layout)) as CSSProperties}
     >
       <ReaderToolbar
-        book={{ title: doc.title, href: `/documents/${doc.slug}` }}
+        book={{ title: doc.title, href: inCollection(`/documents/${doc.slug}`, trail) }}
         chapter={reading.heading ?? reading.anchor}
         prev={prev}
         next={next}
@@ -524,7 +524,7 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
             ) : collection ? (
               <NextInCollection collection={collection} documentId={doc.id} />
             ) : (
-              <a href={`/documents/${doc.slug}`}>Back to the document</a>
+              <a href={inCollection(`/documents/${doc.slug}`, trail)}>Back to the document</a>
             )}
           </footer>
         </article>

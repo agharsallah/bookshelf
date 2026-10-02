@@ -39,6 +39,12 @@ describe('<Outline> reading progress', () => {
     expect(within(delays!).getByRole('link', { name: 'Delays' }).getAttribute('href')).toBe('/documents/meadows/read/ch03');
     expect(delays?.textContent).not.toContain('%');
   });
+
+  it('keeps the collection the page was reached from in every reader link', () => {
+    render(<Outline documentId="d1" slug="meadows" units={units} statuses={{}} actionable={false} collection="systems" />);
+
+    expect(screen.getByRole('link', { name: 'Flows' }).getAttribute('href')).toBe('/documents/meadows/read/ch02?collection=systems');
+  });
 });
 
 describe('<Outline> chapter details', () => {

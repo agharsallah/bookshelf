@@ -24,7 +24,7 @@ import ThemeToggle from '../components/shell/ThemeToggle.astro';
 import WorkshopToggle from '../components/shell/WorkshopToggle.astro';
 import CommandPalette from '../components/search/CommandPalette';
 import NowPlayingBar from '../components/listen/NowPlayingBar';
-import { NAV, isCurrent } from '../components/shell/nav';
+import { NAV, isCurrent, navPath } from '../components/shell/nav';
 import { themeBootstrapScript } from '../lib/theme';
 import { workshopBootstrapScript } from '../lib/workshop';
 
@@ -37,7 +37,7 @@ interface Props {
 
 const { title, description = 'Books and articles, distilled and cited.', width = 'wide' } = Astro.props;
 const pageTitle = title ? `${title} — ${PUBLIC_APP_NAME}` : PUBLIC_APP_NAME;
-const path = Astro.url.pathname;
+const path = navPath(Astro.url);
 const reading = NAV.filter((item) => !item.workshop);
 const workshop = NAV.filter((item) => item.workshop);
 const afterSwapScript = `document.addEventListener('astro:after-swap', () => { ${themeBootstrapScript} ${workshopBootstrapScript} });`;

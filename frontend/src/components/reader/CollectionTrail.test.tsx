@@ -1,5 +1,7 @@
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
+import { fakeApi } from '../review/testing/fakeApi';
 import { CollectionTrail, NextInCollection, type ReaderCollection } from './CollectionTrail';
 
 const collection: ReaderCollection = {
@@ -33,5 +35,16 @@ describe('<NextInCollection>', () => {
 
     rerender(<NextInCollection collection={collection} documentId="b" />);
     expect(screen.getByRole('link').getAttribute('href')).toBe('/collections/ft');
+  });
+
+  it('marks the document finished as you follow the link on', async () => {
+    const { api, calls } = fakeApi({ 'PUT documents/a/reading/finished': () => ({}) });
+    render(<NextInCollection collection={collection} documentId="a" api={api} />);
+    const link = screen.getByRole('link');
+    link.addEventListener('click', (e) => e.preventDefault()); // jsdom does not navigate
+
+    await userEvent.click(link);
+
+    expect(calls).toEqual([{ method: 'PUT', path: 'documents/a/reading/finished', body: undefined }]);
   });
 });

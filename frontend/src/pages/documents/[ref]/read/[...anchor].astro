@@ -26,26 +26,13 @@ import { prepareBlocks } from '../../../../lib/prepare';
 import { renderInlineMath } from '../../../../lib/katex';
 import { loadPaperReading } from '../../../../components/reader/paper/load';
 import { collectionParam } from '../../../../components/collections/path';
-import type { ReaderCollection } from '../../../../components/reader/CollectionTrail';
-import { getCollection } from '../../../../lib/collections/api';
+import { collectionOf } from '../../../../components/collections/load';
 
 export const prerender = false;
 
 const ref = Astro.params.ref ?? '';
 const requested = Astro.params.anchor?.replace(/\/+$/, '') || null;
 const collectionSlug = collectionParam(Astro.url.searchParams);
-
-/** The collection named in the URL, when this document is in it; best effort. */
-async function readerCollection(documentId: string): Promise<ReaderCollection | null> {
-  if (!collectionSlug) return null;
-  try {
-    const c = await getCollection(serverApi(), collectionSlug);
-    const members = c.members.map((m) => ({ id: m.document.id, slug: m.document.slug, title: m.document.title, genre: m.document.genre }));
-    return members.some((m) => m.id === documentId) ? { slug: c.slug, name: c.name, members } : null;
-  } catch {
-    return null;
-  }
-}
 
 const loaded = await load(async () => {
   const doc = await getDocument(ref);
@@ -68,7 +55,7 @@ const loaded = await load(async () => {
     doc.genre === 'paper'
       ? loadPaperReading({ api, slug: doc.slug, unit: unit.anchor, units, artifactsOf: (type) => getArtifacts(doc.id, { type }), renderMath: renderInlineMath })
       : Promise.resolve(null),
-    readerCollection(doc.id),
+    collectionOf(collectionSlug, doc.id),
   ]);
   // Unknown (the call failed) counts as read: better no prediction card than a wrong one.
   const unread = positions !== null && !positions.some((p) => p.unit === unit.anchor);
