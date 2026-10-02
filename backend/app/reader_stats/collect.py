@@ -47,15 +47,14 @@ _CONTAINERS = _scoped(
 )
 
 _CHAPTERS = _scoped(
-    f"""
+    """
     select c.id, c.document_id, c.anchor, coalesce(c.heading, c.anchor), c.page_from, c.page_to,
-           coalesce(c.meta->>'front_matter' = 'true', false),
-           coalesce(sum({_WORDS.format(col="n.text")}) filter (where n.text is not null), 0)
+           coalesce(c.meta->>'front_matter' = 'true', false), coalesce(sum(n.words), 0)
     from nodes c
     left join nodes n on n.document_id = c.document_id and starts_with(n.anchor, c.anchor || '/')
-    where c.kind = 'chapter' and {{scope}}
+    where c.kind = 'chapter' and {scope}
     group by c.id
-    """,  # noqa: S608  (constant SQL fragment)
+    """,
     col="c.document_id",
 )
 

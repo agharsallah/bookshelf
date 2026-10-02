@@ -17,7 +17,6 @@ from app.models.enums import JobKind, JobState, Review
 from app.stats.facts import ArtifactFact, BookFacts, CallFact, ChapterFact, JobFact, Shape
 
 ELEMENT_KINDS = ("figure", "table", "code", "math")
-_WORDS = "coalesce(array_length(regexp_split_to_array(btrim({col}), '\\s+'), 1), 0)"
 
 _JOBS = text(
     """
@@ -64,26 +63,25 @@ _CONTAINERS = text(
 )
 
 _CHAPTERS = text(
-    f"""
+    """
     select c.id, c.document_id, c.anchor, c.heading, c.page_from, c.page_to,
            coalesce(c.meta->>'skip' = 'true', false),
            count(n.id) filter (where n.kind = 'section'),
            count(n.id) filter (where n.kind in ('figure', 'table', 'code', 'math')),
-           coalesce(sum({_WORDS.format(col="n.text")}) filter (where n.text is not null), 0)
+           coalesce(sum(n.words), 0)
     from nodes c
     left join nodes n on n.document_id = c.document_id and starts_with(n.anchor, c.anchor || '/')
     where c.kind = 'chapter' and c.document_id = any(:ids)
     group by c.id
-    """  # noqa: S608  (constant SQL fragment)
+    """
 )
 
 _SHAPE = text(
-    f"""
-    select document_id, kind, count(*),
-           coalesce(sum({_WORDS.format(col="text")}) filter (where text is not null), 0)
+    """
+    select document_id, kind, count(*), coalesce(sum(words), 0)
     from nodes where document_id = any(:ids)
     group by document_id, kind
-    """  # noqa: S608  (constant SQL fragment)
+    """
 )
 
 
