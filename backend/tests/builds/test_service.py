@@ -9,6 +9,7 @@ from app.models import Build, Document, Job
 from app.models.build import BuildState, BuildVisibility, StopReason
 from app.models.enums import JobKind, Origin, Review
 from app.schemas.build_options import BuildAdvanced
+from app.schemas.build_target import BuildTarget
 from app.schemas.builds import (
     BuildCreate,
     BuildOptionsInput,
@@ -50,6 +51,7 @@ def test_create_queues_the_plan_with_defaults_filled(session: Session):
         "claude_attribution": False, "link_paper": True, "stack": None, "allow_web": False,
         "context": {"sections": None, "notes": None}, "references": [],
         "advanced": BuildAdvanced().model_dump(mode="json"),
+        "target": BuildTarget().model_dump(mode="json"),
     }  # fmt: skip
     assert build.stops == {"max_minutes": 90, "max_commits": 30, "max_budget_usd": None,
                            "done_when": []}  # fmt: skip

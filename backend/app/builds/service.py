@@ -6,33 +6,39 @@
 
 Each transition checks the state it leaves (`ConflictError` otherwise) and queues its job in
 the same commit. Options and stops are filled in layers: the form, then the preset, then the
-settings (`app_settings.build_defaults`). `record_progress` and `finish` are what the runner
-calls while and after it runs.
+settings (`app.builds.options`, preflight included). `record_progress` and `finish` are what
+the runner calls while and after it runs.
 """
 
-import re
 import uuid
 from collections.abc import Iterable, Mapping
-from dataclasses import asdict
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
-from pydantic import ValidationError
 from sqlmodel import Session, col, select
 
-from app.builds.agents import AgentPackage, Preset, load_agent
+from app.builds.agents import AgentPackage, load_agent
+from app.builds.github import GitHub, web_url
+from app.builds.options import (
+    check_shelf_references,
+    checked_options,
+    merge_fields,
+    merge_options,
+    resolve_options,
+    resolve_stops,
+    suggested_repo_name,
+)
 from app.builds.plans import record_plan
-from app.builds.preflight import Probe, preflight
+from app.builds.preflight import Probe
 from app.core.config import get_settings
 from app.core.errors import ConflictError, NotFoundError
 from app.jobs.queue import JobSpec
 from app.models import Build, Document
-from app.models.build import BuildState, BuildVisibility, StopReason
-from app.models.enums import Genre, JobKind, Origin
-from app.schemas.build_options import BuildAdvanced
+from app.models.build import BuildState, StopReason
+from app.models.enums import JobKind, Origin
 from app.schemas.builds import (
     BuildCreate,
-    BuildOptions,
     BuildOptionsInput,
     BuildPlan,
     BuildStops,
@@ -43,7 +49,6 @@ from app.services.errors import InvalidInputError
 
 MAX_EVENTS = 200
 FINAL_STATES = (BuildState.DONE, BuildState.STOPPED, BuildState.FAILED)
-_NOT_NAME = re.compile(r"[^a-z0-9._-]+")
 
 
 def _now() -> datetime:
@@ -77,104 +82,6 @@ def list_builds(session: Session, document_id: uuid.UUID) -> list[Build]:
             .order_by(col(Build.created_at).desc())
         )
     )
-
-
-# --- options and stops --------------------------------------------------------------------
-
-
-def suggested_repo_name(document: Document, preset: str | None) -> str:
-    """The name a build gets until its plan suggests one: `<paper slug>[-<preset>]`."""
-    raw = f"{document.slug}-{preset}" if preset else f"{document.slug}-build"
-    return _NOT_NAME.sub("-", raw.lower()).strip("-.")[:100] or "paper-build"
-
-
-def resolve_options(
-    given: BuildOptionsInput, preset: Preset | None, defaults: app_settings.BuildDefaults,
-    *, repo_name: str,
-) -> BuildOptions:  # fmt: skip
-    """The form's options over the preset's stack over the settings. A `local` build
-    whose pull request delivery came from the settings (not the form) pushes nowhere, so it
-    falls back to `push_main`; one asked for explicitly is refused by the schema."""
-    visibility = given.visibility or defaults.visibility
-    advanced = {**asdict(defaults.advanced),
-                **(given.advanced.changes() if given.advanced else {})}  # fmt: skip
-    if visibility is BuildVisibility.LOCAL:
-        advanced["delivery"] = "push_main"
-    return _validated(
-        repo_name=given.repo_name or repo_name,
-        visibility=visibility,
-        owner=given.owner if given.owner is not None else defaults.owner,
-        claude_attribution=_first(given.claude_attribution, defaults.claude_attribution),
-        link_paper=_first(given.link_paper, defaults.link_paper),
-        stack=given.stack or (preset.stack if preset else None),
-        allow_web=_first(given.allow_web, False),
-        context=given.context.changes() if given.context else {},
-        references=[r.model_dump(mode="json") for r in given.references or []],
-        advanced=BuildAdvanced.model_validate(advanced).model_dump(mode="json"),
-    )
-
-
-def _validated(**fields: Any) -> BuildOptions:
-    """`BuildOptions` from merged layers; a combination that does not hold is a `422`."""
-    try:
-        return BuildOptions.model_validate(fields)
-    except ValidationError as exc:
-        problems = "; ".join(str(e["msg"]).removeprefix("Value error, ") for e in exc.errors())
-        raise InvalidInputError(f"Invalid build options: {problems}", field="body.options") from exc
-
-
-def merge_options(current: Mapping[str, Any], given: BuildOptionsInput | None) -> BuildOptions:
-    """`current` (stored options) with what `given` sends: plain fields replaced when sent,
-    `context` and `advanced` merged key by key, `references` replaced as a list."""
-    if given is None:
-        return _validated(**current)
-    changes = given.changes()
-    merged = {**current, **{k: v for k, v in changes.items() if k not in _NESTED}}
-    for key in _NESTED:
-        if key in changes:
-            merged[key] = {**(current.get(key) or {}), **changes[key]}
-    return _validated(**merged)
-
-
-_NESTED = ("context", "advanced")
-
-
-def check_shelf_references(session: Session, options: BuildOptions) -> None:
-    """Every shelf reference names a paper on the shelf (`422` otherwise)."""
-    for ref in options.references:
-        if ref.kind != "shelf":
-            continue
-        paper = session.get(Document, ref.document_id)
-        if paper is None or paper.genre is not Genre.PAPER:
-            raise InvalidInputError(
-                f"Reference {ref.title!r}: no paper {ref.document_id} on the shelf.",
-                field="body.options.references",
-            )
-
-
-def resolve_stops(
-    given: BuildStopsInput, preset: Preset | None, defaults: app_settings.BuildDefaults
-) -> BuildStops:
-    """The form's stops over the preset's over the settings; minutes capped by the hard cap."""
-    from_preset = preset.stops if preset else {}
-    minutes = _first(given.max_minutes, from_preset.get("max_minutes"), defaults.max_minutes)
-    return BuildStops(
-        max_minutes=min(minutes, get_settings().build_hard_cap_minutes),
-        max_commits=_first(given.max_commits, from_preset.get("max_commits"),
-                           defaults.max_commits),
-        max_budget_usd=_first(given.max_budget_usd, from_preset.get("max_budget_usd"),
-                              defaults.max_budget_usd),
-        done_when=_first(given.done_when, from_preset.get("done_when"), []),
-    )  # fmt: skip
-
-
-def _first(*values: Any) -> Any:
-    return next((v for v in values if v is not None), None)
-
-
-def _merge(current: Mapping[str, Any], override: Any) -> dict[str, Any]:
-    """`current` with every field the override sets (a pydantic model or None)."""
-    return {**current, **(override.model_dump(exclude_none=True) if override else {})}
 
 
 # --- jobs ---------------------------------------------------------------------------------
@@ -214,6 +121,7 @@ def create_build(
     *,
     probe: Probe | None = None,
     agent: AgentPackage | None = None,
+    github: GitHub | None = None,
 ) -> Build:
     """Preflight, then a `planning` build with its `build_plan` job. `ConflictError` with the
     failing checks in `details` when preflight finds an error."""
@@ -225,12 +133,7 @@ def create_build(
     options = resolve_options(body.options, preset, defaults,
                               repo_name=suggested_repo_name(paper, body.preset))  # fmt: skip
     check_shelf_references(session, options)
-    check = preflight(session, paper, visibility=options.visibility, probe=probe)
-    if not check.ready:
-        raise ConflictError(
-            "This build cannot start yet: " + "; ".join(c.message for c in check.errors),
-            [asdict(c) for c in check.errors],
-        )
+    options = checked_options(session, paper, options, probe=probe, github=github)
     build = Build(
         document_id=paper.id,
         agent=agent.name,
@@ -238,6 +141,7 @@ def create_build(
         goal=body.goal,
         options=options.model_dump(mode="json"),
         stops=resolve_stops(body.stops, preset, defaults).model_dump(mode="json"),
+        repo_url=web_url(options.target.repo) if options.target.repo else None,
     )
     session.add(build)
     session.flush()
@@ -271,6 +175,7 @@ def approve(
     stops: BuildStopsInput | None = None,
     *,
     probe: Probe | None = None,
+    github: GitHub | None = None,
 ) -> Build:
     """Start building. A repo name never typed by you takes the plan's suggestion."""
     _require(build, BuildState.PLANNED, action="approve")
@@ -278,20 +183,18 @@ def approve(
         raise ConflictError("This build has no plan to approve.")
     paper = session.get(Document, build.document_id)
     assert paper is not None  # noqa: S101 - the foreign key cascades
-    new_options = merge_options(build.options, options)
-    if not (options and options.repo_name) and new_options.repo_name == suggested_repo_name(
-        paper, build.preset
+    new_options = merge_options(build.options, options, repo_name=build.plan.get("repo_name"))
+    if (
+        not new_options.target.existing
+        and not (options and options.repo_name)
+        and new_options.repo_name == suggested_repo_name(paper, build.preset)
     ):
         repo_name = build.plan.get("repo_name") or new_options.repo_name
         new_options = new_options.model_copy(update={"repo_name": repo_name})
     check_shelf_references(session, new_options)
-    new_stops = BuildStops.model_validate(_merge(build.stops, stops))
-    check = preflight(session, paper, visibility=new_options.visibility, probe=probe)
-    if not check.ready:
-        raise ConflictError(
-            "This build cannot start yet: " + "; ".join(c.message for c in check.errors),
-            [asdict(c) for c in check.errors],
-        )
+    new_stops = BuildStops.model_validate(merge_fields(build.stops, stops))
+    new_options = checked_options(session, paper, new_options, probe=probe, github=github,
+                           own=build.workspace is not None)  # fmt: skip
     build.options = new_options.model_dump(mode="json")
     build.stops = new_stops.model_dump(mode="json")
     _start(build)
@@ -317,7 +220,9 @@ def continue_build(
 ) -> Build:
     """Resume the same session in the same repo, with new stops and maybe a new goal."""
     _require(build, BuildState.DONE, BuildState.STOPPED, action="continue")
-    build.stops = BuildStops.model_validate(_merge(build.stops, stops)).model_dump(mode="json")
+    build.stops = BuildStops.model_validate(merge_fields(build.stops, stops)).model_dump(
+        mode="json"
+    )
     _start(build)
     session.add(build)
     build.run_job_id = _queue(session, build, JobKind.BUILD_RUN, {"resume": True, "goal": goal})
@@ -325,9 +230,15 @@ def continue_build(
 
 
 def delete_build(session: Session, build: Build) -> None:
-    """Forget a build; its workspace and GitHub repo are left alone."""
+    """Forget a build; its workspace and GitHub repo are left alone, but a local target's
+    worktree, if one is still attached, is removed (its branch stays)."""
+    from app.builds.existing_repo import release_workspace
+
     if build.state in (BuildState.BUILDING, BuildState.STOPPING):
         raise ConflictError(f"Cannot delete a build that is {build.state.value}: stop it first.")
+    settings = get_settings()
+    repo = Path(settings.build_workspace).expanduser() / str(build.id) / "repo"
+    release_workspace(build, repo, git_bin=settings.git_bin)
     session.delete(build)
     session.commit()
 
