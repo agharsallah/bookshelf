@@ -11,6 +11,7 @@ import type { HighlightColor } from '../../lib/contract';
 import { anchorLabel } from '../../lib/anchors';
 import { bookProgress, continueTarget, percent, positionsByUnit, type BookProgress, type ContinueTarget } from '../../lib/documents/reading';
 import { defaultUnit } from '../../lib/documents/tree';
+import type { BookStanding } from '../cheer/lines';
 
 /** Until parsing succeeds a document has no chapters to read. */
 const UNREADABLE = new Set(['registered', 'parsing', 'parse_failed']);
@@ -108,6 +109,13 @@ export function dayPlan(hero: Hero, due: number | null): string {
   return 'Add a book to the library and it opens here, ready to read.';
 }
 
+/** The book "Pick up" points at, for the encouragement after the plan; null with none to read. */
+export function heroStanding(hero: Hero): BookStanding | null {
+  if (hero.kind !== 'start' && hero.kind !== 'continue') return null;
+  const { progress, finished, total } = hero.book.progress;
+  return { title: shortTitle(hero.book.doc.title), progress, finished, total, kind: hero.kind };
+}
+
 export interface WeekDay {
   /** `YYYY-MM-DD`, local to the reader's zone. */
   date: string;
@@ -145,6 +153,14 @@ export function weekDays(daily: readonly DayPoint[], today: string): WeekDay[] {
       today: date === today,
     };
   });
+}
+
+/** Whether `date` counts toward the streak: tracked time or any action that day. */
+export function activeOn(daily: readonly DayPoint[], date: string): boolean {
+  const day = daily.find((d) => d.date === date);
+  if (!day) return false;
+  const seconds = Object.values(day.seconds).reduce((sum, s) => sum + (s ?? 0), 0);
+  return seconds > 0 || day.notes + day.reviews + day.recalls + day.moves > 0;
 }
 
 /** A marked passage brought back from your margins. */

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { DocumentSummary, ReadingPosition, TreeNode } from '../../lib/api/types/documents';
 import type { NoteDetail } from '../../lib/api/types/notes';
 import type { DayPoint } from '../../lib/api/types/readerStats';
-import { alsoReading, dayOffset, dayPlan, marginNotes, markedWhen, pickHero, readShare, shortTitle, todayBook, trimPassage, unitName, weekDays } from './today';
+import { activeOn, alsoReading, dayOffset, dayPlan, heroStanding, marginNotes, markedWhen, pickHero, readShare, shortTitle, todayBook, trimPassage, unitName, weekDays } from './today';
 
 const doc = (slug: string, over: Partial<DocumentSummary> = {}) =>
   ({ id: slug, slug, title: `Title ${slug}`, authors: [], status: 'linked', page_count: null, created_at: '2026-09-01T00:00:00Z', updated_at: '2026-09-01T00:00:00Z', ...over }) as unknown as DocumentSummary;
@@ -145,5 +145,25 @@ describe('margins', () => {
       'Marked 7 days ago',
     ]);
     expect(markedWhen('2026-06-02T12:00:00Z', now)).toBe('Marked on 2 June 2026');
+  });
+});
+
+describe('activeOn', () => {
+  const day = (date: string, over: Partial<DayPoint> = {}): DayPoint => ({ date, seconds: {}, notes: 0, reviews: 0, recalls: 0, moves: 0, ...over });
+
+  it('counts a day with time or any action toward the streak', () => {
+    expect(activeOn([day('2026-10-03', { seconds: { read: 60 } })], '2026-10-03')).toBe(true);
+    expect(activeOn([day('2026-10-03', { reviews: 1 })], '2026-10-03')).toBe(true);
+    expect(activeOn([day('2026-10-03')], '2026-10-03')).toBe(false);
+    expect(activeOn([day('2026-10-02', { notes: 2 })], '2026-10-03')).toBe(false);
+  });
+});
+
+describe('heroStanding', () => {
+  it('describes the book to pick up, and nothing without one', () => {
+    const book = todayBook(doc('a', { title: 'Deep Work: Rules for Focused Success' }), units, [at('ch01', 1, '2026-09-20T10:00:00Z'), at('ch02', 0.5, '2026-09-21T10:00:00Z')]);
+    const standing = heroStanding(pickHero([book]));
+    expect(standing).toMatchObject({ title: 'Deep Work', kind: 'continue', finished: 1, total: 2 });
+    expect(heroStanding({ kind: 'empty' })).toBeNull();
   });
 });

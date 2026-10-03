@@ -1,0 +1,40 @@
+.streak {
+  display: grid;
+  justify-items: inherit;
+  gap: var(--space-1);
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.goal {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.meter {
+  display: block;
+  inline-size: 4rem;
+  block-size: 4px;
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  background: var(--rule);
+}
+
+.meter > span {
+  display: block;
+  block-size: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+}
+
+.goal[data-done] .meter > span {
+  background: var(--tone-insight);
+}
+
+/* The encouragement after Today's plan, and under a result: a softer second voice. */
+.aside {
+  color: var(--ink-3);
+}

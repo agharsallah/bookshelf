@@ -1,11 +1,14 @@
 ---
 /**
  * Everything on Today that needs the backend but the week, rendered as a server island
- * (`server:defer` in pages/index.astro): the line that says what today holds, the cards
+ * (`server:defer` in pages/index.astro): the line that says what today holds (with a word
+ * of encouragement about the book you are in, components/cheer), the cards
  * due for review, a passage from your margins, the book to pick up with the others still
  * open, and the next paper. It takes no props, so the route cache finds it again
  * (lib/route-cache.ts). Each part degrades alone when its data fails.
  */
+import { Cheer } from '../cheer/Cheer';
+import { bookCheer } from '../cheer/lines';
 import { Problem } from '../common/Problem';
 import NextPaperCard from '../papers/next/NextPaperCard.astro';
 import { loadNextPaper } from '../papers/next/load';
@@ -16,7 +19,7 @@ import { TODAY_CACHE } from '../../lib/route-cache';
 import { loadBooks, loadDue, loadMargin } from './load';
 import Margins from './Margins';
 import PickUp from './PickUp.astro';
-import { alsoReading, dayPlan, localDate, pickHero, type BookIndex } from './today';
+import { alsoReading, dayPlan, heroStanding, localDate, pickHero, type BookIndex } from './today';
 
 const today = localDate();
 const books = load(loadBooks);
@@ -32,12 +35,20 @@ const [loaded, due, nextPaper, margin, titles] = await Promise.all([
 if (loaded.ok && Astro.cache.enabled) Astro.cache.set(TODAY_CACHE);
 const hero = pickHero(loaded.ok ? loaded.value : []);
 const others = loaded.ok ? alsoReading(loaded.value, hero) : [];
+const cheer = bookCheer(heroStanding(hero), today);
 ---
 
 <div class="today">
   {
     loaded.ok ? (
-      <p class="plan">{dayPlan(hero, due?.total ?? null)}</p>
+      <p class="plan">
+        {dayPlan(hero, due?.total ?? null)}
+        {cheer && (
+          <span class="cheer">
+            <Cheer line={cheer} />
+          </span>
+        )}
+      </p>
     ) : (
       <Problem title="Your books could not be loaded." problem={loaded.problem} />
     )
@@ -66,6 +77,11 @@ const others = loaded.ok ? alsoReading(loaded.value, hero) : [];
     font-family: var(--font-read);
     font-size: var(--text-md);
     line-height: 1.4;
+  }
+
+  .cheer {
+    margin-inline-start: 0.3em;
+    color: var(--ink-3);
   }
 
   .columns {

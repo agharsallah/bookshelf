@@ -1,23 +1,24 @@
 ---
 /**
  * The week behind today (a server island of its own, `server:defer` in pages/index.astro):
- * seven small bars of time with your books, today's day marked, and the week's time and
- * streak in a line. Reader statistics are slow to compute, so the rest of Today never
+ * seven small bars of time with your books, today's day marked, the week's time in a line,
+ * and under it where your streak stands and today's minutes against your goal (StreakNote). Reader statistics are slow to compute, so the rest of Today never
  * waits on them; when they cannot load the strip is simply absent.
  */
+import StreakNote from '../cheer/StreakNote';
 import { formatTime } from '../you/format';
 import { TODAY_CACHE } from '../../lib/route-cache';
 import { loadWeek } from './load';
-import { localDate, weekDays } from './today';
+import { activeOn, localDate, weekDays } from './today';
 
 const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
 const stats = await loadWeek(tz);
 if (stats && Astro.cache.enabled) Astro.cache.set(TODAY_CACHE);
-const days = stats ? weekDays(stats.daily, localDate()) : [];
+const today = localDate();
+const days = stats ? weekDays(stats.daily, today) : [];
 const streak = stats?.totals.current_streak ?? 0;
 const seconds = stats?.totals.seconds ?? 0;
-const summary =
-  seconds === 0 ? 'No reading yet this week.' : `${formatTime(seconds)} this week${streak > 1 ? `, ${streak} days in a row` : ''}.`;
+const summary = seconds === 0 ? 'No reading yet this week.' : `${formatTime(seconds)} this week.`;
 ---
 
 {
@@ -32,6 +33,13 @@ const summary =
         ))}
       </ol>
       <span class="summary">{summary}</span>
+      <StreakNote
+        client:idle
+        streak={streak}
+        longest={stats.totals.longest_streak}
+        activeToday={activeOn(stats.daily, today)}
+        todaySeconds={days.find((d) => d.today)?.seconds ?? 0}
+      />
     </a>
   )
 }
