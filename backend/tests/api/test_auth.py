@@ -35,9 +35,11 @@ def test_writes_without_the_api_key_are_401_and_change_nothing(
 # Mutating verbs that stay open on purpose: `POST /search` is a read-only query sent as
 # POST for its body; it never writes and never runs a model. Nor does the build context
 # preview (`POST …/builds/context/render`): it renders the form's options, saves nothing.
+# Nor does a build target's inspection (`POST /builds/target/inspect`): gh and git reads.
 OPEN_WRITES = {
     ("post", "/api/v1/search"),
     ("post", "/api/v1/papers/{ref}/builds/context/render"),
+    ("post", "/api/v1/builds/target/inspect"),
 }
 MUTATING = {"post", "put", "patch", "delete"}
 

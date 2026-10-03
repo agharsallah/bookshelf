@@ -5,7 +5,12 @@ Plan first (`POST /papers/{ref}/builds` queues `build_plan`), approve, then the 
 `GET /builds/{id}`. Wrong-state transitions are `409`, as are preflight errors (the failing
 checks in `details`).
 
-The fixed `/builds/presets` and `/builds/preflight` are declared before `/builds/{build_id}`,
+Building into an existing repository (§7c): `GET /builds/repos` lists what you can push to
+(cached 60 s) and `POST /builds/target/inspect` checks a target and surveys it; it only
+reads, so like the context render it needs no API key.
+
+The fixed `/builds/presets`, `/builds/preflight`, `/builds/repos` and
+`/builds/target/inspect` are declared before `/builds/{build_id}`,
 and `/papers/{ref}/builds/context` before anything a `{ref}/builds/<x>` could be read as.
 The context routes (§7) show exactly what the planner and the agent read; the plan
 version routes (§7b) list and restore what the plan has been.
@@ -19,12 +24,16 @@ from sqlmodel import Session
 
 from app.api.deps import SessionDep
 from app.api.routes.documents import DocumentRef
-from app.builds import context_view, plans, service
+from app.builds import context_view, plans, service, targets
 from app.builds.agents import load_agent
+from app.builds.github import GhCli, GitHub, GitHubError
 from app.builds.preflight import Probe, preflight
+from app.core.config import get_settings
+from app.core.errors import ConflictError
 from app.core.security import require_api_key
 from app.models import Build
 from app.models.build import BuildVisibility
+from app.schemas.build_target import BuildTarget, RepoChoice, TargetInspection
 from app.schemas.builds import (
     Approve,
     BuildContextView,
@@ -41,6 +50,7 @@ from app.schemas.builds import (
     Replan,
 )
 from app.services import papers
+from app.services.errors import InvalidInputError
 
 router = APIRouter(tags=["builds"])
 
@@ -50,7 +60,13 @@ def get_probe() -> Probe | None:
     return None
 
 
+def get_github() -> GitHub | None:
+    """The GitHub client targets are inspected with; None is the real `gh` (tests override)."""
+    return None
+
+
 ProbeDep = Annotated[Probe | None, Depends(get_probe)]
+GitHubDep = Annotated[GitHub | None, Depends(get_github)]
 _WRITE = [Depends(require_api_key)]
 
 
@@ -91,6 +107,47 @@ def get_preflight(
 
 
 @router.get(
+    "/builds/repos",
+    response_model=list[RepoChoice],
+    summary="GitHub repositories a build can go into",
+    description="Yours and your organizations' (the 100 updated last, archived ones left "
+    "out), filtered by `q` on the name and description; `can_push` says whether you may "
+    "push. The listing is cached for 60 s; `409` when gh cannot list them.",
+)
+def list_repos(
+    github: GitHubDep,
+    q: Annotated[str, Query(max_length=100, description="Words to find.")] = "",
+) -> list[RepoChoice]:
+    settings = get_settings()
+    try:
+        rows = targets.list_repos(
+            github or GhCli(settings.gh_bin),
+            q,
+            key=settings.gh_bin if github is None else str(id(github)),
+        )
+    except GitHubError as exc:
+        raise ConflictError(str(exc)) from exc
+    return [RepoChoice.model_validate(r) for r in rows]
+
+
+@router.post(
+    "/builds/target/inspect",
+    response_model=TargetInspection,
+    summary="Check an existing repository as a build target, and survey it",
+    description="The checks preflight runs for this target (each problem with its fix), the "
+    "default branch, the branches, whether the folder exists and is empty at the base, and "
+    "the survey the planner and the agent will read. It only reads (gh api, git), so it "
+    "needs no API key. A `new` target has nothing to inspect: `422`.",
+)
+def inspect_target(body: BuildTarget, github: GitHubDep) -> TargetInspection:
+    if not body.existing:
+        raise InvalidInputError("Only an existing repository can be inspected.", field="body.kind")
+    settings = get_settings()
+    client = github if github is not None or body.kind == "local" else GhCli(settings.gh_bin)
+    return targets.inspect_target(body, github=client, git_bin=settings.git_bin)
+
+
+@router.get(
     "/papers/{ref}/builds/context",
     response_model=ContextPreview,
     summary="What a build of this paper can read",
@@ -114,9 +171,12 @@ def get_context_preview(
     "settings as a create would fill them. Snapshots are listed as `pending` (nothing is "
     "fetched); the kickoff says the plan is drafted after you start.",
 )
-def render_context(ref: DocumentRef, body: ContextRender, session: SessionDep) -> BuildContextView:
+def render_context(
+    ref: DocumentRef, body: ContextRender, session: SessionDep, github: GitHubDep
+) -> BuildContextView:
     paper = papers.get_paper(session, ref)
-    return context_view.rendered_view(session, context_view.draft(session, paper, body))
+    draft = context_view.draft(session, paper, body)
+    return context_view.rendered_view(session, draft, github=github)
 
 
 @router.get("/papers/{ref}/builds", response_model=list[BuildSummary], summary="A paper's builds")
@@ -135,10 +195,11 @@ def list_builds(ref: DocumentRef, session: SessionDep) -> list[BuildSummary]:
     "and stops from the preset and the settings, and queues `build_plan`.",
 )
 def create_build(
-    ref: DocumentRef, body: BuildCreate, session: SessionDep, probe: ProbeDep
+    ref: DocumentRef, body: BuildCreate, session: SessionDep, probe: ProbeDep, github: GitHubDep
 ) -> BuildPublic:
     paper = papers.get_paper(session, ref)
-    return _public(session, service.create_build(session, paper, body, probe=probe))
+    build = service.create_build(session, paper, body, probe=probe, github=github)
+    return _public(session, build)
 
 
 @router.get("/builds/{build_id}", response_model=BuildPublic, summary="One build")
@@ -154,8 +215,11 @@ def get_build(build_id: uuid.UUID, session: SessionDep) -> BuildPublic:
     "README.md, LICENSE, and the kickoff it was given), else `rendered`. `command` is the "
     "CLI argv with the agent brief elided; `plan_input` is what the planner reads.",
 )
-def get_build_context(build_id: uuid.UUID, session: SessionDep) -> BuildContextView:
-    return context_view.build_view(session, service.get_build(session, build_id))
+def get_build_context(
+    build_id: uuid.UUID, session: SessionDep, github: GitHubDep
+) -> BuildContextView:
+    build = service.get_build(session, build_id)
+    return context_view.build_view(session, build, github=github)
 
 
 @router.put(
@@ -222,11 +286,17 @@ def replan(build_id: uuid.UUID, body: Replan, session: SessionDep) -> BuildPubli
     description="May override options and stops one last time; queues `build_run`.",
 )
 def approve(
-    build_id: uuid.UUID, session: SessionDep, probe: ProbeDep, body: Approve | None = None
+    build_id: uuid.UUID,
+    session: SessionDep,
+    probe: ProbeDep,
+    github: GitHubDep,
+    body: Approve | None = None,
 ) -> BuildPublic:
     build = service.get_build(session, build_id)
     body = body or Approve()
-    return _public(session, service.approve(session, build, body.options, body.stops, probe=probe))
+    approved = service.approve(session, build, body.options, body.stops, probe=probe,
+                               github=github)  # fmt: skip
+    return _public(session, approved)
 
 
 @router.post(
