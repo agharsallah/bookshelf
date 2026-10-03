@@ -1,4 +1,5 @@
-"""Server-side settings: which study material a distilled document makes on its own."""
+"""Server-side settings: which study material a distilled document makes on its own, and
+whether a skill's new artifact is approved without a review."""
 
 from collections.abc import Mapping
 
@@ -33,7 +34,10 @@ def _view(session: Session, catalogue: Mapping[str, Skill]) -> SettingsPublic:
             AutoDeriveChoice(skill=name, description=skill.meta.description, enabled=name in on)
             for name, skill in sorted(app_settings.eligible(catalogue, group).items())
         ]
-    return SettingsPublic(auto_derive=AutoDerivePublic(**groups))
+    return SettingsPublic(
+        auto_derive=AutoDerivePublic(**groups),
+        auto_approve=app_settings.auto_approve(session),
+    )
 
 
 @router.get("", response_model=SettingsPublic, summary="Get the settings")
@@ -48,7 +52,9 @@ def get_settings(session: SessionDep, skills_dir: SkillsDirDep) -> SettingsPubli
     summary="Change the settings",
     description="`auto_derive.book` / `.paper` replace that group's list of skills to queue "
     "once a document is distilled (`422` for one it cannot run on its own); a group left "
-    "out is unchanged. Applies to documents distilled from now on.",
+    "out is unchanged. Applies to documents distilled from now on. `auto_approve` sets "
+    "which new skill artifacts are approved without a review (`off` · `passing` · `all`); "
+    "artifacts already waiting are left as they are.",
 )
 def update_settings(
     body: SettingsUpdate, session: SessionDep, skills_dir: SkillsDirDep
@@ -57,4 +63,6 @@ def update_settings(
     if body.auto_derive is not None:
         lists = body.auto_derive.model_dump(exclude_none=True)
         app_settings.set_auto_derive(session, lists, catalogue)
+    if body.auto_approve is not None:
+        app_settings.set_auto_approve(session, body.auto_approve)
     return _view(session, catalogue)

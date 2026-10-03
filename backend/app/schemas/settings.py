@@ -4,6 +4,8 @@ from typing import Annotated
 
 from pydantic import BaseModel, Field
 
+from app.services.app_settings import AutoApprove
+
 
 class AutoDeriveChoice(BaseModel):
     """A skill a document of a group can make on its own, and whether it does."""
@@ -18,8 +20,18 @@ class AutoDerivePublic(BaseModel):
     paper: list[AutoDeriveChoice]
 
 
+AutoApproveField = Annotated[
+    AutoApprove,
+    Field(
+        description="Approve a skill's new artifact on arrival: `off` (wait for a review), "
+        "`passing` (only drafts every quality gate passed) or `all` (flagged ones too)."
+    ),
+]
+
+
 class SettingsPublic(BaseModel):
     auto_derive: AutoDerivePublic
+    auto_approve: AutoApproveField
 
 
 class AutoDeriveUpdate(BaseModel):
@@ -29,3 +41,4 @@ class AutoDeriveUpdate(BaseModel):
 
 class SettingsUpdate(BaseModel):
     auto_derive: AutoDeriveUpdate | None = None
+    auto_approve: AutoApproveField | None = None

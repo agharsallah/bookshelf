@@ -87,3 +87,20 @@ def test_an_approved_card_queues_only_the_chosen_paper_material(client, session)
     )
 
     assert derived(session) == {"assess-paper"}
+
+
+def test_auto_approve_is_off_until_changed_and_leaves_auto_derive_alone(client):
+    assert client.get("/api/v1/settings").json()["auto_approve"] == "off"
+    change(client, book=["make-quiz"])
+
+    response = client.patch("/api/v1/settings", json={"auto_approve": "all"}, headers=AUTH)
+
+    assert response.json()["auto_approve"] == "all"
+    assert client.get("/api/v1/settings").json()["auto_approve"] == "all"
+    assert choices(client, "book")["make-quiz"] is True
+
+
+def test_an_unknown_auto_approve_mode_is_refused(client):
+    response = client.patch("/api/v1/settings", json={"auto_approve": "yes"}, headers=AUTH)
+
+    assert response.status_code == 422

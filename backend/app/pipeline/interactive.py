@@ -30,7 +30,7 @@ from app.core.config import get_settings
 from app.jobs import queue
 from app.models import Artifact
 from app.models.enums import RunMode
-from app.pipeline import artifacts, execution
+from app.pipeline import artifacts, auto_approval, execution
 from app.pipeline.runner import OutputError
 from app.pipeline.selectors import SelectorError
 from app.pipeline.skills import ParamError, load_catalogue
@@ -82,7 +82,7 @@ def import_output(
     artifact = execution.build_artifact(
         session, prepared, output, run_mode=RunMode.INTERACTIVE, model=model
     )
-    artifact = artifacts.insert(session, artifact, supersede=force)
+    artifact = auto_approval.settle(session, artifacts.insert(session, artifact, supersede=force))
     if package.meta.narrate:  # voiced with the default cast; the Listen page recasts it
         cast = default_cast(speaker_count(artifact.body), str(prepared.params.get("language")))
         queue.enqueue(session, narration.narrate_spec(artifact, cast))

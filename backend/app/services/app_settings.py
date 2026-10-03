@@ -7,10 +7,15 @@ profile's own by-products), so a new install behaves as before.
 
 And `queue`: whether the job queue is paused and how many jobs may run at once, read by
 `jobs.queue.claim` in SQL so every worker obeys a change on its next claim.
+
+And `auto_approve`: whether a skill's fresh artifact is approved on arrival instead of
+waiting for a review (`pipeline.auto_approval`): `off`, `passing` (only drafts that passed
+every soft gate) or `all` (`needs_review` too).
 """
 
 from collections.abc import Mapping
 from dataclasses import dataclass
+from typing import Any, Literal, get_args
 
 from sqlmodel import Session
 
@@ -18,7 +23,7 @@ from app.jobs.queue import JobSpec
 from app.models import AppSettings
 from app.models._columns import utcnow
 from app.models.app_settings import SINGLETON_ID
-from app.models.enums import Genre, JobKind
+from app.models.enums import Genre, JobKind, Review
 from app.pipeline.skills import Skill
 from app.services.errors import InvalidInputError
 
@@ -90,8 +95,13 @@ def set_auto_derive(
                     f"{name!r} cannot run on its own for a {group}.", field=f"body.{group}"
                 )
         merged[group] = list(dict.fromkeys(names))
+    _save(session, "auto_derive", merged)
+
+
+def _save(session: Session, key: str, value: Any) -> None:
+    """Replace one setting, leaving the others as stored."""
     row = session.get(AppSettings, SINGLETON_ID) or AppSettings()
-    row.data = {**row.data, "auto_derive": merged}
+    row.data = {**row.data, key: value}
     row.updated_at = utcnow()
     session.add(row)
     session.commit()
@@ -119,12 +129,30 @@ def queue_controls(session: Session) -> QueueControls:
 
 
 def set_queue_controls(session: Session, controls: QueueControls) -> QueueControls:
-    row = session.get(AppSettings, SINGLETON_ID) or AppSettings()
-    row.data = {
-        **row.data,
-        "queue": {"paused": controls.paused, "max_running": controls.max_running},
-    }
-    row.updated_at = utcnow()
-    session.add(row)
-    session.commit()
+    _save(session, "queue", {"paused": controls.paused, "max_running": controls.max_running})
     return controls
+
+
+AutoApprove = Literal["off", "passing", "all"]
+AUTO_APPROVE_MODES: tuple[AutoApprove, ...] = get_args(AutoApprove)
+# What each mode approves on arrival; anything else waits for a person.
+_APPROVES: dict[str, frozenset[Review]] = {
+    "off": frozenset(),
+    "passing": frozenset({Review.DRAFT}),
+    "all": frozenset({Review.DRAFT, Review.NEEDS_REVIEW}),
+}
+
+
+def auto_approve(session: Session) -> AutoApprove:
+    row = session.get(AppSettings, SINGLETON_ID)
+    stored = (row.data if row else {}).get("auto_approve")
+    return stored if stored in AUTO_APPROVE_MODES else "off"
+
+
+def set_auto_approve(session: Session, mode: AutoApprove) -> None:
+    _save(session, "auto_approve", mode)
+
+
+def approves(mode: AutoApprove, review: Review) -> bool:
+    """Whether `mode` approves an artifact the gates stored as `review`."""
+    return review in _APPROVES[mode]

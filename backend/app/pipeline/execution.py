@@ -316,6 +316,9 @@ def execute_skill_job(
         artifact = artifacts.insert(session, artifact, supersede=force)
     except artifacts.ArtifactExistsError as exc:  # a concurrent worker got there first
         return _skipped(exc.existing, prepared)
+    from app.pipeline import auto_approval  # lazy: the orchestrator imports the graph, then us
+
+    artifact = auto_approval.settle(session, artifact)
     logger.info(
         "Artifact stored",
         extra={
