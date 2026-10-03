@@ -1,7 +1,8 @@
 /**
  * Documents and their stage tracks. A long shelf shows only what is worth watching by
  * default: documents with work queued, running or failed ("Active"); "All" lists every
- * one, a page at a time. Filters narrow it to the documents of the matching jobs.
+ * one, a page at a time. Filters narrow it to the documents of the matching jobs. With
+ * `onFirst`, each document can be put first in the queue (or taken out of first).
  */
 import { useState } from 'react';
 import type { JobPublic } from '../../lib/api/types/jobs';
@@ -20,11 +21,16 @@ export interface DocumentsPanelProps {
   jobs: readonly JobPublic[];
   /** The jobs the filters match, or null when nothing is filtered. */
   matching: readonly JobPublic[] | null;
+  /** Books whose jobs go first (`QueueStatus.first_documents`). */
+  first?: readonly string[] | null;
+  /** Set which books go first; leave out to offer no toggle. */
+  onFirst?: (ids: string[]) => void;
 }
 
 type Scope = 'active' | 'all';
 
-export function DocumentsPanel({ documents, jobs, matching }: DocumentsPanelProps) {
+export function DocumentsPanel({ documents, jobs, matching, first = null, onFirst }: DocumentsPanelProps) {
+  const firstIds = first ?? [];
   const active = activeDocumentIds(jobs);
   const [chosen, setScope] = useState<Scope | null>(null);
   const scope: Scope = chosen ?? (active.size > 0 ? 'active' : 'all');
@@ -60,6 +66,17 @@ export function DocumentsPanel({ documents, jobs, matching }: DocumentsPanelProp
                 {doc.title}
               </a>
               <span className={styles.docStatus}>{doc.status?.replaceAll('_', ' ')}</span>
+              {onFirst ? (
+                <button
+                  type="button"
+                  className={styles.firstToggle}
+                  aria-pressed={firstIds.includes(doc.id)}
+                  aria-label={`${firstIds.includes(doc.id) ? 'Stop putting' : 'Put'} ${doc.title} first in the queue`}
+                  onClick={() => onFirst(firstIds.includes(doc.id) ? firstIds.filter((id) => id !== doc.id) : [...firstIds, doc.id])}
+                >
+                  {firstIds.includes(doc.id) ? 'First ✓' : 'Put first'}
+                </button>
+              ) : null}
             </p>
             <StageTrack label={doc.title} stages={stageProgress(doc.status ?? '', jobs.filter((j) => j.document_id === doc.id))} />
           </li>

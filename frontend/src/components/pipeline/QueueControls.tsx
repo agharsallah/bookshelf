@@ -4,11 +4,10 @@
  * wait their turn until Resume. The cap counts token-spending jobs across all workers; it
  * can never exceed the workers' slots (`BOOKSHELF_WORKER_CONCURRENCY` each).
  */
-import { useState } from 'react';
 import type { ApiClient } from '../../lib/api/client';
-import type { QueueControlsUpdate, QueueStatus } from '../../lib/api/types/jobs';
-import { setQueueControls } from '../../lib/jobs/api';
-import { Problem, problemOf, type ProblemInfo } from '../common/Problem';
+import type { QueueStatus } from '../../lib/api/types/jobs';
+import { Problem } from '../common/Problem';
+import { useQueueUpdate } from './useQueueUpdate';
 import styles from './QueueControls.module.css';
 
 /** Offered caps go at least this high, so a cap can be set before more workers start. */
@@ -32,22 +31,9 @@ function summary({ paused, paused_reason, running, queued, max_running, slots }:
 }
 
 export function QueueControls({ queue, api, onChanged }: QueueControlsProps) {
-  const [sending, setSending] = useState(false);
-  const [problem, setProblem] = useState<ProblemInfo | null>(null);
+  const { send, sending, problem } = useQueueUpdate(api, onChanged);
   const choices = Array.from({ length: Math.max(MIN_CHOICES, queue.slots, queue.max_running ?? 0) }, (_, i) => i + 1);
   const starved = queue.max_running !== null && queue.max_running > queue.slots;
-
-  const send = async (update: QueueControlsUpdate) => {
-    setSending(true);
-    setProblem(null);
-    try {
-      onChanged(await setQueueControls(api, update));
-    } catch (error) {
-      setProblem(problemOf(error));
-    } finally {
-      setSending(false);
-    }
-  };
 
   return (
     <section className={styles.controls} data-paused={queue.paused} aria-label="Queue controls">

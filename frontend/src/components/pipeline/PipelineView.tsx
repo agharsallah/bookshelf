@@ -21,6 +21,8 @@ import { RecentRow, RunningRow } from './JobRows';
 import { KindBars } from './KindBars';
 import { QueueBanner } from './QueueBanner';
 import { QueueControls } from './QueueControls';
+import { QueueSteering } from './QueueSteering';
+import { useQueueUpdate } from './useQueueUpdate';
 import { filterJobs, filtersToSearch, hasFilters, type JobFilters } from './filters';
 import { countStates } from './model';
 import { PipelineFilters } from './PipelineFilters';
@@ -64,6 +66,8 @@ export function PipelineView({ jobs: seed, documents: initialDocuments, queue: i
   const [changed, setChanged] = useState<{ over: QueueStatus | null; queue: QueueStatus } | null>(null);
   const latest = streamed ?? initialQueue;
   const queue = changed && changed.over === latest ? changed.queue : latest;
+  const onQueue = (next: QueueStatus) => setChanged({ over: latest, queue: next });
+  const firstBooks = useQueueUpdate(api, onQueue);
   const [documents, setDocuments] = useState(initialDocuments);
   const [filters, setFilters] = useState<JobFilters>(initialFilters);
   const all = useMemo(() => sortedJobs(byId), [byId]);
@@ -113,7 +117,8 @@ export function PipelineView({ jobs: seed, documents: initialDocuments, queue: i
         </ul>
       </div>
 
-      {queue ? <QueueControls queue={queue} api={api} onChanged={(next) => setChanged({ over: latest, queue: next })} /> : null}
+      {queue ? <QueueControls queue={queue} api={api} onChanged={onQueue} /> : null}
+      {queue ? <QueueSteering queue={queue} documents={documents} api={api} onChanged={onQueue} /> : null}
 
       <QueueBanner queue={queue} />
 
@@ -126,7 +131,13 @@ export function PipelineView({ jobs: seed, documents: initialDocuments, queue: i
       <PipelineFilters filters={filters} onChange={setFilters} documents={documents} matched={shown.length} total={all.length} />
 
       <div className={styles.grid}>
-        <DocumentsPanel documents={documents} jobs={all} matching={hasFilters(filters) ? shown : null} />
+        <DocumentsPanel
+          documents={documents}
+          jobs={all}
+          matching={hasFilters(filters) ? shown : null}
+          first={queue?.first_documents ?? null}
+          onFirst={queue ? (ids) => void firstBooks.send({ first_documents: ids }) : undefined}
+        />
 
         <section aria-labelledby="kinds-title" className={styles.kinds}>
           <h2 id="kinds-title" className={styles.sectionTitle}>

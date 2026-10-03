@@ -1,0 +1,116 @@
+/* A job kind's tile: name, queued count, an optional bar, and its mode; steered ones keep their tone. */
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tile {
+  scroll-margin-block: var(--space-7);
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-2);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-m);
+  background: var(--paper);
+}
+
+.head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.label {
+  font-weight: 500;
+}
+
+.queued {
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.bar {
+  display: block;
+  block-size: 3px;
+  border-radius: 2px;
+  background: var(--rule);
+  overflow: hidden;
+}
+
+.bar > span {
+  display: block;
+  block-size: 100%;
+  background: var(--ink-3);
+}
+
+.tile[data-mode='first'] {
+  border-color: var(--accent);
+}
+
+.tile[data-mode='first'] .bar > span {
+  background: var(--accent);
+}
+
+.tile[data-mode='hold'] {
+  border-color: var(--tone-caution);
+}
+
+.tile[data-mode='hold'] .bar > span {
+  background: var(--tone-caution);
+}
+
+.tile[data-mode='skip'] .label {
+  color: var(--ink-3);
+  text-decoration: line-through;
+}
+
+.segmented {
+  display: flex;
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-m);
+  overflow: hidden;
+}
+
+.segmented button {
+  flex: 1;
+  padding: 0.2rem var(--space-2);
+  border: 0;
+  background: none;
+  color: var(--ink-2);
+  font-size: var(--text-xs);
+  cursor: pointer;
+}
+
+.segmented button + button {
+  border-inline-start: 1px solid var(--rule-strong);
+}
+
+.segmented button:hover:not([aria-pressed='true']) {
+  background: var(--paper-sunken);
+}
+
+.segmented button[aria-pressed='true'] {
+  background: var(--ink);
+  color: var(--paper);
+  font-weight: 600;
+}
+
+.tile[data-mode='first'] .segmented button[aria-pressed='true'] {
+  background: var(--accent);
+}
+
+.tile[data-mode='hold'] .segmented button[aria-pressed='true'] {
+  background: var(--tone-caution);
+}
+
+
+/* Arrived at from a link (`/settings#queue-kind-…`): show which one. */
+.tile:target {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}

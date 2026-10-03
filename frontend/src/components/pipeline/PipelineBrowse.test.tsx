@@ -77,6 +77,17 @@ describe('<PipelineView> on a long queue', () => {
     expect(within(region(/Recently finished/)).getByText('Parse')).toBeTruthy();
   });
 
+  it('puts a document first in the queue from its row', async () => {
+    const queue = { workers: [], queued: 1, running: 0, unclaimed_kinds: [], paused: false, max_running: null, slots: 2, first_documents: [] };
+    const { api, calls } = fakeApi({ 'PATCH jobs/queue': (call) => ({ ...queue, ...(call.body as object) }) });
+    render(<PipelineView jobs={[job({ id: 'a', state: 'queued', queue_position: 1 })]} documents={[attention]} queue={queue} api={api} live={false} />);
+
+    await userEvent.click(within(region(/^Documents/)).getByRole('button', { name: 'Put Attention Is All You Need first in the queue' }));
+
+    expect(calls.map((c) => c.body)).toEqual([{ first_documents: ['d1'] }]);
+    expect(await within(region(/^Documents/)).findByRole('button', { name: 'Stop putting Attention Is All You Need first in the queue' })).toBeTruthy();
+  });
+
   it('opens with the filters the address asks for', () => {
     render(<PipelineView jobs={[job({ id: 'a' }), job({ id: 'b', state: 'failed' })]} documents={[attention]} initialFilters={{ state: 'failed' }} api={fakeApi().api} live={false} />);
     expect(screen.getByText('Nothing finished yet.')).toBeTruthy();

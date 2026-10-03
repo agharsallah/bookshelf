@@ -268,8 +268,11 @@
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  justify-content: space-between;
   gap: var(--space-2);
+}
+
+.docHead > a {
+  margin-inline-end: auto;
 }
 
 .docTitle {
@@ -281,6 +284,22 @@
 
 .docTitle:hover {
   text-decoration: underline;
+}
+
+.firstToggle {
+  padding: 0.1rem var(--space-2);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-m);
+  background: none;
+  color: var(--ink-3);
+  font-size: var(--text-xs);
+  cursor: pointer;
+}
+
+.firstToggle[aria-pressed='true'] {
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
 }
 
 .docStatus {

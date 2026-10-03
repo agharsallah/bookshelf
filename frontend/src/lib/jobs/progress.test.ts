@@ -25,6 +25,13 @@ describe('describeJob', () => {
     expect(describeJob(job(), NOW, queue(['parse'])).phase).toBe('waiting');
   });
 
+  it('says a job whose kind is on hold or skipped waits for that, unless a person sent it to run now', () => {
+    const held = { ...queue(), kinds: { derive: 'hold' as const } };
+    expect(describeJob(job({ queue_position: 4 }), NOW, held).text).toBe('On hold: its kind waits until released');
+    expect(describeJob(job(), NOW, { ...queue(), kinds: { derive: 'skip' as const } }).text).toBe('Will be skipped: its kind is turned off');
+    expect(describeJob(job({ run_now: true, queue_position: 1 }), NOW, held).text).toBe('Run now, next in line');
+  });
+
   it('says a job sent to run now is not held by the paused queue', () => {
     const paused = { ...queue(), paused: true };
     expect(describeJob(job({ queue_position: 1, run_now: true }), NOW, paused)).toEqual({ phase: 'waiting', text: 'Run now, next in line', live: true });

@@ -133,12 +133,32 @@ export interface QueueStatus {
   paused_reason?: string | null;
   max_running: number | null;
   slots: number;
+  /** Each steered kind's mode; kinds left out run as usual. */
+  kinds?: Partial<Record<JobKind, KindMode>>;
+  /** Books whose jobs go before other queued work. */
+  first_documents?: string[];
+  /** Kinds that may be skipped: their stage moves on without them. */
+  skippable_kinds?: JobKind[];
+  /** Queued jobs per kind, all of them (the page loads only the latest jobs). */
+  queued_kinds?: Partial<Record<JobKind, number>>;
 }
 
-/** `PATCH /jobs/queue`: fields left out keep their value; `max_running: null` lifts the cap. */
+/**
+ * How a kind is steered in the queue: `first` goes before other queued work, `hold` waits
+ * (its book's later stages wait too), `skip` is dropped as it comes up, like a cancel.
+ */
+export const KIND_MODES = ['first', 'hold', 'skip'] as const;
+export type KindMode = (typeof KIND_MODES)[number];
+
+/**
+ * `PATCH /jobs/queue`: fields left out keep their value; `max_running: null` lifts the cap.
+ * `kinds` merges (`null` runs a kind as usual again); `first_documents` replaces.
+ */
 export interface QueueControlsUpdate {
   paused?: boolean;
   max_running?: number | null;
+  kinds?: Partial<Record<JobKind, KindMode | null>>;
+  first_documents?: string[];
 }
 
 /**
