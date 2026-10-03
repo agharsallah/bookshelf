@@ -1,0 +1,445 @@
+/* The playful reading path (CollectionBoard): a spiral board game. Chunky ink outlines and
+   hard offset shadows set it apart from the quiet desk; squares wear the genre dyes. */
+[data-genre='book'] {
+  --genre: var(--accent);
+}
+
+[data-genre='paper'] {
+  --genre: var(--tone-question);
+}
+
+[data-genre='article'] {
+  --genre: var(--tone-antipattern);
+}
+
+/* Levels named in the notes outrank the genre: one chart series per level. */
+[data-level='0'] {
+  --genre: var(--series-1);
+}
+
+[data-level='1'] {
+  --genre: var(--series-2);
+}
+
+[data-level='2'] {
+  --genre: var(--series-3);
+}
+
+[data-level='3'] {
+  --genre: var(--series-4);
+}
+
+[data-level='4'] {
+  --genre: var(--series-5);
+}
+
+[data-level='5'] {
+  --genre: var(--series-6);
+}
+
+.game {
+  display: grid;
+  gap: var(--space-4);
+}
+
+/* The levels legend: a row of chunky chips, the one you are in raised in highlighter. */
+.levels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.levels li {
+  display: inline-flex;
+  gap: var(--space-2);
+  align-items: center;
+  padding: var(--space-1) var(--space-3) var(--space-1) var(--space-1);
+  border: 2px solid var(--genre);
+  border-radius: var(--radius-pill);
+  background: color-mix(in oklab, var(--genre) 10%, var(--paper-raised));
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.levels li[data-here] {
+  border-color: var(--ink);
+  background: var(--marker);
+  color: var(--marker-ink);
+  box-shadow: 0 3px 0 var(--ink);
+}
+
+.levelNumber {
+  display: grid;
+  place-items: center;
+  inline-size: 1.6rem;
+  block-size: 1.6rem;
+  border-radius: 50%;
+  background: var(--genre);
+  color: var(--paper);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.levelCount {
+  color: inherit;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.8;
+}
+
+/* The board itself: a framed sheet with a faint dot grid, like printed card stock. */
+.board {
+  padding: clamp(var(--space-2), 2.5vw, var(--space-5));
+  border: 3px solid var(--ink);
+  border-radius: calc(var(--radius-l) * 1.5);
+  background:
+    radial-gradient(circle, var(--rule) 1px, transparent 1.5px) 0 0 / 14px 14px,
+    var(--paper-raised);
+  box-shadow: 6px 6px 0 var(--ink);
+  /* A long path on a phone scrolls sideways rather than shrink squares past a fingertip. */
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+
+/* The playing field: one grid cell per square, the track and pawn laid over it exactly. */
+.field {
+  position: relative;
+  display: grid;
+  min-inline-size: calc(var(--cols) * 2.75rem);
+  container-type: inline-size;
+  --cell: calc(100cqi / var(--cols));
+}
+
+.track {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  overflow: visible;
+}
+
+.track polyline {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.ahead {
+  stroke: var(--rule-strong);
+  stroke-width: 4;
+  stroke-dasharray: 2 9;
+}
+
+/* The way already come, inked. */
+.behind {
+  stroke: var(--accent);
+  stroke-width: 10;
+  opacity: 0.85;
+}
+
+.squares {
+  display: contents;
+}
+
+.squares li {
+  display: grid;
+  padding: 3px;
+  list-style: none;
+}
+
+.square {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 0.1em;
+  inline-size: 100%;
+  aspect-ratio: 1;
+  container: square / inline-size;
+  padding: 0;
+  border: 2px solid var(--genre, var(--ink));
+  border-radius: 24%;
+  background: color-mix(in oklab, var(--genre, var(--ink)) 12%, var(--paper-raised));
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: clamp(0.6rem, calc(var(--cell) * 0.3), 1.2rem);
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  transition:
+    translate var(--dur-2) var(--ease-turn),
+    box-shadow var(--dur-2) var(--ease-out);
+}
+
+button.square {
+  cursor: pointer;
+}
+
+button.square:hover {
+  translate: 0 -3px;
+  box-shadow: 0 3px 0 var(--genre);
+}
+
+.square[aria-pressed='true'] {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+}
+
+/* Started: the square fills from the bottom as you read. */
+.square[data-state='started'] {
+  background: linear-gradient(
+    to top,
+    color-mix(in oklab, var(--genre) 45%, var(--paper-raised)) calc(var(--share) * 100%),
+    color-mix(in oklab, var(--genre) 12%, var(--paper-raised)) 0
+  );
+}
+
+.square[data-state='done'] {
+  background: var(--genre);
+  color: var(--paper);
+}
+
+/* Your square: highlighter yellow, the pawn standing on it. */
+.square[data-state='here'] {
+  border: 3px solid var(--ink);
+  background: var(--marker);
+  color: var(--marker-ink);
+  box-shadow: 0 4px 0 var(--ink);
+}
+
+.square[data-kind='start'] {
+  margin: 3px;
+  inline-size: auto;
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--paper);
+  font-size: clamp(0.5rem, calc(var(--cell) * 0.22), 0.95rem);
+}
+
+.square[data-kind='finish'] {
+  margin: 3px;
+  inline-size: auto;
+  border: 3px dashed var(--tone-caution);
+  background: color-mix(in oklab, var(--tone-caution) 14%, var(--paper-raised));
+  font-size: clamp(0.8rem, calc(var(--cell) * 0.5), 2rem);
+}
+
+.square[data-kind='finish'][data-reached] {
+  border-style: solid;
+  background: var(--marker);
+  animation: cheer 1.2s var(--ease-turn) 2;
+}
+
+@keyframes cheer {
+  50% {
+    scale: 1.15;
+    rotate: -6deg;
+  }
+}
+
+.number {
+  display: block;
+}
+
+.glyph {
+  display: block;
+  font-size: 0.75em;
+}
+
+/* On a cramped board the number alone carries the square. */
+@container square (max-width: 2.75rem) {
+  .glyph {
+    display: none;
+  }
+}
+
+/* The pawn: a round head on a flared base, standing on the corner of the square up next so
+   its number still shows. */
+.pawn {
+  position: absolute;
+  z-index: 2;
+  inline-size: clamp(0.9rem, calc(var(--cell) * 0.36), 1.6rem);
+  aspect-ratio: 3 / 4;
+  translate: -50% -100%;
+  pointer-events: none;
+  transition:
+    left var(--dur-4) var(--ease-turn),
+    top var(--dur-4) var(--ease-turn);
+  animation: hop var(--dur-4) var(--ease-turn) 300ms both;
+}
+
+.pawn::before,
+.pawn::after {
+  content: '';
+  position: absolute;
+  border: 2px solid var(--ink);
+  background: radial-gradient(circle at 35% 30%, color-mix(in oklab, white 45%, var(--tone-important)), var(--tone-important) 60%);
+}
+
+.pawn::before {
+  inset: 0 22% auto;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  z-index: 1;
+}
+
+.pawn::after {
+  inset: 38% 0 0;
+  border-radius: 45% 45% 18% 18% / 60% 60% 18% 18%;
+}
+
+@keyframes hop {
+  from {
+    opacity: 0;
+    translate: -50% -280%;
+  }
+}
+
+.status {
+  font-family: var(--font-ui);
+  font-size: var(--text-ui);
+  font-weight: 700;
+}
+
+/* The picked square's card: everything about it, and your moves. */
+.card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  border: 2px solid var(--ink);
+  border-radius: var(--radius-l);
+  background: var(--paper-raised);
+  box-shadow: 4px 4px 0 var(--genre);
+}
+
+.cardNumber {
+  display: grid;
+  place-items: center;
+  inline-size: 3rem;
+  block-size: 3rem;
+  border: 2px solid var(--ink);
+  border-radius: 24%;
+  background: var(--genre);
+  color: var(--paper);
+  font-family: var(--font-ui);
+  font-size: var(--text-md);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.cardBody {
+  display: grid;
+  gap: var(--space-2);
+  min-inline-size: 0;
+}
+
+.cardKicker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.yourMove {
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--marker);
+  color: var(--marker-ink);
+  font-weight: 800;
+}
+
+.cardTitle {
+  font-family: var(--font-read);
+  font-size: var(--text-lg);
+  font-weight: 560;
+  line-height: var(--leading-tight);
+}
+
+.cardTitle a {
+  color: var(--ink);
+  text-decoration-color: var(--genre);
+}
+
+.cardAuthors {
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.adds {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  border-radius: var(--radius-m);
+  background: color-mix(in oklab, var(--genre) 8%, var(--paper-raised));
+}
+
+.addsLabel {
+  color: var(--genre);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: 800;
+}
+
+.moves {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  align-items: center;
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.meter {
+  display: block;
+  inline-size: 6rem;
+  block-size: 0.5rem;
+  border: 1px solid var(--ink);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+
+.meter span {
+  display: block;
+  block-size: 100%;
+  background: var(--genre);
+}
+
+.link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+}
+
+@media (max-width: 40rem) {
+  .card {
+    grid-template-columns: minmax(0, 1fr);
+    padding: var(--space-3);
+  }
+
+  .board {
+    box-shadow: 4px 4px 0 var(--ink);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pawn,
+  .square[data-kind='finish'][data-reached] {
+    animation: none;
+  }
+}
