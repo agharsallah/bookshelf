@@ -72,7 +72,7 @@ def get_queue(session: SessionDep) -> QueueStatus:
         "ones wait (new ones still queue) until `paused: false`. `max_running` caps the "
         "jobs running at once across all workers (`null`: no cap beyond the workers' slots, "
         "`BOOKSHELF_WORKER_CONCURRENCY` each); lowering it stops nothing already running. "
-        "Narration and embedded-Qdrant embedding are not capped. Fields left "
+        "Narration, build runs and embedded-Qdrant embedding are not capped. Fields left "
         "out keep their value; workers obey a change on their next claim, with no restart."
     ),
 )

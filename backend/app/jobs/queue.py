@@ -46,12 +46,12 @@ _CLAIM_LOCK = 0x626F6F6B  # "book"
 
 
 def own_slot_kinds(settings: Settings) -> tuple[JobKind, ...]:
-    """Kinds the API runs on a single slot of its own (`app.jobs.narration`, and
-    `app.jobs.embedded` for embedded Qdrant), never in a pipeline worker's slots.
-    `max_running` neither counts nor holds them back. With a Qdrant URL the pipeline worker
-    embeds, so `embed` takes a capped slot like any other job."""
+    """Kinds the API runs on a single slot of its own (`app.jobs.narration`, the build
+    runner, and `app.jobs.embedded` for embedded Qdrant), never in a pipeline worker's
+    slots. `max_running` neither counts nor holds them back. With a Qdrant URL the pipeline
+    worker embeds, so `embed` takes a capped slot like any other job."""
     embed = (JobKind.EMBED,) if settings.qdrant_url is None else ()
-    return (JobKind.NARRATE, *embed)
+    return (JobKind.NARRATE, JobKind.BUILD_RUN, *embed)
 
 
 @dataclass(frozen=True, slots=True)

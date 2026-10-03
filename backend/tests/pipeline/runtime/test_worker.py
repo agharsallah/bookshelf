@@ -20,8 +20,8 @@ from app.jobs import queue
 from app.jobs.narration import NarrateRunner
 from app.jobs.queue import JobSpec
 from app.jobs.registry import HandlerResult, JobContext, PermanentJobError
-from app.jobs.worker import Worker, autodiscover, kind_filters, parse_kinds
 from app.jobs.runners import _job_worker
+from app.jobs.worker import Worker, autodiscover, kind_filters, parse_kinds
 from app.models import Artifact, Job
 from app.models.enums import JobKind, JobState, RunMode
 from app.pipeline import interactive
@@ -247,10 +247,11 @@ def test_excluded_kinds_stay_queued_while_the_rest_run(session: Session):
 @pytest.mark.parametrize(
     ("only", "embedded", "expected_exclude"),
     [
-        (None, True, [JobKind.NARRATE, JobKind.EMBED]),  # the API owns embedded Qdrant
-        (None, False, [JobKind.NARRATE]),  # a Qdrant server: the worker embeds
-        ([JobKind.EMBED], True, [JobKind.NARRATE]),  # explicit `--kinds embed` wins
-        ([JobKind.NARRATE], False, []),  # explicit `--kinds narrate` wins too
+        (None, True, [JobKind.NARRATE, JobKind.BUILD_RUN, JobKind.EMBED]),  # API owns Qdrant
+        (None, False, [JobKind.NARRATE, JobKind.BUILD_RUN]),  # a Qdrant server: worker embeds
+        ([JobKind.EMBED], True, [JobKind.NARRATE, JobKind.BUILD_RUN]),  # `--kinds embed` wins
+        ([JobKind.NARRATE], False, [JobKind.BUILD_RUN]),  # explicit `--kinds narrate` wins too
+        ([JobKind.BUILD_RUN], False, [JobKind.NARRATE]),  # and `--kinds build_run`
     ],
 )
 def test_worker_cli_leaves_embed_to_the_api_only_for_embedded_qdrant(
@@ -286,6 +287,7 @@ def test_the_api_pipeline_worker_leaves_narrate_to_its_own_runner(qdrant_url):
     assert background is not None
     kinds = background.worker.kinds()
     assert JobKind.NARRATE not in kinds
+    assert JobKind.BUILD_RUN not in kinds
     assert JobKind.DERIVE in kinds
     assert (JobKind.EMBED in kinds) is (qdrant_url is not None)
 
