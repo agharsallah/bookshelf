@@ -107,6 +107,17 @@ describe('<PipelineView>', () => {
     expect(calls.map((c) => c.body)).toEqual([{ paused: true }, { paused: false }]);
   });
 
+  it('says why the queue paused itself when the usage limit stopped it', () => {
+    const limited = { ...idle, running: 0, paused: true, paused_reason: "usage limit reached: You've hit your session limit · resets 8pm" };
+    render(<PipelineView jobs={[]} documents={[]} queue={limited} api={fakeApi().api} live={false} />);
+    const controls = screen.getByRole('region', { name: 'Queue controls' });
+
+    expect(within(controls).getByRole('status').textContent).toBe(
+      "Paused on its own: usage limit reached: You've hit your session limit · resets 8pm. Nothing starts. 1 queued waits until you resume.",
+    );
+    expect(within(controls).getByRole('button', { name: 'Resume all' })).toBeTruthy();
+  });
+
   it('caps the jobs running at once, and says when the workers have too few slots for it', async () => {
     const { api, calls } = fakeApi({ 'PATCH jobs/queue': (call) => ({ ...idle, ...(call.body as object) }) });
     render(<PipelineView jobs={[]} documents={[]} queue={idle} api={api} live={false} />);

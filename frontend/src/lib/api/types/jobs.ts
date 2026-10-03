@@ -74,6 +74,8 @@ export interface WorkerPublic {
  * Queue health (`GET /jobs/queue`, and the `queue` event of `/jobs/stream`).
  * `unclaimed_kinds`: kinds with queued work that no live worker runs, so it will wait
  * until one starts. `paused`: no worker starts a job (running ones finish).
+ * `paused_reason`: why the queue paused itself (the model's usage limit); null when a
+ * person paused it.
  * `max_running`: jobs running at once across every worker (null: every slot).
  * `slots`: job slots across live workers that run token-spending work. Embedding and
  * narration are neither capped nor counted.
@@ -84,6 +86,7 @@ export interface QueueStatus {
   running: number;
   unclaimed_kinds: JobKind[];
   paused: boolean;
+  paused_reason?: string | null;
   max_running: number | null;
   slots: number;
 }

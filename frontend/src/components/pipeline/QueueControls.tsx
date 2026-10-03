@@ -21,10 +21,11 @@ export interface QueueControlsProps {
   onChanged: (queue: QueueStatus) => void;
 }
 
-function summary({ paused, running, queued, max_running, slots }: QueueStatus): string {
+function summary({ paused, paused_reason, running, queued, max_running, slots }: QueueStatus): string {
   if (paused) {
+    const why = paused_reason ? `Paused on its own: ${paused_reason}. ` : 'Paused. ';
     const finishing = running > 0 ? `${running} running ${running === 1 ? 'job finishes' : 'jobs finish'}, then nothing starts. ` : 'Nothing starts. ';
-    return `Paused. ${finishing}${queued} queued ${queued === 1 ? 'waits' : 'wait'} until you resume.`;
+    return `${why}${finishing}${queued} queued ${queued === 1 ? 'waits' : 'wait'} until you resume.`;
   }
   const limit = max_running === null ? slots : Math.min(max_running, slots);
   return `Up to ${limit} ${limit === 1 ? 'job runs' : 'jobs run'} at once.`;
