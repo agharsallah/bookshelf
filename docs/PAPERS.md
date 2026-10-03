@@ -529,7 +529,7 @@ under two papers); `GET …/synthesis` adds `sources` for its `<slug>:<anchor>` 
 | Surface | Route | Notes |
 |---|---|---|
 | Papers shelf | `/papers` | grid with venue, year, stars, pass, verdict facets; nav item |
-| Paper | `/documents/[ref]/paper/[tab]` | tabs: card · explain (level switch) · math · claims · results · references · notation · review (assessment + reviewer report + your rating) · club |
+| Paper | `/documents/[ref]/paper/[tab]` | tabs: card · explain (level switch) · math · claims · results · references · notation · review (assessment + reviewer report + your rating) · club · build ([BUILDS.md](BUILDS.md) §6) |
 | Reader | existing | three-pass mode, claim margin marks, notation side panel |
 | Next | `/papers/next` | ranked candidates, score breakdown, reason with cites, add / dismiss, watch refresh |
 | Compare | `/papers/compare?ids=` | results matrix + bar chart per metric, "synthesize" → set |
