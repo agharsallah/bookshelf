@@ -48,7 +48,7 @@ from sqlmodel import Session
 
 from app.core.config import get_settings
 from app.core.logging import configure_logging
-from app.jobs import presence, queue
+from app.jobs import presence, queue, steering
 from app.jobs.registry import (
     Handler,
     HandlerResult,
@@ -237,6 +237,12 @@ class Worker:
             extra = {"job_id": str(job.id), "kind": job.kind.value, "anchor": job.anchor}
             run_log.event("started", worker=self.name, kind=job.kind.value, anchor=job.anchor,
                           skill=job.skill)  # fmt: skip
+            if self._turned_off(session, job):
+                queue.turn_off(session, job)
+                run_log.event("finished", state=job.state.value, error=job.error,
+                              text=f"{job.kind.value} is set to skip in the queue.")  # fmt: skip
+                self._advance(session, job, extra)
+                return job.state
             outcome: HandlerResult | None = None
             error: Exception | None = None
             try:
@@ -277,13 +283,27 @@ class Worker:
                 )
             run_log.event("finished", state=job.state.value, error=job.error,
                           duration_ms=job.duration_ms)  # fmt: skip
-            if job.state in (JobState.DONE, JobState.SKIPPED, JobState.FAILED):
-                try:
-                    self._on_done(session, job)
-                except Exception:
-                    session.rollback()
-                    logger.exception("Orchestrator failed after job", extra=extra)
+            self._advance(session, job, extra)
             return job.state
+
+    def _advance(self, session: Session, job: Job, extra: Mapping[str, object]) -> None:
+        """Let the orchestrator move the document on after a terminal job."""
+        if job.state not in (JobState.DONE, JobState.SKIPPED, JobState.FAILED):
+            return
+        try:
+            self._on_done(session, job)
+        except Exception:
+            session.rollback()
+            logger.exception("Orchestrator failed after job", extra=extra)
+
+    @staticmethod
+    def _turned_off(session: Session, job: Job) -> bool:
+        """A job of a kind set to `skip` in the queue, not sent to run now by a person."""
+        from app.services.app_settings import queue_controls
+
+        if job.priority <= steering.RUN_NOW_PRIORITY:
+            return False
+        return queue_controls(session).kinds.get(job.kind) == "skip"
 
     def _pause_for_limit(self, session: Session, job: Job, error: UsageLimitError) -> None:
         from app.services.app_settings import pause_queue

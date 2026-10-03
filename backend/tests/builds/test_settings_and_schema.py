@@ -9,7 +9,7 @@ from sqlalchemy import text
 from sqlmodel import Session
 
 from app.core.config import get_settings
-from app.jobs.queue import own_slot_kinds
+from app.jobs.steering import own_slot_kinds
 from app.models.build import BuildState, StopReason
 from app.models.enums import JobKind
 from tests.conftest import AUTH

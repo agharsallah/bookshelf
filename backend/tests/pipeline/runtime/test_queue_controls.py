@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 from sqlmodel import Session
 
 from app.core.config import get_settings
-from app.jobs import presence, queue
+from app.jobs import presence, queue, steering
 from app.jobs.queue import JobSpec
 from app.jobs.registry import HandlerResult, JobContext
 from app.jobs.worker import Worker
@@ -254,4 +254,4 @@ def test_a_retry_of_a_job_run_now_waits_its_turn(session: Session):
     queue.run_now(session, job.id)
     session.refresh(job)
 
-    assert queue.retry_spec(job).priority > queue.RUN_NOW_PRIORITY
+    assert queue.retry_spec(job).priority > steering.RUN_NOW_PRIORITY

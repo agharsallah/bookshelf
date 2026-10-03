@@ -1,6 +1,7 @@
 """Job queue: enqueue work and watch it (§13). Ingest and re-runs return `202` + a job."""
 
 import uuid
+from collections.abc import Mapping
 from dataclasses import replace
 
 from fastapi import APIRouter, Depends, Query, status
@@ -11,7 +12,7 @@ from app.api.pipeline import SkillsDirDep, pipeline_errors
 from app.core.errors import ConflictError, NotFoundError
 from app.core.security import require_api_key
 from app.jobs import queue
-from app.models import Job, ModelRun
+from app.models import Document, Job, ModelRun
 from app.models.enums import JobKind, JobState
 from app.pipeline.skills import load_catalogue
 from app.schemas.common import Page
@@ -19,6 +20,7 @@ from app.schemas.job import (
     JobAccepted,
     JobCreate,
     JobPublic,
+    KindMode,
     ModelRunPublic,
     QueueControlsUpdate,
     QueueStatus,
@@ -26,6 +28,7 @@ from app.schemas.job import (
 )
 from app.services import app_settings
 from app.services import jobs as job_service
+from app.services.errors import InvalidInputError
 from app.services.queue_view import public_job, public_jobs, queue_status
 from app.telemetry import run_log
 
@@ -66,25 +69,61 @@ def get_queue(session: SessionDep) -> QueueStatus:
     "/queue",
     response_model=QueueStatus,
     dependencies=[Depends(require_api_key)],
-    summary="Pause or resume the queue, or cap how many jobs run at once",
+    summary="Pause, cap, and steer the queue by kind and by book",
     description=(
         "`paused: true` stops every worker from starting a job: running jobs finish, queued "
         "ones wait (new ones still queue) until `paused: false`. `max_running` caps the "
         "jobs running at once across all workers (`null`: no cap beyond the workers' slots, "
         "`BOOKSHELF_WORKER_CONCURRENCY` each); lowering it stops nothing already running. "
-        "Narration, build runs and embedded-Qdrant embedding are not capped. Fields left "
+        "Narration, build runs and embedded-Qdrant embedding are not capped. `kinds` steers "
+        "a kind: `first` goes before other queued work, `hold` keeps it waiting (its "
+        "book's later stages wait too), `skip` drops it as it comes up like a cancel (only "
+        "`skippable_kinds`: their stage moves on without them), `null` runs it as usual "
+        "again. `first_documents` lists books whose jobs go first; a first kind of a first "
+        "book goes before either. A job sent to run now ignores all of it. Fields left "
         "out keep their value; workers obey a change on their next claim, with no restart."
     ),
 )
 def update_queue(body: QueueControlsUpdate, session: SessionDep) -> QueueStatus:
     changes = body.model_dump(include=body.model_fields_set)
-    if changes.get("paused", False) is None:
-        changes.pop("paused")
+    for key in ("paused", "kinds", "first_documents"):  # `null` means "leave it"
+        if key in changes and changes[key] is None:
+            changes.pop(key)
     if "paused" in changes:  # a person's pause or resume replaces the queue's own reason
         changes["paused_reason"] = None
     current = app_settings.queue_controls(session)
+    if "kinds" in changes:
+        changes["kinds"] = _merged_kinds(current.kinds, changes["kinds"])
+    if "first_documents" in changes:
+        changes["first_documents"] = _known_documents(session, changes["first_documents"])
     app_settings.set_queue_controls(session, replace(current, **changes))
     return queue_status(session)
+
+
+def _merged_kinds(
+    current: Mapping[JobKind, KindMode], given: Mapping[JobKind, KindMode | None]
+) -> dict[JobKind, KindMode]:
+    from app.pipeline.orchestrator import ON_FAILURE
+
+    for kind, mode in given.items():
+        if mode == "skip" and kind not in ON_FAILURE:
+            raise InvalidInputError(
+                f"{kind.value} cannot be skipped: the stage after it waits for its output. "
+                "Put it on hold instead.",
+                field=f"kinds.{kind.value}",
+            )
+    merged = {**current, **given}
+    return {kind: mode for kind, mode in merged.items() if mode is not None}
+
+
+def _known_documents(session: SessionDep, ids: list[uuid.UUID]) -> tuple[uuid.UUID, ...]:
+    unique = tuple(dict.fromkeys(ids))
+    found = set(session.exec(select(Document.id).where(col(Document.id).in_(unique))))
+    if missing := [str(d) for d in unique if d not in found]:
+        raise InvalidInputError(
+            f"No document has the id {missing[0]}.", field="first_documents", missing=missing
+        )
+    return unique
 
 
 @router.get("/{job_id}", response_model=JobPublic, summary="Get one job")

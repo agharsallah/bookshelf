@@ -2,7 +2,7 @@
 
 import uuid
 from datetime import datetime
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -161,6 +161,11 @@ class WorkerPublic(BaseModel):
     seen_at: datetime
 
 
+# How a kind is steered in the queue (`app.jobs.queue`): before other work, kept waiting,
+# or dropped as it comes up.
+KindMode = Literal["first", "hold", "skip"]
+
+
 class QueueStatus(BaseModel):
     """Whether queued work will actually run: who is polling, and what nobody picks up."""
 
@@ -180,6 +185,15 @@ class QueueStatus(BaseModel):
     max_running: int | None = None
     # Job slots across live workers that run token-spending work: the most that can run.
     slots: int = 0
+    # Each steered kind's mode (`first`, `hold`, `skip`); kinds left out run as usual.
+    kinds: dict[JobKind, KindMode] = {}
+    # Books whose jobs go before other queued work.
+    first_documents: list[uuid.UUID] = []
+    # Kinds that may be set to `skip`: their stage moves on without them (the enrich
+    # elements). Skipping anything else would leave its book stuck before the next stage.
+    skippable_kinds: list[JobKind] = []
+    # Queued jobs per kind, every one of them (the page loads only the latest jobs).
+    queued_kinds: dict[JobKind, int] = {}
 
 
 class QueueControlsUpdate(BaseModel):
@@ -188,3 +202,12 @@ class QueueControlsUpdate(BaseModel):
     paused: bool | None = None
     # `null` lifts the cap. Above `slots` it changes nothing until more workers start.
     max_running: Annotated[int | None, Field(ge=1, le=64)] = None
+    kinds: Annotated[
+        dict[JobKind, KindMode | None] | None,
+        Field(description="Merged into the kinds' modes: `first`, `hold`, `skip`, or `null` "
+                          "to run that kind as usual again. Kinds left out keep their mode."),
+    ] = None  # fmt: skip
+    first_documents: Annotated[
+        list[uuid.UUID] | None,
+        Field(description="Replaces the books whose jobs go first (`[]`: none)."),
+    ] = None

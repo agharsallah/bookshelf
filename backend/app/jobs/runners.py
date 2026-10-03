@@ -13,7 +13,7 @@ from app.jobs.background import BackgroundWorker, stop_all
 from app.jobs.build_runner import BuildRunner
 from app.jobs.embedded import EmbedRunner
 from app.jobs.narration import NarrateRunner
-from app.jobs.queue import own_slot_kinds
+from app.jobs.steering import own_slot_kinds
 from app.jobs.worker import Worker, autodiscover
 
 logger = logging.getLogger(__name__)

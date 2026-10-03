@@ -12,6 +12,13 @@ for every worker at once, with no restart: `paused` starts nothing (running jobs
 queued ones wait), and `max_running` caps how many jobs run at once across all workers.
 A job a person said to run now (`run_now()`) goes to the front of the line and is the one
 thing a paused queue still starts, within the cap.
+
+Per kind and per book, `app_settings.data["queue"]` also steers the order (`claim()` reads
+it in SQL, like the rest): a kind set to `first` and the jobs of a book in
+`first_documents` go before other queued work (both: before either alone); a kind on
+`hold` waits in the queue, claimed by nobody; a kind set to `skip` is dropped as it comes
+up, like a cancel (the worker does it, `TURNED_OFF`), so its stage barriers release. A
+job sent to run now ignores all three.
 The cap leaves out `own_slot_kinds()`, which run on a single slot of their own.
 """
 
@@ -25,7 +32,14 @@ from sqlalchemy import func, text
 from sqlmodel import Session, select
 from sqlmodel.sql.expression import SelectOfScalar
 
-from app.core.config import Settings, get_settings
+from app.core.config import get_settings
+from app.jobs.steering import (
+    FIRST_ORDER,
+    KIND_MODE,
+    RUN_NOW_PRIORITY,
+    TURNED_OFF,
+    own_slot_kinds,
+)
 from app.models import Job
 from app.models.enums import JobKind, JobState, RunMode
 
@@ -38,20 +52,8 @@ HEARTBEAT_SECONDS = 60.0
 STALE_AFTER = timedelta(seconds=HEARTBEAT_SECONDS * 5)
 # `jobs.result` key: CLI runs the job has made over all its attempts (`app.pipeline.ceiling`).
 RUNS = "runs"
-# A job a person said to run now: below every pipeline priority (the lowest is 0), so it
-# goes first, and the only kind of job a paused queue still starts.
-RUN_NOW_PRIORITY = -1
 # Serialises claims, so two workers cannot both take the last slot under `max_running`.
 _CLAIM_LOCK = 0x626F6F6B  # "book"
-
-
-def own_slot_kinds(settings: Settings) -> tuple[JobKind, ...]:
-    """Kinds the API runs on a single slot of its own (`app.jobs.narration`, the build
-    runner, and `app.jobs.embedded` for embedded Qdrant), never in a pipeline worker's
-    slots. `max_running` neither counts nor holds them back. With a Qdrant URL the pipeline
-    worker embeds, so `embed` takes a capped slot like any other job."""
-    embed = (JobKind.EMBED,) if settings.qdrant_url is None else ()
-    return (JobKind.NARRATE, JobKind.BUILD_RUN, *embed)
 
 
 @dataclass(frozen=True, slots=True)
@@ -136,18 +138,19 @@ def claim(session: Session, kinds: list[JobKind] | None = None) -> Job | None:
                 and (priority <= :run_now
                      or not coalesce((select (data -> 'queue' ->> 'paused')::boolean
                                       from app_settings where id = 1), false))
-                and (kind = any(:uncapped)
+                and (priority <= :run_now or {KIND_MODE} <> 'hold')
+                and (kind = any(:uncapped) or {KIND_MODE} = 'skip'
                      or (select count(*) from jobs c
                          where c.state = 'running' and c.locked_at >= now() - :stale
                            and not c.kind = any(:uncapped))
                         < coalesce((select (data -> 'queue' ->> 'max_running')::int
                                     from app_settings where id = 1), 2147483647))
-              order by priority, run_after
+              order by {FIRST_ORDER}
               for update skip locked
               limit 1
             )
             returning id
-            """  # noqa: S608  (kind_filter is a constant, values are bound)
+            """  # noqa: S608  (kind_filter and the fragments are constants, values are bound)
         ),
         {
             "kinds": [k.value for k in kinds or []],
@@ -202,6 +205,9 @@ def complete(
 
 
 CANCELLED = "cancelled by user"
+# Skipped jobs that produced nothing, by a person's cancel or a kind turned off: like a
+# failure they only release barriers, never count as the stage's output.
+NOT_RUN = (CANCELLED, TURNED_OFF)
 
 
 def cancel(session: Session, job_id: uuid.UUID) -> Job | None:
@@ -253,6 +259,17 @@ def run_now(session: Session, job_id: uuid.UUID) -> Job | None:
     return job
 
 
+def turn_off(session: Session, job: Job) -> None:
+    """Drop a claimed job of a kind on `skip`: `skipped`, error `TURNED_OFF`, never run.
+    Commits."""
+    job.state = JobState.SKIPPED
+    job.error = TURNED_OFF
+    job.finished_at = _now()
+    job.locked_at = None
+    session.add(job)
+    session.commit()
+
+
 def release(session: Session, job_ids: list[uuid.UUID]) -> int:
     """Hand running jobs back to the queue untouched: a worker that stops mid-job (the API
     reloading) returns them at once instead of leaving them to go stale. The attempt it
@@ -288,17 +305,19 @@ def hold(session: Session, job: Job, error: str) -> None:
 
 
 def positions(session: Session) -> dict[uuid.UUID, int]:
-    """Each queued job's place in line (1 = next), in `claim()`'s order: runnable jobs by
-    priority then age, then jobs still waiting out a retry backoff, soonest first."""
+    """Each queued job's place in line (1 = next), in `claim()`'s order: runnable jobs
+    first, then held ones (a kind on `hold`), then jobs still waiting out a retry backoff."""
     rows = session.execute(
         text(
-            """
+            f"""
             select id, row_number() over (
-              order by run_after > now(), priority, run_after, created_at
+              order by run_after > now(), ({KIND_MODE} = 'hold' and priority > :run_now),
+                       {FIRST_ORDER}, created_at
             ) as place
-            from jobs where state = 'queued'
-            """
-        )
+            from jobs j where state = 'queued'
+            """  # noqa: S608  (constant fragments, values are bound)
+        ),
+        {"run_now": RUN_NOW_PRIORITY},
     ).all()
     return {row[0]: int(row[1]) for row in rows}
 

@@ -15,8 +15,9 @@ every soft gate) or `all` (`needs_review` too).
 And `builds`: the defaults a new build starts from (`BuildDefaults`, docs/BUILDS.md §4).
 """
 
+import uuid
 from collections.abc import Mapping
-from dataclasses import asdict, dataclass, fields, replace
+from dataclasses import asdict, dataclass, field, fields, replace
 from typing import Any, Literal, get_args
 
 from sqlmodel import Session
@@ -37,6 +38,7 @@ from app.schemas.build_options import (
     PushPolicy,
     TestsPolicy,
 )
+from app.schemas.job import KindMode
 from app.services.errors import InvalidInputError
 
 GROUPS = ("book", "paper")
@@ -119,16 +121,39 @@ def _save(session: Session, key: str, value: Any) -> None:
     session.commit()
 
 
+KIND_MODES: tuple[KindMode, ...] = get_args(KindMode)
+
+
 @dataclass(frozen=True, slots=True)
 class QueueControls:
     """`paused`: claim nothing (running jobs finish). `max_running`: jobs running at once
     across every worker (`None`: as many as the workers have slots). `paused_reason`: why
     the queue paused itself (a usage limit), `None` when a person paused it; a resume
-    clears it."""
+    clears it. `kinds`: a kind's mode, `first`, `hold` or `skip` (`app.jobs.queue`);
+    kinds left out run as usual. `first_documents`: books whose jobs go first."""
 
     paused: bool = False
     max_running: int | None = None
     paused_reason: str | None = None
+    kinds: Mapping[JobKind, KindMode] = field(default_factory=dict)
+    first_documents: tuple[uuid.UUID, ...] = ()
+
+
+def _kind_modes(stored: object) -> dict[JobKind, KindMode]:
+    if not isinstance(stored, dict):
+        return {}
+    known = {k.value for k in JobKind}
+    return {JobKind(k): v for k, v in stored.items() if k in known and v in KIND_MODES}
+
+
+def _document_ids(stored: object) -> tuple[uuid.UUID, ...]:
+    ids: list[uuid.UUID] = []
+    for value in stored if isinstance(stored, list) else []:
+        try:
+            ids.append(uuid.UUID(str(value)))
+        except ValueError:
+            continue
+    return tuple(dict.fromkeys(ids))
 
 
 def queue_controls(session: Session) -> QueueControls:
@@ -143,13 +168,25 @@ def queue_controls(session: Session) -> QueueControls:
         paused=paused,
         max_running=cap if isinstance(cap, int) and cap > 0 else None,
         paused_reason=reason if paused and isinstance(reason, str) else None,
+        kinds=_kind_modes(stored.get("kinds")),
+        first_documents=_document_ids(stored.get("first_documents")),
     )
 
 
 def set_queue_controls(session: Session, controls: QueueControls) -> QueueControls:
     reason = controls.paused_reason if controls.paused else None
-    _save(session, "queue", {"paused": controls.paused, "max_running": controls.max_running,
-                             "paused_reason": reason})  # fmt: skip
+    _save(
+        session,
+        "queue",
+        {
+            "paused": controls.paused,
+            "max_running": controls.max_running,
+            "paused_reason": reason,
+            # `claim()` reads these two in SQL: kind values as keys, ids as strings.
+            "kinds": {kind.value: mode for kind, mode in controls.kinds.items()},
+            "first_documents": [str(d) for d in controls.first_documents],
+        },
+    )
     return controls
 
 

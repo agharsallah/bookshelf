@@ -434,9 +434,9 @@ def on_job_done(session: Session, job: Job) -> list[Job]:
     """Advance the document after a terminal job. Returns the jobs it enqueued."""
     document = session.get(Document, job.document_id) if job.document_id is not None else None
     rule = rules_for(document).after_job.get(job.kind) if document is not None else None
-    # A job cancelled by a person produced nothing: like a failure, it only releases barriers
-    # (a cancelled embed must not make the document `indexed`, nor queue linking).
-    cancelled = job.state is JobState.SKIPPED and job.error == queue.CANCELLED
+    # A job cancelled by a person (or of a kind turned off) produced nothing: like a failure,
+    # it only releases barriers (a cancelled embed must not make the document `indexed`).
+    cancelled = job.state is JobState.SKIPPED and job.error in queue.NOT_RUN
     finished = job.state is JobState.DONE or (job.state is JobState.SKIPPED and not cancelled)
     if rule is None:
         return []

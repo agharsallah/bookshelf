@@ -8,7 +8,7 @@ from sqlalchemy import text
 from sqlmodel import Session
 
 from app.core.config import get_settings
-from app.jobs import presence, queue
+from app.jobs import presence, queue, steering
 from app.models import Job
 from app.models.enums import JobKind, JobState
 from app.schemas.job import JobPublic, QueueStatus, WorkerPublic
@@ -23,7 +23,7 @@ def public_jobs(session: Session, jobs: Iterable[Job]) -> list[JobPublic]:
         JobPublic.model_validate(j).model_copy(
             update={
                 "queue_position": places.get(j.id),
-                "run_now": j.priority <= queue.RUN_NOW_PRIORITY,
+                "run_now": j.priority <= steering.RUN_NOW_PRIORITY,
             }
         )
         for j in jobs
@@ -35,6 +35,8 @@ def public_job(session: Session, job: Job) -> JobPublic:
 
 
 def queue_status(session: Session) -> QueueStatus:
+    from app.pipeline.orchestrator import ON_FAILURE  # it imports the queue and settings
+
     workers = presence.alive(session)
     rows = session.execute(
         text(
@@ -52,7 +54,13 @@ def queue_status(session: Session) -> QueueStatus:
         ).all()
     }
     claimed = {kind for w in workers for kind in w.kinds}
-    uncapped = {k.value for k in queue.own_slot_kinds(get_settings())}
+    queued_kinds = {
+        JobKind(kind): int(n)
+        for kind, n in session.execute(
+            text("select kind::text, count(*) from jobs where state = 'queued' group by kind")
+        ).all()
+    }
+    uncapped = {k.value for k in steering.own_slot_kinds(get_settings())}
     controls = queue_controls(session)
     return QueueStatus(
         workers=[WorkerPublic.model_validate(w) for w in workers],
@@ -63,4 +71,8 @@ def queue_status(session: Session) -> QueueStatus:
         paused_reason=controls.paused_reason,
         max_running=controls.max_running,
         slots=sum(w.concurrency for w in workers if set(w.kinds) - uncapped),
+        kinds=dict(controls.kinds),
+        first_documents=list(controls.first_documents),
+        skippable_kinds=sorted(ON_FAILURE),
+        queued_kinds=queued_kinds,
     )
