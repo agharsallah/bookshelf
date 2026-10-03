@@ -82,6 +82,9 @@ PYTHON_JOBS = {
     JobKind.RELATE_CLAIMS,
     JobKind.RECOMMEND_NEXT,
     JobKind.SYNTHESIZE_PAPERS,
+    # Builds (docs/BUILDS.md): the plan runs plan-build inline; the run is an agent package.
+    JobKind.BUILD_PLAN,
+    JobKind.BUILD_RUN,
 }
 # Skill-backed kinds whose skill package is not written yet. The paper-skills stage removes
 # each entry as it adds the package (and adds the kind to `SKILL_JOB_KINDS`); keep it empty.

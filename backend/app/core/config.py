@@ -126,6 +126,18 @@ class Settings(BaseSettings):
     # slot of their own (`app.jobs.narration`) and the pipeline workers leave them alone.
     api_narrate_runner: bool = True
 
+    # --- Builds (docs/BUILDS.md) --------------------------------------------
+    # Each build's checkout lives in `<build_workspace>/<build-id>/`, outside this repo
+    # (`claude` reads every parent CLAUDE.md). The agent never runs `gh`; the runner does.
+    build_workspace: Path = Path.home() / ".bookshelf" / "builds"
+    gh_bin: str = "gh"
+    git_bin: str = "git"
+    # The longest a build may run, whatever its stops say.
+    build_hard_cap_minutes: Annotated[int, Field(ge=5, le=24 * 60)] = 720
+    # A build run is one long agent process, so the API runs `build_run` jobs on one slot of
+    # their own (like narration) and the pipeline workers leave them alone.
+    api_build_runner: bool = True
+
     # --- Idea graph (§11) ---------------------------------------------------
     # Concept dedup: cosine similarity that nominates a pair for the model to confirm, and
     # the most pairs one dedup job may send to the model.

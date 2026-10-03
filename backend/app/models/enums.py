@@ -245,6 +245,9 @@ class JobKind(StrEnum):
     RELATE_CLAIMS = "relate_claims"  # relate-claims utility skill → claim ↔ claim edges
     RECOMMEND_NEXT = "recommend_next"  # recommend-next utility skill → candidate reasons
     SYNTHESIZE_PAPERS = "synthesize_papers"  # synthesize-papers utility skill → paper_syntheses
+    # Builds (docs/BUILDS.md): plan with a utility skill, then an agentic CLI run.
+    BUILD_PLAN = "build_plan"  # plan-build utility skill → builds.plan
+    BUILD_RUN = "build_run"  # agents/build-from-paper in a fresh repo (own runner)
 
 
 class JobState(StrEnum):

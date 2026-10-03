@@ -3,6 +3,7 @@
 from app.models.activity import ActivityMinute
 from app.models.app_settings import AppSettings
 from app.models.artifact import Artifact
+from app.models.build import Build, BuildPlanRecord
 from app.models.collection import Collection, CollectionMember
 from app.models.document import Document, Node
 from app.models.graph import Concept, Edge, node_ref
@@ -27,6 +28,8 @@ __all__ = [
     "ActivityMinute",
     "AppSettings",
     "Artifact",
+    "Build",
+    "BuildPlanRecord",
     "Claim",
     "Collection",
     "CollectionMember",

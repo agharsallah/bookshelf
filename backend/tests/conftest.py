@@ -58,6 +58,10 @@ os.environ.update(
         "BOOKSHELF_API_WORKER": "false",
         "BOOKSHELF_API_NARRATE_RUNNER": "false",  # it would voice queued scripts for real
         "BOOKSHELF_CLAUDE_BIN": "/nonexistent/claude-must-be-faked-in-tests",
+        # Builds: gh must be faked; git stays real (tests make throwaway repos under tmp).
+        "BOOKSHELF_GH_BIN": "/nonexistent/gh-must-be-faked-in-tests",
+        "BOOKSHELF_BUILD_WORKSPACE": str(_TMP / "builds"),
+        "BOOKSHELF_API_BUILD_RUNNER": "false",  # it would launch agent runs for real
         # A developer `.env` may put tiers on other models or efforts; tests assert the ladder.
         "BOOKSHELF_MODEL_EXPLORE": "",
         "BOOKSHELF_MODEL_DISTIL": "",
@@ -100,6 +104,8 @@ AUTH = {"X-API-Key": API_KEY}
 # ~10x cheaper than TRUNCATE, whose fixed per-table cost dominated the suite's runtime.
 _TABLES = (
     "app_settings",
+    "build_plans",
+    "builds",
     "collection_members",
     "collections",
     "paper_syntheses",
