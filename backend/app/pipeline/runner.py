@@ -12,6 +12,10 @@ one tool, `Read`, scoped to the directories of the images they must open.
 The CLI prints one JSON envelope: the model's reply is in `result`, the resolved model is
 the key of `modelUsage`, token counts are in `usage`. `run_structured` turns the reply into
 a validated JSON object, retrying once with the errors appended (§14 Schema gate).
+
+A usage or rate limit (HTTP 429, "You've hit your session limit · resets 8pm") is a
+`UsageLimitError`: every run after it would fail the same way until the limit resets, so
+the worker pauses the whole queue rather than burning attempts (`app.jobs.worker`).
 """
 
 import contextlib
@@ -42,6 +46,30 @@ _LIVE_LOCK = threading.Lock()
 
 class RunnerError(RuntimeError):
     """The CLI failed (exit code, timeout, error envelope). Transient: the queue retries."""
+
+
+class UsageLimitError(RunnerError):
+    """The account hit a usage or rate limit. Nothing more can run until it resets."""
+
+
+_LIMIT_TEXT = re.compile(r"\b(usage|session|weekly|rate|daily)[ -]limit\b|hit your .*limit", re.I)
+
+
+def _limit_error(envelope: dict[str, Any]) -> UsageLimitError | None:
+    """A `UsageLimitError` when an error envelope reports a 429 or a limit message."""
+    detail = str(envelope.get("result") or "")
+    if envelope.get("api_error_status") == 429 or _LIMIT_TEXT.search(detail):
+        return UsageLimitError(f"usage limit reached: {(detail or 'HTTP 429')[:500]}")
+    return None
+
+
+def _error_envelope(stdout: str) -> dict[str, Any] | None:
+    """The JSON envelope a failed run printed (the CLI exits 1 with one on API errors)."""
+    try:
+        envelope = json.loads(stdout)
+    except json.JSONDecodeError:
+        return None
+    return envelope if isinstance(envelope, dict) and envelope.get("is_error") else None
 
 
 class OutputError(ValueError):
@@ -80,6 +108,8 @@ def parse_envelope(stdout: str, *, duration_ms: int = 0) -> RunResult:
     if not isinstance(envelope, dict):
         raise RunnerError("CLI envelope is not a JSON object")
     if envelope.get("is_error") or envelope.get("subtype", "success") != "success":
+        if limit := _limit_error(envelope):
+            raise limit
         detail = next(
             (envelope[k] for k in ("result", "api_error_status", "subtype") if envelope.get(k)),
             "unknown error",
@@ -309,6 +339,9 @@ class ClaudeCliRunner:
         except subprocess.TimeoutExpired as exc:
             raise RunnerError(f"claude timed out after {self.timeout_seconds}s") from exc
         if proc.returncode != 0:
+            envelope = _error_envelope(stdout or "")
+            if envelope is not None and (limit := _limit_error(envelope)):
+                raise limit
             tail = (stderr or stdout or "")[-_STDERR_TAIL:].strip()
             raise RunnerError(f"claude exited with {proc.returncode}: {tail}")
         return stdout

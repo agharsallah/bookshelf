@@ -18,6 +18,7 @@ from app.pipeline.runner import (
     FakeRunner,
     OutputError,
     RunnerError,
+    UsageLimitError,
     extract_json,
     parse_envelope,
     run_structured,
@@ -68,6 +69,35 @@ def test_envelope_keeps_cost_api_time_and_turns_for_telemetry():
 def test_error_envelopes_raise_runner_errors(envelope):
     with pytest.raises(RunnerError):
         parse_envelope(json.dumps(envelope))
+
+
+# What `claude -p` prints (and exits 1 with) when the account's limit is reached.
+LIMIT_ENVELOPE = {
+    **ENVELOPE,
+    "is_error": True,
+    "api_error_status": 429,
+    "result": "You've hit your session limit · resets 8pm (Europe/Berlin)",
+}
+
+
+@pytest.mark.parametrize(
+    "envelope",
+    [
+        LIMIT_ENVELOPE,
+        {**LIMIT_ENVELOPE, "api_error_status": None},  # the message alone
+        {**LIMIT_ENVELOPE, "result": "Overloaded"},  # the 429 alone
+    ],
+)
+def test_a_usage_limit_is_its_own_runner_error(envelope):
+    with pytest.raises(UsageLimitError, match="usage limit reached"):
+        parse_envelope(json.dumps(envelope))
+
+
+def test_other_error_envelopes_are_not_usage_limits():
+    envelope = {**ENVELOPE, "is_error": True, "result": "Credit balance too low"}
+    with pytest.raises(RunnerError) as caught:
+        parse_envelope(json.dumps(envelope))
+    assert not isinstance(caught.value, UsageLimitError)
 
 
 def test_non_json_stdout_is_a_runner_error():
@@ -250,6 +280,13 @@ def test_non_zero_exit_raises_with_stderr(fake_claude):
     script = fake_claude("echo 'rate limited' >&2; exit 3")
 
     with pytest.raises(RunnerError, match="exited with 3: rate limited"):
+        cli(script).run("P", tier=Tier.DISTIL)
+
+
+def test_a_limit_envelope_on_a_failed_exit_is_a_usage_limit(fake_claude):
+    script = fake_claude(f"cat <<'EOF'\n{json.dumps(LIMIT_ENVELOPE)}\nEOF\nexit 1")
+
+    with pytest.raises(UsageLimitError, match="resets 8pm"):
         cli(script).run("P", tier=Tier.DISTIL)
 
 
