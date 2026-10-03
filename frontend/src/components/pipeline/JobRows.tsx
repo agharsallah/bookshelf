@@ -1,14 +1,15 @@
 /**
  * Running, failed and recent jobs: kind, document, scope, attempts, time, and errors. A
  * queued job says what it waits for: its place in line, a retry, or a missing worker.
- * A queued job can be cancelled (`DELETE /jobs/{id}`), a failed one retried
+ * A queued job can be sent to the front (`POST /jobs/{id}/run-now`: the next free slot
+ * under the cap, even while paused) or cancelled (`DELETE /jobs/{id}`), a failed one retried
  * (`POST /jobs/{id}/retry`: same kind, scope, skill, note and payload).
  */
 import { useState } from 'react';
 import { anchorLabel } from '../../lib/anchors';
 import type { ApiClient } from '../../lib/api/client';
 import type { JobPublic, QueueStatus } from '../../lib/api/types/jobs';
-import { cancelJob, retryJob } from '../../lib/jobs/api';
+import { cancelJob, retryJob, runJobNow } from '../../lib/jobs/api';
 import { describeJob } from '../../lib/jobs/progress';
 import { jobTitle } from '../document/jobs';
 import { Problem, problemOf, type ProblemInfo } from '../common/Problem';
@@ -42,19 +43,34 @@ type Control = { state: 'idle' } | { state: 'sending' } | { state: 'sent'; dedup
 
 type JobControlProps = JobRowProps & { api: Pick<ApiClient, 'post' | 'delete'>; onChanged: (job: JobPublic) => void };
 
-export function RunningRow({ job, title, now, api, onChanged, queue = null }: JobControlProps & { queue?: QueueStatus | null }) {
-  const [cancel, setCancel] = useState<Control>({ state: 'idle' });
-  const ms = elapsedMs(job, now);
+type QueuedAction = 'cancel' | 'runNow';
 
-  const send = async () => {
-    setCancel({ state: 'sending' });
+const ACTIONS = {
+  cancel: { call: cancelJob, label: 'Cancel', sending: 'Cancelling…', failed: 'The job was not cancelled.' },
+  runNow: { call: runJobNow, label: 'Run now', sending: 'Sending…', failed: 'The job was not moved to the front.' },
+} satisfies Record<QueuedAction, { call: typeof cancelJob; label: string; sending: string; failed: string }>;
+
+export function RunningRow({ job, title, now, api, onChanged, queue = null }: JobControlProps & { queue?: QueueStatus | null }) {
+  const [control, setControl] = useState<{ action: QueuedAction; state: Control } | null>(null);
+  const ms = elapsedMs(job, now);
+  const sending = control?.state.state === 'sending';
+  const name = `${jobTitle(job, kindLabel)} for ${title}`;
+
+  const send = async (action: QueuedAction) => {
+    setControl({ action, state: { state: 'sending' } });
     try {
-      onChanged(await cancelJob(api, job.id));
-      setCancel({ state: 'idle' });
+      onChanged(await ACTIONS[action].call(api, job.id));
+      setControl(null);
     } catch (error) {
-      setCancel({ state: 'error', problem: problemOf(error) });
+      setControl({ action, state: { state: 'error', problem: problemOf(error) } });
     }
   };
+
+  const button = (action: QueuedAction) => (
+    <button type="button" className="btn" onClick={() => void send(action)} disabled={sending} aria-label={`${ACTIONS[action].label} ${name}`}>
+      {sending && control?.action === action ? ACTIONS[action].sending : ACTIONS[action].label}
+    </button>
+  );
 
   return (
     <li className={styles.job} data-state={job.state}>
@@ -66,18 +82,11 @@ export function RunningRow({ job, title, now, api, onChanged, queue = null }: Jo
       </span>
       {job.state === 'queued' ? (
         <span className={styles.retry}>
-          <button
-            type="button"
-            className="btn"
-            onClick={() => void send()}
-            disabled={cancel.state === 'sending'}
-            aria-label={`Cancel ${jobTitle(job, kindLabel)} for ${title}`}
-          >
-            {cancel.state === 'sending' ? 'Cancelling…' : 'Cancel'}
-          </button>
+          {job.run_now ? null : button('runNow')}
+          {button('cancel')}
         </span>
       ) : null}
-      {cancel.state === 'error' ? <Problem title="The job was not cancelled." problem={cancel.problem} inline /> : null}
+      {control?.state.state === 'error' ? <Problem title={ACTIONS[control.action].failed} problem={control.state.problem} inline /> : null}
     </li>
   );
 }

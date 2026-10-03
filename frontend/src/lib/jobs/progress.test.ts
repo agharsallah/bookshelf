@@ -25,6 +25,11 @@ describe('describeJob', () => {
     expect(describeJob(job(), NOW, queue(['parse'])).phase).toBe('waiting');
   });
 
+  it('says a job sent to run now is not held by the paused queue', () => {
+    const paused = { ...queue(), paused: true };
+    expect(describeJob(job({ queue_position: 1, run_now: true }), NOW, paused)).toEqual({ phase: 'waiting', text: 'Run now, next in line', live: true });
+  });
+
   it('says a queued job waits for the paused queue, keeping its place in line', () => {
     const paused = { ...queue(), paused: true };
     expect(describeJob(job({ queue_position: 2 }), NOW, paused)).toEqual({ phase: 'paused', text: 'Paused, 2nd in line', live: true });

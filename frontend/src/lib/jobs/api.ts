@@ -1,5 +1,6 @@
 /**
  * Job and pipeline control (`POST /jobs`, `DELETE /jobs/{id}`, `POST /jobs/{id}/retry`,
+ * `POST /jobs/{id}/run-now`,
  * `POST /documents/{ref}/resume`, `PATCH /jobs/queue`), through an injected client so
  * islands stay testable.
  */
@@ -16,6 +17,11 @@ export function enqueueJob(api: Api, request: JobCreate): Promise<JobAccepted> {
 /** A queued job becomes `skipped` ("cancelled by user"); `409` once it runs or finished. */
 export function cancelJob(api: Api, id: string): Promise<JobPublic> {
   return api.delete<JobPublic>(`jobs/${id}`);
+}
+
+/** Send a queued job to the front: next free slot under the cap, even while paused. */
+export function runJobNow(api: Api, id: string): Promise<JobPublic> {
+  return api.post<JobPublic>(`jobs/${id}/run-now`);
 }
 
 /** Queue a failed job's work again (without `force`); `409` unless it failed. */

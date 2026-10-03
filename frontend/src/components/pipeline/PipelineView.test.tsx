@@ -42,6 +42,19 @@ describe('<PipelineView>', () => {
     expect(screen.getByText(/Nothing is running/)).toBeTruthy();
   });
 
+  it('sends a queued job to the front of a paused queue, where it says it runs next', async () => {
+    const { api, calls } = fakeApi({ 'POST jobs/q1/run-now': () => ({ ...queued, run_now: true, queue_position: 1 }) });
+    render(<PipelineView jobs={[{ ...queued, queue_position: 7 }]} documents={[systems]} queue={{ ...idle, paused: true }} api={api} live={false} />);
+    const running = screen.getByRole('region', { name: /Running and queued/ });
+    expect(within(running).getByText(/Paused, 7th in line/)).toBeTruthy();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Run now Summarize for Systems' }));
+
+    await waitFor(() => expect(calls).toEqual([{ method: 'POST', path: 'jobs/q1/run-now', body: undefined }]));
+    expect(within(running).getByText(/Run now, next in line/)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Run now Summarize for Systems' })).toBeNull();
+  });
+
   it('shows a paused document from its own state and resumes it, requeueing what the ceiling stopped', async () => {
     const stopped = job({ id: 's1', kind: 'distil_chapter', state: 'failed', error: 'run ceiling reached' });
     const { api, calls } = fakeApi({ 'POST documents/systems/resume': () => ({ document: {}, requeued: [{ ...stopped, id: 's2', state: 'queued' }] }) });

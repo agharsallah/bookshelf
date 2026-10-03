@@ -5,7 +5,8 @@
  * `queued` alone hid four different situations; `describeJob` tells them apart:
  * waiting its turn (and its place in line), backing off before a retry, held by a paused
  * queue (`QueueStatus.paused`), and waiting for a worker that is not running at all
- * (`QueueStatus.unclaimed_kinds`) — the last two need the user to do something.
+ * (`QueueStatus.unclaimed_kinds`) — the last two need the user to do something. A job a
+ * person sent to run now (`run_now`) is not held by the pause and says so.
  */
 import type { JobPublic, QueueStatus } from '../api/types/jobs';
 
@@ -59,7 +60,7 @@ export function describeJob(job: JobPublic, now: number, queue: QueueStatus | nu
           live: true,
         };
       const place = job.queue_position ? `, ${placeInLine(job.queue_position)}` : '';
-      if (queue?.paused) return { phase: 'paused', text: `Paused${place}`, live: true };
+      if (queue?.paused && !job.run_now) return { phase: 'paused', text: `Paused${place}`, live: true };
       const after = Date.parse(job.run_after ?? '');
       if (!Number.isNaN(after) && after > now) {
         return {
@@ -68,7 +69,7 @@ export function describeJob(job: JobPublic, now: number, queue: QueueStatus | nu
           live: true,
         };
       }
-      return { phase: 'waiting', text: `Queued${place}`, live: true };
+      return { phase: 'waiting', text: `${job.run_now ? 'Run now' : 'Queued'}${place}`, live: true };
     }
     case 'running': {
       const ms = elapsedMs(job, now);

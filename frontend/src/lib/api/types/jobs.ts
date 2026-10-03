@@ -58,6 +58,8 @@ export interface JobPublic {
   run_after?: string;
   /** A queued job's place in line (1 = next to start); null unless queued. */
   queue_position?: number | null;
+  /** Sent to the front by a person (`POST /jobs/{id}/run-now`): starts even while paused. */
+  run_now?: boolean;
 }
 
 /** A worker process polling the queue (`GET /jobs/queue`). */
