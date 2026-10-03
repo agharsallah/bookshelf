@@ -79,6 +79,11 @@ class Git:
     def is_repo(self) -> bool:
         return (self.cwd / ".git").exists()
 
+    def is_work_tree(self) -> bool:
+        """Inside a git work tree (a checkout or a worktree, not a bare repository)."""
+        done = self._git("rev-parse", "--is-inside-work-tree", check=False)
+        return done.returncode == 0 and done.stdout.strip() == "true"
+
     def has_changes(self) -> bool:
         return bool(self._git("status", "--porcelain").stdout.strip())
 
@@ -111,6 +116,13 @@ class Git:
         ref = f"refs/heads/{name}"
         return self._git("show-ref", "--verify", "--quiet", ref, check=False).returncode == 0
 
+    def local_branches(self) -> list[str]:
+        out = self._git("for-each-ref", "--format=%(refname:short)", "refs/heads", check=False)
+        return [line.strip() for line in out.stdout.splitlines() if line.strip()]
+
+    def has_worktree_support(self) -> bool:
+        return self._git("worktree", "list", check=False).returncode == 0
+
     def checkout(self, name: str) -> None:
         """Switch to branch `name`, creating it at HEAD when it does not exist yet."""
         if self.current_branch() == name:
@@ -119,6 +131,58 @@ class Git:
             self._git("checkout", "--quiet", name)
         else:
             self._git("checkout", "--quiet", "-b", name)
+
+    def ref_exists(self, ref: str) -> bool:
+        """Any ref or commit-ish (`origin/main`, `refs/heads/x`, a sha)."""
+        done = self._git("rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}", check=False)
+        return done.returncode == 0
+
+    def checkout_new(self, name: str, start: str) -> None:
+        """Create branch `name` at `start` and switch to it (`git checkout -b`)."""
+        self._git("checkout", "--quiet", "-b", name, start)
+
+    def merge_ff_only(self, ref: str) -> bool:
+        """Fast-forward to `ref` when possible (never a merge commit). → whether it did."""
+        return self._git("merge", "--quiet", "--ff-only", ref, check=False).returncode == 0
+
+    def fetch(self, remote: str = "origin") -> None:
+        self._git("fetch", "--quiet", "--prune", remote)
+
+    def changed_paths(self, sha: str) -> list[str]:
+        """The files commit `sha` touched (the root commit too)."""
+        out = self._git("diff-tree", "--no-commit-id", "--name-only", "-r", "--root", sha).stdout
+        return [line for line in out.splitlines() if line.strip()]
+
+    def ls_tree(self, ref: str, path: str | None = None) -> list[tuple[str, str]]:
+        """Every entry at `ref` (recursive, folders included) as `(type, path)`; with `path`,
+        only that path and what is under it."""
+        args = ["ls-tree", "-r", "-t", "-z", ref, *(["--", path] if path else [])]
+        out = self._git(*args).stdout
+        entries = []
+        for record in out.split("\0"):
+            meta, _, name = record.partition("\t")
+            if name:
+                entries.append((meta.split()[1], name))
+        return entries
+
+    def show_file(self, ref: str, path: str) -> str | None:
+        """The text of `path` at `ref` (from the object store, never the working tree)."""
+        done = self._git("show", f"{ref}:{path}", check=False)
+        return done.stdout if done.returncode == 0 else None
+
+    def worktree_add(self, dest: Path, branch: str, *, start: str | None = None) -> None:
+        """`git worktree add`: a new branch at `start`, or the existing `branch`."""
+        if start is not None:
+            self._git("worktree", "add", "--quiet", "-b", branch, str(dest), start)
+        else:
+            self._git("worktree", "add", "--quiet", str(dest), branch)
+
+    def worktree_remove(self, dest: Path) -> None:
+        self._git("worktree", "remove", "--force", str(dest), check=False)
+        self._git("worktree", "prune")
+
+    def worktree_prune(self) -> None:
+        self._git("worktree", "prune")
 
     def commits_between(self, base: str, head: str = "HEAD") -> int:
         done = self._git("rev-list", "--count", f"{base}..{head}", check=False)

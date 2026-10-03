@@ -6,12 +6,15 @@ run and for a resume. With `delivery: pull_request` it opens the pull request at
 `GhCli` shells out through one `run` seam; `FakeGitHub` records calls for tests.
 """
 
+import base64
 import json
 import re
 import subprocess
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Protocol
+from pathlib import Path
+from typing import Any, Protocol
+from urllib.parse import quote
 
 Run = Callable[..., subprocess.CompletedProcess[str]]
 _TAIL = 1000
@@ -36,6 +39,22 @@ class RepoNameTaken(GitHubError):
         self.full_name = full_name
 
 
+@dataclass(frozen=True, slots=True)
+class RepoInfo:
+    """`gh repo view --json viewerPermission,defaultBranchRef,isArchived`."""
+
+    default_branch: str | None
+    archived: bool
+    viewer_permission: str  # ADMIN · MAINTAIN · WRITE · TRIAGE · READ · "" (unknown)
+
+    @property
+    def can_push(self) -> bool:
+        return self.viewer_permission in PUSH_PERMISSIONS
+
+
+PUSH_PERMISSIONS = frozenset({"ADMIN", "MAINTAIN", "WRITE"})
+
+
 class GitHub(Protocol):
     def viewer(self) -> str: ...
     def repo_exists(self, full_name: str) -> bool: ...
@@ -43,6 +62,23 @@ class GitHub(Protocol):
     def remote_url(self, full_name: str) -> str: ...
     def add_topics(self, full_name: str, topics: list[str]) -> None: ...
     def create_pr(self, full_name: str, *, head: str, base: str, title: str, body: str) -> str: ...
+    # building into an existing repository (docs/BUILDS.md §7c)
+    def list_repos(self, query: str = "") -> list[dict[str, Any]]: ...
+    def repo_info(self, full_name: str) -> RepoInfo | None: ...
+    def branches(self, full_name: str) -> list[str]: ...
+    def tree(self, full_name: str, ref: str) -> list[tuple[str, str]]: ...
+    def file(self, full_name: str, path: str, ref: str) -> str | None: ...
+    def clone(self, full_name: str, dest: Path) -> None: ...
+
+
+def _visibility(repo: dict[str, Any]) -> str:
+    return "private" if repo.get("private") else "public"
+
+
+def matches(repo: dict[str, Any], query: str) -> bool:
+    """`query` in the repo's name or description, ignoring case ("" matches all)."""
+    text = f"{repo.get('full_name', '')} {repo.get('description') or ''}".lower()
+    return all(word in text for word in query.lower().split())
 
 
 def full_name_of(repo_url: str) -> str:
@@ -138,11 +174,88 @@ class GhCli:
             return found.group(0)
         raise GitHubError(f"gh pr create on {full_name} failed: {self._detail(done)}")
 
+    # -- existing repositories (§7c) ---------------------------------------------------
+
+    def _api_json(self, path: str) -> Any:
+        done = self._gh("api", path)
+        if done.returncode != 0:
+            return None
+        try:
+            return json.loads(done.stdout)
+        except ValueError:
+            return None
+
+    def list_repos(self, query: str = "") -> list[dict[str, Any]]:
+        """Yours and your organizations' (the 100 updated last), as `RepoChoice` dicts."""
+        path = (
+            "user/repos?per_page=100&sort=updated"
+            "&affiliation=owner,collaborator,organization_member"
+        )
+        rows = self._api_json(path)
+        if not isinstance(rows, list):
+            raise GitHubError("gh could not list your repositories. Run `gh auth login`.")
+        out = []
+        for r in rows:
+            if not isinstance(r, dict) or r.get("archived"):
+                continue
+            perms = r.get("permissions") or {}
+            out.append({
+                "full_name": r.get("full_name", ""), "description": r.get("description"),
+                "visibility": str(r.get("visibility") or _visibility(r)).upper(),
+                "default_branch": r.get("default_branch"), "updated_at": r.get("updated_at"),
+                "can_push": bool(perms.get("push") or perms.get("admin") or perms.get("maintain")),
+            })  # fmt: skip
+        return [r for r in out if matches(r, query)]
+
+    def repo_info(self, full_name: str) -> RepoInfo | None:
+        done = self._gh("repo", "view", full_name, "--json",
+                        "viewerPermission,defaultBranchRef,isArchived")  # fmt: skip
+        if done.returncode != 0:
+            return None
+        try:
+            raw = json.loads(done.stdout)
+        except ValueError:
+            return None
+        ref = raw.get("defaultBranchRef") or {}
+        return RepoInfo(
+            default_branch=ref.get("name") or None,
+            archived=bool(raw.get("isArchived")),
+            viewer_permission=str(raw.get("viewerPermission") or ""),
+        )
+
+    def branches(self, full_name: str) -> list[str]:
+        rows = self._api_json(f"repos/{full_name}/branches?per_page=100")
+        return [str(r["name"]) for r in rows or [] if isinstance(r, dict) and r.get("name")]
+
+    def tree(self, full_name: str, ref: str) -> list[tuple[str, str]]:
+        """Every entry at `ref` as `(type, path)`, type `blob` or `tree`."""
+        raw = self._api_json(f"repos/{full_name}/git/trees/{quote(ref, safe='')}?recursive=1")
+        entries = raw.get("tree") if isinstance(raw, dict) else None
+        return [(str(e.get("type")), str(e.get("path"))) for e in entries or []
+                if isinstance(e, dict) and e.get("path")]  # fmt: skip
+
+    def file(self, full_name: str, path: str, ref: str) -> str | None:
+        raw = self._api_json(f"repos/{full_name}/contents/{quote(path)}?ref={quote(ref, safe='')}")
+        if not isinstance(raw, dict) or raw.get("encoding") != "base64":
+            return None
+        try:
+            return base64.b64decode(str(raw.get("content", ""))).decode("utf-8", errors="replace")
+        except ValueError:
+            return None
+
+    def clone(self, full_name: str, dest: Path) -> None:
+        done = self._gh("repo", "clone", full_name, str(dest), "--", "--quiet")
+        if done.returncode != 0:
+            raise GitHubError(f"gh repo clone {full_name} failed: {self._detail(done)}")
+
 
 @dataclass
 class FakeGitHub:
     """In-memory GitHub: `existing` repos are taken; `created` records `create_repo`.
-    `remote_dir` (a bare repo path) makes `remote_url` point somewhere git can push."""
+    `remote_dir` (a bare repo path) makes `remote_url` point somewhere git can push, and
+    `clone` clone it (real git). For §7c: `info` per repo (a missing one is not found),
+    `branch_names`, `trees` (`(type, path)` per repo) and `files` (`(repo, path)` → text),
+    `listed` for `list_repos` (its calls counted in `list_calls`)."""
 
     login: str = "octo"
     existing: set[str] = field(default_factory=set)
@@ -151,6 +264,13 @@ class FakeGitHub:
     logged_in: bool = True
     topics: dict[str, list[str]] = field(default_factory=dict)
     prs: list[dict[str, str]] = field(default_factory=list)
+    info: dict[str, RepoInfo] = field(default_factory=dict)
+    branch_names: dict[str, list[str]] = field(default_factory=dict)
+    trees: dict[str, list[tuple[str, str]]] = field(default_factory=dict)
+    files: dict[tuple[str, str], str] = field(default_factory=dict)
+    listed: list[dict[str, Any]] = field(default_factory=list)
+    list_calls: int = 0
+    cloned: list[str] = field(default_factory=list)
 
     def viewer(self) -> str:
         if not self.logged_in:
@@ -179,3 +299,31 @@ class FakeGitHub:
         self.prs.append({"full_name": full_name, "head": head, "base": base, "title": title,
                          "body": body})  # fmt: skip
         return f"{web_url(full_name)}/pull/{len(self.prs)}"
+
+    def list_repos(self, query: str = "") -> list[dict[str, Any]]:
+        self.list_calls += 1
+        self.viewer()
+        return [r for r in self.listed if matches(r, query)]
+
+    def repo_info(self, full_name: str) -> RepoInfo | None:
+        return self.info.get(full_name)
+
+    def branches(self, full_name: str) -> list[str]:
+        return list(self.branch_names.get(full_name, []))
+
+    def tree(self, full_name: str, ref: str) -> list[tuple[str, str]]:
+        return list(self.trees.get(full_name, []))
+
+    def file(self, full_name: str, path: str, ref: str) -> str | None:
+        return self.files.get((full_name, path))
+
+    def clone(self, full_name: str, dest: Path) -> None:
+        if self.remote_dir is None:
+            raise GitHubError(f"no remote to clone {full_name} from")
+        done = subprocess.run(  # noqa: S603 - a fixed argv, tests only
+            ["git", "clone", "--quiet", self.remote_dir, str(dest)],  # noqa: S607
+            capture_output=True, text=True, check=False,
+        )  # fmt: skip
+        if done.returncode != 0:
+            raise GitHubError(f"clone failed: {done.stderr}")
+        self.cloned.append(full_name)

@@ -51,3 +51,33 @@ def commit_in(repo: Path, name: str, text: str, message: str) -> None:
 def commit_file(git: Git, name: str, text: str, message: str) -> str:
     commit_in(git.cwd, name, text, message)
     return git.head() or ""
+
+
+@pytest.fixture(autouse=True)
+def _fresh_target_cache() -> Iterator[None]:
+    """`app.builds.targets` caches surveys by repository; every test starts cold."""
+    from app.builds import targets
+
+    targets.clear_cache()
+    yield
+    targets.clear_cache()
+
+
+def make_user_repo(root: Path, *, extra: dict[str, str] | None = None) -> Path:
+    """A repository like the reader's own: a Python project with a README and a CLAUDE.md,
+    on `main`, plus anything in `extra` (path → text) committed on top."""
+    src = root / "mine"
+    src.mkdir(parents=True)
+    sh_git(src, "init", "-q", "--initial-branch", "main")
+    commit_in(src, "README.md", "# Mine\n\nThe reader's project.\n", "chore: init")
+    commit_in(src, "pyproject.toml", "[project]\nname = 'mine'\n", "build: python")
+    commit_in(src, "CLAUDE.md", "Use ruff. Tests go in tests/.\n", "docs: conventions")
+    commit_in(src, "src/mine/core/deep.py", "x = 1\n", "feat: core")
+    for path, text in (extra or {}).items():
+        commit_in(src, path, text, f"chore: add {path}")
+    return src
+
+
+@pytest.fixture
+def user_repo(tmp_path: Path) -> Path:
+    return make_user_repo(tmp_path)
