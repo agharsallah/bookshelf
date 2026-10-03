@@ -1,6 +1,9 @@
 """What a build agent may run (docs/BUILDS.md B5): `--allowedTools` patterns.
 
-    base tools (meta.yaml)  Read, Write, Edit…
+    base tools (meta.yaml)  Read, Write, Edit…; building into an existing repository (§7c,
+                            B19) scopes Write and Edit to `Write(<folder>/**)`,
+                            `Edit(<folder>/**)`: a path relative to the agent's cwd, the
+                            repository root (Claude Code's permission-rule semantics)
     BASE_BASH               local git and read-only shell, for every build (no `find`:
                             `-exec`/`-delete` reach past the repo; Glob and Grep search)
     TOOLCHAINS[name]        a preset's language tooling (python, node, static)
@@ -87,15 +90,28 @@ def extra_command_problem(command: str) -> str | None:
     return None
 
 
+SCOPED_TOOLS = ("Write", "Edit")
+
+
+def scoped(tools: Iterable[str], folder: str | None) -> list[str]:
+    """`Write` and `Edit` limited to `<folder>/**` when there is a folder."""
+    if folder is None:
+        return list(tools)
+    return [f"{t}({folder}/**)" if t in SCOPED_TOOLS else t for t in tools]
+
+
 def allowed_tools(
     base_tools: Iterable[str],
     toolchains: Iterable[str],
     allow_web: bool,
     extra_commands: Iterable[str] = (),
+    *,
+    folder: str | None = None,
 ) -> list[str]:
-    """The agent's allowlist, in order, each pattern once. Raises `UnknownToolchainError`,
-    or `ValueError` for a forbidden pattern or extra command."""
-    patterns = [*base_tools, *BASE_BASH]
+    """The agent's allowlist, in order, each pattern once; with `folder`, writes are scoped
+    to it. Raises `UnknownToolchainError`, or `ValueError` for a forbidden pattern or extra
+    command."""
+    patterns = [*scoped(base_tools, folder), *BASE_BASH]
     for name in toolchains:
         if name not in TOOLCHAINS:
             raise UnknownToolchainError(f"unknown toolchain {name!r}")

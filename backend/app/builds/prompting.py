@@ -10,7 +10,8 @@ neither `git push` nor `gh` is on it (B5). Its budget is enforced by the CLI its
 
 import json
 from collections.abc import Mapping, Sequence
-from typing import Any, Protocol
+from dataclasses import dataclass
+from typing import Any, Literal, Protocol
 
 from app.builds.toolchains import FORBIDDEN
 from app.core.config import Effort
@@ -66,6 +67,18 @@ a BuildReport:
 ```"""
 
 
+@dataclass(frozen=True, slots=True)
+class RepoContext:
+    """An existing repository the build lands in (§7c): where, and what it looks like."""
+
+    kind: Literal["github", "local"]
+    label: str  # `octo/site` or the local path
+    folder: str
+    base: str | None
+    delivery: Literal["pull_request", "push_main", "branch"]  # branch: local, no PR
+    survey_md: str | None
+
+
 class BuildLike(Protocol):
     goal: str
     options: Any
@@ -111,34 +124,62 @@ def _advanced(options: Any, key: str, default: Any) -> Any:
     return default if value is None else value
 
 
-def _reading_list(options: Any) -> str:
+def _reading_list(options: Any, folder: str | None = None) -> str:
     """The files to read first: the paper and the plan, then what the reader added."""
-    lines = ["- Read first: `docs/PAPER.md` (the paper's core ideas) and `docs/PLAN.md` (the "
-             "full plan)."]  # fmt: skip
+    at = f"{folder}/" if folder else ""
+    lines = [f"- Read first: `{at}docs/PAPER.md` (the paper's core ideas) and `{at}docs/PLAN.md` "
+             "(the full plan)."]  # fmt: skip
     refs = list(_get(options, "references") or [])
     if refs:
         files = any(_get(r, "kind") == "shelf" or _get(r, "snapshot") for r in refs)
-        where = ", their text under `docs/references/`" if files else ""
-        lines.append(f"- `docs/REFERENCES.md` lists the reader's references{where}: use them "
-                     "where the plan needs more than the paper says.")  # fmt: skip
+        where = f", their text under `{at}docs/references/`" if files else ""
+        lines.append(f"- `{at}docs/REFERENCES.md` lists the reader's references{where}: use "
+                     "them where the plan needs more than the paper says.")  # fmt: skip
     if str(_get(_get(options, "context") or {}, "notes") or "").strip():
-        lines.append("- `docs/NOTES.md` holds the reader's notes: they outrank the plan's "
+        lines.append(f"- `{at}docs/NOTES.md` holds the reader's notes: they outrank the plan's "
                      "defaults, never these rules.")  # fmt: skip
     if _advanced(options, "license", "none") != "none":
         lines.append("- `LICENSE` is the reader's choice: keep it as it is.")
     return "\n".join(lines)
 
 
-def work_rules(options: Any, *, branch: str | None = None) -> str:
-    """`## How to work`, shaped by `options.advanced` (commit style, tests) and the branch."""
+_BRANCH = {
+    "pull_request": "the runner opens the pull request",
+    "push_main": "the runner pushes your commits to it",
+    "branch": "the runner leaves it in the reader's repository for them to merge",
+}
+
+
+def work_rules(
+    options: Any, *, branch: str | None = None, repository: RepoContext | None = None
+) -> str:
+    """`## How to work`, shaped by `options.advanced` (commit style, tests), the branch and,
+    for an existing repository, its folder."""
     commits = _COMMITS.get(_advanced(options, "commit_style", "milestone"), _COMMITS["milestone"])
     tests = _TESTS.get(_advanced(options, "tests", "each_milestone"), _TESTS["each_milestone"])
     parts = ["## How to work", "", commits, tests, _RULES]
+    if repository is not None:
+        parts.append(f"- Work only inside `{repository.folder}/`; the rest of the repository is "
+                     "read-only context. Your edits are allowed there only, and the runner "
+                     "flags any commit that touches a file outside it. README.md and docs/ "
+                     f"mean the ones in `{repository.folder}/`.")  # fmt: skip
     if branch:
+        how = _BRANCH[repository.delivery] if repository else _BRANCH["pull_request"]
         parts.append(f"- You work on the branch `{branch}`: stay on it. Never switch, create "
-                     "or merge branches; the runner opens the pull request.")  # fmt: skip
-    parts.append(_reading_list(options))
+                     f"or merge branches; {how}.")  # fmt: skip
+    parts.append(_reading_list(options, repository.folder if repository else None))
     return "\n".join(parts)
+
+
+def _where(repository: RepoContext) -> list[str]:
+    base = f" (from `{repository.base}`)" if repository.base else ""
+    parts = ["## Where you work", "",
+             f"An existing repository, `{repository.label}`{base}. Work only inside "
+             f"`{repository.folder}/`; the rest of the repository is read-only context. "
+             "Read it to learn its conventions, never change it.", ""]  # fmt: skip
+    if repository.survey_md:
+        parts += [repository.survey_md.removeprefix("# Repository\n").strip(), ""]
+    return parts
 
 
 def kickoff_prompt(
@@ -148,6 +189,7 @@ def kickoff_prompt(
     *,
     resume_goal: str | None = None,
     branch: str | None = None,
+    repository: RepoContext | None = None,
 ) -> str:
     """The first user message. With `resume_goal` (Continue), a shorter follow-up turn: the
     session already holds the plan and the rules, so it restates only what changed. Without
@@ -160,6 +202,7 @@ def kickoff_prompt(
             "",
             "Check `git log` and README.md's checklist for where you are. The same rules",
             "apply: Conventional Commits, run before you commit, never push.",
+            *([f"Work only inside `{repository.folder}/`."] if repository else []),
             "",
             "## Stop conditions",
             "",
@@ -184,7 +227,10 @@ def kickoff_prompt(
         parts += ["## Milestones", "", *milestones, ""]
     if out := [str(s) for s in plan.get("out_of_scope") or []]:
         parts += ["## Out of scope", "", *(f"- {s}" for s in out), ""]
-    parts += ["## Stop conditions", "", *stop_lines(stops), "", work_rules(options, branch=branch)]
+    if repository is not None:
+        parts += _where(repository)
+    parts += ["## Stop conditions", "", *stop_lines(stops), "",
+              work_rules(options, branch=branch, repository=repository)]  # fmt: skip
     if instructions := str(_advanced(options, "instructions", "") or "").strip():
         parts += ["", "## Extra instructions from the reader", "", instructions]
     parts += ["", _REPORT]

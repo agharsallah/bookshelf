@@ -10,6 +10,8 @@
                                     failed (link-only then)
 
 `build` is a `Build` row, saved or not: the form's live preview renders an unsaved one.
+Building into an existing repository (§7c), every path is under `options.target.folder`
+(`papers/attention/README.md`, `papers/attention/docs/PAPER.md`…).
 """
 
 import uuid
@@ -135,12 +137,19 @@ def _plan_heading(session: Session, build: Build) -> str | None:
                         feedback=record.feedback)  # fmt: skip
 
 
+def in_folder(files: Sequence[File], folder: str | None) -> list[File]:
+    """`files` moved under `folder` (an existing repository's target folder), if any."""
+    if folder is None:
+        return list(files)
+    return [File(f"{folder}/{f.path}", f.content, f.pending) for f in files]
+
+
 def context_files(
     session: Session, build: Build, *, author: str | None = None, now: datetime | None = None
 ) -> list[File]:
     """The context the agent reads, as a preview: nothing is fetched."""
-    rendered, _, _ = _render(session, build, author=author, fetch=None, now=now)
-    return rendered.files
+    rendered, _, options = _render(session, build, author=author, fetch=None, now=now)
+    return in_folder(rendered.files, options.target.folder)
 
 
 def seed_files(
@@ -171,4 +180,5 @@ def seed_files(
         *rendered.files[1:],
         File(".gitignore", render_gitignore(toolchains)),
     ]
+    rendered.files = in_folder(rendered.files, options.target.folder)
     return rendered

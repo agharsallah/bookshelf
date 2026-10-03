@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from app.builds.git import Git
+from app.schemas.build_target import folder_slug
 
 _SHORT_TITLE = 50
 
@@ -47,11 +48,16 @@ def short_title(title: str, limit: int = _SHORT_TITLE) -> str:
     return f"{cut or head[:limit]}…"
 
 
-def seed_message(title: str, *, link_paper: bool) -> str:
+def seed_message(title: str, *, link_paper: bool, folder: str | None = None) -> str:
+    """`chore: seed repository from <title>`; into a folder of an existing repository (§7c),
+    `chore(<folder slug>): seed <folder> from <title>`."""
+    if folder is not None:
+        head = f"chore({folder_slug(folder)}): seed {folder}"
+        return f"{head} from {short_title(title)}" if link_paper else head
     return (
         f"chore: seed repository from {short_title(title)}"
         if link_paper
-        else ("chore: seed repository")
+        else "chore: seed repository"
     )
 
 
@@ -172,12 +178,15 @@ def render_gitignore(toolchains: Sequence[str]) -> str:
 
 
 def seed_repo(
-    git: Git, files: Mapping[str, str], *, title: str, link_paper: bool, coauthor: bool
-) -> str:
-    """Write `files` (path → text) into `git.cwd` and make the first commit. → its sha."""
+    git: Git, files: Mapping[str, str], *, title: str, link_paper: bool, coauthor: bool,
+    folder: str | None = None,
+) -> str:  # fmt: skip
+    """Write `files` (path → text, already under `folder` when there is one) into `git.cwd`
+    and make the seed commit. → its sha."""
     root = Path(git.cwd)
     for relative, text in files.items():
         path = root / relative
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(text if text.endswith("\n") else f"{text}\n", "utf-8")
-    return git.commit_all(seed_message(title, link_paper=link_paper), coauthor=coauthor)
+    message = seed_message(title, link_paper=link_paper, folder=folder)
+    return git.commit_all(message, coauthor=coauthor)
