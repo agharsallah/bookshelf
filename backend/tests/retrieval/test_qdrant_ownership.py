@@ -78,7 +78,7 @@ def test_api_lifespan_runs_embed_jobs_only_for_embedded_qdrant(qdrant_url, runs_
     app = create_app(settings)
 
     with TestClient(app):
-        runner = app.state.embed_runner
+        runner = app.state.runners.embed
         assert (runner is not None and runner.running) is runs_embed
 
     assert runner is None or not runner.running

@@ -22,26 +22,10 @@ from app.core.logging import configure_logging
 from app.core.middleware import MaxBodySizeMiddleware, RequestContextMiddleware
 from app.core.ratelimit import RateLimitMiddleware
 from app.core.security import API_KEY_HEADER
-from app.jobs.background import BackgroundWorker, stop_all
-from app.jobs.embedded import EmbedRunner
-from app.jobs.narration import NarrateRunner
-from app.jobs.worker import Worker, autodiscover
-from app.models.enums import JobKind
+from app.jobs.runners import Runners
 from app.retrieval.client import close_client
 
 logger = logging.getLogger(__name__)
-
-
-def _job_worker(settings: Settings) -> BackgroundWorker | None:
-    """The API's own pipeline worker (`app.jobs.background`): every kind with a handler,
-    except `embed` while embedded Qdrant's runner owns it, and `narrate`, which runs on a
-    slot of its own (`app.jobs.narration`)."""
-    if not settings.api_worker:
-        return None
-    autodiscover()
-    exclude = [JobKind.NARRATE, *([JobKind.EMBED] if settings.qdrant_url is None else [])]
-    worker = Worker(exclude=exclude, label="api")
-    return BackgroundWorker(worker, name="job-worker")
 
 
 @asynccontextmanager
@@ -67,25 +51,14 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         },
     )
     restore_signals = lifecycle.install()  # SSE streams end as soon as shutdown begins
-    runner = EmbedRunner() if settings.qdrant_url is None and settings.api_embed_runner else None
-    app.state.embed_runner = runner
-    if runner is not None:
-        runner.start()
-    narrator = NarrateRunner() if settings.api_narrate_runner else None
-    app.state.narrate_runner = narrator
-    if narrator is not None:
-        narrator.start()
-    job_worker = _job_worker(settings)
-    app.state.job_worker = job_worker
-    if job_worker is not None:
-        job_worker.start()
+    runners = Runners(settings)
+    app.state.runners = runners  # Settings → Database restarts them on a switch
+    runners.start()
     try:
         yield
     finally:
         restore_signals()
-        stop_all([job_worker, narrator])  # jobs back to the queue; `claude` and speech killed
-        if runner is not None:
-            runner.stop()
+        runners.stop()  # jobs back to the queue; `claude` and speech killed
         close_client()  # release the embedded store's lock before a reload reopens it
         logger.info("Application stopped")
 

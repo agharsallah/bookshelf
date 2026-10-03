@@ -21,7 +21,7 @@ from app.jobs.narration import NarrateRunner
 from app.jobs.queue import JobSpec
 from app.jobs.registry import HandlerResult, JobContext, PermanentJobError
 from app.jobs.worker import Worker, autodiscover, kind_filters, parse_kinds
-from app.main import _job_worker
+from app.jobs.runners import _job_worker
 from app.models import Artifact, Job
 from app.models.enums import JobKind, JobState, RunMode
 from app.pipeline import interactive
