@@ -6,7 +6,9 @@
                            agent's branch `build/<repo_name>` checked out. Each step only when
                            not done already, so a retried job is safe. → warnings
     open_pull_request(…)   at the end of a pull request run with commits on the branch: one
-                           PR (title from the goal, body from the BuildReport), once
+                           PR (title from the goal, body from the BuildReport), once. Into an
+                           existing GitHub repository (§7c) its base is the target's base
+                           branch; the workspace is `existing_repo.prepare_workspace`
 
 A `local` build skips everything GitHub: delivery, description and topics.
 """
@@ -109,9 +111,13 @@ def _section(title: str, items: Any) -> list[str]:
 
 
 def pr_body(build: Build, report: Mapping[str, Any] | None) -> str:
+    folder = options_of(build).target.folder
+    plan_md = f"{folder}/docs/PLAN.md" if folder else "docs/PLAN.md"
     parts = ["## Goal", "", build.goal.strip(), ""]
+    if folder:
+        parts += [f"Everything is in `{folder}/`.", ""]
     if summary := str((build.plan or {}).get("summary") or "").strip():
-        parts += ["## Plan", "", summary, "", "The full plan is in `docs/PLAN.md`.", ""]
+        parts += ["## Plan", "", summary, "", f"The full plan is in `{plan_md}`.", ""]
     parts += ["## Report", ""]
     if not report:
         parts += ["The run ended without a report: a limit or a stop cut it short.", ""]
@@ -134,10 +140,15 @@ def open_pull_request(
     build: Build, git: Git, github: GitHub, *, report: Mapping[str, Any] | None
 ) -> str | None:
     """Open the run's PR when it is due (see the module docstring). → its url, or None."""
-    branch = branch_of(options_of(build))
+    options = options_of(build)
+    branch = branch_of(options)
+    if options.advanced.delivery != "pull_request" or options.target.kind == "local":
+        return None
     if branch is None or build.repo_url is None or has_pr(build.events):
         return None
-    if git.commits_between(BASE_BRANCH, branch) == 0:
+    base = options.target.base_branch or BASE_BRANCH
+    base_ref = f"origin/{base}" if options.target.existing else base
+    if git.commits_between(base_ref, branch) == 0:
         return None
-    return github.create_pr(full_name_of(build.repo_url), head=branch, base=BASE_BRANCH,
+    return github.create_pr(full_name_of(build.repo_url), head=branch, base=base,
                             title=pr_title(build.goal), body=pr_body(build, report))  # fmt: skip

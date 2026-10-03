@@ -13,7 +13,11 @@ A job lands in one of three situations:
   `claude --resume` with a short follow-up prompt.
 - **fresh**: `git init`, the seed commit, the GitHub repo (unless `local`), then
   `claude --session-id` (`app.builds.publish.prepare_repo`; a pull request delivery puts
-  the agent on `build/<repo_name>`).
+  the agent on `build/<repo_name>`). Into an existing repository (§7c) the workspace is a
+  clone or a worktree with the seed in the target folder
+  (`app.builds.existing_repo.prepare_workspace`), the survey is written to `survey.md`
+  beside the kickoff, and the watcher confines commits to the folder. A local worktree is
+  removed when the run ends, however it ends (`release_workspace`).
 
 Pushes follow `advanced.push`: after each commit, or once at the end. A pull request
 delivery opens its PR after the last push (`publish.open_pull_request`), recorded as a
@@ -39,7 +43,7 @@ from typing import Any
 
 from sqlmodel import Session
 
-from app.builds import service
+from app.builds import existing_repo, service, targets
 from app.builds.agents import load_agent
 from app.builds.events import BuildEvent, final_result, now_iso
 from app.builds.git import Git
@@ -47,6 +51,7 @@ from app.builds.github import GhCli, GitHub
 from app.builds.launch import branch_of, launch_spec, options_of, resolve_toolchains
 from app.builds.process import (
     EVENTS_NAME,
+    SURVEY_NAME,
     AttachedProcess,
     RunLock,
     Spawner,
@@ -62,7 +67,7 @@ from app.builds.process import (
 )
 from app.builds.publish import SetupError, open_pull_request, prepare_repo
 from app.builds.references import Fetch, fetch_readable
-from app.builds.watch import Limits, Outcome, Progress, Signals, Watcher, kill_group
+from app.builds.watch import Confine, Limits, Outcome, Progress, Signals, Watcher, kill_group
 from app.core.config import Settings, get_settings
 from app.db.session import release
 from app.jobs.registry import HandlerResult, JobContext
@@ -117,13 +122,25 @@ def _launch(
     """Start the agent (fresh or `--resume`) and write the lock. → the lock."""
     settings = deps.settings
     agent = load_agent(build.agent)
+    options = options_of(build)
+    gh = deps.github(settings) if options.target.kind == "github" else None
+    surveyed = targets.survey_for(options, github=gh, git_bin=settings.git_bin)
+    toolchains = resolve_toolchains(agent, build, surveyed)
     try:
-        warnings = prepare_repo(
-            session, build, git, settings=settings, github=lambda: deps.github(settings),
-            fetch=deps.fetch, toolchains=resolve_toolchains(agent, build),
-        )  # fmt: skip
-    except SetupError as exc:
+        if options.target.existing:
+            warnings = existing_repo.prepare_workspace(
+                session, build, git, settings=settings, github=lambda: deps.github(settings),
+                fetch=deps.fetch, toolchains=toolchains,
+            )  # fmt: skip
+        else:
+            warnings = prepare_repo(
+                session, build, git, settings=settings, github=lambda: deps.github(settings),
+                fetch=deps.fetch, toolchains=toolchains,
+            )  # fmt: skip
+    except (SetupError, existing_repo.SetupError) as exc:
         raise BuildSetupError(str(exc)) from exc
+    if surveyed.markdown:
+        (dir_ / SURVEY_NAME).write_text(surveyed.markdown, "utf-8")
     if warnings:
         service.record_progress(session, build,
                                 events=[BuildEvent(now_iso(), "error", w).as_json()
@@ -142,7 +159,7 @@ def _launch(
         budget = max(float(budget) - cost_base, 0.01)
     resume_goal = str((ctx.job.payload or {}).get("goal") or "") if resume else None
     spec = launch_spec(build, agent, settings, session_id=session_id, resume=resume,
-                       budget=budget, resume_goal=resume_goal)  # fmt: skip
+                       budget=budget, resume_goal=resume_goal, surveyed=surveyed)  # fmt: skip
     argv, prompt = spec.argv, spec.prompt
     offset, base_sha, started = file_size(events), git.head(), deps.clock()
     try:
@@ -198,7 +215,9 @@ def _verdict(outcome: Outcome, lock: RunLock, dir_: Path) -> dict[str, Any]:
     report = final.report if final is not None else None
     base = {"report": report, "cost_usd": cost}
     if outcome.stop_reason is not None:
-        return {**base, "state": BuildState.STOPPED, "stop_reason": StopReason(outcome.stop_reason)}
+        why = {"error": outcome.error} if outcome.error else {}
+        return {**base, "state": BuildState.STOPPED,
+                "stop_reason": StopReason(outcome.stop_reason), **why}  # fmt: skip
     if final is None:
         detail = stderr_tail(dir_) or f"exit code {outcome.exit_code}"
         return {**base, "state": BuildState.FAILED, "stop_reason": StopReason.ERROR,
@@ -246,12 +265,47 @@ def _deliver(
     _persist(session, build_id, ctx.job.id)(Progress(events=[event], commits=[]))
 
 
+def _pusher(options: Any, git: Git, notes: list[BuildEvent]) -> Callable[[], None] | None:
+    """How this run pushes: its branch to `origin` when there is one; a local target only
+    with `push_branch` (§7c), and a note when the repository has no `origin`."""
+    branch = branch_of(options) or "main"
+    target = options.target
+    if target.kind == "local" and not target.push_branch:
+        return None
+    if not git.has_remote():
+        if target.kind == "local":
+            notes.append(BuildEvent(now_iso(), "error", "push_branch is on, but the repository "
+                                    "has no `origin` remote: the branch stays local."))  # fmt: skip
+        return None
+    return lambda: git.push(branch)
+
+
+def _release(session: Session, build_id: uuid.UUID, deps: Deps, dir_: Path) -> list[BuildEvent]:
+    """A local target's worktree goes when the run ends (B17). → warning events"""
+    try:
+        build = service.get_build(session, build_id)
+        notes = existing_repo.release_workspace(build, dir_ / "repo", git_bin=deps.settings.git_bin)
+    except Exception:  # never mask how the run ended
+        logger.exception("Releasing the worktree failed", extra={"build_id": str(build_id)})
+        return []
+    return [BuildEvent(now_iso(), "error", note) for note in notes]
+
+
 def run_build(ctx: JobContext, deps: Deps | None = None) -> HandlerResult:
     deps = deps or Deps()
-    session = ctx.session
     build_id = build_id_of(ctx)
-    build = service.get_build(session, build_id)
     dir_ = build_dir(deps.settings, build_id)
+    try:
+        return _run(ctx, deps, build_id, dir_)
+    except Exception:
+        ctx.session.rollback()
+        _release(ctx.session, build_id, deps, dir_)
+        raise
+
+
+def _run(ctx: JobContext, deps: Deps, build_id: uuid.UUID, dir_: Path) -> HandlerResult:
+    session = ctx.session
+    build = service.get_build(session, build_id)
     dir_.mkdir(parents=True, exist_ok=True)
     git = _git(deps.settings, dir_ / "repo")
 
@@ -271,17 +325,22 @@ def run_build(ctx: JobContext, deps: Deps | None = None) -> HandlerResult:
 
     stops = build.stops
     options = options_of(build)
-    branch = branch_of(options) or "main"
-    push = (lambda: git.push(branch)) if git.has_remote() else None
+    notes: list[BuildEvent] = []
+    push = _pusher(options, git, notes)
+    persist = _persist(session, build_id, ctx.job.id)
+    if notes:
+        persist(Progress(events=notes, commits=[]))
+    target = options.target
     watcher = Watcher(
         git=git, process=process, events_path=dir_ / EVENTS_NAME, base_sha=lock.base_sha,
         started=lock.started, offset=events_offset,
         limits=Limits(max_minutes=float(stops.get("max_minutes", 90)),
                       max_commits=int(stops.get("max_commits", 30)),
                       hard_cap_minutes=float(deps.settings.build_hard_cap_minutes)),
-        persist=_persist(session, build_id, ctx.job.id), push=push, tick=deps.tick,
+        persist=persist, push=push, tick=deps.tick,
         grace=deps.grace, clock=deps.clock, sleep=deps.sleep, kill=deps.kill,
         defer_push=options.advanced.push == "at_end",
+        confine=Confine(target.folder, target.confine) if target.folder else None,
     )  # fmt: skip
     outcome = watcher.run()
     if outcome.detached:  # the job went back to the queue: the next claim attaches
@@ -294,11 +353,12 @@ def run_build(ctx: JobContext, deps: Deps | None = None) -> HandlerResult:
     except Exception as exc:
         note = f"The last push failed ({str(exc)[:300]}); the commits are in {git.cwd}."
         verdict["error"] = f"{verdict.get('error') or ''} {note}".strip()
-        _persist(session, build_id, ctx.job.id)(
-            Progress(events=[BuildEvent(now_iso(), "error", note)], commits=[])
-        )
+        persist(Progress(events=[BuildEvent(now_iso(), "error", note)], commits=[]))
     else:
-        _deliver(session, build_id, git, deps, ctx, verdict.get("report"))
+        if watcher.violation is None:  # a confined stop delivers nothing
+            _deliver(session, build_id, git, deps, ctx, verdict.get("report"))
+    if released := _release(session, build_id, deps, dir_):
+        persist(Progress(events=released, commits=[]))
     build = _finish(session, build_id, verdict)
     clear_lock(dir_)
     return HandlerResult(result={

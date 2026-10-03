@@ -27,6 +27,7 @@ LOCK_NAME = "run.lock.json"
 EVENTS_NAME = "events.ndjson"
 STDERR_NAME = "stderr.log"
 PROMPT_NAME = "kickoff.md"
+SURVEY_NAME = "survey.md"  # an existing repository's survey, as the agent got it (§7c)
 _TAIL = 2000
 
 
