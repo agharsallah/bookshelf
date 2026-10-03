@@ -193,4 +193,6 @@ library/*
 exports/
 skills/.outbox/
 .pgdata/
+.database-target
+.backups/
 .demo/

@@ -51,7 +51,14 @@ class Settings(BaseSettings):
 
     # --- Persistence ----------------------------------------------------
     # Postgres only (JSONB, arrays, FTS, SKIP LOCKED). Default: `scripts/pg-local.sh`.
+    # `database_url` is the main database (Supabase in a real setup). `local_database_url` is
+    # the cluster on this computer; when they differ, Settings → Database switches which one
+    # the app reads and writes (`app/db/targets.py`, kept in `database_target_file`) and syncs
+    # one into the other (`app/db/sync.py`).
     database_url: str = "postgresql+psycopg://bookshelf@127.0.0.1:54329/bookshelf"
+    local_database_url: str = "postgresql+psycopg://bookshelf@127.0.0.1:54329/bookshelf"
+    database_target_file: Path = REPO_ROOT / ".database-target"
+    database_backups_dir: Path = REPO_ROOT / ".backups" / "database"  # before a sync overwrites
     database_echo: bool = False
 
     # --- Files (D13) -----------------------------------------------------

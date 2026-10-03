@@ -20,7 +20,7 @@ from sqlmodel import Session
 
 from app.api.deps import SessionDep
 from app.core.security import require_api_key
-from app.db.session import engine
+from app.db.session import get_engine
 from app.pipeline.runner import ClaudeCliRunner, ModelRunner
 from app.retrieval import suggest
 from app.retrieval.embedding import Embedder, get_embedder
@@ -93,7 +93,7 @@ def answer_question(
     (`ANSWER_TIMEOUT_SECONDS`) and skipped once the server is shutting down."""
     from app.retrieval import answer
 
-    with Session(engine) as session:
+    with Session(get_engine()) as session:
         events = answer.stream(session, body, router=query_router, embedder=embedder, runner=runner)
         for event, payload in events:
             yield ServerSentEvent(event=event, data=payload)
