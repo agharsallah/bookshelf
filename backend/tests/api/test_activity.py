@@ -113,3 +113,14 @@ def test_reader_stats_refuse_an_unknown_time_zone(client: TestClient):
 
     assert response.status_code == 422
     assert response.json()["error"]["details"][0]["field"] == "query.tz"
+
+
+def test_streaks_count_all_history_whatever_the_window(client: TestClient, session: Session):
+    book = make_book(session)
+    for days_ago in range(10):
+        make_note(session, book, "ch01/s01/p001", created_at=NOW - timedelta(days=days_ago))
+
+    week = client.get("/api/v1/reader-stats", params={"days": 7}).json()["totals"]
+
+    assert week["active_days"] == 7
+    assert (week["current_streak"], week["longest_streak"]) == (10, 10)

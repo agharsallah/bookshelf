@@ -7,7 +7,7 @@ minute of attention), so everything in scope is loaded and the pure modules do t
 import uuid
 from collections import defaultdict
 from collections.abc import Sequence
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 
 from sqlalchemy import text
@@ -200,3 +200,25 @@ def tracked_since(session: Session, document_id: uuid.UUID | None = None) -> dat
     params = {"doc": str(document_id) if document_id else None}
     value: datetime | None = session.execute(_TRACKED_SINCE, params).scalar()
     return value
+
+
+_ACTIVE_DATES = _scoped(
+    """
+    select distinct (at at time zone :tz)::date from (
+        select minute as at from activity_minutes where {scope}
+        union all select created_at from notes where {scope}
+        union all select created_at from recalls where {scope}
+        union all select reviewed_at from review_logs
+            where item_id in (select id from review_items where {scope})
+        union all select updated_at from reading_positions where {scope}
+    ) stamps
+    """
+)
+
+
+def active_dates(session: Session, tz: str, document_id: uuid.UUID | None = None) -> set[date]:
+    """Every local day with tracked time or any action, whatever the window: streaks run
+    up to today, so a narrow window must not cut them short (`attention.active_days` is
+    the same set for the window)."""
+    params = {"tz": tz, "doc": str(document_id) if document_id else None}
+    return {r[0] for r in session.execute(_ACTIVE_DATES, params).all()}

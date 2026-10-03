@@ -4,7 +4,7 @@
 import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 from sqlmodel import Session
 
@@ -44,10 +44,11 @@ def _totals(
     book_rows: Sequence[BookRow],
     chapters: Sequence[ChapterRow],
     sittings: Sequence[attention.Sitting],
+    history: set[date],
 ) -> Totals:
     seconds = attention.by_surface(facts.minutes)
     days = attention.active_days(facts, clock, clock.day(since))
-    current, longest = attention.streaks(days, clock.today)
+    current, longest = attention.streaks(history, clock.today)
     lengths = [s.seconds for s in sittings]
     reviews = facts.reviews
     words_read = sum(b.words * b.progress for b in book_rows)
@@ -99,7 +100,13 @@ def _build(
     book_rows = books.book_rows(facts, chapters, clock)
     sittings = attention.sittings(facts.minutes)
     slugs = {b.id: b.slug for b in facts.books}
-    totals = _totals(facts, clock, since, book_rows, chapters, sittings)
+    # All history for streaks unless the window already holds it.
+    history = (
+        collect.active_dates(session, window.tz, document_id)
+        if window.days is not None
+        else attention.active_days(facts, clock)
+    )
+    totals = _totals(facts, clock, since, book_rows, chapters, sittings, history)
     surfaces = attention.surfaces(facts.minutes)
     hours = attention.hours(facts.minutes, clock)
     visited = passages.visited(facts, clock, texts)

@@ -4,7 +4,7 @@ Time is seconds of attention as the browser's attention clock counted it (`activ
 since `tracked_since`); everything else (progress, notes, recalls, reviews) comes from the
 rows those actions already write, so it covers all history. Days and hours are in the
 requested time zone. `days` narrows every dated figure to the last N days; progress, cards
-due and book states are always as of now.
+due, book states and streaks are always as of now.
 """
 
 from datetime import date, datetime
@@ -31,8 +31,10 @@ class Totals(BaseModel):
     mean_session_seconds: int | None = None
     median_session_seconds: int | None = None
     longest_session_seconds: int | None = None
-    current_streak: int = Field(default=0, description="Active days in a row, up to today.")
-    longest_streak: int = 0
+    current_streak: int = Field(
+        default=0, description="Active days in a row, up to today, whatever the window."
+    )
+    longest_streak: int = Field(default=0, description="Over all history, whatever the window.")
     books_started: int = 0
     books_finished: int = 0
     chapters_finished: int = 0
