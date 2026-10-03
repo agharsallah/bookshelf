@@ -1613,3 +1613,22 @@ narration forms cast first. **Pipeline** choices live on the server, in the one-
 study-material skills queued when a document is distilled (its brief, or a paper's card,
 approved). Books default to none; papers default to their `PAPER_DERIVES`, as before. Only
 whole-document, non-narrated `derive` skills are offered (`services/app_settings.eligible`).
+
+**Database** (`/database`, `app/db/targets.py`, `app/db/sync.py`, `services/database.py`).
+Two databases can be configured: `BOOKSHELF_DATABASE_URL` (the main one, Supabase) and
+`BOOKSHELF_LOCAL_DATABASE_URL` (the `scripts/pg-local.sh` cluster by default; `scripts/dev-backend.sh`
+points it at a Podman Postgres 17, `scripts/pg-podman.sh`, started and stopped with the API). Settings shows both
+side by side and is the switch between them: `PUT /database/active` stops the API's
+runners (running jobs go back to their own queue), swaps the engine (`db.session.get_engine`,
+so code must not keep an engine reference), writes the choice to `.database-target` (kept
+across restarts; no file means the main database, and tests ignore it) and restarts the
+runners. A standalone `app.jobs.worker` picks up the choice only when it starts.
+`POST /database/sync` mirrors one database over the other on a background thread (the page
+polls `GET /database`): optional `pg_dump` backup of the destination into
+`.backups/database/`, then one transaction that truncates every library table, streams
+each one with binary `COPY` from a repeatable-read snapshot of the source, makes foreign
+keys deferrable for the copy (so `notes` ↔ `artifacts` loads in any order) and moves the
+identity sequences forward. It is a mirror, not a merge, so it fails as a whole or not at
+all. It refuses when the schemas differ, or while jobs are running on either side. The
+local cluster is migrated first; Supabase never is. `workers` and `_local_migrations` are
+not copied. Qdrant and the files on disk are shared, so they are not copied either.
