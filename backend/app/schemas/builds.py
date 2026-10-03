@@ -24,6 +24,7 @@ from app.schemas.build_options import (
     BuildContextOptionsInput,
     References,
 )
+from app.schemas.build_target import BuildTarget, BuildTargetInput
 
 RepoName = Annotated[str, StringConstraints(pattern=r"^[A-Za-z0-9._-]{1,100}$")]
 Owner = Annotated[str, StringConstraints(pattern=r"^[A-Za-z0-9-]{1,39}$")]
@@ -44,13 +45,21 @@ class _Strict(BaseModel):
 
 
 PR_LOCAL = "a local build has no GitHub repository: `delivery: pull_request` needs a remote"
+NO_REPO_NAME = "a new repository needs a `repo_name`"
 PR_PREFIX = "Pull request: "  # the `system` event the runner adds once it opened the PR
 
 
 class BuildOptions(_Strict):
-    """Stored in `builds.options`. The §7 parts have defaults: older rows lack them."""
+    """Stored in `builds.options`. The §7 and §7c parts have defaults: older rows lack them.
 
-    repo_name: RepoName
+    For an existing repository (`target.kind` github or local, §7c) the fields that only
+    describe a new one are normalized out on every validation: `repo_name`, `owner`,
+    `advanced.description` and `.topics` are cleared, `advanced.license` is `none`, and
+    `visibility` is `local` for a local target and `private` for a GitHub one (nothing reads
+    it there). A local target always works on its branch and opens no pull request, so its
+    `delivery` is normalized to `push_main` and never read."""
+
+    repo_name: RepoName | None = None
     visibility: BuildVisibility = BuildVisibility.PRIVATE
     owner: Owner | None = None
     claude_attribution: bool = False
@@ -60,11 +69,26 @@ class BuildOptions(_Strict):
     context: BuildContextOptions = Field(default_factory=BuildContextOptions)
     references: References = Field(default_factory=list)
     advanced: BuildAdvanced = Field(default_factory=BuildAdvanced)
+    target: BuildTarget = Field(default_factory=BuildTarget)
 
     @model_validator(mode="after")
-    def _pr_needs_a_remote(self) -> "BuildOptions":
-        if self.visibility is BuildVisibility.LOCAL and self.advanced.delivery == "pull_request":
-            raise ValueError(PR_LOCAL)
+    def _fits_the_target(self) -> "BuildOptions":
+        if not self.target.existing:
+            if self.repo_name is None:
+                raise ValueError(NO_REPO_NAME)
+            if (
+                self.visibility is BuildVisibility.LOCAL
+                and self.advanced.delivery == "pull_request"
+            ):
+                raise ValueError(PR_LOCAL)
+            return self
+        local = self.target.kind == "local"
+        self.repo_name, self.owner = None, None
+        self.visibility = BuildVisibility.LOCAL if local else BuildVisibility.PRIVATE
+        self.advanced = self.advanced.model_copy(update={
+            "description": None, "topics": [], "license": "none",
+            **({"delivery": "push_main"} if local else {}),
+        })  # fmt: skip
         return self
 
 
@@ -82,18 +106,20 @@ class BuildOptionsInput(_Strict):
     context: BuildContextOptionsInput | None = None
     references: References | None = None  # replaces the list when sent
     advanced: BuildAdvancedInput | None = None
+    target: BuildTargetInput | None = None
 
     @model_validator(mode="after")
     def _pr_needs_a_remote(self) -> "BuildOptionsInput":
         delivery = self.advanced.delivery if self.advanced else None
-        if self.visibility is BuildVisibility.LOCAL and delivery == "pull_request":
+        existing = self.target is not None and self.target.kind in ("github", "local")
+        if self.visibility is BuildVisibility.LOCAL and delivery == "pull_request" and not existing:
             raise ValueError(PR_LOCAL)
         return self
 
     def changes(self) -> dict[str, Any]:
         """What was sent: plain fields when not null, the nested parts as their own
         `changes()` (merged key by key over what a build already has)."""
-        nested = {"context", "advanced"}
+        nested = {"context", "advanced", "target"}
         plain = self.model_dump(mode="json", exclude_none=True, exclude=nested | {"references"})
         out: dict[str, Any] = dict(plain)
         if self.references is not None:
@@ -358,6 +384,7 @@ class BuildContextView(BaseModel):
     effort: str
     plan_input: dict[str, Any] | None
     source: Literal["workspace", "rendered"]
+    survey_md: str | None = None  # §7c: the repository survey as the agent reads it
 
 
 class ContextRender(_Strict):
