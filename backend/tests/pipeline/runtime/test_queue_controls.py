@@ -198,3 +198,60 @@ def test_a_usage_limit_pauses_the_queue_and_hands_the_job_back_unspent(
 
 def test_a_person_pausing_gives_no_reason(client: TestClient):
     assert client.patch(URL, json={"paused": True}, headers=AUTH).json()["paused_reason"] is None
+
+
+def test_a_job_run_now_goes_next_but_waits_for_a_slot_under_the_cap(session: Session):
+    enqueue(session, "a")
+    enqueue(session, "b")
+    urgent = enqueue(session, "c")
+    control(session, max_running=1)
+    running = queue.claim(session)
+    assert running is not None
+
+    assert queue.run_now(session, urgent.id) is not None
+    assert queue.positions(session)[urgent.id] == 1
+    assert queue.claim(session) is None  # the cap still holds
+
+    queue.complete(session, running)
+    assert queue.claim(session) == urgent
+
+
+def test_a_paused_queue_starts_only_the_jobs_run_now_in_the_order_sent(session: Session):
+    enqueue(session, "a")
+    second = enqueue(session, "b")
+    first = enqueue(session, "c")
+    control(session, paused=True)
+    queue.run_now(session, first.id)
+    queue.run_now(session, second.id)
+
+    assert queue.claim(session) == first
+    assert queue.claim(session) == second
+    assert queue.claim(session) is None
+
+
+def test_only_a_queued_job_can_be_run_now(session: Session, client: TestClient):
+    job = enqueue(session, "a")
+    assert queue.claim(session) == job
+
+    response = client.post(f"/api/v1/jobs/{job.id}/run-now", headers=AUTH)
+
+    assert response.status_code == 409
+
+
+def test_run_now_answers_the_job_first_in_line(session: Session, client: TestClient):
+    enqueue(session, "a")
+    job = enqueue(session, "b")
+
+    response = client.post(f"/api/v1/jobs/{job.id}/run-now", headers=AUTH)
+
+    assert response.status_code == 200
+    assert (response.json()["run_now"], response.json()["queue_position"]) == (True, 1)
+    assert client.post(f"/api/v1/jobs/{job.id}/run-now").status_code == 401
+
+
+def test_a_retry_of_a_job_run_now_waits_its_turn(session: Session):
+    job = enqueue(session, "a")
+    queue.run_now(session, job.id)
+    session.refresh(job)
+
+    assert queue.retry_spec(job).priority > queue.RUN_NOW_PRIORITY

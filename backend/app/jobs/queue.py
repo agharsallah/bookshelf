@@ -10,6 +10,8 @@ finished, so one scope never runs twice at once.
 Two controls in `app_settings.data["queue"]` (`services/app_settings.py`) gate `claim()`
 for every worker at once, with no restart: `paused` starts nothing (running jobs finish,
 queued ones wait), and `max_running` caps how many jobs run at once across all workers.
+A job a person said to run now (`run_now()`) goes to the front of the line and is the one
+thing a paused queue still starts, within the cap.
 The cap leaves out `own_slot_kinds()`, which run on a single slot of their own.
 """
 
@@ -36,6 +38,9 @@ HEARTBEAT_SECONDS = 60.0
 STALE_AFTER = timedelta(seconds=HEARTBEAT_SECONDS * 5)
 # `jobs.result` key: CLI runs the job has made over all its attempts (`app.pipeline.ceiling`).
 RUNS = "runs"
+# A job a person said to run now: below every pipeline priority (the lowest is 0), so it
+# goes first, and the only kind of job a paused queue still starts.
+RUN_NOW_PRIORITY = -1
 # Serialises claims, so two workers cannot both take the last slot under `max_running`.
 _CLAIM_LOCK = 0x626F6F6B  # "book"
 
@@ -128,8 +133,9 @@ def claim(session: Session, kinds: list[JobKind] | None = None) -> Job | None:
                 {kind_filter}
                 and not exists (select 1 from documents d
                                 where d.id = j.document_id and d.archived_at is not null)
-                and not coalesce((select (data -> 'queue' ->> 'paused')::boolean
-                                  from app_settings where id = 1), false)
+                and (priority <= :run_now
+                     or not coalesce((select (data -> 'queue' ->> 'paused')::boolean
+                                      from app_settings where id = 1), false))
                 and (kind = any(:uncapped)
                      or (select count(*) from jobs c
                          where c.state = 'running' and c.locked_at >= now() - :stale
@@ -146,6 +152,7 @@ def claim(session: Session, kinds: list[JobKind] | None = None) -> Job | None:
         {
             "kinds": [k.value for k in kinds or []],
             "stale": STALE_AFTER,
+            "run_now": RUN_NOW_PRIORITY,
             "uncapped": [k.value for k in own_slot_kinds(get_settings())],
         },
     ).first()
@@ -222,6 +229,30 @@ def cancel(session: Session, job_id: uuid.UUID) -> Job | None:
     return job
 
 
+def run_now(session: Session, job_id: uuid.UUID) -> Job | None:
+    """Move a *queued* job to the front of the line: it takes the next free slot under
+    `max_running`, starts even while the queue is paused, and skips any retry backoff.
+    Jobs sent this way run in the order they were sent. Returns None when the job is not
+    queued (a worker may have just claimed it)."""
+    row = session.execute(
+        text(
+            """
+            update jobs set priority = :priority, run_after = now()
+            where id = :id and state = 'queued'
+            returning id
+            """
+        ),
+        {"id": job_id, "priority": RUN_NOW_PRIORITY},
+    ).first()
+    session.commit()
+    if row is None:
+        return None
+    job = session.get(Job, row[0])
+    if job is not None:
+        session.refresh(job)
+    return job
+
+
 def release(session: Session, job_ids: list[uuid.UUID]) -> int:
     """Hand running jobs back to the queue untouched: a worker that stops mid-job (the API
     reloading) returns them at once instead of leaving them to go stale. The attempt it
@@ -273,7 +304,8 @@ def positions(session: Session) -> dict[uuid.UUID, int]:
 
 
 def retry_spec(job: Job) -> JobSpec:
-    """The same work again (kind, scope, skill, dedupe key, payload), without `force`."""
+    """The same work again (kind, scope, skill, dedupe key, payload), without `force`, and
+    without a run-now: the new job waits its turn and is held by a pause like any other."""
     payload = {k: v for k, v in (job.payload or {}).items() if k != "force"}
     return JobSpec(
         kind=job.kind,
@@ -282,7 +314,7 @@ def retry_spec(job: Job) -> JobSpec:
         skill=job.skill,
         input_hash=job.input_hash,
         payload=payload or None,
-        priority=job.priority,
+        priority=max(job.priority, RUN_NOW_PRIORITY + 1),
         run_mode=job.run_mode or RunMode.BATCH,
     )
 

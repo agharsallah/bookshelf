@@ -151,6 +151,29 @@ def cancel_job(job_id: uuid.UUID, session: SessionDep) -> JobPublic:
 
 
 @router.post(
+    "/{job_id}/run-now",
+    response_model=JobPublic,
+    dependencies=[Depends(require_api_key)],
+    summary="Run a queued job next",
+    description=(
+        "Moves a `queued` job to the front of the line: it takes the next free slot under "
+        "`max_running` (it never exceeds the cap), starts even while the queue is paused, "
+        "and skips a retry backoff. Several jobs sent this way run in the order they were "
+        "sent. `409` for a job that is running or finished."
+    ),
+)
+def run_job_now(job_id: uuid.UUID, session: SessionDep) -> JobPublic:
+    job = queue.run_now(session, job_id)
+    if job is None:
+        current = _job(session, job_id)
+        raise ConflictError(
+            f"Only a queued job can be run now; this one is {current.state.value}.",
+            [{"field": "state", "state": current.state.value}],
+        )
+    return public_job(session, job)
+
+
+@router.post(
     "/{job_id}/retry",
     response_model=JobAccepted,
     status_code=status.HTTP_202_ACCEPTED,

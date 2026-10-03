@@ -100,6 +100,8 @@ class JobPublic(BaseModel):
     run_after: datetime
     # A queued job's place in line (1 = next to start); null unless queued.
     queue_position: int | None = None
+    # Sent to the front by a person (`POST /jobs/{id}/run-now`): starts even while paused.
+    run_now: bool = False
 
 
 class JobAccepted(BaseModel):

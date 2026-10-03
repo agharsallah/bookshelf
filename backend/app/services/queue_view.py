@@ -16,11 +16,16 @@ from app.services.app_settings import queue_controls
 
 
 def public_jobs(session: Session, jobs: Iterable[Job]) -> list[JobPublic]:
-    """`JobPublic`s with `queue_position` filled in for the queued ones."""
+    """`JobPublic`s with `queue_position` filled in for the queued ones, and `run_now`."""
     jobs = list(jobs)
     places = queue.positions(session) if any(j.state is JobState.QUEUED for j in jobs) else {}
     return [
-        JobPublic.model_validate(j).model_copy(update={"queue_position": places.get(j.id)})
+        JobPublic.model_validate(j).model_copy(
+            update={
+                "queue_position": places.get(j.id),
+                "run_now": j.priority <= queue.RUN_NOW_PRIORITY,
+            }
+        )
         for j in jobs
     ]
 
