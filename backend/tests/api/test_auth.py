@@ -33,8 +33,12 @@ def test_writes_without_the_api_key_are_401_and_change_nothing(
 
 
 # Mutating verbs that stay open on purpose: `POST /search` is a read-only query sent as
-# POST for its body; it never writes and never runs a model.
-OPEN_WRITES = {("post", "/api/v1/search")}
+# POST for its body; it never writes and never runs a model. Nor does the build context
+# preview (`POST …/builds/context/render`): it renders the form's options, saves nothing.
+OPEN_WRITES = {
+    ("post", "/api/v1/search"),
+    ("post", "/api/v1/papers/{ref}/builds/context/render"),
+}
 MUTATING = {"post", "put", "patch", "delete"}
 
 
@@ -65,7 +69,8 @@ def test_every_mutating_route_requires_the_api_key(client: TestClient, method: s
     url = path
     for name in ("ref", "document_ref", "artifact_id", "concept_id", "edge_id", "job_id",
                  "note_id", "name", "anchor", "recall_id", "item_id", "index",
-                 "candidate_id", "pass", "set_id", "version", "document_id"):  # fmt: skip
+                 "candidate_id", "pass", "set_id", "version", "document_id",
+                 "build_id"):  # fmt: skip
         url = url.replace(f"{{{name}}}", placeholder)
 
     response = client.request(method, url, json={})

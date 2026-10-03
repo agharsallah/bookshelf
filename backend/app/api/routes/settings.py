@@ -1,5 +1,5 @@
-"""Server-side settings: which study material a distilled document makes on its own, and
-whether a skill's new artifact is approved without a review."""
+"""Server-side settings: which study material a distilled document makes on its own,
+whether a skill's new artifact is approved without a review, and the build defaults."""
 
 from collections.abc import Mapping
 
@@ -14,6 +14,7 @@ from app.pipeline.skills import Skill, load_catalogue
 from app.schemas.settings import (
     AutoDeriveChoice,
     AutoDerivePublic,
+    BuildsSettings,
     SettingsPublic,
     SettingsUpdate,
 )
@@ -37,6 +38,7 @@ def _view(session: Session, catalogue: Mapping[str, Skill]) -> SettingsPublic:
     return SettingsPublic(
         auto_derive=AutoDerivePublic(**groups),
         auto_approve=app_settings.auto_approve(session),
+        builds=BuildsSettings.model_validate(app_settings.build_defaults(session)),
     )
 
 
@@ -54,7 +56,8 @@ def get_settings(session: SessionDep, skills_dir: SkillsDirDep) -> SettingsPubli
     "once a document is distilled (`422` for one it cannot run on its own); a group left "
     "out is unchanged. Applies to documents distilled from now on. `auto_approve` sets "
     "which new skill artifacts are approved without a review (`off` · `passing` · `all`); "
-    "artifacts already waiting are left as they are.",
+    "artifacts already waiting are left as they are. `builds` merges into the defaults a new "
+    "build starts from (fields left out are unchanged).",
 )
 def update_settings(
     body: SettingsUpdate, session: SessionDep, skills_dir: SkillsDirDep
@@ -65,4 +68,6 @@ def update_settings(
         app_settings.set_auto_derive(session, lists, catalogue)
     if body.auto_approve is not None:
         app_settings.set_auto_approve(session, body.auto_approve)
+    if body.builds is not None:
+        app_settings.set_build_defaults(session, body.builds.changes())
     return _view(session, catalogue)
