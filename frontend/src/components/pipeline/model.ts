@@ -84,21 +84,6 @@ export function stageProgress(status: string, jobs: readonly JobPublic[]): Stage
   });
 }
 
-export interface JobFilters {
-  state?: JobState | '';
-  kind?: JobKind | '';
-  document?: string;
-}
-
-export function filterJobs(jobs: readonly JobPublic[], filters: JobFilters): JobPublic[] {
-  return jobs.filter(
-    (j) =>
-      (!filters.state || j.state === filters.state) &&
-      (!filters.kind || j.kind === filters.kind) &&
-      (!filters.document || j.document_id === filters.document),
-  );
-}
-
 export const KIND_LABELS: Record<JobKind, string> = {
   parse: 'Parse',
   describe_figure: 'Describe figure',

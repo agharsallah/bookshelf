@@ -2,25 +2,30 @@
  * The pipeline, live (§7): jobs from `GET /jobs` seeded server-side, then kept current by
  * `/jobs/stream` through the shared `useJobStream` hook. Tallies by state (which filter),
  * per-document stage bars and jobs by kind, running work with elapsed time (queued jobs
- * can be cancelled), failures grouped by cause with "Retry all", documents the run
- * ceiling paused, with Resume, and queue controls: pause/resume all, and a running cap.
+ * can be sent to run now or cancelled), failures grouped by cause with "Retry all",
+ * documents the run ceiling paused, with Resume, and queue controls: pause/resume all,
+ * and a running cap. Long lists come a page at a time and filters (text included) live
+ * in the URL.
  */
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { browserApi, type ApiClient } from '../../lib/api/client';
-import { JOB_KINDS, JOB_STATES, type JobKind, type JobPublic, type JobState, type QueueStatus } from '../../lib/api/types/jobs';
+import { JOB_STATES, type JobPublic, type JobState, type QueueStatus } from '../../lib/api/types/jobs';
 import { useJobStream } from '../../lib/hooks/useJobStream';
 import { sortedJobs } from '../../lib/jobs/stream';
 import { PausedNotice } from '../common/PausedNotice';
 import type { DocumentLabel } from '../review/api';
+import { DocumentsPanel } from './DocumentsPanel';
 import { groupFailures } from './failures';
 import { FailureGroups } from './FailureGroups';
 import { RecentRow, RunningRow } from './JobRows';
 import { KindBars } from './KindBars';
 import { QueueBanner } from './QueueBanner';
 import { QueueControls } from './QueueControls';
-import { countStates, filterJobs, KIND_LABELS, stageProgress, type JobFilters } from './model';
+import { filterJobs, filtersToSearch, hasFilters, type JobFilters } from './filters';
+import { countStates } from './model';
+import { PipelineFilters } from './PipelineFilters';
+import { ShowMore, useShowMore } from './ShowMore';
 import { Bumped, Swatch } from './StateBar';
-import { StageTrack } from './StageTrack';
 import { useNow } from './useNow';
 import styles from './Pipeline.module.css';
 
@@ -36,7 +41,22 @@ export interface PipelineViewProps {
 }
 
 const STREAM_WORDS = { connecting: 'Connecting…', live: 'Live', reconnecting: 'Reconnecting…', closed: 'Offline' } as const;
-const RECENT = 25;
+const QUEUED_PAGE = 20;
+const RECENT_PAGE = 15;
+
+/** Queued jobs in the order they will start: place in line, then age. */
+const byPlace = (a: JobPublic, b: JobPublic) =>
+  (a.queue_position ?? Number.POSITIVE_INFINITY) - (b.queue_position ?? Number.POSITIVE_INFINITY) || a.created_at.localeCompare(b.created_at);
+
+/** Keep the filters in the address bar, so a reload or a shared link opens the same view. */
+function useFiltersInUrl(filters: JobFilters) {
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const search = filtersToSearch(filters, url.searchParams).toString();
+    if (search === url.searchParams.toString()) return;
+    window.history.replaceState(window.history.state, '', `${url.pathname}${search ? `?${search}` : ''}${url.hash}`);
+  }, [filters]);
+}
 
 export function PipelineView({ jobs: seed, documents: initialDocuments, queue: initialQueue = null, initialFilters = {}, api = browserApi, live = true }: PipelineViewProps) {
   const { jobs: byId, status, queue: streamed, track } = useJobStream({ seed, enabled: live });
@@ -48,15 +68,19 @@ export function PipelineView({ jobs: seed, documents: initialDocuments, queue: i
   const [filters, setFilters] = useState<JobFilters>(initialFilters);
   const all = useMemo(() => sortedJobs(byId), [byId]);
   const titles = useMemo(() => Object.fromEntries(documents.map((d) => [d.id, d.title])), [documents]);
-  const title = (job: JobPublic) => (job.document_id ? (titles[job.document_id] ?? 'Unknown document') : 'No document');
+  const title = useCallback((job: JobPublic) => (job.document_id ? (titles[job.document_id] ?? 'Unknown document') : 'No document'), [titles]);
 
-  const shown = useMemo(() => filterJobs(all, filters), [all, filters]);
-  const states = countStates(filterJobs(all, { ...filters, state: '' }));
-  const running = shown.filter((j) => j.state === 'running' || j.state === 'queued');
+  const shown = useMemo(() => filterJobs(all, filters, title), [all, filters, title]);
+  const states = countStates(filterJobs(all, { ...filters, state: '' }, title));
+  const running = shown.filter((j) => j.state === 'running');
+  const queued = useMemo(() => shown.filter((j) => j.state === 'queued').sort(byPlace), [shown]);
   const failed = useMemo(() => shown.filter((j) => j.state === 'failed'), [shown]);
   const causes = useMemo(() => groupFailures(failed), [failed]);
-  const recent = shown.filter((j) => j.state === 'done' || j.state === 'skipped').slice(0, RECENT);
-  const now = useNow(running.length > 0);
+  const finished = shown.filter((j) => j.state === 'done' || j.state === 'skipped');
+  const now = useNow(running.length + queued.length > 0);
+  const queuedPage = useShowMore(QUEUED_PAGE);
+  const recentPage = useShowMore(RECENT_PAGE);
+  useFiltersInUrl(filters);
 
   const paused = documents.filter((d) => d.paused);
   const pausedIds = new Set(paused.map((d) => d.id));
@@ -67,7 +91,6 @@ export function PipelineView({ jobs: seed, documents: initialDocuments, queue: i
     },
     [track],
   );
-  const trackedDocs = documents.filter((d) => !filters.document || d.id === filters.document);
 
   const toggleState = (state: JobState) => setFilters((f) => ({ ...f, state: f.state === state ? '' : state }));
 
@@ -100,79 +123,45 @@ export function PipelineView({ jobs: seed, documents: initialDocuments, queue: i
         ) : null,
       )}
 
-      <form className={styles.filters} aria-label="Filter jobs" onSubmit={(e) => e.preventDefault()}>
-        <label>
-          <span>State</span>
-          <select value={filters.state ?? ''} onChange={(e) => setFilters({ ...filters, state: e.target.value as JobState | '' })}>
-            <option value="">Any state</option>
-            {JOB_STATES.map((s) => (
-              <option key={s}>{s}</option>
-            ))}
-          </select>
-        </label>
-        <label>
-          <span>Kind</span>
-          <select value={filters.kind ?? ''} onChange={(e) => setFilters({ ...filters, kind: e.target.value as JobKind | '' })}>
-            <option value="">Any kind</option>
-            {JOB_KINDS.map((k) => (
-              <option key={k} value={k}>
-                {KIND_LABELS[k]}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          <span>Document</span>
-          <select value={filters.document ?? ''} onChange={(e) => setFilters({ ...filters, document: e.target.value })}>
-            <option value="">Every document</option>
-            {documents.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.title}
-              </option>
-            ))}
-          </select>
-        </label>
-      </form>
+      <PipelineFilters filters={filters} onChange={setFilters} documents={documents} matched={shown.length} total={all.length} />
 
       <div className={styles.grid}>
-        <section aria-labelledby="docs-title" className={styles.docs}>
-          <h2 id="docs-title" className={styles.sectionTitle}>
-            Documents
-          </h2>
-          {trackedDocs.length === 0 ? <p className={styles.muted}>No documents yet. Ingest one from the library.</p> : null}
-          <ul className={styles.docList}>
-            {trackedDocs.map((doc) => (
-              <li key={doc.id} className={styles.doc}>
-                <p className={styles.docHead}>
-                  <a href={`/documents/${doc.slug}`} className={`book-title ${styles.docTitle}`}>
-                    {doc.title}
-                  </a>
-                  <span className={styles.docStatus}>{doc.status?.replaceAll('_', ' ')}</span>
-                </p>
-                <StageTrack label={doc.title} stages={stageProgress(doc.status ?? '', all.filter((j) => j.document_id === doc.id))} />
-              </li>
-            ))}
-          </ul>
-        </section>
+        <DocumentsPanel documents={documents} jobs={all} matching={hasFilters(filters) ? shown : null} />
 
         <section aria-labelledby="kinds-title" className={styles.kinds}>
           <h2 id="kinds-title" className={styles.sectionTitle}>
             By kind
           </h2>
-          <KindBars jobs={shown} />
+          <KindBars jobs={shown} selected={filters.kind || null} onSelect={(kind) => setFilters((f) => ({ ...f, kind: f.kind === kind ? '' : kind }))} />
         </section>
       </div>
 
       <section aria-labelledby="running-title">
         <h2 id="running-title" className={styles.sectionTitle}>
-          Running and queued <span className={styles.count}>{running.length}</span>
+          Running <span className={styles.count}>{running.length}</span>
         </h2>
-        {running.length === 0 ? <p className={styles.muted}>Nothing is running. The worker picks up queued jobs as they arrive.</p> : null}
+        {running.length === 0 ? (
+          <p className={styles.muted}>{queued.length ? 'Nothing is running right now.' : 'Nothing is running. The worker picks up queued jobs as they arrive.'}</p>
+        ) : null}
         <ul className={styles.jobs}>
           {running.map((job) => (
             <RunningRow key={job.id} job={job} title={title(job)} now={now} queue={queue} api={api} onChanged={track} />
           ))}
         </ul>
+      </section>
+
+      <section aria-labelledby="queued-title">
+        <h2 id="queued-title" className={styles.sectionTitle}>
+          Queued <span className={styles.count}>{queued.length}</span>
+          {queued.length ? <span className={styles.subCount}>in the order they start</span> : null}
+        </h2>
+        {queued.length === 0 ? <p className={styles.muted}>Nothing is waiting.</p> : null}
+        <ul className={styles.jobs}>
+          {queued.slice(0, queuedPage.limit).map((job) => (
+            <RunningRow key={job.id} job={job} title={title(job)} now={now} queue={queue} api={api} onChanged={track} />
+          ))}
+        </ul>
+        <ShowMore shown={Math.min(queuedPage.limit, queued.length)} total={queued.length} step={QUEUED_PAGE} noun="queued jobs" onMore={queuedPage.more} onAll={queuedPage.all} />
       </section>
 
       <section aria-labelledby="failed-title">
@@ -192,34 +181,15 @@ export function PipelineView({ jobs: seed, documents: initialDocuments, queue: i
 
       <section aria-labelledby="recent-title">
         <h2 id="recent-title" className={styles.sectionTitle}>
-          Recently finished
+          Recently finished <span className={styles.count}>{finished.length}</span>
         </h2>
-        {recent.length === 0 ? (
-          <p className={styles.muted}>Nothing finished yet.</p>
-        ) : (
-          <div className={styles.tableWrap}>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th scope="col">Kind</th>
-                  <th scope="col">Scope</th>
-                  <th scope="col">State</th>
-                  <th scope="col" className={styles.num}>
-                    Took
-                  </th>
-                  <th scope="col" className={styles.num}>
-                    Finished
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {recent.map((job) => (
-                  <RecentRow key={job.id} job={job} title={title(job)} now={now} />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        {finished.length === 0 ? <p className={styles.muted}>Nothing finished yet.</p> : null}
+        <ul className={styles.jobs}>
+          {finished.slice(0, recentPage.limit).map((job) => (
+            <RecentRow key={job.id} job={job} title={title(job)} now={now} />
+          ))}
+        </ul>
+        <ShowMore shown={Math.min(recentPage.limit, finished.length)} total={finished.length} step={RECENT_PAGE} noun="finished jobs" onMore={recentPage.more} onAll={recentPage.all} />
       </section>
     </div>
   );

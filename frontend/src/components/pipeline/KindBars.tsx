@@ -1,14 +1,20 @@
 /**
  * Jobs by kind: one bar per kind on a shared scale, split by state (./StateBar.tsx), with
- * the total beside it. Kinds with no jobs in view are left out.
+ * the total beside it. Kinds with no jobs in view are left out. With `onSelect`, a kind's
+ * name filters the page to it (and clears the filter when chosen again).
  */
-import { JOB_KINDS } from '../../lib/api/types/jobs';
-import type { JobPublic } from '../../lib/api/types/jobs';
+import { JOB_KINDS, type JobKind, type JobPublic } from '../../lib/api/types/jobs';
 import { countKindStates, KIND_LABELS, totalOf } from './model';
 import { Bumped, StateBar } from './StateBar';
 import styles from './KindBars.module.css';
 
-export function KindBars({ jobs }: { jobs: readonly JobPublic[] }) {
+export interface KindBarsProps {
+  jobs: readonly JobPublic[];
+  selected?: JobKind | null;
+  onSelect?: (kind: JobKind) => void;
+}
+
+export function KindBars({ jobs, selected = null, onSelect }: KindBarsProps) {
   const byKind = countKindStates(jobs);
   const rows = JOB_KINDS.flatMap((kind) => {
     const counts = byKind[kind];
@@ -25,7 +31,15 @@ export function KindBars({ jobs }: { jobs: readonly JobPublic[] }) {
           .join(', ');
         return (
           <div key={kind} className={styles.row} title={said}>
-            <dt>{KIND_LABELS[kind]}</dt>
+            <dt>
+              {onSelect ? (
+                <button type="button" className={styles.pick} aria-pressed={selected === kind} onClick={() => onSelect(kind)}>
+                  {KIND_LABELS[kind]}
+                </button>
+              ) : (
+                KIND_LABELS[kind]
+              )}
+            </dt>
             <dd>
               <StateBar counts={counts} scale={scale} bare />
               <Bumped value={total} className={styles.num} />

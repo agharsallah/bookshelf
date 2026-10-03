@@ -113,10 +113,6 @@
   font-size: var(--text-sm);
 }
 
-.num {
-  font-variant-numeric: tabular-nums;
-  text-align: end;
-}
 
 @media (max-width: 52rem) {
   .job,

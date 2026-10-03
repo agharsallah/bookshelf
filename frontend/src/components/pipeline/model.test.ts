@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { JobPublic } from '../../lib/api/types/jobs';
-import { countKindStates, countStates, elapsedMs, filterJobs, formatDuration, stageProgress } from './model';
+import { countKindStates, countStates, elapsedMs, formatDuration, stageProgress } from './model';
 
 function job(overrides: Partial<JobPublic> = {}): JobPublic {
   return {
@@ -90,13 +90,5 @@ describe('formatDuration', () => {
     [3_720_000, '1 h 02 min'],
   ])('%i ms → %s', (ms, text) => {
     expect(formatDuration(ms)).toBe(text);
-  });
-});
-
-describe('filterJobs', () => {
-  it('narrows by state, kind and document', () => {
-    const jobs = [job({ id: 'a' }), job({ id: 'b', state: 'failed', kind: 'embed' }), job({ id: 'c', document_id: 'd2' })];
-    expect(filterJobs(jobs, { state: 'failed' }).map((j) => j.id)).toEqual(['b']);
-    expect(filterJobs(jobs, { kind: 'parse', document: 'd2' }).map((j) => j.id)).toEqual(['c']);
   });
 });

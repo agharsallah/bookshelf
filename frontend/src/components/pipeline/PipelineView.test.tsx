@@ -29,7 +29,7 @@ describe('<PipelineView>', () => {
 
     await waitFor(() => expect(calls).toEqual([{ method: 'POST', path: 'jobs/f1/retry', body: undefined }]));
     expect(within(failures).getByText('Queued again.')).toBeTruthy();
-    expect(within(screen.getByRole('region', { name: /Running and queued/ })).getByText('Make a quiz')).toBeTruthy();
+    expect(within(screen.getByRole('region', { name: /^Queued/ })).getByText('Make a quiz')).toBeTruthy();
   });
 
   it('cancels a queued job, which then leaves the running list', async () => {
@@ -45,7 +45,7 @@ describe('<PipelineView>', () => {
   it('sends a queued job to the front of a paused queue, where it says it runs next', async () => {
     const { api, calls } = fakeApi({ 'POST jobs/q1/run-now': () => ({ ...queued, run_now: true, queue_position: 1 }) });
     render(<PipelineView jobs={[{ ...queued, queue_position: 7 }]} documents={[systems]} queue={{ ...idle, paused: true }} api={api} live={false} />);
-    const running = screen.getByRole('region', { name: /Running and queued/ });
+    const running = screen.getByRole('region', { name: /^Queued/ });
     expect(within(running).getByText(/Paused, 7th in line/)).toBeTruthy();
 
     await userEvent.click(screen.getByRole('button', { name: 'Run now Summarize for Systems' }));
@@ -67,7 +67,7 @@ describe('<PipelineView>', () => {
 
     await waitFor(() => expect(calls).toEqual([{ method: 'POST', path: 'documents/systems/resume', body: {} }]));
     expect(screen.queryByRole('region', { name: 'Systems is paused' })).toBeNull();
-    expect(within(screen.getByRole('region', { name: /Running and queued/ })).getByText('Distil chapter')).toBeTruthy();
+    expect(within(screen.getByRole('region', { name: /^Queued/ })).getByText('Distil chapter')).toBeTruthy();
   });
 
   it('lists failures with the same cause once and retries them all, saying how it went', async () => {
@@ -94,7 +94,7 @@ describe('<PipelineView>', () => {
     await waitFor(() => expect(within(failures).getByText('1 queued again, 1 already queued. 1 not queued: Job c is not failed.')).toBeTruthy());
     expect(calls.map((c) => c.path).sort()).toEqual(['jobs/a/retry', 'jobs/b/retry', 'jobs/c/retry']);
     expect(within(failures).getByRole('button', { name: 'Retry all 1' })).toBeTruthy();
-    expect(within(screen.getByRole('region', { name: /Running and queued/ })).getAllByText('Distil chapter')).toHaveLength(2);
+    expect(within(screen.getByRole('region', { name: /^Queued/ })).getAllByText('Distil chapter')).toHaveLength(2);
   });
 
   it('filters the lists by state from the tallies', async () => {
@@ -107,7 +107,7 @@ describe('<PipelineView>', () => {
     const { api, calls } = fakeApi({ 'PATCH jobs/queue': (call) => ({ ...idle, ...(call.body as object) }) });
     render(<PipelineView jobs={[{ ...queued, queue_position: 1 }]} documents={[systems]} queue={idle} api={api} live={false} />);
     const controls = screen.getByRole('region', { name: 'Queue controls' });
-    const running = screen.getByRole('region', { name: /Running and queued/ });
+    const running = screen.getByRole('region', { name: /^Queued/ });
     expect(within(running).getByText(/Queued, next in line/)).toBeTruthy();
 
     await userEvent.click(within(controls).getByRole('button', { name: 'Pause all' }));

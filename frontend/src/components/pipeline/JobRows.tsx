@@ -148,14 +148,13 @@ export function FailedRow({ job, title, now, api, onChanged, paused = false, ret
 export function RecentRow({ job, title, now }: JobRowProps) {
   const ms = elapsedMs(job, now);
   return (
-    <tr data-state={job.state}>
-      <td>{jobTitle(job, kindLabel)}</td>
-      <td>
-        <Scope job={job} title={title} />
-      </td>
-      <td className={styles.stateCell}>{job.state}</td>
-      <td className={styles.num}>{ms !== null ? formatDuration(ms) : '—'}</td>
-      <td className={styles.num}>{relativeTime(job.finished_at ?? job.created_at, now)}</td>
-    </tr>
+    <li className={styles.job} data-state={job.state}>
+      <span className={styles.jobKind}>{jobTitle(job, kindLabel)}</span>
+      <Scope job={job} title={title} />
+      <span className={styles.jobTime}>
+        <span className={styles.stateCell}>{job.state === 'skipped' ? (job.error ?? 'skipped') : 'done'}</span>
+        {ms !== null ? ` · took ${formatDuration(ms)}` : ''} · {relativeTime(job.finished_at ?? job.created_at, now)}
+      </span>
+    </li>
   );
 }

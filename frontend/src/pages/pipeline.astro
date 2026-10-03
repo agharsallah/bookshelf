@@ -2,11 +2,12 @@
 /**
  * The pipeline (§7): what the worker is doing, per document and per job. The latest jobs
  * are loaded here; the island keeps them live over `/jobs/stream`.
- * `?document=<id>` opens it filtered to one document.
+ * `?document=<id>` opens it filtered to one document; `state`, `kind` and `q` filter too.
  */
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { Problem, problemOf, type ProblemInfo } from '../components/common/Problem';
 import { PipelineView } from '../components/pipeline/PipelineView';
+import { filtersFromSearch } from '../components/pipeline/filters';
 import { loadDocuments, type DocumentLabel } from '../components/review/api';
 import type { Page } from '../lib/api/types';
 import type { JobPublic, QueueStatus } from '../lib/api/types/jobs';
@@ -16,7 +17,7 @@ export const prerender = false;
 
 const PAGES = 3;
 const api = serverApi();
-const documentFilter = Astro.url.searchParams.get('document') ?? '';
+const initialFilters = filtersFromSearch(Astro.url.searchParams);
 
 let documents: DocumentLabel[] = [];
 let problem: ProblemInfo | null = null;
@@ -46,7 +47,7 @@ const queue = queueStatus.status === 'fulfilled' ? queueStatus.value : null;
       problem ? (
         <Problem title="The job queue could not be loaded." problem={problem} />
       ) : (
-        <PipelineView client:load jobs={jobs} documents={documents} queue={queue} initialFilters={{ document: documentFilter }} />
+        <PipelineView client:load jobs={jobs} documents={documents} queue={queue} initialFilters={initialFilters} />
       )
     }
   </div>

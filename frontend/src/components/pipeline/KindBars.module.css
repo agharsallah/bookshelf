@@ -34,3 +34,23 @@
   color: var(--ink-3);
   font-size: var(--text-sm);
 }
+
+.pick {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.pick:hover {
+  text-decoration: underline;
+}
+
+.pick[aria-pressed='true'] {
+  color: var(--ink);
+  font-weight: 650;
+  text-decoration: underline;
+}

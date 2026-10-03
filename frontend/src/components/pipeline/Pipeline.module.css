@@ -112,7 +112,91 @@
 .filters {
   display: flex;
   flex-wrap: wrap;
+  align-items: end;
   gap: var(--space-2) var(--space-4);
+}
+
+.search {
+  flex: 1 1 16rem;
+}
+
+.filters input[type='search'] {
+  inline-size: 100%;
+  padding: 0.3rem var(--space-2);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-m);
+  background: var(--paper-raised);
+  color: var(--ink);
+  font-size: var(--text-sm);
+}
+
+.kbd {
+  padding: 0 0.3em;
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-s);
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+
+.matched {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-inline-start: auto;
+  color: var(--ink-3);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.sectionHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+}
+
+.segmented {
+  display: inline-flex;
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-m);
+  overflow: hidden;
+}
+
+.segmented button {
+  padding: 0.2rem var(--space-3);
+  border: 0;
+  background: none;
+  color: var(--ink-3);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.segmented button + button {
+  border-inline-start: 1px solid var(--rule-strong);
+}
+
+.segmented button[aria-pressed='true'] {
+  background: var(--paper-sunken);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.showMore {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  padding-block-start: var(--space-3);
+  border-block-start: 1px solid var(--rule);
+}
+
+.showMore button {
+  min-block-size: 2rem;
+  padding-inline: var(--space-3);
+  font-size: var(--text-sm);
 }
 
 .filters label {
@@ -204,10 +288,6 @@
   font-size: var(--text-xs);
 }
 
-.num {
-  font-variant-numeric: tabular-nums;
-  text-align: end;
-}
 
 .jobs {
   display: grid;
@@ -215,37 +295,6 @@
   padding: 0;
   list-style: none;
 }
-
-.tableWrap {
-  overflow-x: auto;
-}
-
-.table {
-  inline-size: 100%;
-  border-collapse: collapse;
-  font-size: var(--text-sm);
-}
-
-.table th {
-  padding: var(--space-1) var(--space-3) var(--space-1) 0;
-  border-block-end: 1px solid var(--rule-strong);
-  color: var(--ink-3);
-  font-size: var(--text-xs);
-  font-weight: 500;
-  text-align: start;
-}
-
-.table td {
-  padding: var(--space-2) var(--space-3) var(--space-2) 0;
-  border-block-end: 1px solid var(--rule);
-  vertical-align: baseline;
-}
-
-.table th.num,
-.table td.num {
-  text-align: end;
-}
-
 
 @media (max-width: 52rem) {
   .grid {
