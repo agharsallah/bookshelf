@@ -1,0 +1,482 @@
+---
+/**
+ * The paper shelf at a glance, drawn as a bookcase (helpers in bookcase.ts): one long
+ * shelf, a stretch of plank per year, newest first, one spine per paper. Height follows citations, colour your
+ * verdict, the three bands at the foot the passes done; a hatched spine has no card
+ * yet. Each spine links to its paper. While filtering, papers outside the result stay
+ * on the shelf, dimmed, so the whole collection keeps its shape. Pointing at a spine
+ * fills the plaque above (the page script); ticking a paper to compare pulls its spine
+ * out. Year labels and the legend's verdicts are filter links.
+ */
+import type { PaperSummary } from '../../lib/api/types/papers';
+import { PAPER_VERDICTS, PASSES } from '../../lib/api/types/papers';
+import { citedLine, planksByYear, spineHeight, spineTitle, type ShelfTally } from './bookcase';
+import { authorLine, PASS_LABELS, starsLabel, VERDICT_LABELS, venueLine } from './labels';
+import { shelfHref, type ShelfFilters } from './shelf';
+import { paperHref } from './tabs';
+
+interface Props {
+  papers: PaperSummary[];
+  /** The ids the filters let through; null when nothing is filtered. */
+  matching: ReadonlySet<string> | null;
+  /** The ids with a paper card. */
+  carded: ReadonlySet<string>;
+  filters: ShelfFilters;
+  tally: ShelfTally;
+}
+
+const { papers, matching, carded, filters, tally } = Astro.props;
+const planks = planksByYear(papers);
+const order = new Map(papers.map((p, i) => [p.id, i]));
+const unjudged = tally.total - PAPER_VERDICTS.reduce((sum, v) => sum + tally.verdicts[v], 0);
+
+function marks(paper: PaperSummary): string {
+  const pass = paper.highest_pass;
+  const parts = [
+    paper.rating ? starsLabel(paper.rating.stars) : 'Not rated',
+    paper.rating?.verdict ? VERDICT_LABELS[paper.rating.verdict] : null,
+    pass ? `pass ${pass}, ${PASS_LABELS[pass].name.toLowerCase()}, done` : 'not started',
+    citedLine(paper.cited_by_count).toLowerCase() || null,
+  ];
+  return parts.filter(Boolean).join(', ');
+}
+---
+
+<section class="case" aria-labelledby="case-title" data-bookcase>
+  <h2 id="case-title" class="visually-hidden">The shelf by year</h2>
+
+  <div class="plaque" aria-hidden="true" data-plaque>
+    <p class="idle" data-idle>Point at a spine to read its label. Papers stand by year, newest first.</p>
+    <div class="peek" data-peek hidden>
+      <p class="peek-where" data-peek-where></p>
+      <p class="peek-title" data-peek-title></p>
+      <p class="peek-authors" data-peek-authors></p>
+      <p class="peek-marks" data-peek-marks></p>
+    </div>
+  </div>
+
+  <div class="shelf">
+    {
+      planks.map((plank) => {
+        const current = plank.year !== null && filters.year === plank.year;
+        return (
+          <div class="plank" data-current={current ? '' : undefined}>
+
+            <ul class="spines" aria-label={plank.year === null ? 'Undated papers' : `Papers from ${plank.year}`}>
+              {plank.papers.map((paper) => {
+                const where = venueLine(paper.venue, paper.year);
+                const label = `${paper.title}. ${marks(paper)}.`;
+                return (
+                  <li>
+                    <a
+                      class="spine"
+                      href={paperHref(paper.slug)}
+                      style={`--h: ${spineHeight(paper.cited_by_count)}rem; --i: ${Math.min(order.get(paper.id) ?? 0, 40)}`}
+                      aria-label={label}
+                      data-paper={paper.id}
+                      data-verdict={paper.rating?.verdict ?? undefined}
+                      data-bare={carded.has(paper.id) ? undefined : ''}
+                      data-dim={matching && !matching.has(paper.id) ? '' : undefined}
+                      data-where={where || 'Venue not known'}
+                      data-title={paper.title}
+                      data-authors={authorLine(paper.authors)}
+                      data-marks={marks(paper)}
+                    >
+                      <span class="name">{spineTitle(paper.title)}</span>
+                      <span class="bands" aria-hidden="true">
+                        {PASSES.map((n) => (
+                          <i data-done={n <= (paper.highest_pass ?? 0) ? '' : undefined} />
+                        ))}
+                      </span>
+                    </a>
+                  </li>
+                );
+              })}
+            </ul>
+            <p class="year">
+              {plank.year === null ? (
+                <span>Undated</span>
+              ) : (
+                <a
+                  href={shelfHref(filters, { year: current ? null : plank.year })}
+                  aria-current={current ? 'true' : undefined}
+                  aria-label={current ? `Show every year, not only ${plank.year}` : `Only papers from ${plank.year}`}
+                >
+                  {plank.year}
+                </a>
+              )}
+              <span class="count">{plank.papers.length}</span>
+            </p>
+          </div>
+        );
+      })
+    }
+  </div>
+
+  <ul class="legend" aria-label="How to read the shelf">
+    {
+      PAPER_VERDICTS.map((v) => {
+        const current = filters.verdict === v;
+        return (
+          <li>
+            <a href={shelfHref(filters, { verdict: current ? null : v })} aria-current={current ? 'true' : undefined}>
+              <span class="swatch" data-verdict={v} />
+              {VERDICT_LABELS[v]}
+              <span class="count">{tally.verdicts[v]}</span>
+            </a>
+          </li>
+        );
+      })
+    }
+    <li><span class="swatch" />No verdict <span class="count">{unjudged}</span></li>
+    <li><span class="swatch" data-bare />No card yet <span class="count">{tally.total - tally.carded}</span></li>
+    <li class="key"><span class="mini-bands" aria-hidden="true"><i data-done /><i /><i /></span>Bands: passes done</li>
+    <li class="key">Taller: cited more</li>
+  </ul>
+</section>
+
+<style>
+  .case {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-4);
+    font-family: var(--font-ui);
+  }
+
+  /* ── The plaque: what the pointed spine says ─────────────── */
+  .plaque {
+    display: grid;
+    align-content: center;
+    min-block-size: 5rem;
+    padding: var(--space-3) var(--space-4);
+    border-inline-start: 3px solid var(--marker);
+    background: var(--paper-raised);
+  }
+
+  .idle {
+    color: var(--ink-3);
+    font-size: var(--text-sm);
+  }
+
+  .peek {
+    display: grid;
+    gap: 0.125rem;
+    min-inline-size: 0;
+  }
+
+  .peek[hidden] {
+    display: none;
+  }
+
+  .peek-where,
+  .peek-marks {
+    color: var(--ink-2);
+    font-size: var(--text-xs);
+  }
+
+  .peek-where {
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  .peek-title {
+    overflow: hidden;
+    color: var(--ink);
+    font-family: var(--font-read);
+    font-size: var(--text-md);
+    font-weight: 560;
+    line-height: 1.25;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .peek-authors {
+    color: var(--ink-2);
+    font-family: var(--font-read);
+    font-size: var(--text-sm);
+    font-style: italic;
+  }
+
+  /* ── The shelf: years stand side by side, wrapping onto lower planks ── */
+  .shelf {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    row-gap: var(--space-4);
+    padding: var(--space-5) var(--space-4) var(--space-3);
+    border-radius: var(--radius-m);
+    background: var(--paper-sunken);
+    box-shadow: inset 0 14px 18px -16px light-dark(rgb(30 34 39 / 0.35), rgb(0 0 0 / 0.75));
+  }
+
+  .plank {
+    display: grid;
+    align-items: end;
+    max-inline-size: 100%;
+  }
+
+  .spines {
+    --plank: 0.45rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: calc(var(--space-4) + var(--plank)) 3px;
+    margin: 0;
+    padding: 0 var(--space-4);
+    border-block-end: var(--plank) solid var(--rule-strong);
+    list-style: none;
+  }
+
+  /* A bookend between years. */
+  .plank + .plank .spines {
+    border-inline-start: 2px solid var(--rule-strong);
+  }
+
+  .spines > li {
+    position: relative;
+    display: flex;
+  }
+
+  /* When a year's spines wrap, each line still stands on a plank. */
+  .spines > li::after {
+    content: '';
+    position: absolute;
+    inset-inline: -2px;
+    inset-block-end: calc(-1 * var(--plank));
+    block-size: var(--plank);
+    background: var(--rule-strong);
+  }
+
+  .year {
+    display: flex;
+    gap: var(--space-2);
+    align-items: baseline;
+    padding: var(--space-2) var(--space-4) 0;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+  }
+
+  .year a,
+  .year > span:first-child {
+    color: var(--ink);
+    font-size: var(--text-md);
+    font-weight: 650;
+    letter-spacing: -0.02em;
+    text-decoration: none;
+  }
+
+  .year > span:first-child {
+    color: var(--ink-3);
+    font-size: var(--text-sm);
+  }
+
+  .year a:hover {
+    color: var(--accent);
+  }
+
+  .year a[aria-current] {
+    background: linear-gradient(transparent 62%, var(--marker) 62%);
+  }
+
+  .count {
+    color: var(--ink-3);
+    font-size: var(--text-xs);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ── Spines ───────────────────────────────────────────────── */
+  .spine {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+    inline-size: 1.9rem;
+    block-size: var(--h);
+    padding: var(--space-2) 0 0.45rem;
+    border: 1px solid var(--rule-strong);
+    border-radius: 2px 2px 1px 1px;
+    background: var(--paper-raised);
+    color: var(--ink-2);
+    text-decoration: none;
+    transition:
+      transform var(--dur-3) var(--ease-turn),
+      opacity var(--dur-2) var(--ease-out);
+    animation: rise var(--dur-4) var(--ease-out) backwards;
+    animation-delay: calc(var(--i) * 14ms);
+  }
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(0.75rem);
+    }
+  }
+
+  .name {
+    flex: 1;
+    min-block-size: 0;
+    overflow: hidden;
+    font-family: var(--font-read);
+    font-size: 0.75rem;
+    font-weight: 560;
+    line-height: 1;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    writing-mode: vertical-rl;
+  }
+
+  .bands {
+    display: grid;
+    gap: 2px;
+    inline-size: 1.05rem;
+  }
+
+  .bands i,
+  .mini-bands i {
+    display: block;
+    block-size: 3px;
+    background: currentColor;
+    opacity: 0.22;
+  }
+
+  .bands i[data-done],
+  .mini-bands i[data-done] {
+    opacity: 1;
+  }
+
+  .spine:hover {
+    transform: translateY(-4px);
+  }
+
+  .spine:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+
+  /* Your verdict colours the spine. */
+  .spine[data-verdict='must_read'],
+  .swatch[data-verdict='must_read'] {
+    border-color: var(--accent-strong);
+    background: var(--accent);
+    color: var(--on-accent);
+  }
+
+  .spine[data-verdict='useful'],
+  .swatch[data-verdict='useful'] {
+    border-color: light-dark(#9a6d0c, #a77f22);
+    background: var(--series-2);
+    color: var(--marker-ink);
+  }
+
+  .spine[data-verdict='skim'],
+  .swatch[data-verdict='skim'] {
+    border-color: var(--ink-2);
+    background: var(--ink-3);
+    color: var(--paper);
+  }
+
+  .spine[data-verdict='skip'],
+  .swatch[data-verdict='skip'] {
+    border-style: dashed;
+    border-color: var(--ink-3);
+    background: transparent;
+    color: var(--ink-3);
+  }
+
+  /* No card yet, and no verdict to show instead: a bare, hatched spine. */
+  .spine[data-bare]:not([data-verdict]),
+  .swatch[data-bare] {
+    background: repeating-linear-gradient(-45deg, var(--paper-raised) 0 5px, var(--paper-sunken) 5px 7px);
+    color: var(--ink-3);
+  }
+
+  .spine[data-dim] {
+    opacity: 0.22;
+  }
+
+  .spine[data-dim]:hover,
+  .spine[data-dim]:focus-visible {
+    opacity: 0.7;
+  }
+
+  /* Ticked to compare: pulled half out, capped with the marker. */
+  .spine[data-picked] {
+    opacity: 1;
+    transform: translateY(-0.9rem);
+    box-shadow: inset 0 0.55rem 0 var(--marker);
+  }
+
+  /* ── Legend ───────────────────────────────────────────────── */
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-5);
+    margin: 0;
+    padding: 0;
+    color: var(--ink-2);
+    font-size: var(--text-sm);
+    list-style: none;
+  }
+
+  .legend li,
+  .legend a {
+    display: inline-flex;
+    gap: var(--space-2);
+    align-items: center;
+  }
+
+  .legend a {
+    color: var(--ink);
+    text-decoration: none;
+  }
+
+  .legend a:hover {
+    color: var(--accent);
+  }
+
+  .legend a[aria-current] {
+    background: linear-gradient(transparent 62%, var(--marker) 62%);
+  }
+
+  .legend .key {
+    color: var(--ink-3);
+  }
+
+  .swatch {
+    inline-size: 0.6rem;
+    block-size: 1rem;
+    border: 1px solid var(--rule-strong);
+    border-radius: 1px;
+    background: var(--paper-raised);
+  }
+
+  .mini-bands {
+    display: grid;
+    gap: 2px;
+    inline-size: 0.8rem;
+    color: var(--ink-2);
+  }
+
+  @media (max-width: 40rem) {
+    .shelf {
+      padding-inline: var(--space-2);
+    }
+
+    .spines,
+    .year {
+      padding-inline: var(--space-2);
+    }
+
+    .spine {
+      inline-size: 1.6rem;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .spine {
+      animation: none;
+    }
+  }
+</style>
