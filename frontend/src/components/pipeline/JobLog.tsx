@@ -1,6 +1,8 @@
 /**
  * A job's log, closed by default: its timeline (queued, waiting out a retry, started,
- * finished, attempts), every model call it made over all attempts (`GET /jobs/{id}/runs`:
+ * finished, attempts), the run log as it happens (./RunLogView.tsx: each call's prompt,
+ * the model's output streaming in, the reply the skill returned, the schema gate's
+ * verdict), every model call it made over all attempts (`GET /jobs/{id}/runs`:
  * model, tokens, cost, time, turns, and the error of a failed call), what it was asked
  * for and what it returned. The calls load when the log is first opened, and again when
  * the job moves on (a new attempt, a new state) while it stays open.
@@ -12,6 +14,7 @@ import { loadJobRuns } from '../../lib/jobs/api';
 import { Problem, problemOf, type ProblemInfo } from '../common/Problem';
 import { formatCount, formatDuration, formatUsd } from '../stats/format';
 import { placeInLine } from '../../lib/jobs/progress';
+import { RunLogView } from './RunLogView';
 import styles from './JobLog.module.css';
 
 const when = new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeStyle: 'medium' });
@@ -52,6 +55,7 @@ function LogBody({ job, api }: JobLogProps) {
   return (
     <div className={styles.body}>
       <Timeline job={job} />
+      <RunLogView job={job} api={api} />
       <section aria-label="Model calls">
         <h3 className={styles.heading}>Model calls</h3>
         {runs.state === 'loading' ? <p className={styles.muted}>Loading the calls…</p> : null}

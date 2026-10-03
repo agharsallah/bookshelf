@@ -30,6 +30,7 @@ describe('<JobLog>', () => {
   it('opens onto every model call, its totals and the failing call’s error, and what the job was asked', async () => {
     const { api, calls } = fakeApi({
       'GET jobs/f1/runs': () => [call({}), call({ id: 'r2', attempt: 2, ok: false, error: 'reply was not JSON', cost_usd: 0.02 })],
+      'GET jobs/f1/log': () => ({ events: [], next: 0 }),
     });
     render(<JobLog job={failed} api={api} />);
 
@@ -42,16 +43,17 @@ describe('<JobLog>', () => {
     expect(within(log).getByText('reply was not JSON')).toBeTruthy();
     expect(within(screen.getByRole('region', { name: 'Asked for' })).getByText(/"count": 5/)).toBeTruthy();
     expect(within(screen.getByRole('region', { name: 'Error' })).getByText('schema: <root>: bad')).toBeTruthy();
-    expect(calls).toEqual([{ method: 'GET', path: 'jobs/f1/runs', query: undefined }]);
+    expect(calls.map((c) => c.path).sort()).toEqual(['jobs/f1/log', 'jobs/f1/runs']);
   });
 
   it('says a queued job has made no call yet', async () => {
-    const { api } = fakeApi({ 'GET jobs/q1/runs': () => [] });
+    const { api } = fakeApi({ 'GET jobs/q1/runs': () => [], 'GET jobs/q1/log': () => ({ events: [], next: 0 }) });
     render(<JobLog job={{ ...failed, id: 'q1', state: 'queued', error: null, attempts: 0, queue_position: 3 }} api={api} />);
 
     await userEvent.click(screen.getByText('Log'));
 
     expect(await screen.findByText('None yet: the job has not run.')).toBeTruthy();
     expect(screen.getByText('3rd in line')).toBeTruthy();
+    expect(await screen.findByText('Nothing yet: the job has not started.')).toBeTruthy();
   });
 });

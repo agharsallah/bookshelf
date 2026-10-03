@@ -87,6 +87,20 @@ export interface ModelRunPublic {
   created_at: string;
 }
 
+/** One run-log line (`GET /jobs/{id}/log`): `type` says which fields it carries. */
+export interface RunLogEvent {
+  at: string;
+  attempt: number;
+  type: string;
+  [field: string]: unknown;
+}
+
+/** A page of a job's run log, and the offset to ask from next. */
+export interface RunLogPage {
+  events: RunLogEvent[];
+  next: number;
+}
+
 /** A worker process polling the queue (`GET /jobs/queue`). */
 export interface WorkerPublic {
   name: string;

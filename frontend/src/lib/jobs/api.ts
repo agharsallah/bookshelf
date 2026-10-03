@@ -1,12 +1,12 @@
 /**
  * Job and pipeline control (`POST /jobs`, `DELETE /jobs/{id}`, `POST /jobs/{id}/retry`,
- * `POST /jobs/{id}/run-now`, `GET /jobs/{id}/runs`,
+ * `POST /jobs/{id}/run-now`, `GET /jobs/{id}/runs`, `GET /jobs/{id}/log`,
  * `POST /documents/{ref}/resume`, `PATCH /jobs/queue`), through an injected client so
  * islands stay testable.
  */
 import type { ApiClient } from '../api/client';
 import type { DocumentResumed, ResumeRequest } from '../api/types/documents';
-import type { JobAccepted, JobCreate, JobPublic, ModelRunPublic, QueueControlsUpdate, QueueStatus } from '../api/types/jobs';
+import type { JobAccepted, JobCreate, JobPublic, ModelRunPublic, QueueControlsUpdate, QueueStatus, RunLogPage } from '../api/types/jobs';
 
 type Api = Pick<ApiClient, 'post' | 'delete'>;
 
@@ -27,6 +27,11 @@ export function runJobNow(api: Api, id: string): Promise<JobPublic> {
 /** A job's run log: every model call over all its attempts, oldest first. */
 export function loadJobRuns(api: Pick<ApiClient, 'get'>, id: string): Promise<ModelRunPublic[]> {
   return api.get<ModelRunPublic[]>(`jobs/${id}/runs`);
+}
+
+/** A job's run log after byte `after`: poll with the last `next` to follow it live. */
+export function loadJobLog(api: Pick<ApiClient, 'get'>, id: string, after = 0): Promise<RunLogPage> {
+  return api.get<RunLogPage>(`jobs/${id}/log`, { query: { after } });
 }
 
 /** Queue a failed job's work again (without `force`); `409` unless it failed. */
