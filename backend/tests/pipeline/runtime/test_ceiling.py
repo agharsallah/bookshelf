@@ -15,7 +15,7 @@ from app.models import Document, Job
 from app.models.enums import JobKind, JobState
 from app.pipeline import ceiling
 from app.pipeline.execution import SKILL_JOB_KINDS, execute_skill_job
-from app.pipeline.runner import FakeRunner, RunnerError
+from app.pipeline.runner import FakeRunner, RunnerError, UsageLimitError
 from tests.conftest import AUTH
 from tests.pipeline.runtime.conftest import body, paragraph, reply
 
@@ -126,6 +126,22 @@ def test_runs_of_failed_attempts_count_toward_the_ceiling(
     queue.fail(session, job, "RunnerError: timed out")  # re-queued: attempts remain
 
     assert ceiling.count_runs(session, book.id, SKILL_JOB_KINDS) == 1
+
+
+def test_a_run_the_usage_limit_refused_does_not_count(
+    session: Session, book: Document, make_job, skills_dir: Path
+):
+    def limited(prompt: str) -> str:
+        raise UsageLimitError("usage limit reached: You've hit your session limit")
+
+    job = make_job(JobKind.SUMMARIZE, book, "ch01")
+    queue.claim(session)
+    session.refresh(job)
+    with pytest.raises(UsageLimitError):
+        execute_skill_job(session, job, runner=FakeRunner(limited), skills_dir=skills_dir)
+    session.rollback()
+
+    assert ceiling.count_runs(session, book.id, SKILL_JOB_KINDS) == 0
 
 
 def test_a_paused_document_gets_no_dedup_model_calls(session: Session, book: Document):

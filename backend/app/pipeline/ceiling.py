@@ -12,7 +12,9 @@ ceiling reached`, before any model call. Idempotency hits still skip for free.
 
 `resume` clears the pause, sets the document's own ceiling (`meta.run_ceiling`, default:
 another full allowance on top of the runs so far) and requeues the jobs the ceiling
-stopped. Jobs finished before runs were counted per job count as one run each.
+stopped. Jobs finished before runs were counted per job count as one run each. A run the
+account's usage limit refused (`UsageLimitError`) did no work, so its reservation is given
+back (`refund_run`).
 """
 
 import uuid
@@ -29,7 +31,7 @@ from app.jobs.queue import RUNS, JobSpec
 from app.jobs.registry import PermanentJobError
 from app.models import Document, Job
 from app.models.enums import JobKind, JobState, Tier
-from app.pipeline.runner import ModelRunner, RunResult
+from app.pipeline.runner import ModelRunner, RunResult, UsageLimitError
 
 CEILING_ERROR = "run ceiling reached"
 PAUSED_KEY = "paused"
@@ -116,15 +118,30 @@ def reserve_run(
         session.commit()
 
 
-class _Metered:
-    """A `ModelRunner` that reserves a run before every call it passes on."""
+def refund_run(session: Session, job: Job) -> None:
+    """Give back the run `reserve_run` last took for `job`. Commits."""
+    current = job.result or {}
+    job.result = {**current, RUNS: max(int(current.get(RUNS) or 0) - 1, 0)}
+    session.add(job)
+    session.commit()
 
-    def __init__(self, runner: ModelRunner, reserve: Callable[[], None]) -> None:
-        self._runner, self._reserve = runner, reserve
+
+class _Metered:
+    """A `ModelRunner` that reserves a run before every call it passes on, and gives it
+    back when the usage limit refused the call."""
+
+    def __init__(
+        self, runner: ModelRunner, reserve: Callable[[], None], refund: Callable[[], None]
+    ) -> None:
+        self._runner, self._reserve, self._refund = runner, reserve, refund
 
     def run(self, prompt: str, *, tier: Tier, images: Sequence[Path] = ()) -> RunResult:
         self._reserve()
-        return self._runner.run(prompt, tier=tier, images=images)
+        try:
+            return self._runner.run(prompt, tier=tier, images=images)
+        except UsageLimitError:
+            self._refund()
+            raise
 
 
 def metered(
@@ -136,7 +153,11 @@ def metered(
     default: int,
 ) -> ModelRunner:
     """`runner`, with every call counted against `document`'s run ceiling first."""
-    return _Metered(runner, lambda: reserve_run(session, job, document, kinds, default))
+    return _Metered(
+        runner,
+        lambda: reserve_run(session, job, document, kinds, default),
+        lambda: refund_run(session, job),
+    )
 
 
 def resume(
