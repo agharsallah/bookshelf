@@ -25,7 +25,7 @@ export function Row({ label, children }: { label: string; children: ReactNode })
   );
 }
 
-/** One of a few options, as a pressed-button group. */
+/** One of a few options, as a pressed-button group; an option can be held disabled (say why nearby). */
 export function Segmented<T extends string>({
   label,
   value,
@@ -34,13 +34,13 @@ export function Segmented<T extends string>({
 }: {
   label: string;
   value: T;
-  options: readonly { value: T; label: string }[];
+  options: readonly { value: T; label: string; disabled?: boolean }[];
   onChange: (value: T) => void;
 }) {
   return (
     <div className={styles.group} role="group" aria-label={label}>
       {options.map((o) => (
-        <button key={o.value} type="button" aria-pressed={o.value === value} onClick={() => onChange(o.value)}>
+        <button key={o.value} type="button" aria-pressed={o.value === value} disabled={o.disabled} onClick={() => onChange(o.value)}>
           {o.label}
         </button>
       ))}

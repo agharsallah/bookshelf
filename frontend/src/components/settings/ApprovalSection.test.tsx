@@ -5,8 +5,9 @@ import { ApiError } from '../../lib/api/errors';
 import type { AutoApprove, SettingsPublic } from '../../lib/api/types/settings';
 import { fakeApi } from '../review/testing/fakeApi';
 import { ApprovalSection } from './ApprovalSection';
+import { settingsOf } from './testing';
 
-const settings = (auto_approve: AutoApprove): SettingsPublic => ({ auto_derive: { book: [], paper: [] }, auto_approve });
+const settings = (auto_approve: AutoApprove): SettingsPublic => settingsOf({ auto_approve });
 const pressed = (name: string) => screen.getByRole('button', { name }).getAttribute('aria-pressed');
 
 describe('<ApprovalSection>', () => {

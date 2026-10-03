@@ -1,5 +1,29 @@
-/** A `GET /database` answer for tests: two healthy databases, the main one in use. */
+/** Fixtures for the settings tests: `GET /settings` and `GET /database` answers. */
+import type { BuildDefaults } from '../../lib/api/types/builds';
 import type { DatabaseCounts, DatabaseStatus, DatabaseTargetPublic, SyncProgress } from '../../lib/api/types/database';
+import type { SettingsPublic } from '../../lib/api/types/settings';
+
+export const buildDefaults = (over: Partial<BuildDefaults> = {}): BuildDefaults => ({
+  owner: null,
+  visibility: 'private',
+  claude_attribution: false,
+  link_paper: true,
+  max_minutes: 90,
+  max_commits: 30,
+  max_budget_usd: null,
+  advanced: { model: 'auto', effort: 'auto', plan_model: 'auto', commit_style: 'milestone', tests: 'each_milestone', license: 'none', delivery: 'push_main', push: 'each_commit' },
+  ...over,
+});
+
+/** A full `GET /settings` answer; nothing auto-derived, everything reviewed. */
+export const settingsOf = (over: Partial<SettingsPublic> = {}): SettingsPublic => ({
+  auto_derive: { book: [], paper: [] },
+  auto_approve: 'off',
+  builds: buildDefaults(),
+  ...over,
+});
+
+/* A `GET /database` answer: two healthy databases, the main one in use. */
 
 export const counts = (over: Partial<DatabaseCounts> = {}): DatabaseCounts => ({
   documents: 2,

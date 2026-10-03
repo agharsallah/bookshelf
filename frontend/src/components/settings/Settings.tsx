@@ -17,6 +17,7 @@ import { useReaderPrefs } from '../reader/usePrefs';
 import { EncouragementSection } from './EncouragementSection';
 import { ApprovalSection } from './ApprovalSection';
 import { AutoRunSection } from './AutoRunSection';
+import { BuildsSection } from './BuildsSection';
 import { Check, Row, Section, Segmented, titled } from './Controls';
 import { DatabaseSection } from './DatabaseSection';
 import { THEME_CHOICES, type ThemeChoice } from './model';
@@ -156,6 +157,8 @@ export function Settings() {
       <ApprovalSection />
 
       <AutoRunSection />
+
+      <BuildsSection />
 
       <DatabaseSection />
     </div>

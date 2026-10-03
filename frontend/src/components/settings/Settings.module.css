@@ -91,6 +91,13 @@
   color: var(--ink);
 }
 
+.group button:disabled {
+  color: var(--ink-3);
+  text-decoration: line-through;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 .group button[aria-pressed='true'] {
   background: var(--paper-raised);
   color: var(--accent-strong);
