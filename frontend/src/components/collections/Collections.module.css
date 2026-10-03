@@ -197,6 +197,12 @@
   gap: var(--space-4);
 }
 
+.arrange {
+  margin-block-start: var(--space-4);
+  font-size: var(--text-md);
+  font-weight: 650;
+}
+
 /* The trail: one line runs down through the stations, inked as far as you have read. */
 .members {
   display: grid;

@@ -92,6 +92,7 @@ const searchHref = `/search?${members.map((m) => `doc=${m.id}`).join('&')}`;
             <BoxSet
               size="large"
               limit={18}
+              cheerOnly="quiet"
               next={next?.id ?? null}
               members={members.map((m) => ({ id: m.id, title: m.title, genre: m.genre, share: memberShare(m) }))}
             />
@@ -118,7 +119,10 @@ const searchHref = `/search?${members.map((m) => `doc=${m.id}`).join('&')}`;
         </nav>
 
         <section class="path" aria-labelledby="path-heading">
-          <h2 id="path-heading">Reading path</h2>
+          <h2 id="path-heading">
+            <span data-cheer-only="quiet">Reading path</span>
+            <span data-cheer-only="playful">The board 🎲</span>
+          </h2>
           <CollectionPath client:visible collection={slug} members={members} shelf={data.shelf.map(entry)} />
         </section>
       </article>

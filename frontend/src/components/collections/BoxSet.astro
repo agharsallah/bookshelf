@@ -23,16 +23,18 @@ interface Props {
   size?: 'small' | 'large';
   /** Spines shown before the rest fold into a "+n" block. */
   limit?: number;
+  /** Show only in one cheer tone (base.css), e.g. where the playful board stands in for it. */
+  cheerOnly?: 'quiet' | 'playful';
 }
 
-const { members, next = null, size = 'small', limit = 12 } = Astro.props;
+const { members, next = null, size = 'small', limit = 12, cheerOnly } = Astro.props;
 const shown = members.slice(0, limit);
 const more = members.length - shown.length;
 /** A steady width per title, so a set looks the same on every visit. */
 const girth = (title: string) => [...title].reduce((sum, ch) => sum + ch.charCodeAt(0), 0) % 3;
 ---
 
-<div class="box" data-size={size} aria-hidden="true">
+<div class="box" data-size={size} data-cheer-only={cheerOnly} aria-hidden="true">
   {
     shown.length === 0 ? (
       <span class="empty" />

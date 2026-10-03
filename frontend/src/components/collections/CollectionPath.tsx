@@ -3,7 +3,8 @@
  * on why it is there, and buttons to move it or take it out; the first unfinished one is
  * marked "up next". A member can be marked read (or unread) by hand, whatever its
  * chapter positions say. Below, anything else on the shelf can be added by title. Every change
- * is saved at once and undone on failure.
+ * is saved at once and undone on failure. In the playful tone the same path is also laid out
+ * as a board game above the list (CollectionBoard).
  */
 import { useMemo, useState } from 'react';
 import { browserApi, type ApiClient } from '../../lib/api/client';
@@ -11,6 +12,7 @@ import { GENRE_LABELS, type Genre } from '../../lib/api/types/documents';
 import { putMember, removeMember, reorderCollection } from '../../lib/collections/api';
 import { markFinished } from '../../lib/documents/finished';
 import { problemOf } from '../common/Problem';
+import { CollectionBoard } from './CollectionBoard';
 import styles from './Collections.module.css';
 import { MemberNote } from './MemberNote';
 import { memberLabel, memberShare, moved, readHref, upNext, type MemberReading } from './path';
@@ -100,10 +102,16 @@ export function CollectionPath({ collection, members: initial, shelf, api = brow
 
   return (
     <div className={styles.path}>
+      <CollectionBoard collection={collection} members={members} next={next} onFinished={setFinished} onNote={setNote} />
+      {members.length > 0 && (
+        <h3 className={styles.arrange} data-cheer-only="playful">
+          Arrange the squares
+        </h3>
+      )}
       {members.length === 0 ? (
         <p className={styles.quiet}>Nothing here yet. Add books, papers or articles from your shelf below.</p>
       ) : (
-        <ol className={styles.members}>
+        <ol className={styles.members} aria-label="Reading path">
           {members.map((m, index) => (
             <li
               key={m.id}

@@ -19,26 +19,28 @@ const lora = doc('lora', 'LoRA', 'paper');
 const book = doc('dl', 'Deep Learning');
 const post = doc('post', 'A post', 'article');
 
-const order = () => screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent);
+/** The arranging list; the playful board above it repeats the members (shown by tone in CSS). */
+const path = () => within(screen.getByRole('list', { name: 'Reading path' }));
+const order = () => path().getAllByRole('heading', { level: 3 }).map((h) => h.textContent);
 
 describe('<CollectionPath>', () => {
   it('marks the first unfinished member as up next and links it into the reader with the collection', () => {
     render(<CollectionPath collection="ft" members={[entry(lora, 1), entry(book)]} shelf={[]} api={fakeApi().api} />);
 
-    const next = screen.getByText('Up next').closest('li') as HTMLElement;
+    const next = path().getByText('Up next').closest('li') as HTMLElement;
     expect(within(next).getByRole('link', { name: 'Deep Learning' }).getAttribute('href')).toBe('/documents/dl/read?collection=ft');
   });
 
   it('marks a member read by hand, moving up next on, and unread again', async () => {
     const { api, calls } = fakeApi({ 'PUT documents/lora/reading/finished': () => ({}), 'DELETE documents/lora/reading/finished': () => ({}) });
     render(<CollectionPath collection="ft" members={[entry(lora, 0.88), entry(book)]} shelf={[]} api={api} />);
-    const first = () => screen.getAllByRole('listitem')[0] as HTMLElement;
+    const first = () => path().getAllByRole('listitem')[0] as HTMLElement;
 
     await userEvent.click(screen.getByRole('button', { name: 'Mark LoRA read' }));
 
     expect(within(first()).getByText('Finished')).toBeTruthy();
     expect(within(first()).queryByText('Up next')).toBeNull();
-    expect(screen.getByText('Up next').closest('li')?.textContent).toContain('Deep Learning');
+    expect(path().getByText('Up next').closest('li')?.textContent).toContain('Deep Learning');
 
     await userEvent.click(screen.getByRole('button', { name: 'Mark LoRA unread' }));
 
@@ -50,7 +52,7 @@ describe('<CollectionPath>', () => {
   it('inks the trail through finished members only, a hand mark counting as finished', () => {
     render(<CollectionPath collection="ft" members={[entry(lora, 1), entry(book, 0.4, true), entry(post, 0.5)]} shelf={[]} api={fakeApi().api} />);
 
-    const done = screen.getAllByRole('listitem').map((li) => li.hasAttribute('data-done'));
+    const done = path().getAllByRole('listitem').map((li) => li.hasAttribute('data-done'));
     expect(done).toEqual([true, true, false]);
   });
 
@@ -100,16 +102,16 @@ describe('<CollectionPath>', () => {
     const { api, calls } = fakeApi({ 'PUT collections/ft/members/lora': () => ({}) });
     render(<CollectionPath collection="ft" members={[entry(lora)]} shelf={[]} api={api} />);
 
-    await userEvent.click(screen.getByRole('button', { name: 'Add a note' }));
-    await userEvent.type(screen.getByRole('textbox', { name: 'Why LoRA is here' }), 'The adapter idea');
-    await userEvent.click(screen.getByRole('button', { name: 'Save note' }));
-    expect(screen.getByText('The adapter idea')).toBeTruthy();
+    await userEvent.click(path().getByRole('button', { name: 'Add a note' }));
+    await userEvent.type(path().getByRole('textbox', { name: 'Why LoRA is here' }), 'The adapter idea');
+    await userEvent.click(path().getByRole('button', { name: 'Save note' }));
+    expect(path().getByText('The adapter idea')).toBeTruthy();
 
-    await userEvent.click(screen.getByRole('button', { name: 'Edit note' }));
-    await userEvent.clear(screen.getByRole('textbox', { name: 'Why LoRA is here' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Save note' }));
+    await userEvent.click(path().getByRole('button', { name: 'Edit note' }));
+    await userEvent.clear(path().getByRole('textbox', { name: 'Why LoRA is here' }));
+    await userEvent.click(path().getByRole('button', { name: 'Save note' }));
 
     expect(calls.map((c) => c.body)).toEqual([{ note: 'The adapter idea' }, { note: null }]);
-    expect(screen.getByRole('button', { name: 'Add a note' })).toBeTruthy();
+    expect(path().getByRole('button', { name: 'Add a note' })).toBeTruthy();
   });
 });
