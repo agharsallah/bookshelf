@@ -53,6 +53,12 @@ Your input:
   checks only); `license` `none`, `MIT` or `Apache-2.0` (the seed commit writes `LICENSE`).
 - `feedback`, `previous_plan` — on a replan: what the reader wants changed, and the plan
   they said it about. Both `null` on a first plan.
+- `repository` — `null` for a fresh repository. Otherwise the build lands in a folder of a
+  repository the reader already has: `{kind: "github" | "local", repo, folder, survey_md}`.
+  `repo` is `owner/name` or a local path; `folder` (e.g. `papers/attention`) is the only
+  place the agent may write; `survey_md` is the repository as it is on its base branch:
+  the detected stack, the tree to depth 2, a README excerpt and, when the reader keeps them
+  on, the repository's own instructions under *This repository's conventions*.
 
 ## Method
 
@@ -116,15 +122,28 @@ Your input:
     assumes ("Encoder-decoder as in the paper, or decoder-only? The plan follows the
     paper."). Ask instead of guessing wildly; never ask what the goal already answers. `[]`
     when nothing is ambiguous.
-12. **A replan** (`feedback` and `previous_plan` given): start from `previous_plan` and
+12. **An existing repository** (`repository` given): fit the plan to it. Read `survey_md`
+    first. Every `layout` path is relative to `folder` (`README.md` means
+    `<folder>/README.md`), and no milestone changes anything outside the folder: not the
+    root README, not the CI, not a shared config. By default the folder is a
+    self-contained project with its own small config (its own `pyproject.toml` or
+    `package.json`) in the repository's language and package manager; reuse the
+    repository's toolchain or add to its existing project files only when the goal or the
+    notes ask for it, or when the survey shows a monorepo convention that every package
+    follows (a pnpm workspace, a uv workspace, one `packages/*` layout): then follow it,
+    still inside the folder. Follow the conventions the survey quotes (style, test layout,
+    tools) where they do not break a hard rule. The seed (README.md, docs/…) is already in
+    the folder. `repo_name` is still required: a short name for the folder's project.
+13. **A replan** (`feedback` and `previous_plan` given): start from `previous_plan` and
     change what the feedback asks for, and only what follows from it (renumbered
     milestones, an updated layout, a question now answered dropped). Keep every other
     milestone, wording, name and choice as it was. If the feedback breaks a stop (too many
     milestones for `max_commits`), honour the stop and say so in `questions`.
-13. **Self-check:** all eight keys present; 3–12 milestones, no more than
+14. **Self-check:** all eight keys present; 3–12 milestones, no more than
     `stops.max_commits`; the first is a runnable skeleton and the last a `docs:` commit;
     every `commit` a Conventional Commit; every `done_when` observable; the stack honours
-    `stack`; nothing the goal needs is in `out_of_scope`; the JSON parses.
+    `stack`; nothing the goal needs is in `out_of_scope`; with a `repository`, every path
+    is inside the folder; the JSON parses.
 
 ## Hard rules
 

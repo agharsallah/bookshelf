@@ -1,5 +1,5 @@
 name: plan-build
-version: 2
+version: 3
 description: Plan a small repository that builds what the reader asked for from a paper's core ideas — the stack, a suggested repo name, 3–12 milestones each landing as one Conventional Commit, the file layout, what is out of scope, the risks and the questions worth asking — sized to fit the build's stop conditions.
 tier: reason
 job_kind: null          # utility skill: run by the build_plan job (app/builds/planning.py)

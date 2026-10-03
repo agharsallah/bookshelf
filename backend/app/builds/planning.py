@@ -4,7 +4,9 @@
       → the build (gone, or no longer `planning`: skipped)
       → input {paper: PAPER.md text (the kept sections only), goal, preset {key, label,
                stack} | null, stack, stops, references [{title, url, note, kind}], notes,
-               workflow {commit_style, tests, license}, feedback, previous_plan}
+               workflow {commit_style, tests, license}, feedback, previous_plan,
+               repository {kind, repo, folder, survey_md} | null (§7c: an existing
+               repository; `repo` is `owner/name` or the local path)}
       → plan-build (tier `reason`, or `advanced.plan_model`) through the `ModelRunner`,
         validated against its schema, one retry with the problems
       → a new plan version (`plans.record_plan`: origin `skill`, the replan feedback, based
@@ -22,8 +24,10 @@ from sqlmodel import Session, col, select
 
 from app.builds.agents import load_agent
 from app.builds.context import paper_brief, render_paper_md
+from app.builds.github import GhCli, GitHub
 from app.builds.launch import options_of
 from app.builds.plans import record_plan
+from app.builds.targets import Surveyed, survey_for
 from app.core.config import Settings, get_settings
 from app.db.session import release
 from app.jobs.registry import HandlerResult, JobContext, PermanentJobError
@@ -46,11 +50,29 @@ from app.telemetry.recorder import recorded
 SKILL_NAME = "plan-build"
 
 
-def plan_input(session: Session, build: Build, document: Document) -> dict[str, Any]:
+def plan_input(
+    session: Session,
+    build: Build,
+    document: Document,
+    *,
+    surveyed: Surveyed | None = None,
+    github: GitHub | None = None,
+) -> dict[str, Any]:
     """What the planner reads. The paper is named (the planner may say what it builds on);
-    whether the repo names it is the README's business."""
+    whether the repo names it is the README's business. For an existing repository the
+    survey (`surveyed`, else read now through `github` / git) comes along."""
     preset = load_agent(build.agent).preset(build.preset)
     options = options_of(build)
+    target = options.target
+    repository = None
+    if target.existing:
+        if surveyed is None:
+            settings = get_settings()
+            if target.kind == "github" and github is None:
+                github = GhCli(settings.gh_bin)
+            surveyed = survey_for(options, github=github, git_bin=settings.git_bin)
+        repository = {"kind": target.kind, "repo": target.label, "folder": target.folder,
+                      "survey_md": surveyed.markdown}  # fmt: skip
     replanning = _replanning(build)
     paper = render_paper_md(paper_brief(session, document), link_paper=True,
                             sections=options.context.sections)  # fmt: skip
@@ -72,6 +94,7 @@ def plan_input(session: Session, build: Build, document: Document) -> dict[str, 
         },
         "feedback": build.plan_feedback if replanning else None,
         "previous_plan": build.plan if replanning else None,
+        "repository": repository,
     }
 
 
