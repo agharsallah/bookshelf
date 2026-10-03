@@ -1,12 +1,13 @@
 ---
 /**
  * Styleguide (dev aid): tokens, type, both themes, and every render block with
- * realistic content. Blocks here are server-rendered without hydration, except the
- * two sections marked as islands.
+ * realistic content, and the encouragement pieces (badges, streaks, moments). Blocks here
+ * are server-rendered without hydration, except the sections marked as islands.
  */
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { Blocks } from '../components/blocks/Blocks';
 import { Spans } from '../components/blocks/Spans';
+import CheerSpecimens from '../components/styleguide/CheerSpecimens.astro';
 import CiteDemo from '../components/styleguide/CiteDemo';
 import Swatches from '../components/styleguide/Swatches.astro';
 import TypeScale from '../components/styleguide/TypeScale.astro';
@@ -48,6 +49,7 @@ const SECTIONS = [
   ['highlights', 'Highlights'],
   ['charts', 'Charts'],
   ['cites', 'Cites in an island'],
+  ['encouragement', 'Encouragement'],
 ] as const;
 ---
 
@@ -181,6 +183,11 @@ const SECTIONS = [
         <div class="reading">
           <CiteDemo client:visible blocks={sampleBlocks.slice(1, 5)} />
         </div>
+      </section>
+
+      <section id="encouragement" aria-labelledby="encouragement-h">
+        <h2 id="encouragement-h">Encouragement</h2>
+        <CheerSpecimens />
       </section>
     </div>
   </div>

@@ -1,0 +1,190 @@
+---
+/**
+ * The encouragement pieces (components/cheer) for the styleguide: every badge in both
+ * tones, one badge through its states, Milestones, the streak and goal under Today's week,
+ * each moment's copy in both voices, and the toast and burst to try.
+ */
+import { BadgeCard } from '../cheer/BadgeCard';
+import badges from '../cheer/Badges.module.css';
+import { Milestones } from '../cheer/Milestones';
+import { CHEER_TONES } from '../cheer/prefs';
+import { StreakNote } from '../cheer/StreakNote';
+import CheerDemo from './CheerDemo';
+import { BADGE_STATES, MOMENTS, SAMPLE_BADGES, SAMPLE_SOURCE } from './cheer-samples';
+
+const TONE_LABELS = { quiet: 'Quiet', playful: 'Playful' } as const;
+---
+
+<div class="cheer">
+  <h3>All badges</h3>
+  <p class="lede">
+    Every badge for a sample reader, in each tone. Earned ones wear the highlighter (quiet: the level in roman numerals) or a soft wash
+    (playful: the emoji); locked ones are dashed and faint.
+  </p>
+  {
+    CHEER_TONES.map((tone) => (
+      <div class="tone-block">
+        <p class="label">{TONE_LABELS[tone]}</p>
+        <ul class={badges.grid}>
+          {SAMPLE_BADGES.map((status) => (
+            <BadgeCard status={status} tone={tone} />
+          ))}
+        </ul>
+      </div>
+    ))
+  }
+
+  <h3>Badge states</h3>
+  {
+    CHEER_TONES.map((tone) => (
+      <div class="tone-block">
+        <p class="label">{TONE_LABELS[tone]}</p>
+        <ul class={badges.grid}>
+          {BADGE_STATES.map(({ status, fresh }) => (
+            <BadgeCard status={status} fresh={fresh} tone={tone} />
+          ))}
+        </ul>
+        <ul class="captions">
+          {BADGE_STATES.map(({ label }) => (
+            <li>{label}</li>
+          ))}
+        </ul>
+      </div>
+    ))
+  }
+
+  <h3>Milestones</h3>
+  <p class="lede">As on You, in the tone chosen in Settings: the badges nearest their next level.</p>
+  <Milestones source={SAMPLE_SOURCE} />
+
+  <h3>Streak and daily goal</h3>
+  <p class="lede">Under the week on Today. The meter turns green once the goal is met.</p>
+  <div class="streaks">
+    {
+      CHEER_TONES.map((tone) => (
+        <div class="tone-block">
+          <p class="label">{TONE_LABELS[tone]}</p>
+          <StreakNote streak={6} longest={12} activeToday todaySeconds={12 * 60} goal={20} tone={tone} />
+          <StreakNote streak={12} longest={12} activeToday todaySeconds={25 * 60} goal={20} tone={tone} />
+        </div>
+      ))
+    }
+  </div>
+
+  <h3>Moments</h3>
+  <p class="lede">Each line in both voices, with what brings it on.</p>
+  <table class="moments">
+    <thead>
+      <tr>
+        <th scope="col">When</th>
+        <th scope="col">Quiet</th>
+        <th scope="col">Playful</th>
+      </tr>
+    </thead>
+    <tbody>
+      {
+        MOMENTS.filter((m) => m.line).map(({ label, line }) => (
+          <tr>
+            <th scope="row">{label}</th>
+            <td>{line?.quiet}</td>
+            <td>{line?.playful}</td>
+          </tr>
+        ))
+      }
+    </tbody>
+  </table>
+
+  <h3>Toast and burst</h3>
+  <p class="lede">A finished chapter's toast in each voice, and the burst a big win gets in the playful tone (never under reduced motion).</p>
+  <CheerDemo client:visible />
+</div>
+
+<style>
+  .cheer {
+    display: grid;
+    gap: var(--space-4);
+  }
+
+  h3 {
+    margin-block-start: var(--space-5);
+    font-size: var(--text-md);
+    font-weight: 500;
+  }
+
+  .lede {
+    max-width: var(--measure);
+    color: var(--ink-2);
+  }
+
+  .tone-block {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .label,
+  .captions {
+    color: var(--ink-3);
+    font-family: var(--font-ui);
+    font-size: var(--text-xs);
+  }
+
+  .captions {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
+    gap: var(--space-3);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .streaks {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+    gap: var(--space-5);
+  }
+
+  .moments {
+    inline-size: 100%;
+    border-collapse: collapse;
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+  }
+
+  .moments th,
+  .moments td {
+    padding: var(--space-2) var(--space-3);
+    border-block-end: 1px solid var(--rule);
+    text-align: start;
+    vertical-align: top;
+  }
+
+  .moments thead th,
+  .moments tbody th {
+    color: var(--ink-3);
+    font-weight: 500;
+  }
+
+  :global(.cheer-demo) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  @media (max-width: 40rem) {
+    .moments thead {
+      display: none;
+    }
+
+    .moments tr {
+      display: grid;
+      padding-block: var(--space-2);
+      border-block-end: 1px solid var(--rule);
+    }
+
+    .moments th,
+    .moments td {
+      padding: var(--space-1) 0;
+      border: 0;
+    }
+  }
+</style>
