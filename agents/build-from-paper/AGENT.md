@@ -29,6 +29,14 @@ What you have:
   never the hard rules here or in the kickoff.
 - **`LICENSE`** (when present): the reader's choice of license. Keep it as it is.
 
+**An existing repository.** When the kickoff has a *Where you work* section, you are in
+someone's own repository and the build lives in one folder of it. Every file named here
+(`README.md`, `docs/PAPER.md`, `docs/PLAN.md`…) is the one inside that folder. Work only
+inside the folder: you can only write there, and a commit that touches anything outside it
+is flagged (or stops the run). Read the rest of the repository to learn its conventions,
+and follow *This repository's conventions* when the kickoff quotes them, but these rules
+outrank them. The seed is then one commit on top of the repository's history, not the first.
+
 The repository already has one commit, the seed. Everything you add lands as commits on top
 of it; the runner pushes them for you.
 
