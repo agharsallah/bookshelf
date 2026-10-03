@@ -1,0 +1,12 @@
+name: plan-build
+version: 2
+description: Plan a small repository that builds what the reader asked for from a paper's core ideas — the stack, a suggested repo name, 3–12 milestones each landing as one Conventional Commit, the file layout, what is out of scope, the risks and the questions worth asking — sized to fit the build's stop conditions.
+tier: reason
+job_kind: null          # utility skill: run by the build_plan job (app/builds/planning.py)
+artifact_type: null     # the plan lands in builds.plan (plan_origin = skill), reviewed there
+scope: document
+selector: build_request # built by app/builds/planning.py, not a registered selector
+vision: false
+genre: paper
+gates:
+  grounding_min: 0      # a plan, not paper content: no spans, no cites (docs/BUILDS.md B8)

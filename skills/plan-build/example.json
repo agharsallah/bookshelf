@@ -1,0 +1,83 @@
+{
+  "summary": "A tiny encoder-decoder Transformer in plain PyTorch, one short file per idea of the paper: scaled dot-product attention, multi-head attention, sinusoidal positional encoding, and the encoder and decoder stacks with residual connections and layer normalization. It trains on a toy sequence-reversal task on a laptop CPU in under a minute, so a learner can read every line, run it and watch attention learn.",
+  "stack": ["Python 3.12", "PyTorch", "uv", "pytest"],
+  "repo_name": "tiny-transformer",
+  "milestones": [
+    {
+      "title": "Runnable skeleton",
+      "commit": "build(project): set up a uv project with torch and a smoke test",
+      "deliverable": "pyproject.toml (torch, pytest as a dev dependency), the tinyformer package with an empty __init__.py and a __main__.py that prints the config, tests/test_smoke.py.",
+      "done_when": "`uv run python -m tinyformer` prints the config and `uv run pytest` passes."
+    },
+    {
+      "title": "Scaled dot-product attention",
+      "commit": "feat(attention): add scaled dot-product attention with masking",
+      "deliverable": "tinyformer/attention.py: attention(q, k, v, mask) computing softmax(QK^T / sqrt(d_k))V, with padding and causal masks; tests for output shape, rows summing to 1 and masked positions getting zero weight.",
+      "done_when": "`uv run pytest tests/test_attention.py` passes."
+    },
+    {
+      "title": "Multi-head attention",
+      "commit": "feat(attention): add multi-head attention",
+      "deliverable": "MultiHeadAttention in tinyformer/attention.py: project to h heads, attend in parallel, concatenate, project back; a test that it preserves the (batch, length, d_model) shape and respects the causal mask.",
+      "done_when": "`uv run pytest tests/test_attention.py` passes with the new tests."
+    },
+    {
+      "title": "Positional encoding and the layers",
+      "commit": "feat(model): add sinusoidal positions and encoder/decoder layers",
+      "deliverable": "tinyformer/model.py: sinusoidal positional encoding, the position-wise feed-forward network, EncoderLayer and DecoderLayer (self-attention, cross-attention, each sublayer wrapped in a residual connection and layer norm).",
+      "done_when": "`uv run pytest tests/test_model.py` passes: each layer keeps the input shape and a decoder position cannot see later positions."
+    },
+    {
+      "title": "The full Transformer",
+      "commit": "feat(model): stack the layers into an encoder-decoder transformer",
+      "deliverable": "Transformer in tinyformer/model.py: embeddings scaled by sqrt(d_model), N encoder and N decoder layers, a final linear layer to vocabulary logits; a tiny default config (d_model 64, 2 heads, 2 layers).",
+      "done_when": "A forward pass on a random batch returns logits of shape (batch, target length, vocab) in `uv run pytest`."
+    },
+    {
+      "title": "Train on a toy task",
+      "commit": "feat(train): train on sequence reversal and decode greedily",
+      "deliverable": "tinyformer/train.py: a generated dataset of random digit sequences and their reversals, a training loop with Adam and cross-entropy, greedy decoding, and `python -m tinyformer train` printing the loss and a few decoded examples.",
+      "done_when": "`uv run python -m tinyformer train` finishes on a CPU in under a minute and its decoded examples are mostly correct reversals."
+    },
+    {
+      "title": "Prove it learns",
+      "commit": "test(train): check the model learns to reverse short sequences",
+      "deliverable": "tests/test_train.py: a seeded run of a few hundred steps on length-6 sequences that asserts the final loss is well below the first one.",
+      "done_when": "`uv run pytest` passes in under 30 seconds on a CPU."
+    },
+    {
+      "title": "Explain it",
+      "commit": "docs: explain how to run it and which code is which idea",
+      "deliverable": "README.md: how to install and run (uv sync, the train command, the tests), a table mapping each paper idea to its function and file, what was left out and why, and the milestone checklist ticked.",
+      "done_when": "Every command in README.md runs as written on a fresh clone."
+    }
+  ],
+  "layout": [
+    {"path": "pyproject.toml", "purpose": "uv project: torch, and pytest as a dev dependency"},
+    {"path": "tinyformer/__main__.py", "purpose": "the command line: print the config, or train"},
+    {"path": "tinyformer/attention.py", "purpose": "scaled dot-product and multi-head attention"},
+    {"path": "tinyformer/model.py", "purpose": "positional encoding, feed-forward, encoder and decoder layers, the Transformer"},
+    {"path": "tinyformer/train.py", "purpose": "the toy reversal task, the training loop, greedy decoding"},
+    {"path": "tests/test_smoke.py", "purpose": "the package imports and the CLI runs"},
+    {"path": "tests/test_attention.py", "purpose": "attention shapes, weights and masks"},
+    {"path": "tests/test_model.py", "purpose": "layer shapes, causality, the full forward pass"},
+    {"path": "tests/test_train.py", "purpose": "a short seeded run that learns"},
+    {"path": "README.md", "purpose": "how to run it, and which code implements which idea"},
+    {"path": "docs/PAPER.md", "purpose": "the paper's core ideas (seeded)"},
+    {"path": "docs/PLAN.md", "purpose": "this plan (seeded)"}
+  ],
+  "out_of_scope": [
+    "Training on real translation data and BPE tokenization: the toy task shows the mechanism in seconds, real data would take hours.",
+    "Beam search and checkpoint averaging: greedy decoding is enough to see the model work.",
+    "Label smoothing and the warmup learning-rate schedule: named in the README as the next things to add, each a few lines.",
+    "Reproducing the paper's reported translation scores."
+  ],
+  "risks": [
+    "A toy task can be solved without attention doing anything interesting: the README prints one attention map so the learner can see it align positions.",
+    "Post-norm training can be unstable even at this size: keep the learning rate small and the test seeded, and note pre-norm as the usual fix."
+  ],
+  "questions": [
+    "Encoder-decoder as in the paper, or a decoder-only model (less code)? The plan follows the paper.",
+    "Should the training loop show an attention heatmap (adds matplotlib)? The plan prints it as text instead."
+  ]
+}

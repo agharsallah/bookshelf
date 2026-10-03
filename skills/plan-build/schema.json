@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bookshelf.local/skills/plan-build/schema.json",
+  "title": "plan-build output",
+  "description": "A BuildPlan (docs/BUILDS.md §3): what an unattended agent will build from a paper's core ideas, milestone by milestone, each milestone one Conventional Commit. Every key is always present; `out_of_scope`, `risks` and `questions` may be empty.",
+  "type": "object",
+  "required": ["summary", "stack", "repo_name", "milestones", "layout", "out_of_scope", "risks", "questions"],
+  "additionalProperties": false,
+  "properties": {
+    "summary": {
+      "description": "What the repo will be and how it meets the goal, in two or three sentences.",
+      "type": "string",
+      "minLength": 20,
+      "maxLength": 800
+    },
+    "stack": {
+      "description": "Languages, libraries and tools, the dominant one first (\"Python 3.12\", \"PyTorch\", \"uv\", \"pytest\").",
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 12,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1, "maxLength": 60 }
+    },
+    "repo_name": {
+      "description": "A suggested repository name: lowercase, short, says what it is.",
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]{0,99}$"
+    },
+    "milestones": {
+      "description": "In build order; each leaves the repo runnable and lands as one commit (or a few smaller self-contained ones). The seed commit is not a milestone.",
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 12,
+      "items": {
+        "type": "object",
+        "required": ["title", "commit", "deliverable", "done_when"],
+        "additionalProperties": false,
+        "properties": {
+          "title": { "type": "string", "minLength": 3, "maxLength": 80 },
+          "commit": {
+            "description": "The Conventional Commit subject that will land it.",
+            "type": "string",
+            "maxLength": 100,
+            "pattern": "^(feat|fix|docs|test|refactor|chore|build|perf|style|ci)(\\([a-z0-9-]+\\))?: .+"
+          },
+          "deliverable": {
+            "description": "What exists after this commit that did not before: files, functions, a command that runs.",
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 500
+          },
+          "done_when": {
+            "description": "One observable check: a command and what it shows, or a test that passes.",
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 300
+          }
+        }
+      }
+    },
+    "layout": {
+      "description": "The files and folders the finished repo will have, each with its purpose.",
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 40,
+      "items": {
+        "type": "object",
+        "required": ["path", "purpose"],
+        "additionalProperties": false,
+        "properties": {
+          "path": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "purpose": { "type": "string", "minLength": 3, "maxLength": 200 }
+        }
+      }
+    },
+    "out_of_scope": {
+      "description": "Parts of the paper, or of a fuller build, deliberately left out.",
+      "type": "array",
+      "maxItems": 12,
+      "items": { "type": "string", "minLength": 3, "maxLength": 300 }
+    },
+    "risks": {
+      "description": "What could stop the build or make it mislead, each with its mitigation.",
+      "type": "array",
+      "maxItems": 8,
+      "items": { "type": "string", "minLength": 3, "maxLength": 300 }
+    },
+    "questions": {
+      "description": "What the planner would ask the reader before building; each states the default the plan assumes.",
+      "type": "array",
+      "maxItems": 6,
+      "items": { "type": "string", "minLength": 3, "maxLength": 300 }
+    }
+  }
+}
