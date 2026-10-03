@@ -1,7 +1,8 @@
 ---
 /**
- * Settings: theme, library layout, reading defaults, the default voice, and what a new
- * book makes on its own. One island; everything in it saves as it changes.
+ * Settings: theme, library layout, reading defaults, the default voice, what a new book
+ * makes on its own, and which database it all lives in. One island; everything in it
+ * saves as it changes.
  */
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { Settings } from '../components/settings/Settings';
@@ -12,7 +13,7 @@ export const prerender = false;
 <BaseLayout title="Settings" width="reading">
   <header class="intro">
     <h1>Settings</h1>
-    <p>How the app looks, reads and listens for you, and what a new book makes on its own.</p>
+    <p>How the app looks, reads and listens for you, what a new book makes on its own, and where your library is kept.</p>
   </header>
   <Settings client:load />
 </BaseLayout>

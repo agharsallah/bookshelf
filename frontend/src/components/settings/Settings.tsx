@@ -1,6 +1,7 @@
 /**
  * Settings: how the app looks and reads for you (kept in this browser, like the reader's own
- * toolbar), the default voice, and what a new book makes on its own (kept on the server).
+ * toolbar), the default voice, what a new book makes on its own (kept on the server), and
+ * which database the server reads and writes, with a sync between the two.
  * The reading choices are the reader's preferences themselves, so changing one here or in the
  * reader is the same change.
  */
@@ -15,6 +16,7 @@ import { ALIGNS, FONTS, LEADINGS, MARGINS, prefsVars, SIZES, SPACINGS, WIDTHS } 
 import { useReaderPrefs } from '../reader/usePrefs';
 import { AutoRunSection } from './AutoRunSection';
 import { Check, Row, Section, Segmented, titled } from './Controls';
+import { DatabaseSection } from './DatabaseSection';
 import { THEME_CHOICES, type ThemeChoice } from './model';
 import styles from './Settings.module.css';
 
@@ -148,6 +150,8 @@ export function Settings() {
       </Section>
 
       <AutoRunSection />
+
+      <DatabaseSection />
     </div>
   );
 }
