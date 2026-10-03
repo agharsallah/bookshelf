@@ -1,6 +1,6 @@
 /**
  * Settings: how the app looks and reads for you (kept in this browser, like the reader's own
- * toolbar), the default voice, what a new book makes on its own (kept on the server), and
+ * toolbar), how it cheers you on (tone and a daily goal, also in this browser), the default voice, what a new book makes on its own (kept on the server), and
  * which database the server reads and writes, with a sync between the two.
  * The reading choices are the reader's preferences themselves, so changing one here or in the
  * reader is the same change.
@@ -14,6 +14,7 @@ import { isWorkshop, setWorkshop } from '../../lib/workshop';
 import { readPref, savePref, VIEWS, type LibraryView } from '../library/view';
 import { ALIGNS, FONTS, LEADINGS, MARGINS, prefsVars, SIZES, SPACINGS, WIDTHS } from '../reader/prefs';
 import { useReaderPrefs } from '../reader/usePrefs';
+import { EncouragementSection } from './EncouragementSection';
 import { AutoRunSection } from './AutoRunSection';
 import { Check, Row, Section, Segmented, titled } from './Controls';
 import { DatabaseSection } from './DatabaseSection';
@@ -127,6 +128,8 @@ export function Settings() {
           </div>
         </Row>
       </Section>
+
+      <EncouragementSection />
 
       <Section id="listening" eyebrow="Audio" title="Listening" hint="The voice that reads first when you record a chapter or an audio summary.">
         <Row label="Default voice">

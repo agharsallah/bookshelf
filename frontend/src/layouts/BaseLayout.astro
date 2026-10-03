@@ -25,6 +25,7 @@ import WorkshopToggle from '../components/shell/WorkshopToggle.astro';
 import CommandPalette from '../components/search/CommandPalette';
 import NowPlayingBar from '../components/listen/NowPlayingBar';
 import { NAV, isCurrent, navPath } from '../components/shell/nav';
+import { cheerBootstrapScript } from '../components/cheer/prefs';
 import { themeBootstrapScript } from '../lib/theme';
 import { workshopBootstrapScript } from '../lib/workshop';
 
@@ -40,7 +41,7 @@ const pageTitle = title ? `${title} — ${PUBLIC_APP_NAME}` : PUBLIC_APP_NAME;
 const path = navPath(Astro.url);
 const reading = NAV.filter((item) => !item.workshop);
 const workshop = NAV.filter((item) => item.workshop);
-const afterSwapScript = `document.addEventListener('astro:after-swap', () => { ${themeBootstrapScript} ${workshopBootstrapScript} });`;
+const afterSwapScript = `document.addEventListener('astro:after-swap', () => { ${themeBootstrapScript} ${workshopBootstrapScript} ${cheerBootstrapScript} });`;
 ---
 
 <!doctype html>
@@ -50,6 +51,7 @@ const afterSwapScript = `document.addEventListener('astro:after-swap', () => { $
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <script is:inline set:html={themeBootstrapScript} />
     <script is:inline set:html={workshopBootstrapScript} />
+    <script is:inline set:html={cheerBootstrapScript} />
     <script is:inline set:html={afterSwapScript} />
     <meta name="color-scheme" content="light dark" />
     <meta name="description" content={description} />

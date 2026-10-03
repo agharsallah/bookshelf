@@ -152,6 +152,12 @@ html[data-workshop] .reading-only {
   display: none !important;
 }
 
+/* Copy in both voices (components/cheer): the tone on <html data-cheer> shows one. */
+html:not([data-cheer='playful']) [data-cheer-only='playful'],
+html[data-cheer='playful'] [data-cheer-only='quiet'] {
+  display: none !important;
+}
+
 /* The highlighter: a stroke under the lower part of the words, as a pen would lay it. */
 .marker {
   padding-inline: 0.12em;

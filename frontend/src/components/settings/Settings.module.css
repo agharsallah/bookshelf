@@ -256,3 +256,11 @@
     transition: none;
   }
 }
+
+/* How the chosen tone reads (EncouragementSection). */
+.sample {
+  margin: 0;
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
