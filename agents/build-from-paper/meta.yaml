@@ -1,0 +1,5 @@
+name: build-from-paper      # == directory name; builds.agent
+version: 2                  # bump on any AGENT.md or presets change
+description: Build what the reader asked for from a paper's core ideas, in a fresh git repository, milestone by milestone, one Conventional Commit each, unattended, within the build's limits.
+tier: reason                # the model alias (app/pipeline/models.py)
+base_tools: [Read, Write, Edit, Glob, Grep, TodoWrite]   # always allowed; git and toolchain Bash patterns come from app/builds/toolchains.py

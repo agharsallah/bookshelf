@@ -1,0 +1,129 @@
+# Presets for build-from-paper: GET /builds/presets (docs/BUILDS.md §3 `Preset`).
+# `goal` is a starting text the reader edits; no placeholders. `stops` fill the form's
+# defaults (max_minutes 5..720, max_commits 1..200, max_budget_usd 0.5..200, done_when ≤ 10
+# items of ≤ 300 chars). `toolchains` pick the Bash patterns the agent may run
+# (app/builds/toolchains.py): python | node | static.
+
+- key: minimal-implementation
+  label: Minimal implementation
+  description: The smallest faithful implementation of the paper's core method, written to be read and learned from.
+  goal: >-
+    A minimal, readable implementation of this paper's core method, for learning: the least
+    code possible, one short file per idea, comments that map each piece to the paper, a toy
+    example that runs on a laptop CPU in under a minute, and tests for each component.
+  stack: PyTorch
+  toolchains: [python]
+  stops:
+    max_minutes: 90
+    max_commits: 15
+    done_when:
+      - Each core idea of the method has its own function or class, with a test that passes.
+      - A toy example trains or runs end to end on a CPU in under a minute.
+      - README.md maps each file and function to the idea of the paper it implements.
+
+- key: interactive-explainer
+  label: Interactive explainer
+  description: A small website that walks through how the paper's method works, step by step, with controls to play with.
+  goal: >-
+    An interactive web page that explains how this paper's method works, step by step, for
+    someone new to it: each step a short text next to a visual the reader can change (a
+    slider, an input, a toggle) and watch the method respond, computed live in the browser
+    on toy data. No backend.
+  stack: Vite + TypeScript + D3
+  toolchains: [node]
+  stops:
+    max_minutes: 120
+    max_commits: 20
+    done_when:
+      - "`pnpm build` succeeds and `pnpm preview` serves the page."
+      - Every step of the method has its own section with a visual the reader can change.
+      - The computations shown are made in the browser, not hard-coded results.
+
+- key: notebook-walkthrough
+  label: Notebook walkthrough
+  description: A runnable, cell-by-cell walkthrough of the method as a plain Python script in percent format.
+  goal: >-
+    A walkthrough of this paper's method as a percent-format Python script (cells marked with
+    `# %%`, opening as a notebook in VS Code or Jupyter, running as a plain script): each
+    cell explains one idea in a markdown cell, then computes it on a tiny example and prints
+    or plots what to look at.
+  stack: Python + NumPy + matplotlib
+  toolchains: [python]
+  stops:
+    max_minutes: 60
+    max_commits: 10
+    done_when:
+      - "`uv run python walkthrough.py` runs top to bottom without errors in under a minute."
+      - Every core idea of the method has a markdown cell explaining it and a code cell computing it.
+      - Figures are saved under figures/ and named in the text.
+
+- key: reproduce-results
+  label: Reproduce a result
+  description: A small-scale reproduction of one headline result, set side by side with the paper's numbers.
+  goal: >-
+    A small-scale reproduction of this paper's headline result: the method and its main
+    baseline implemented, trained and evaluated the same way on a small public or generated
+    dataset that fits a laptop, with one command that produces a results table placed next
+    to the paper's reported numbers and an honest note on what differs.
+  stack: PyTorch
+  toolchains: [python]
+  stops:
+    max_minutes: 180
+    max_commits: 20
+    done_when:
+      - One command trains and evaluates both the method and the baseline with fixed seeds.
+      - RESULTS.md has a table of the measured numbers next to the paper's, with the scale and setup differences stated.
+      - The comparison says whether the paper's direction of effect holds at this scale.
+
+- key: toy-demo-cli
+  label: CLI playground
+  description: A command-line toy to poke at the method — feed it inputs, change its knobs, see what it does.
+  goal: >-
+    A small command-line playground for this paper's method: subcommands that run the method
+    on inputs I give or on generated examples, flags for its main knobs, and output that
+    shows the intermediate steps, not only the answer.
+  stack: Python + NumPy
+  toolchains: [python]
+  stops:
+    max_minutes: 60
+    max_commits: 12
+    done_when:
+      - "`uv run <cli> --help` lists every subcommand with an example."
+      - Each subcommand prints the intermediate steps of the method for a given input.
+      - Every subcommand has a test.
+
+- key: visual-diagram
+  label: Animated diagram
+  description: A static site with animated diagrams of the paper's architecture and how data flows through it.
+  goal: >-
+    A static web page of animated diagrams of this paper's architecture: each component drawn
+    and labelled, data flowing through it step by step with play, pause and step controls,
+    and a short caption per step saying what happens and why. Plain HTML, CSS and JavaScript
+    that open from the file, no build step.
+  stack: HTML + SVG + vanilla JavaScript
+  toolchains: [static]
+  stops:
+    max_minutes: 60
+    max_commits: 10
+    done_when:
+      - index.html opens from the file in a browser and shows the full architecture.
+      - The animation walks through every step of the method with play, pause and step controls.
+      - No build step and no external network requests.
+
+- key: test-the-claims
+  label: Test the claims
+  description: A test suite where each test checks one of the paper's claims at toy scale.
+  goal: >-
+    A test suite that checks this paper's claims at toy scale: a minimal implementation of
+    the method, then one test per claim that can be checked on a laptop, each named after
+    the claim and asserting the effect the paper describes; claims that cannot be checked at
+    this scale listed with why.
+  stack: Python + NumPy + pytest
+  toolchains: [python]
+  stops:
+    max_minutes: 120
+    max_commits: 15
+    done_when:
+      - Each testable claim has a test named after it, with the claim quoted in its docstring.
+      - "`uv run pytest` runs the whole suite in under two minutes with fixed seeds."
+      - CLAIMS.md lists every claim with its verdict at toy scale (holds, does not hold, not testable here) and why.
