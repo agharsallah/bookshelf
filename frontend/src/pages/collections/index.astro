@@ -6,20 +6,30 @@
  */
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { Problem } from '../../components/common/Problem';
+import BoxSet from '../../components/collections/BoxSet.astro';
 import NewCollection from '../../components/collections/NewCollection';
 import { genreSummary } from '../../components/collections/path';
+import { readingOf } from '../../components/library/load';
 import { fetchAll } from '../../lib/api/fetch-all';
 import { serverApi } from '../../lib/api/server';
 import type { DocumentSummary } from '../../lib/api/types/documents';
 import { listCollections } from '../../lib/collections/api';
-import { load } from '../../lib/documents/server';
+import { getShelfReading, load } from '../../lib/documents/server';
 
 export const prerender = false;
 
 const loaded = await load(async () => {
-  const [collections, shelf] = await Promise.all([listCollections(serverApi()), fetchAll<DocumentSummary>(serverApi(), 'documents')]);
+  const [collections, shelf, positions] = await Promise.all([
+    listCollections(serverApi()),
+    fetchAll<DocumentSummary>(serverApi(), 'documents'),
+    getShelfReading(),
+  ]);
   const byId = new Map(shelf.items.map((d) => [d.id, d]));
-  return collections.map((c) => ({ ...c, members: c.document_ids.flatMap((id) => byId.get(id) ?? []) }));
+  return collections.map((c) => {
+    const members = c.document_ids.flatMap((id) => byId.get(id) ?? []);
+    const spines = members.map((m) => ({ id: m.id, title: m.title, genre: m.genre, share: readingOf(m, positions).share }));
+    return { ...c, members, spines, next: spines.find((s) => s.share < 1)?.id ?? null, done: spines.filter((s) => s.share >= 1).length };
+  });
 });
 const collections = loaded.ok ? loaded.value : null;
 ---
@@ -41,18 +51,28 @@ const collections = loaded.ok ? loaded.value : null;
       collections && collections.length > 0 && (
         <ul class="list">
           {collections.map((c) => (
-            <li>
-              <h2>
-                <a href={`/collections/${c.slug}`}>{c.name}</a>
-              </h2>
-              {c.description && <p class="description">{c.description}</p>}
-              <p class="meta">{genreSummary(c.members)}</p>
-              {c.members.length > 0 && (
-                <p class="members">
-                  {c.members.slice(0, 5).map((m) => m.title).join('; ')}
-                  {c.members.length > 5 ? `; and ${c.members.length - 5} more` : ''}
+            <li class="set">
+              <BoxSet members={c.spines} next={c.next} limit={16} />
+              <div class="about">
+                <h2>
+                  <a href={`/collections/${c.slug}`}>{c.name}</a>
+                </h2>
+                {c.description && <p class="description">{c.description}</p>}
+                <p class="meta">
+                  {genreSummary(c.members)}
+                  {c.members.length > 0 && (
+                    <span class="tally" data-complete={c.done === c.members.length ? '' : undefined}>
+                      {c.done === c.members.length ? 'All read' : `${c.done} of ${c.members.length} read`}
+                    </span>
+                  )}
                 </p>
-              )}
+                {c.members.length > 0 && (
+                  <p class="members">
+                    {c.members.slice(0, 5).map((m) => m.title).join('; ')}
+                    {c.members.length > 5 ? `; and ${c.members.length - 5} more` : ''}
+                  </p>
+                )}
+              </div>
             </li>
           ))}
         </ul>
@@ -60,22 +80,27 @@ const collections = loaded.ok ? loaded.value : null;
     }
 
     <section class="start" aria-labelledby="start-heading">
-      <h2 id="start-heading">{collections?.length ? 'Start another' : 'Start your first collection'}</h2>
-      <NewCollection client:visible />
+      <div class="slot" aria-hidden="true"><span>+</span></div>
+      <div class="start-form">
+        <h2 id="start-heading">{collections?.length ? 'Start another' : 'Start your first collection'}</h2>
+        <NewCollection client:visible />
+      </div>
     </section>
   </div>
 </BaseLayout>
 
 <style>
   .collections {
+    --case: 9rem;
     display: grid;
-    gap: var(--space-6);
-    max-inline-size: 52rem;
+    gap: var(--space-7);
+    max-inline-size: 56rem;
   }
 
   .head {
     display: grid;
     gap: var(--space-2);
+    max-inline-size: var(--measure);
   }
 
   .crumbs,
@@ -87,9 +112,9 @@ const collections = loaded.ok ? loaded.value : null;
   }
 
   h1 {
-    font-size: var(--text-2xl);
-    letter-spacing: -0.02em;
-    line-height: 1;
+    font-size: var(--text-3xl);
+    letter-spacing: -0.035em;
+    line-height: 0.95;
   }
 
   .lede,
@@ -99,32 +124,127 @@ const collections = loaded.ok ? loaded.value : null;
   }
 
   .list {
+    display: grid;
+    gap: var(--space-6);
     margin: 0;
     padding: 0;
     list-style: none;
-    border-block-start: 1px solid var(--rule);
   }
 
-  .list li {
+  /* A slipcase on the left, what it holds on the right; the case sits on the text's baseline. */
+  .set,
+  .start {
+    position: relative;
+    display: grid;
+    grid-template-columns: var(--case) minmax(0, 1fr);
+    gap: var(--space-5);
+    align-items: end;
+  }
+
+  .about {
     display: grid;
     gap: var(--space-1);
-    padding-block: var(--space-4);
+    padding-block-end: var(--space-1);
     border-block-end: 1px solid var(--rule);
   }
 
-  .list h2 {
+  .about h2 {
     font-family: var(--font-read);
     font-size: var(--text-lg);
-    font-weight: 500;
+    font-weight: 560;
+    letter-spacing: -0.02em;
+  }
+
+  .about h2 a {
+    color: var(--ink);
+    text-decoration: none;
+  }
+
+  /* The whole row is the link's target, so pointing at the case opens it too. */
+  .about h2 a::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+  }
+
+  .about h2 a:hover {
+    text-decoration: underline;
+    text-decoration-color: var(--marker);
+    text-decoration-thickness: 0.3em;
+    text-underline-offset: -0.1em;
+    text-decoration-skip-ink: none;
+  }
+
+  .set :global(.box) {
+    transition: translate var(--dur-2) var(--ease-turn);
+  }
+
+  .set:hover :global(.box) {
+    translate: 0 -0.25rem;
+  }
+
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-3);
+    align-items: baseline;
+  }
+
+  .tally {
+    padding-inline: var(--space-2);
+    border-radius: var(--radius-pill);
+    background: var(--paper-sunken);
+    color: var(--ink);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .tally[data-complete] {
+    background: var(--marker);
+    color: var(--marker-ink);
+  }
+
+  .slot {
+    display: grid;
+    place-items: center;
+    align-self: stretch;
+    min-block-size: 8.5rem;
+    border: 1px dashed var(--rule-strong);
+    border-block-start: 0;
+    border-block-end: 4px solid var(--rule);
+    border-radius: 0 0 var(--radius-s) var(--radius-s);
+    color: var(--ink-3);
+    font-family: var(--font-ui);
+    font-size: var(--text-xl);
+    font-weight: 300;
   }
 
   .start {
+    align-items: stretch;
+  }
+
+  .start-form {
     display: grid;
     gap: var(--space-3);
+    align-content: start;
   }
 
   .start h2 {
     font-size: var(--text-lg);
     font-weight: 600;
+  }
+
+  @media (max-width: 40rem) {
+    .collections {
+      --case: 6.5rem;
+    }
+
+    .slot {
+      display: none;
+    }
+
+    .start {
+      grid-template-columns: minmax(0, 1fr);
+    }
   }
 </style>
