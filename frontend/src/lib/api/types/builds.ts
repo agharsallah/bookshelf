@@ -2,7 +2,12 @@
  * Builds wire shapes (docs/BUILDS.md §3; backend/app/schemas/builds.py). A build turns a
  * paper into a git repository: a plan you approve, then an agent run that commits each
  * milestone. The vocabularies mirror `BuildState`, `StopReason` and the visibility enum.
+ * Where a build lands (§7c) lives in `build-target.ts`, re-exported here.
  */
+import type { BuildTarget } from './build-target';
+
+export type { BuildTarget, BuildTargetKind, ConfineMode, RepoChoice, RepoInstructionFile, RepoSurvey, TargetInspection } from './build-target';
+export { BUILD_TARGET_KINDS } from './build-target';
 
 export const BUILD_STATES = ['planning', 'planned', 'building', 'stopping', 'done', 'stopped', 'failed'] as const;
 export type BuildState = (typeof BUILD_STATES)[number];
@@ -15,8 +20,8 @@ export type BuildVisibility = (typeof BUILD_VISIBILITIES)[number];
 
 /** `BuildOptions`: where the repo goes and how commits read. */
 export interface BuildOptions {
-  /** `^[A-Za-z0-9._-]{1,100}$`. */
-  repo_name: string;
+  /** `^[A-Za-z0-9._-]{1,100}$`; null for a build into an existing repository. */
+  repo_name: string | null;
   visibility: BuildVisibility;
   /** Org or user (`^[A-Za-z0-9-]{1,39}$`); null = the `gh` account. */
   owner: string | null;
@@ -34,6 +39,8 @@ export interface BuildOptions {
   references: BuildReference[];
   /** The knobs the defaults hide (§7); every field has a default. */
   advanced: BuildAdvanced;
+  /** Where it lands (§7c); absent means a new repository. */
+  target?: BuildTarget;
 }
 
 /** Options as asked for (`BuildOptionsInput`): anything left out comes from the settings and the preset. */
@@ -186,6 +193,8 @@ export interface BuildContextView {
   effort: string;
   plan_input: Record<string, unknown> | null;
   source: 'workspace' | 'rendered';
+  /** The repository survey (§7c) as the planner and the agent read it; null for a new repository. */
+  survey_md: string | null;
 }
 
 /** `BuildStops`: the limits the runner enforces, plus the agent's own *done when*. */

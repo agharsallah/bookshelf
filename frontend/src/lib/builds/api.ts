@@ -14,9 +14,12 @@ import type {
   BuildPreset,
   BuildPublic,
   BuildSummary,
+  BuildTarget,
   BuildVisibility,
   ContextPreview,
   Preflight,
+  RepoChoice,
+  TargetInspection,
 } from '../api/types/builds';
 
 type Reader = Pick<ApiClient, 'get'>;
@@ -99,4 +102,14 @@ export function renderContext(api: Poster, ref: string, options: BuildOptionsInp
 /** What this build actually received (its workspace once seeded, else rendered). */
 export function getBuildContext(api: Reader, id: string): Promise<BuildContextView> {
   return api.get<BuildContextView>(`${build(id)}/context`);
+}
+
+/** Repositories you and your orgs have on GitHub (§7c), filtered by `q`; at most 100. */
+export function listRepos(api: Reader, q: string): Promise<RepoChoice[]> {
+  return api.get<RepoChoice[]>('builds/repos', { query: { q } });
+}
+
+/** What a build into this repository would meet: problems, branches, the folder, the survey. */
+export function inspectTarget(api: Poster, target: BuildTarget): Promise<TargetInspection> {
+  return api.post<TargetInspection>('builds/target/inspect', target);
 }

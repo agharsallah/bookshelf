@@ -1,5 +1,19 @@
-/** Fixtures for the build island tests: a build in any state, its plan, presets, preflight. */
-import { ADVANCED_DEFAULTS, type BuildContextView, type BuildOptions, type BuildPlan, type BuildPlanVersion, type BuildPreset, type BuildPublic, type ContextPreview, type Preflight, type PreflightCheck } from '../../lib/api/types/builds';
+/** Fixtures for the build island tests: a build in any state, its plan, presets, preflight, targets. */
+import {
+  ADVANCED_DEFAULTS,
+  type BuildContextView,
+  type BuildOptions,
+  type BuildPlan,
+  type BuildPlanVersion,
+  type BuildPreset,
+  type BuildPublic,
+  type BuildTarget,
+  type ContextPreview,
+  type Preflight,
+  type PreflightCheck,
+  type RepoChoice,
+  type TargetInspection,
+} from '../../lib/api/types/builds';
 
 export const plan = (over: Partial<BuildPlan> = {}): BuildPlan => ({
   summary: 'A tiny transformer that trains on a toy copy task.',
@@ -110,6 +124,7 @@ export const contextView = (over: Partial<BuildContextView> = {}): BuildContextV
   effort: 'high',
   plan_input: null,
   source: 'workspace',
+  survey_md: null,
   ...over,
 });
 
@@ -123,5 +138,49 @@ export const planVersion = (over: Partial<BuildPlanVersion> = {}): BuildPlanVers
   model: 'sonnet',
   created_at: '2026-10-03T10:00:00Z',
   current: false,
+  ...over,
+});
+
+/* ── Into an existing repository (§7c) ─────────────────────────────────────────── */
+
+/** `options.target`: a folder of a GitHub repository, on the default branch. */
+export const target = (over: Partial<BuildTarget> = {}): BuildTarget => ({
+  kind: 'github',
+  repo: 'me/lab',
+  path: null,
+  base_branch: null,
+  folder: 'papers/attention',
+  branch: null,
+  use_repo_instructions: true,
+  confine: 'warn',
+  push_branch: false,
+  ...over,
+});
+
+export const repoChoice = (over: Partial<RepoChoice> = {}): RepoChoice => ({
+  full_name: 'me/lab',
+  description: 'Experiments',
+  visibility: 'PRIVATE',
+  default_branch: 'main',
+  updated_at: '2026-09-30T10:00:00Z',
+  can_push: true,
+  ...over,
+});
+
+/** A clean inspection: branches, a free folder, a Python repo with a CLAUDE.md. */
+export const inspection = (over: Partial<TargetInspection> = {}): TargetInspection => ({
+  ok: true,
+  problems: [],
+  default_branch: 'main',
+  branches: ['main', 'develop'],
+  folder_exists: false,
+  folder_empty: false,
+  survey: {
+    tree: ['src/', 'src/app.py', 'papers/', 'papers/bert/', 'README.md', 'pyproject.toml'],
+    stack: ['pyproject.toml'],
+    readme: '# Lab',
+    instructions: [{ path: 'CLAUDE.md', text: 'Use uv. Keep files small.' }],
+    toolchains: ['python'],
+  },
   ...over,
 });
