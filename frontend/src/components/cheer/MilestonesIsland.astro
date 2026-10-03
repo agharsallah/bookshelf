@@ -1,0 +1,14 @@
+---
+/**
+ * Milestones for a page whose statistics are narrowed to a range (a server island,
+ * `server:defer` on You): badges count all history, so it loads that on its own, without
+ * holding up the page. Absent when it cannot load.
+ */
+import { loadBadgeSource } from './load';
+import Milestones from './Milestones';
+
+const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+const source = await loadBadgeSource(tz);
+---
+
+{source && <Milestones client:idle source={source} />}

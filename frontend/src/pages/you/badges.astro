@@ -1,0 +1,55 @@
+---
+/**
+ * Your badges: the whole collection over all your reading, earned first, each with its
+ * level and how close the next one is; the locked ones say what earns them.
+ */
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import BadgeGrid from '../../components/cheer/BadgeGrid';
+import { loadBadgeSource } from '../../components/cheer/load';
+
+export const prerender = false;
+
+const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+const source = await loadBadgeSource(tz);
+---
+
+<BaseLayout title="Your badges" description="What your reading has earned, and what is within reach.">
+  <div class="page">
+    <header class="head">
+      <p class="crumbs"><a href="/you">You, as a reader</a></p>
+      <h1>Your badges</h1>
+      <p class="lede">
+        Finished books and chapters, words read, days in a row, notes, recalls and reviews, counted over all your reading. Each badge climbs
+        through levels; the faint ones say what earns them. How they are told, quietly or with a little fanfare, is up to you in
+        <a href="/settings#encouragement">Settings</a>.
+      </p>
+    </header>
+    {source ? <BadgeGrid client:load source={source} /> : <p class="lede">Your badges could not be loaded. Reload the page to try again.</p>}
+  </div>
+</BaseLayout>
+
+<style>
+  .page {
+    display: grid;
+    gap: var(--space-6);
+  }
+
+  .head {
+    display: grid;
+    gap: var(--space-2);
+    max-inline-size: var(--measure);
+  }
+
+  .crumbs {
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+  }
+
+  h1 {
+    font-size: var(--text-xl);
+  }
+
+  .lede {
+    color: var(--ink-2);
+  }
+</style>

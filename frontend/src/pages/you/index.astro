@@ -2,12 +2,16 @@
 /**
  * You, as a reader (`GET /reader-stats`): how long you read, listen and study, when and in
  * what sittings, how far and how deep you went with each book, the chapters and passages
- * you spent longest on, your notes, what you remember, and what stands out.
+ * you spent longest on, your notes, what you remember, what stands out, and the badges
+ * within reach (always over all history: a narrowed range loads that separately, deferred).
  */
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { Problem } from '../../components/common/Problem';
 import StatsSection from '../../components/stats/StatsSection.astro';
 import { StatTiles } from '../../components/stats/StatTiles';
+import { badgeSource } from '../../components/cheer/load';
+import Milestones from '../../components/cheer/Milestones';
+import MilestonesIsland from '../../components/cheer/MilestonesIsland.astro';
 import { BooksSection } from '../../components/you/BooksSection';
 import { ChaptersSection } from '../../components/you/ChaptersSection';
 import { ConceptsSection } from '../../components/you/ConceptsSection';
@@ -38,6 +42,7 @@ const colors = bookColors(byTime.map((b) => b.slug));
 const titles = Object.fromEntries((stats?.books ?? []).map((b) => [b.slug, b.title]));
 const since = stats?.tracked_since ? formatDate(stats.tracked_since, stats.tz) : null;
 const sections = [
+  { id: 'milestones', label: 'Milestones' },
   { id: 'insights', label: 'Insights' },
   { id: 'time', label: 'Time' },
   { id: 'rhythm', label: 'Rhythm' },
@@ -68,6 +73,9 @@ const sections = [
           <RangeFilter path="/you" days={query.days} tz={stats.tz} />
           <Jump items={sections} />
           <StatTiles tiles={readerTiles(stats.totals)} label="Your totals" />
+          <StatsSection id="milestones" title="Milestones" lede="Badges for what all your reading adds up to, whatever the range, and the ones nearest their next level.">
+            {stats.days === null ? <Milestones client:idle source={badgeSource(stats)} /> : <MilestonesIsland server:defer />}
+          </StatsSection>
           <StatsSection id="insights" title="What stands out" lede="Observations from the figures below, what needs you first.">
             <Insights insights={stats.insights} />
           </StatsSection>
