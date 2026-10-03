@@ -11,6 +11,7 @@ from app.api.routes import (
     audio,
     collections,
     concepts,
+    database,
     documents,
     exports,
     graph,
@@ -62,6 +63,7 @@ api_router.include_router(audio.router)
 api_router.include_router(artifacts.router)
 api_router.include_router(skills.router)
 api_router.include_router(settings.router)
+api_router.include_router(database.router)
 api_router.include_router(search.router)
 api_router.include_router(concepts.router)
 api_router.include_router(graph.router)

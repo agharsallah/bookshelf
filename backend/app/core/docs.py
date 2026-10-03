@@ -62,6 +62,11 @@ TAGS_METADATA: list[dict[str, object]] = [
     {"name": "skills", "description": "Skill packages and interactive-mode inputs."},
     {"name": "settings", "description": "Server-side settings: what a distilled document makes."},
     {
+        "name": "database",
+        "description": "Which database the app uses (this computer or Supabase), and syncing "
+        "one into the other.",
+    },
+    {
         "name": "stats",
         "description": "Pipeline statistics: tokens, time and quality per book, chapter, "
         "stage and skill, with insights on what to improve.",
