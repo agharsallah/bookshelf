@@ -4,17 +4,25 @@ import uuid
 from dataclasses import replace
 
 from fastapi import APIRouter, Depends, Query, status
+from sqlmodel import col, select
 
 from app.api.deps import LimitDep, OffsetDep, SessionDep, SettingsDep
 from app.api.pipeline import SkillsDirDep, pipeline_errors
 from app.core.errors import ConflictError, NotFoundError
 from app.core.security import require_api_key
 from app.jobs import queue
-from app.models import Job
+from app.models import Job, ModelRun
 from app.models.enums import JobKind, JobState
 from app.pipeline.skills import load_catalogue
 from app.schemas.common import Page
-from app.schemas.job import JobAccepted, JobCreate, JobPublic, QueueControlsUpdate, QueueStatus
+from app.schemas.job import (
+    JobAccepted,
+    JobCreate,
+    JobPublic,
+    ModelRunPublic,
+    QueueControlsUpdate,
+    QueueStatus,
+)
 from app.services import app_settings
 from app.services import jobs as job_service
 from app.services.queue_view import public_job, public_jobs, queue_status
@@ -83,6 +91,26 @@ def get_job(job_id: uuid.UUID, session: SessionDep) -> JobPublic:
     if job is None:
         raise NotFoundError(f"Job {job_id} does not exist.")
     return public_job(session, job)
+
+
+@router.get(
+    "/{job_id}/runs",
+    response_model=list[ModelRunPublic],
+    summary="A job's run log: every CLI call it made",
+    description=(
+        "One entry per model call over all the job's attempts, oldest first: model, tier, "
+        "tokens, cost, time, turns, and the error when the call failed. Empty for work that "
+        "calls no model (parse, embed, export) or that has not run yet."
+    ),
+)
+def get_job_runs(job_id: uuid.UUID, session: SessionDep) -> list[ModelRunPublic]:
+    _job(session, job_id)
+    runs = session.exec(
+        select(ModelRun)
+        .where(ModelRun.job_id == job_id)
+        .order_by(col(ModelRun.created_at), col(ModelRun.attempt), col(ModelRun.call))
+    )
+    return [ModelRunPublic.model_validate(run) for run in runs]
 
 
 @router.post(

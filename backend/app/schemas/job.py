@@ -104,6 +104,34 @@ class JobPublic(BaseModel):
     run_now: bool = False
 
 
+class ModelRunPublic(BaseModel):
+    """One CLI call a job made (`model_runs`): the run log behind a job, failures included."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    attempt: int
+    call: int
+    skill: str | None
+    skill_version: str | None
+    tier: str | None
+    model: str | None
+    ok: bool
+    error: str | None
+    input_tokens: int | None
+    output_tokens: int | None
+    cache_read_tokens: int | None
+    cache_write_tokens: int | None
+    cost_usd: float | None
+    duration_ms: int
+    api_ms: int | None
+    turns: int | None
+    prompt_chars: int
+    reply_chars: int | None
+    images: int
+    created_at: datetime
+
+
 class JobAccepted(BaseModel):
     """`202` body: the queued job, or the live one that already covers this work."""
 

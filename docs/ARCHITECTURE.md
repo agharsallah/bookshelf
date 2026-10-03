@@ -1359,6 +1359,7 @@ GET    /jobs/stream                    SSE: job state changes
 DELETE /jobs/{id}                      cancel a queued job
 POST   /jobs/{id}/retry                re-queue a failed job
 POST   /jobs/{id}/run-now              send a queued job to the front (runs even while paused, within the cap)
+GET    /jobs/{id}/runs                 every model call the job made over all attempts (model_runs)
 
 POST   /search                         {query, mode?, filters?}  → grouped results (+ relations)
 POST   /search/answer                  SSE: cited answer
