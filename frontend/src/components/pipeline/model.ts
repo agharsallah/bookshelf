@@ -112,4 +112,6 @@ export const KIND_LABELS: Record<JobKind, string> = {
   relate_claims: 'Relate claims',
   recommend_next: 'Explain recommendations',
   synthesize_papers: 'Synthesize papers',
+  build_plan: 'Plan a build',
+  build_run: 'Build a repository',
 };

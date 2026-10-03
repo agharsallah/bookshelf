@@ -1,6 +1,6 @@
 /**
- * The TS vocabularies are hand-written mirrors of backend/app/models/enums.py. This reads
- * the Python file (same repository) and fails when a value is added on one side only.
+ * The TS vocabularies are hand-written mirrors of backend/app/models/enums.py (and build.py). This reads
+ * the Python files (same repository) and fails when a value is added on one side only.
  */
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
@@ -21,13 +21,16 @@ import {
   REPRODUCIBILITY_STATUSES,
   SECTION_ROLES,
 } from './papers';
+import { BUILD_STATES, BUILD_VISIBILITIES, STOP_REASONS } from './builds';
 
-const source = readFileSync(new URL('../../../../../backend/app/models/enums.py', import.meta.url), 'utf8');
+const backend = (path: string) => readFileSync(new URL(`../../../../../backend/app/models/${path}`, import.meta.url), 'utf8');
+// Most enums live in enums.py; the build vocabularies sit next to their model (size budget).
+const source = [backend('enums.py'), backend('build.py')].join('\n');
 
 /** `class Name(StrEnum):` → its member values, in declaration order. */
 function pythonEnum(name: string): string[] {
   const start = source.indexOf(`class ${name}(`);
-  if (start < 0) throw new Error(`enums.py has no class ${name}`);
+  if (start < 0) throw new Error(`the backend models have no class ${name}`);
   const next = source.indexOf('\nclass ', start + 1);
   const body = source.slice(start, next < 0 ? undefined : next);
   return [...body.matchAll(/^ {4}[A-Z][A-Z0-9_]*\s*=\s*"([^"]+)"/gm)].map((m) => m[1] ?? '');
@@ -58,6 +61,9 @@ const MIRRORS: [string, readonly string[]][] = [
   ['ExplainerLevel', EXPLAINER_LEVELS],
   ['AssessmentCriterion', ASSESSMENT_CRITERIA],
   ['ReproducibilityStatus', REPRODUCIBILITY_STATUSES],
+  ['BuildState', BUILD_STATES],
+  ['StopReason', STOP_REASONS],
+  ['BuildVisibility', BUILD_VISIBILITIES],
 ];
 
 describe('TS enum mirrors', () => {
