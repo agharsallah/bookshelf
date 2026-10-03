@@ -7,6 +7,7 @@
  */
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { Problem } from '../../components/common/Problem';
+import BoxSet from '../../components/collections/BoxSet.astro';
 import CollectionDetails from '../../components/collections/CollectionDetails';
 import CollectionPath, { type PathEntry, type ShelfEntry } from '../../components/collections/CollectionPath';
 import { genreSummary, memberReading, memberShare, readHref, upNext } from '../../components/collections/path';
@@ -67,19 +68,34 @@ const searchHref = `/search?${members.map((m) => `doc=${m.id}`).join('&')}`;
     ) : (
       <article class="collection">
         <header class="head">
-          <nav class="crumbs" aria-label="Breadcrumb">
-            <a href="/collections">
-              <span aria-hidden="true">←</span> Collections
-            </a>
-          </nav>
-          <CollectionDetails client:load slug={slug} name={data.collection.name} description={data.collection.description} />
-          <p class="summary">{genreSummary(members)}</p>
-          {next && (
-            <a class="read" href={readHref(next.slug, slug, next.resume)}>
-              <span>{memberShare(next) > 0 ? 'Continue with' : members.every((m) => memberShare(m) === 0) ? 'Start with' : 'Next up'}</span>
-              <span class="read-where">{next.title}</span>
-            </a>
-          )}
+          <div class="title">
+            <nav class="crumbs" aria-label="Breadcrumb">
+              <a href="/collections">
+                <span aria-hidden="true">←</span> Collections
+              </a>
+            </nav>
+            <CollectionDetails client:load slug={slug} name={data.collection.name} description={data.collection.description} />
+            <p class="summary">
+              {genreSummary(members)}
+              {members.length > 0 && <span>, {members.filter((m) => memberShare(m) >= 1).length} of {members.length} read</span>}
+            </p>
+          </div>
+          <div class="floor">
+            {next && (
+              <a class="read" href={readHref(next.slug, slug, next.resume)}>
+                <span class="read-how">
+                  {memberShare(next) > 0 ? 'Continue with' : members.every((m) => memberShare(m) === 0) ? 'Start with' : 'Next up'}
+                </span>
+                <span class="read-where">{next.title}</span>
+              </a>
+            )}
+            <BoxSet
+              size="large"
+              limit={18}
+              next={next?.id ?? null}
+              members={members.map((m) => ({ id: m.id, title: m.title, genre: m.genre, share: memberShare(m) }))}
+            />
+          </div>
         </header>
 
         <nav class="lenses" aria-label="Look at the collection as a whole">
@@ -113,14 +129,40 @@ const searchHref = `/search?${members.map((m) => `doc=${m.id}`).join('&')}`;
 <style>
   .collection {
     display: grid;
-    gap: var(--space-6);
+    gap: var(--space-7);
     max-inline-size: 56rem;
   }
 
   .head {
     display: grid;
+    gap: var(--space-5);
+  }
+
+  /* Where to pick up on the left, the set itself standing on the same floor on the right. */
+  .floor {
+    display: flex;
+    gap: var(--space-5);
+    align-items: end;
+    justify-content: space-between;
+  }
+
+  .floor > :global(.box) {
+    flex: none;
+  }
+
+  .title {
+    display: grid;
     gap: var(--space-3);
     justify-items: start;
+    min-inline-size: 0;
+  }
+
+  .title :global(h1) {
+    font-family: var(--font-read);
+    font-size: var(--text-3xl);
+    font-weight: 560;
+    letter-spacing: -0.035em;
+    line-height: 0.95;
   }
 
   .crumbs,
@@ -135,44 +177,71 @@ const searchHref = `/search?${members.map((m) => `doc=${m.id}`).join('&')}`;
     text-decoration: none;
   }
 
+  /* A bookmark ribbon: ink, with the highlighter edge it shares with the spine up next. */
   .read {
     display: inline-grid;
+    flex: 0 1 32rem;
     gap: var(--space-1);
-    padding: var(--space-3) var(--space-5);
-    border-radius: var(--radius-m);
+    min-inline-size: 0;
+    padding: var(--space-3) var(--space-6) var(--space-3) var(--space-4);
+    border-inline-start: 6px solid var(--marker);
+    clip-path: polygon(0 0, 100% 0, calc(100% - 1rem) 50%, 100% 100%, 0 100%);
     background: var(--accent);
-    color: var(--paper);
+    color: var(--on-accent);
     font-family: var(--font-ui);
-    font-weight: 700;
     text-decoration: none;
+    transition: padding var(--dur-2) var(--ease-turn);
+  }
+
+  .read:hover {
+    padding-inline-end: var(--space-7);
+  }
+
+  .read-how {
+    font-size: var(--text-sm);
+    font-weight: 700;
   }
 
   .read-where {
     font-family: var(--font-read);
-    font-weight: 400;
+    font-size: var(--text-md);
+    line-height: var(--leading-tight);
   }
 
+  /* Index tabs: the four ways to open the set, cut into a divider's top edge. */
   .lenses {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
-    gap: var(--space-3);
+    gap: var(--space-1);
+    border-block-end: 2px solid var(--ink);
   }
 
   .lenses a {
     display: grid;
+    align-content: start;
     gap: var(--space-1);
-    padding: var(--space-3) var(--space-4);
-    border: 1px solid var(--rule);
-    border-radius: var(--radius-m);
+    padding: var(--space-3) var(--space-4) var(--space-4);
+    border: 1px solid var(--rule-strong);
+    border-block-end: 0;
+    border-radius: var(--radius-l) var(--radius-l) 0 0;
+    background: var(--paper-sunken);
     color: var(--ink);
     font-family: var(--font-ui);
     font-size: var(--text-sm);
     text-decoration: none;
-    transition: border-color var(--dur-1) var(--ease-out);
+    transition:
+      padding var(--dur-2) var(--ease-turn),
+      background var(--dur-1) var(--ease-out);
   }
 
-  .lenses a:hover {
-    border-color: var(--accent);
+  .lenses a:hover,
+  .lenses a:focus-visible {
+    padding-block-start: var(--space-5);
+    background: var(--paper-raised);
+  }
+
+  .lenses strong {
+    font-size: var(--text-ui);
   }
 
   .lenses span {
@@ -181,7 +250,7 @@ const searchHref = `/search?${members.map((m) => `doc=${m.id}`).join('&')}`;
 
   .path {
     display: grid;
-    gap: var(--space-3);
+    gap: var(--space-4);
   }
 
   .path h2 {
@@ -192,5 +261,16 @@ const searchHref = `/search?${members.map((m) => `doc=${m.id}`).join('&')}`;
   .missing {
     display: grid;
     gap: var(--space-2);
+  }
+
+  @media (max-width: 40rem) {
+    .floor {
+      flex-wrap: wrap;
+    }
+
+    .floor > :global(.box) {
+      order: -1;
+      inline-size: 100%;
+    }
   }
 </style>
