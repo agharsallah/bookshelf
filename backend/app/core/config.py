@@ -69,6 +69,9 @@ class Settings(BaseSettings):
     audio_dir: Path = REPO_ROOT / ".audio"  # derived: narrations (app/audio/store.py)
     # Reference clips: built-in samples are cached here, your own go in `custom/`.
     voices_dir: Path = REPO_ROOT / ".audio" / "voices"
+    # Derived: one JSON-lines log per job, what it did as it happened (app/telemetry/run_log.py).
+    run_logs_dir: Path = REPO_ROOT / ".run-logs"
+    run_log_days: Annotated[int, Field(ge=1)] = 14
 
     # --- Qdrant (§10) -----------------------------------------------------
     # With a URL: remote cluster. Without: embedded on-disk store at `qdrant_path`.

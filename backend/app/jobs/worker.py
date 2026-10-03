@@ -60,6 +60,7 @@ from app.jobs.registry import (
 from app.models import Job
 from app.models.enums import JobKind, JobState
 from app.pipeline.runner import UsageLimitError
+from app.telemetry import run_log
 
 logger = logging.getLogger("app.jobs.worker")
 
@@ -169,7 +170,7 @@ class Worker:
     def abandon(self) -> int:
         """Stop now: `release_held`, then kill the `claude` (and speech model) runs working
         on the jobs. Returns how many jobs went back."""
-        from app.pipeline.runner import terminate_all
+        from app.pipeline.processes import terminate_all
 
         released = self.release_held()
         terminate_all()
@@ -221,7 +222,8 @@ class Worker:
         )
         beat.start()
         try:
-            return self._execute(job)
+            with run_log.job_log(job.id, attempt=job.attempts):
+                return self._execute(job)
         finally:
             done.set()
             beat.join()
@@ -233,6 +235,8 @@ class Worker:
             job = session.merge(job, load=True)
             handler = self.handler_for(job.kind)
             extra = {"job_id": str(job.id), "kind": job.kind.value, "anchor": job.anchor}
+            run_log.event("started", worker=self.name, kind=job.kind.value, anchor=job.anchor,
+                          skill=job.skill)  # fmt: skip
             outcome: HandlerResult | None = None
             error: Exception | None = None
             try:
@@ -244,9 +248,12 @@ class Worker:
                 error = exc
             if self._is_released(job.id):  # abandoned mid-run: the queue already has it back
                 session.rollback()
+                run_log.event("released", text="Handed back to the queue; it runs again.")
                 return JobState.QUEUED
             if isinstance(error, UsageLimitError):
                 self._pause_for_limit(session, job, error)
+                run_log.event("finished", state=job.state.value, error=str(error),
+                              text="Usage limit: the queue paused and the job waits.")  # fmt: skip
                 return job.state
             if isinstance(error, PermanentJobError):
                 queue.fail(session, job, str(error), retry=False)
@@ -268,6 +275,8 @@ class Worker:
                     "Job finished",
                     extra={**extra, "state": job.state.value, "duration_ms": job.duration_ms},
                 )
+            run_log.event("finished", state=job.state.value, error=job.error,
+                          duration_ms=job.duration_ms)  # fmt: skip
             if job.state in (JobState.DONE, JobState.SKIPPED, JobState.FAILED):
                 try:
                     self._on_done(session, job)
@@ -305,6 +314,7 @@ class Worker:
                 presence.prune(session)
         except Exception:
             logger.warning("Worker presence prune failed", exc_info=True)
+        run_log.prune()
         self.beat(force=True)
 
     def _loop(self, *, once: bool) -> int:

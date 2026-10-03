@@ -472,7 +472,7 @@ sequenceDiagram
     DB-->>W: yes → skip (never pay twice)
   else miss
     W->>S: render SKILL.md with inputs
-    W->>C: claude -p --model <tier alias> --output-format json < prompt
+    W->>C: claude -p --model <tier alias> --output-format stream-json < prompt
     C-->>W: JSON on stdout (parsed from result text)
     W->>W: validate schema · anchors exist · grounding ≥ 0.9 · compression band
     W->>DB: insert artifact (review = draft | needs_review)
@@ -496,7 +496,7 @@ flowchart LR
 
   subgraph BATCH["Batch mode (worker)"]
     W["worker renders prompt<br/>from SKILL.md + inputs"]:::py
-    P["subprocess:<br/>claude -p --model sonnet<br/>--output-format json"]:::sk
+    P["subprocess:<br/>claude -p --model sonnet<br/>--output-format stream-json"]:::sk
     W --> P
   end
 
@@ -515,10 +515,20 @@ flowchart LR
 ```
 
 **Batch mode** is for bulk work: the worker shells out to `claude -p` with the rendered prompt on
-stdin, `--model` set from the tier alias, and `--output-format json`. The result text is parsed as
-JSON and pushed through the same gates as anything else. Concurrency is capped (2–3 processes);
-the CLI shares your subscription's rate limits. Every call still leaves a `model_runs` row
-(tokens, cache, reported cost, time) for the statistics in §14.
+stdin, `--model` set from the tier alias, and `--output-format stream-json --verbose
+--include-partial-messages`. The last line is the result envelope; its text is parsed as JSON and
+pushed through the same gates as anything else. Concurrency is capped (2–3 processes); the CLI
+shares your subscription's rate limits. Every call still leaves a `model_runs` row (tokens,
+cache, reported cost, time) for the statistics in §14.
+
+Every job also leaves a **run log** (`app/telemetry/run_log.py`): one JSON-lines file per job in
+`BOOKSHELF_RUN_LOGS_DIR` (`.run-logs/`), kept `BOOKSHELF_RUN_LOG_DAYS` (14). The worker opens it
+around the handler and it is the thread's current log, so each layer adds what it knows without
+being handed anything: the worker (started, finished and how), the telemetry recorder (each call's
+prompt, then the reply the skill returned or its error), the CLI runner (`app/pipeline/cli_stream.py`:
+the model's output and thinking as they stream in, tool use, usage-limit warnings, stderr) and the
+schema gate (a rejected reply and its problems, repairs, acceptance). `GET /jobs/{id}/log?after=`
+tails it by byte offset, so the pipeline page follows a running job live.
 
 **Interactive mode** is for exploration and hard cases: you open a Claude Code session in the
 repo and invoke a skill by name. The skill reads inputs from the local API, works with you, and
@@ -1360,6 +1370,7 @@ DELETE /jobs/{id}                      cancel a queued job
 POST   /jobs/{id}/retry                re-queue a failed job
 POST   /jobs/{id}/run-now              send a queued job to the front (runs even while paused, within the cap)
 GET    /jobs/{id}/runs                 every model call the job made over all attempts (model_runs)
+GET    /jobs/{id}/log?after=           the job's run log as it happens: prompts, streamed output, replies
 
 POST   /search                         {query, mode?, filters?}  → grouped results (+ relations)
 POST   /search/answer                  SSE: cited answer

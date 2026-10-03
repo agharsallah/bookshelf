@@ -132,6 +132,17 @@ class ModelRunPublic(BaseModel):
     created_at: datetime
 
 
+class RunLogPage(BaseModel):
+    """`GET /jobs/{id}/log`: events after `after`, and where to ask from next."""
+
+    events: Annotated[
+        list[dict[str, Any]],
+        Field(description="`{at, attempt, type, ...}`: started, call, text, thinking, tool, "
+                          "tool_result, reply, rejected, accepted, finished… (run_log.py)"),
+    ]  # fmt: skip
+    next: Annotated[int, Field(description="Pass as `after` to get only what came since.")]
+
+
 class JobAccepted(BaseModel):
     """`202` body: the queued job, or the live one that already covers this work."""
 

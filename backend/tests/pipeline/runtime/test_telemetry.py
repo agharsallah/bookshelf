@@ -111,3 +111,38 @@ def test_a_telemetry_failure_never_fails_the_job(
 
     assert outcome.result["artifact_id"]
     assert runs_of(session) == []
+
+
+def test_each_call_logs_its_prompt_then_the_reply_the_skill_returned(
+    session: Session, book: Document, make_job, skills_dir: Path, tmp_path: Path
+):
+    from app.telemetry import run_log
+
+    job = make_job(JobKind.SUMMARIZE, book, "ch01")
+    queue.claim(session)
+    session.refresh(job)
+
+    with run_log.job_log(job.id, attempt=1, directory=tmp_path):
+        execute_skill_job(session, job, runner=recorded(MeteredReply(), job), skills_dir=skills_dir)
+
+    events, _ = run_log.read(job.id, directory=tmp_path)
+    call, reply_event = (e for e in events if e["type"] in ("call", "reply"))
+    assert (call["call"], call["tier"]) == (1, "explore")
+    assert call["prompt_chars"] == len(call["prompt"]) > 0  # the whole prompt, as sent
+    assert (reply_event["ok"], reply_event["model"], reply_event["text"]) == (
+        True, "claude-sonnet-5", GROUNDED,
+    )  # fmt: skip
+
+
+def test_a_failed_call_logs_its_error(session: Session, book: Document, make_job, tmp_path: Path):
+    from app.telemetry import run_log
+
+    job = make_job(JobKind.SUMMARIZE, book, "ch01")
+    with run_log.job_log(job.id, attempt=1, directory=tmp_path), pytest.raises(RunnerError):
+        recorded(Broken(), job).run("P", tier=Tier.DISTIL)
+
+    events, _ = run_log.read(job.id, directory=tmp_path)
+    assert [(e["type"], e.get("ok"), e.get("error")) for e in events] == [
+        ("call", None, None),
+        ("reply", False, "claude timed out after 600s"),
+    ]

@@ -52,3 +52,25 @@ def test_a_job_that_called_no_model_has_an_empty_log(session: Session, client: T
 
 def test_the_run_log_of_an_unknown_job_is_not_found(client: TestClient):
     assert client.get(f"/api/v1/jobs/{uuid.uuid4()}/runs").status_code == 404
+
+
+def test_the_live_log_pages_by_offset(session: Session, client: TestClient):
+    from app.telemetry import run_log
+
+    job = enqueue(session, "a")
+    with run_log.job_log(job.id, attempt=1):
+        run_log.event("started")
+        run_log.text("text", "Hello")
+    url = f"/api/v1/jobs/{job.id}/log"
+
+    first = client.get(url).json()
+    with run_log.job_log(job.id, attempt=1):
+        run_log.event("finished", state="done")
+    since = client.get(url, params={"after": first["next"]}).json()
+
+    assert [(e["type"], e.get("text")) for e in first["events"]] == [
+        ("started", None),
+        ("text", "Hello"),
+    ]
+    assert [e["type"] for e in since["events"]] == ["finished"]
+    assert client.get(f"/api/v1/jobs/{uuid.uuid4()}/log").status_code == 404

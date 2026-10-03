@@ -98,7 +98,7 @@ def test_stopping_two_workers_hands_both_jobs_back_even_when_one_run_is_killed(
     import subprocess
 
     from app.jobs.background import BackgroundWorker, stop_all
-    from app.pipeline.runner import communicate_tracked
+    from app.pipeline.processes import communicate_tracked
 
     jobs = [enqueue(session, "one"), enqueue(session, "two")]
     started = [threading.Event(), threading.Event()]

@@ -288,3 +288,27 @@ def test_the_api_pipeline_worker_leaves_narrate_to_its_own_runner(qdrant_url):
     assert JobKind.NARRATE not in kinds
     assert JobKind.DERIVE in kinds
     assert (JobKind.EMBED in kinds) is (qdrant_url is not None)
+
+
+def test_a_job_logs_its_start_what_its_handler_logs_and_how_it_finished(session: Session):
+    from app.telemetry import run_log
+
+    queue.enqueue(session, JobSpec(kind=JobKind.EXPORT, anchor="a"))
+    queue.enqueue(session, JobSpec(kind=JobKind.EXPORT, anchor="bad"))
+
+    def export(ctx: JobContext) -> HandlerResult:
+        run_log.event("note", text=f"exporting {ctx.job.anchor}")
+        if ctx.job.anchor == "bad":
+            raise PermanentJobError("schema violation")
+        return HandlerResult()
+
+    worker = Worker(concurrency=1, poll_seconds=0.01, handlers={JobKind.EXPORT: export},
+                    on_done=lambda *_: None)  # fmt: skip
+    worker.run(once=True)
+
+    jobs = jobs_by_anchor(session)
+    good, _ = run_log.read(jobs["a"].id)
+    bad, _ = run_log.read(jobs["bad"].id)
+    assert [e["type"] for e in good] == ["started", "note", "finished"]
+    assert (good[0]["kind"], good[1]["text"], good[2]["state"]) == ("export", "exporting a", "done")
+    assert (bad[-1]["state"], bad[-1]["error"]) == ("failed", "schema violation")

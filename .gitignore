@@ -189,6 +189,7 @@ library/*
 !library/.gitkeep
 .media/
 .audio/
+.run-logs/
 .qdrant/
 exports/
 skills/.outbox/

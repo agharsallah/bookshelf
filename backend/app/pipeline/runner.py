@@ -2,15 +2,18 @@
 
 There is no API key in the backend. `ClaudeCliRunner` pipes the rendered prompt to
 
-    claude -p --model <alias> --output-format json --no-session-persistence --safe-mode
+    claude -p --model <alias> --output-format stream-json --verbose
+           --include-partial-messages --no-session-persistence --safe-mode
            --strict-mcp-config --permission-prompts none --tools ""
 
 from a neutral temporary directory, so no project settings, CLAUDE.md, skills, plugins, MCP
 servers or tools leak into a prompt that must be self-contained. Vision skills get exactly
 one tool, `Read`, scoped to the directories of the images they must open.
 
-The CLI prints one JSON envelope: the model's reply is in `result`, the resolved model is
-the key of `modelUsage`, token counts are in `usage`. `run_structured` turns the reply into
+The CLI streams one JSON object per line while it runs (`app.pipeline.cli_stream` logs the
+reply as it arrives, for the job's run log) and ends with the JSON envelope: the model's
+reply is in `result`, the resolved model is the key of `modelUsage`, token counts are in
+`usage`. `run_structured` turns the reply into
 a validated JSON object, retrying once with the errors appended (§14 Schema gate).
 
 A usage or rate limit (HTTP 429, "You've hit your session limit · resets 8pm") is a
@@ -18,11 +21,8 @@ A usage or rate limit (HTTP 429, "You've hit your session limit · resets 8pm") 
 the worker pauses the whole queue rather than burning attempts (`app.jobs.worker`).
 """
 
-import contextlib
 import json
-import os
 import re
-import signal
 import subprocess
 import tempfile
 import threading
@@ -34,14 +34,13 @@ from typing import Any, Protocol
 
 from app.core.config import Settings, get_settings
 from app.models.enums import Tier
+from app.pipeline.cli_stream import pump, result_line
 from app.pipeline.models import cli_alias, cli_effort
+from app.pipeline.processes import kill_group, tracked
+from app.telemetry import run_log
 
 _FENCE = re.compile(r"^\s*```[a-zA-Z0-9_-]*\s*\n(.*?)\n\s*```\s*$", re.DOTALL)
 _STDERR_TAIL = 2000
-# Every `claude` process this process started and has not reaped, so a stopping API can
-# end them (`terminate_all`) instead of waiting minutes for runs nobody will record.
-_LIVE: set[subprocess.Popen[str]] = set()
-_LIVE_LOCK = threading.Lock()
 
 
 class RunnerError(RuntimeError):
@@ -66,7 +65,7 @@ def _limit_error(envelope: dict[str, Any]) -> UsageLimitError | None:
 def _error_envelope(stdout: str) -> dict[str, Any] | None:
     """The JSON envelope a failed run printed (the CLI exits 1 with one on API errors)."""
     try:
-        envelope = json.loads(stdout)
+        envelope = json.loads(result_line(stdout))
     except json.JSONDecodeError:
         return None
     return envelope if isinstance(envelope, dict) and envelope.get("is_error") else None
@@ -100,9 +99,10 @@ class ModelRunner(Protocol):
 
 
 def parse_envelope(stdout: str, *, duration_ms: int = 0) -> RunResult:
-    """Read the `--output-format json` envelope. Raises `RunnerError` on error envelopes."""
+    """Read the result envelope (alone, or the last line of a stream). Raises `RunnerError`
+    on error envelopes."""
     try:
-        envelope = json.loads(stdout)
+        envelope = json.loads(result_line(stdout))
     except json.JSONDecodeError as exc:
         raise RunnerError(f"CLI printed no JSON envelope: {stdout[:200]!r}") from exc
     if not isinstance(envelope, dict):
@@ -242,10 +242,16 @@ def run_structured(
             output = extract_json(result.text)
         except OutputError as exc:
             problems = exc.problems
+            run_log.event("rejected", problems=problems[:20], retrying=attempt == 0)
             continue
         repairs = repair(output) if repair is not None else []
+        if repairs:
+            run_log.event("repaired", fixes=repairs[:20])
         problems = validate(output)
-        if not problems:
+        if problems:
+            run_log.event("rejected", problems=problems[:20], retrying=attempt == 0)
+        else:
+            run_log.event("accepted", retried=attempt == 1)
             costs = [r.cost_tokens for r in runs if r.cost_tokens is not None]
             return StructuredRun(
                 output=output,
@@ -300,7 +306,9 @@ class ClaudeCliRunner:
             "--effort",
             effort.value,
             "--output-format",
-            "json",
+            "stream-json",
+            "--verbose",
+            "--include-partial-messages",
             "--no-session-persistence",
             "--safe-mode",
             "--strict-mcp-config",
@@ -334,10 +342,14 @@ class ClaudeCliRunner:
             )
         except OSError as exc:
             raise RunnerError(f"cannot start {self.claude_bin!r}: {exc}") from exc
-        try:
-            stdout, stderr = communicate_tracked(proc, prompt, timeout=self.timeout_seconds)
-        except subprocess.TimeoutExpired as exc:
-            raise RunnerError(f"claude timed out after {self.timeout_seconds}s") from exc
+        with tracked(proc):
+            stdout, stderr, timed_out = pump(
+                proc, prompt, timeout=self.timeout_seconds, kill=lambda: kill_group(proc)
+            )
+        if timed_out:
+            raise RunnerError(f"claude timed out after {self.timeout_seconds}s")
+        if stderr.strip():
+            run_log.event("stderr", text=run_log.clip(stderr.strip(), _STDERR_TAIL))
         if proc.returncode != 0:
             envelope = _error_envelope(stdout or "")
             if envelope is not None and (limit := _limit_error(envelope)):
@@ -345,40 +357,6 @@ class ClaudeCliRunner:
             tail = (stderr or stdout or "")[-_STDERR_TAIL:].strip()
             raise RunnerError(f"claude exited with {proc.returncode}: {tail}")
         return stdout
-
-
-def communicate_tracked(
-    proc: subprocess.Popen[str], stdin: str, *, timeout: float
-) -> tuple[str, str]:
-    """`proc.communicate`, with `proc` known to `terminate_all` while it runs. On a timeout
-    the whole process group is killed before `TimeoutExpired` propagates. For any long
-    subprocess a job waits on (the CLI here, the speech model in `app.audio.runner`)."""
-    with _LIVE_LOCK:
-        _LIVE.add(proc)
-    try:
-        return proc.communicate(stdin, timeout=timeout)
-    except subprocess.TimeoutExpired:
-        _kill_group(proc)
-        proc.communicate()
-        raise
-    finally:
-        with _LIVE_LOCK:
-            _LIVE.discard(proc)
-
-
-def terminate_all() -> int:
-    """Kill every tracked process tree this process started (`claude`, the speech model);
-    their `run` calls fail. Returns how many were killed."""
-    with _LIVE_LOCK:
-        procs = list(_LIVE)
-    for proc in procs:
-        _kill_group(proc)
-    return len(procs)
-
-
-def _kill_group(proc: subprocess.Popen[str]) -> None:
-    with contextlib.suppress(ProcessLookupError):  # already gone
-        os.killpg(proc.pid, signal.SIGKILL)
 
 
 # --- Test double ---------------------------------------------------------------------

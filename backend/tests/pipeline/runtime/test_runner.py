@@ -7,6 +7,7 @@ import stat
 import subprocess
 import threading
 import time
+import uuid
 from pathlib import Path
 
 import pytest
@@ -23,6 +24,7 @@ from app.pipeline.runner import (
     parse_envelope,
     run_structured,
 )
+from app.telemetry import run_log
 
 ENVELOPE = {
     "type": "result",
@@ -242,8 +244,8 @@ def test_cli_pipes_the_prompt_on_stdin_with_no_tools_from_a_neutral_cwd(fake_cla
     assert result.model == "claude-haiku-4-5-20251001"
     assert call["stdin"] == "Distil this."
     assert call["argv"] == [
-        "-p", "--model", "sonnet", "--effort", "medium", "--output-format", "json",
-        "--no-session-persistence",
+        "-p", "--model", "sonnet", "--effort", "medium", "--output-format", "stream-json",
+        "--verbose", "--include-partial-messages", "--no-session-persistence",
         "--safe-mode", "--strict-mcp-config", "--permission-prompts", "none", "--tools", "",
     ]  # fmt: skip
     assert "bookshelf-claude-" in call["cwd"]
@@ -300,6 +302,37 @@ def test_timeout_kills_the_process_and_raises(fake_claude, tmp_path):
     assert time.monotonic() - started < 10  # killed, not waited out (the sleep is 30 s)
     with pytest.raises(ProcessLookupError):
         os.kill(recorded(tmp_path)["pid"], 0)
+
+
+STREAM = [
+    {"type": "system", "subtype": "init", "model": "claude-haiku-4-5-20251001", "tools": []},
+    {"type": "stream_event", "event": {"type": "content_block_delta", "index": 0,
+                                       "delta": {"type": "text_delta", "text": '{"ok": '}}},
+    {"type": "stream_event", "event": {"type": "content_block_delta", "index": 0,
+                                       "delta": {"type": "text_delta", "text": "true}"}}},
+    {"type": "assistant", "message": {"content": [{"type": "text", "text": '{"ok": true}'}]}},
+    {"type": "rate_limit_event", "rate_limit_info": {"status": "allowed_warning",
+                                                     "rateLimitType": "seven_day",
+                                                     "utilization": 0.9}},
+    ENVELOPE,
+]  # fmt: skip
+
+
+def test_a_streamed_run_parses_its_last_envelope_and_logs_the_reply_as_it_arrives(
+    fake_claude, tmp_path
+):
+    lines = "\n".join(json.dumps(e) for e in STREAM)
+    script = fake_claude(f"cat <<'EOF'\n{lines}\nEOF")
+    job_id = uuid.uuid4()
+
+    with run_log.job_log(job_id, attempt=1, directory=tmp_path / "logs"):
+        result = cli(script).run("P", tier=Tier.DISTIL)
+
+    assert result.model == "claude-haiku-4-5-20251001"
+    events, _ = run_log.read(job_id, directory=tmp_path / "logs")
+    assert [e["type"] for e in events] == ["session", "text", "limit"]
+    assert events[1]["text"] == '{"ok": true}'  # the deltas, joined
+    assert (events[2]["status"], events[2]["utilization"]) == ("allowed_warning", 0.9)
 
 
 def test_missing_binary_is_a_runner_error(tmp_path: Path):

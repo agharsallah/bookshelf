@@ -22,10 +22,12 @@ from app.schemas.job import (
     ModelRunPublic,
     QueueControlsUpdate,
     QueueStatus,
+    RunLogPage,
 )
 from app.services import app_settings
 from app.services import jobs as job_service
 from app.services.queue_view import public_job, public_jobs, queue_status
+from app.telemetry import run_log
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 
@@ -111,6 +113,27 @@ def get_job_runs(job_id: uuid.UUID, session: SessionDep) -> list[ModelRunPublic]
         .order_by(col(ModelRun.created_at), col(ModelRun.attempt), col(ModelRun.call))
     )
     return [ModelRunPublic.model_validate(run) for run in runs]
+
+
+@router.get(
+    "/{job_id}/log",
+    response_model=RunLogPage,
+    summary="A job's run log, as it happens",
+    description=(
+        "What the job did, one event per line, over all its attempts: started, each model "
+        "call with its prompt, the model's output as it streamed in (`text`, `thinking`), "
+        "tool use, the reply it returned or its error, the schema gate's verdict, and how "
+        "the attempt finished. Poll with `after` set to the last `next` to follow a running "
+        "job. Empty for a job that has not run (or ran before logs were kept, or whose log "
+        "was pruned after `BOOKSHELF_RUN_LOG_DAYS`)."
+    ),
+)
+def get_job_log(
+    job_id: uuid.UUID, session: SessionDep, after: int = Query(default=0, ge=0)
+) -> RunLogPage:
+    _job(session, job_id)
+    events, offset = run_log.read(job_id, after=after)
+    return RunLogPage(events=events, next=offset)
 
 
 @router.post(

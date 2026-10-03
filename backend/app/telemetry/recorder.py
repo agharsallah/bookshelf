@@ -8,6 +8,9 @@ cost and model time out of the `RunResult` (or notes the `RunnerError`), and wri
 in its **own short session**. So a job that fails and rolls back still leaves the tokens it
 burned on record, and the job's session never carries an open transaction through a run.
 A telemetry write that fails is logged and dropped: statistics never fail a job.
+
+Each call also goes in the job's run log (`app.telemetry.run_log`): the prompt it sent
+before it runs, then the reply it got back (what the skill returned) or its error.
 """
 
 import logging
@@ -22,6 +25,7 @@ from sqlmodel import Session
 from app.models import Job, ModelRun
 from app.models.enums import JobKind, Tier
 from app.pipeline.runner import ModelRunner, RunnerError, RunResult
+from app.telemetry import run_log
 
 logger = logging.getLogger(__name__)
 
@@ -64,15 +68,28 @@ class RecordingRunner:
 
     def run(self, prompt: str, *, tier: Tier, images: Sequence[Path] = ()) -> RunResult:
         self._calls += 1
+        call = self._calls
+        run_log.event(
+            "call",
+            call=call,
+            tier=tier.value,
+            images=len(images),
+            prompt_chars=len(prompt),
+            prompt=run_log.clip(prompt, run_log.PROMPT_CHARS),
+        )
         started = time.monotonic()
         try:
             result = self._runner.run(prompt, tier=tier, images=images)
         except RunnerError as exc:
             elapsed = int((time.monotonic() - started) * 1000)
+            run_log.event("reply", call=call, ok=False, error=str(exc), duration_ms=elapsed)
             self._record(self._row(prompt, tier, images, ok=False, duration_ms=elapsed,
                                    error=str(exc)[:_ERROR_CHARS]))  # fmt: skip
             raise
         usage = result.usage
+        run_log.event("reply", call=call, ok=True, model=result.model,
+                      duration_ms=result.duration_ms, tokens=result.cost_tokens,
+                      text=run_log.clip(result.text, run_log.REPLY_CHARS))  # fmt: skip
         self._record(
             self._row(
                 prompt,

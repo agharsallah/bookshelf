@@ -51,6 +51,7 @@ os.environ.update(
         "BOOKSHELF_EXPORTS_DIR": str(_TMP / "exports"),
         "BOOKSHELF_AUDIO_DIR": str(_TMP / "audio"),
         "BOOKSHELF_VOICES_DIR": str(_TMP / "voices"),
+        "BOOKSHELF_RUN_LOGS_DIR": str(_TMP / "run-logs"),
         "BOOKSHELF_QDRANT_URL": "",
         "BOOKSHELF_QDRANT_PATH": str(_TMP / "qdrant"),
         "BOOKSHELF_API_EMBED_RUNNER": "false",  # tests drive jobs themselves
