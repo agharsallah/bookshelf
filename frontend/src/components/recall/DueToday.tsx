@@ -3,13 +3,17 @@
  * time. Each is retrieval, not rereading: you see the prompt alone, type an answer, and
  * only then can the cited passage be revealed; your self-rating tells FSRS when it comes
  * back. Ctrl/⌘+Enter reveals; 1–4 rate once it is revealed. Says so when nothing is due,
- * or when the cards could not be loaded (`initial` null).
+ * or when the cards could not be loaded (`initial` null); clearing the queue is celebrated
+ * with how many you knew (components/cheer).
  */
 import { useAttention } from '../../lib/activity/useAttention';
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { browserApi } from '../../lib/api/client';
 import type { DueCard, DueCards, Rating, Revealed, ReviewSource } from '../../lib/api/types/recalls';
 import { Spans } from '../blocks/Spans';
+import { burst } from '../cheer/burst';
+import { Cheer } from '../cheer/Cheer';
+import { reviewsDone } from '../cheer/lines';
 import { problemOf } from '../common/Problem';
 import { toast } from '../document/toast';
 import { Kbd, ReaderCites } from '../study/ReaderCites';
@@ -39,6 +43,8 @@ export function DueToday({ initial, api = browserApi }: DueTodayProps) {
   const [cards, setCards] = useState<DueCard[]>(initial?.items ?? []);
   const [total, setTotal] = useState(initial?.total ?? 0);
   const [reviewed, setReviewed] = useState(0);
+  // Rated Good or Easy.
+  const [knew, setKnew] = useState(0);
   const [attempt, setAttempt] = useState('');
   const [revealed, setRevealed] = useState<Revealed | null>(null);
   const [busy, setBusy] = useState(false);
@@ -70,11 +76,14 @@ export function DueToday({ initial, api = browserApi }: DueTodayProps) {
       await rateReview(api, card.id, rating, attempt);
       const rest = cards.slice(1);
       setReviewed((n) => n + 1);
+      if (rating >= 3) setKnew((n) => n + 1);
       setAttempt('');
       setRevealed(null);
       setTotal((t) => Math.max(0, t - 1));
       // The first page ran out but more are due: fetch the next.
-      setCards(rest.length === 0 && total > 1 ? (await dueCards(api)).items : rest);
+      const next = rest.length === 0 && total > 1 ? (await dueCards(api)).items : rest;
+      setCards(next);
+      if (next.length === 0) burst();
       requestAnimationFrame(() => field.current?.focus());
     } catch (error) {
       toast(`The review was not saved: ${problemOf(error).message}`, 'bad');
@@ -150,9 +159,7 @@ export function DueToday({ initial, api = browserApi }: DueTodayProps) {
         <p className={styles.done} role="status">
           {!initial
             ? 'Your review cards could not be loaded. Reload the page to try again.'
-            : reviewed > 0
-              ? 'All done for today. What you reviewed comes back when it is due.'
-              : 'Nothing is due today. Cards from your recalls and flashcards come back here on the day they are due.'}
+            : <Cheer line={reviewsDone(reviewed, knew)} />}
         </p>
       )}
     </section>

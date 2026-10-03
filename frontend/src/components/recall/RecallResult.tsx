@@ -1,10 +1,15 @@
 /**
- * A graded recall: how many of the chapter's key ideas you recalled, your prediction
+ * A graded recall: how many of the chapter's key ideas you recalled with a word on what
+ * that means (a burst for a near-perfect one, components/cheer), your prediction
  * against what the chapter argues, the "why" question, and every idea with one line of
  * feedback and a chip to its passage, missed ones first.
  */
+import { useEffect } from 'react';
 import type { RecallGrade } from '../../lib/api/types/recalls';
 import { Spans } from '../blocks/Spans';
+import { burst } from '../cheer/burst';
+import { Cheer } from '../cheer/Cheer';
+import { NEARLY_ALL, recallCheer, recallScore } from '../cheer/lines';
 import { byStatus, STATUS_LABELS, tally } from './grade';
 import styles from './Recall.module.css';
 
@@ -20,9 +25,20 @@ function score(grade: RecallGrade): string {
 
 export function RecallResult({ grade }: RecallResultProps) {
   const { comparison, question } = grade;
+  const t = tally(grade);
+  const cheer = recallCheer(t.recalled, t.partial, t.total);
+  const nearlyAll = recallScore(t.recalled, t.partial, t.total) >= NEARLY_ALL;
+  useEffect(() => {
+    if (nearlyAll) burst();
+  }, [nearlyAll]);
   return (
     <>
       <p className={styles.score}>{score(grade)}</p>
+      {cheer ? (
+        <p className={styles.cheer}>
+          <Cheer line={cheer} />
+        </p>
+      ) : null}
       {comparison ? (
         <section className={styles.panel} aria-label="Your prediction">
           <p className={styles.panelLabel}>Your prediction</p>

@@ -75,7 +75,7 @@ describe('<DueToday>', () => {
     await userEvent.type(screen.getByRole('textbox'), 'reserve');
     await userEvent.click(screen.getByRole('button', { name: /Reveal the answer/ }));
     await userEvent.click(await screen.findByRole('button', { name: /Good/ }));
-    expect((await screen.findByRole('status')).textContent).toMatch(/All done for today/);
+    expect((await screen.findByRole('status')).textContent).toMatch(/^All done: 1 card, and you knew every one\./);
     expect(api.get).not.toHaveBeenCalled();
   });
 });

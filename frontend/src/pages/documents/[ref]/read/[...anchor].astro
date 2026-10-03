@@ -21,6 +21,7 @@ import { fetchAll } from '../../../../lib/api/fetch-all';
 import { pickBest } from '../../../../lib/documents/artifacts';
 import { getArtifacts, getDocument, getOutline, load } from '../../../../lib/documents/server';
 import { defaultUnit, flatten, readingUnits, unitFor } from '../../../../lib/documents/tree';
+import { isFinished } from '../../../../lib/documents/reading';
 import { highlightCode } from '../../../../lib/highlight';
 import { prepareBlocks } from '../../../../lib/prepare';
 import { renderInlineMath } from '../../../../lib/katex';
@@ -59,6 +60,8 @@ const loaded = await load(async () => {
   ]);
   // Unknown (the call failed) counts as read: better no prediction card than a wrong one.
   const unread = positions !== null && !positions.some((p) => p.unit === unit.anchor);
+  // Front matter counts as finished: it never holds up the end of the book.
+  const finished = positions && [...positions.filter((p) => isFinished(p.progress)).map((p) => p.unit), ...units.filter((u) => u.meta.front_matter).map((u) => u.anchor)];
   const lexicon = lexiconFromArtifacts([...conceptLinks, ...glossary]);
   const flat = flatten(subtree.node);
   const headings = Object.fromEntries(
@@ -80,7 +83,7 @@ const loaded = await load(async () => {
         if (html) codeHtml[node.anchor] = html;
       }),
   );
-  return { doc, units, missing: false as const, unit: subtree.node, truncated: subtree.truncated, panes, notes: notes.items, codeHtml, lexicon, modelMarks, recalls, unread, paper, collection };
+  return { doc, units, missing: false as const, unit: subtree.node, truncated: subtree.truncated, panes, notes: notes.items, codeHtml, lexicon, modelMarks, recalls, unread, finished, paper, collection };
 });
 
 if (!loaded.ok && loaded.notFound) Astro.response.status = 404;
@@ -127,6 +130,7 @@ const title = data && !data.missing ? `${data.unit.heading ?? data.unit.anchor},
         modelMarks={data.modelMarks}
         recalls={data.recalls}
         unread={data.unread}
+        finished={data.finished}
         initialAnchor={requested}
         truncated={data.truncated}
         paper={data.paper}

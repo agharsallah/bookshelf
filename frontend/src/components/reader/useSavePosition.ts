@@ -3,6 +3,7 @@
  * (`PUT /documents/{ref}/reading`) as the block being read changes: debounced while
  * scrolling, flushed when the page is hidden or left. Opening a chapter and leaving
  * without scrolling does not move your place; reaching the bottom of the page finishes it.
+ * Returns whether you are at the bottom of the page.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { browserApi } from '../../lib/api/client';
@@ -31,7 +32,7 @@ function usePageEnd(): boolean {
   return end;
 }
 
-export function useSavePosition(slug: string, unit: string, active: string | null, progress: number): void {
+export function useSavePosition(slug: string, unit: string, active: string | null, progress: number): boolean {
   const pending = useRef<PositionBody | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   // The block the reader landed on; `null` once you have moved from it.
@@ -74,4 +75,5 @@ export function useSavePosition(slug: string, unit: string, active: string | nul
       leave();
     };
   }, [flush]);
+  return end;
 }

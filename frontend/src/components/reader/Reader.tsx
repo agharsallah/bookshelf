@@ -24,6 +24,7 @@ import { useAnchorSync } from '../../lib/hooks/useAnchorSync';
 import { ChapterListen } from '../listen/ChapterListen';
 import { NoteComposer, type ComposerTarget } from '../notes/NoteComposer';
 import { NotesPanel, type NotesScope } from '../notes/NotesPanel';
+import { useChapterCheer } from '../cheer/useChapterCheer';
 import { canGrade } from '../recall/grade';
 import { useRecallMode } from '../recall/useRecallMode';
 import { useNotes } from '../notes/useNotes';
@@ -76,6 +77,8 @@ export interface ReaderProps {
   recalls?: RecallPublic[];
   /** Never opened before: an unread chapter may ask for a prediction first. */
   unread?: boolean;
+  /** Chapters already finished (front matter included), so finishing another can be marked; null when unknown. */
+  finished?: readonly string[] | null;
   initialAnchor: string | null;
   truncated: boolean;
   /** A paper's passes, unit roles, claim marks, notation and review questions; absent for books. */
@@ -98,7 +101,7 @@ function firstTab(panes: Panes): Tab {
 const NO_TERMS: LexTerm[] = [];
 const NO_RECALLS: RecallPublic[] = [];
 
-export function Reader({ document: doc, unit, units, panes, notes: initialNotes, codeHtml, lexicon = NO_TERMS, modelMarks = null, recalls = NO_RECALLS, unread = false, initialAnchor, truncated, paper: paperData = null, collection = null }: ReaderProps) {
+export function Reader({ document: doc, unit, units, panes, notes: initialNotes, codeHtml, lexicon = NO_TERMS, modelMarks = null, recalls = NO_RECALLS, unread = false, finished = null, initialAnchor, truncated, paper: paperData = null, collection = null }: ReaderProps) {
   const sourceRef = useRef<HTMLDivElement>(null);
   const paneRef = useRef<HTMLDivElement>(null);
   const [tab, setTab] = useState<Tab>(() => firstTab(panes));
@@ -239,7 +242,8 @@ export function Reader({ document: doc, unit, units, panes, notes: initialNotes,
   const paper = usePaperMode({ paper: paperData, document: doc, unit, flat, prefs, setPrefs, sourceRef, readHref, onCite: (a) => onCite(a), initialAnchor });
 
   useFollowUrl(active, readHref, initialAnchor);
-  useSavePosition(doc.slug, reading.anchor, active, progress);
+  const atEnd = useSavePosition(doc.slug, reading.anchor, active, progress);
+  useChapterCheer({ atEnd, unit: reading, units, finishedBefore: finished, book: doc.title });
   // Reading time goes to the block being read; with the text hidden, it is recall time.
   useAttention(recall.hidden ? { surface: 'recall', document: doc.slug, unit: unit.anchor } : { surface: 'read', document: doc.slug, unit: reading.anchor, anchor: active ?? undefined });
 
