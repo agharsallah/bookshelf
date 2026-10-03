@@ -4,9 +4,11 @@ import threading
 import time
 from datetime import UTC, datetime, timedelta
 
+import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
+from app.core.config import get_settings
 from app.jobs import presence, queue
 from app.jobs.queue import JobSpec
 from app.jobs.registry import HandlerResult, JobContext
@@ -61,7 +63,9 @@ def test_max_running_holds_back_jobs_past_the_cap(session: Session):
     assert queue.claim(session) is not None
 
 
-def test_embedding_is_neither_counted_nor_held_back_by_the_cap(session: Session):
+def test_embedding_on_its_own_runner_is_neither_counted_nor_held_back_by_the_cap(
+    session: Session,
+):
     enqueue(session, "a")
     enqueue(session, "b")
     embed = enqueue(session, "c", kind=JobKind.EMBED)
@@ -69,6 +73,22 @@ def test_embedding_is_neither_counted_nor_held_back_by_the_cap(session: Session)
 
     assert queue.claim(session, [JobKind.EMBED]) == embed
     assert queue.claim(session, [JobKind.EXPORT]) is not None  # the embed took no slot
+    assert queue.claim(session, [JobKind.EXPORT]) is None
+
+
+def test_embedding_in_the_pipeline_worker_counts_against_the_cap(
+    session: Session, monkeypatch: pytest.MonkeyPatch
+):
+    """With a Qdrant URL the pipeline worker embeds in its own slots, so embeds are capped."""
+    remote = get_settings().model_copy(update={"qdrant_url": "http://qdrant:6333"})
+    monkeypatch.setattr(queue, "get_settings", lambda: remote)
+    enqueue(session, "a")
+    embed = enqueue(session, "b", kind=JobKind.EMBED)
+    enqueue(session, "c", kind=JobKind.EMBED)
+    control(session, max_running=1)
+
+    assert queue.claim(session, [JobKind.EMBED]) == embed
+    assert queue.claim(session, [JobKind.EMBED]) is None
     assert queue.claim(session, [JobKind.EXPORT]) is None
 
 

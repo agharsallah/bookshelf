@@ -10,7 +10,7 @@ finished, so one scope never runs twice at once.
 Two controls in `app_settings.data["queue"]` (`services/app_settings.py`) gate `claim()`
 for every worker at once, with no restart: `paused` starts nothing (running jobs finish,
 queued ones wait), and `max_running` caps how many jobs run at once across all workers.
-The cap leaves out `UNCAPPED` kinds, which spend no tokens and have one slot each.
+The cap leaves out `own_slot_kinds()`, which run on a single slot of their own.
 """
 
 import json
@@ -23,6 +23,7 @@ from sqlalchemy import func, text
 from sqlmodel import Session, select
 from sqlmodel.sql.expression import SelectOfScalar
 
+from app.core.config import Settings, get_settings
 from app.models import Job
 from app.models.enums import JobKind, JobState, RunMode
 
@@ -35,11 +36,17 @@ HEARTBEAT_SECONDS = 60.0
 STALE_AFTER = timedelta(seconds=HEARTBEAT_SECONDS * 5)
 # `jobs.result` key: CLI runs the job has made over all its attempts (`app.pipeline.ceiling`).
 RUNS = "runs"
-# Kinds `max_running` does not count or hold back: local work with its own single-slot
-# runner (`app.jobs.embedded`, `app.jobs.narration`), not `claude` runs.
-UNCAPPED = (JobKind.EMBED, JobKind.NARRATE)
 # Serialises claims, so two workers cannot both take the last slot under `max_running`.
 _CLAIM_LOCK = 0x626F6F6B  # "book"
+
+
+def own_slot_kinds(settings: Settings) -> tuple[JobKind, ...]:
+    """Kinds the API runs on a single slot of its own (`app.jobs.narration`, and
+    `app.jobs.embedded` for embedded Qdrant), never in a pipeline worker's slots.
+    `max_running` neither counts nor holds them back. With a Qdrant URL the pipeline worker
+    embeds, so `embed` takes a capped slot like any other job."""
+    embed = (JobKind.EMBED,) if settings.qdrant_url is None else ()
+    return (JobKind.NARRATE, *embed)
 
 
 @dataclass(frozen=True, slots=True)
@@ -139,7 +146,7 @@ def claim(session: Session, kinds: list[JobKind] | None = None) -> Job | None:
         {
             "kinds": [k.value for k in kinds or []],
             "stale": STALE_AFTER,
-            "uncapped": [k.value for k in UNCAPPED],
+            "uncapped": [k.value for k in own_slot_kinds(get_settings())],
         },
     ).first()
     session.commit()

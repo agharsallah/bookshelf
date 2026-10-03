@@ -7,6 +7,7 @@ from collections.abc import Iterable
 from sqlalchemy import text
 from sqlmodel import Session
 
+from app.core.config import get_settings
 from app.jobs import presence, queue
 from app.models import Job
 from app.models.enums import JobKind, JobState
@@ -46,7 +47,7 @@ def queue_status(session: Session) -> QueueStatus:
         ).all()
     }
     claimed = {kind for w in workers for kind in w.kinds}
-    uncapped = {k.value for k in queue.UNCAPPED}
+    uncapped = {k.value for k in queue.own_slot_kinds(get_settings())}
     controls = queue_controls(session)
     return QueueStatus(
         workers=[WorkerPublic.model_validate(w) for w in workers],

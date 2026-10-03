@@ -12,8 +12,8 @@ from app.core.config import Settings
 from app.jobs.background import BackgroundWorker, stop_all
 from app.jobs.embedded import EmbedRunner
 from app.jobs.narration import NarrateRunner
+from app.jobs.queue import own_slot_kinds
 from app.jobs.worker import Worker, autodiscover
-from app.models.enums import JobKind
 
 logger = logging.getLogger(__name__)
 
@@ -25,8 +25,7 @@ def _job_worker(settings: Settings) -> BackgroundWorker | None:
     if not settings.api_worker:
         return None
     autodiscover()
-    exclude = [JobKind.NARRATE, *([JobKind.EMBED] if settings.qdrant_url is None else [])]
-    worker = Worker(exclude=exclude, label="api")
+    worker = Worker(exclude=own_slot_kinds(settings), label="api")
     return BackgroundWorker(worker, name="job-worker")
 
 
