@@ -5,6 +5,9 @@ the machine. A failing `error` blocks the build; a failing `warning` only says w
 will lack. Every failing check carries a human `message` and an actionable `fix`.
 
     tools     claude_cli · git_cli · git_identity · [gh_cli · gh_auth · gh_scope] · workspace
+    target    an existing repository (§7c): `targets.target_checks` (target_repo,
+              target_permission, target_archived / target_path, target_worktree, then
+              target_base, target_branch, target_folder); a local one skips the gh checks
     paper     paper_card (error without a card, warning for a draft) · claims · results ·
               explainer (warnings)
 
@@ -21,16 +24,20 @@ import time
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal, Protocol
+from typing import Protocol
 
 from sqlmodel import Session
 
+from app.builds import targets
+from app.builds.checks import Level, PreflightCheck, failed, passed
 from app.builds.context import PaperBrief, missing_context, paper_brief
+from app.builds.github import GhCli, GitHub
 from app.core.config import Settings, get_settings
 from app.models import Document
 from app.models.build import BuildVisibility
+from app.schemas.build_target import BuildTarget, TargetInspection
 
-Level = Literal["error", "warning"]
+__all__ = ["Level", "Preflight", "PreflightCheck", "Probe", "preflight"]
 CACHE_SECONDS = 60.0
 _TIMEOUT = 10.0
 _SCOPES = re.compile(r"Token scopes:\s*(.*)", re.IGNORECASE)
@@ -70,17 +77,9 @@ class RealProbe:
 
 
 @dataclass(frozen=True, slots=True)
-class PreflightCheck:
-    key: str
-    ok: bool
-    level: Level
-    message: str
-    fix: str | None = None
-
-
-@dataclass(frozen=True, slots=True)
 class Preflight:
     checks: list[PreflightCheck]
+    inspection: TargetInspection | None = None  # an existing repository's (§7c)
 
     @property
     def ready(self) -> bool:
@@ -92,12 +91,7 @@ class Preflight:
         return [c for c in self.checks if not c.ok and c.level == "error"]
 
 
-def _ok(key: str, message: str, level: Level = "error") -> PreflightCheck:
-    return PreflightCheck(key=key, ok=True, level=level, message=message)
-
-
-def _fail(key: str, message: str, fix: str, level: Level = "error") -> PreflightCheck:
-    return PreflightCheck(key=key, ok=False, level=level, message=message, fix=fix)
+_ok, _fail = passed, failed
 
 
 # --- machine checks ------------------------------------------------------------------------
@@ -250,13 +244,33 @@ def preflight(
     visibility: BuildVisibility,
     probe: Probe | None = None,
     settings: Settings | None = None,
+    target: BuildTarget | None = None,
+    github: GitHub | None = None,
+    push_main: bool = False,
+    own: bool = False,
 ) -> Preflight:
-    """Every check for building `document` with `visibility`; `local` skips GitHub."""
+    """Every check for building `document` with `visibility` (`local` skips GitHub), or into
+    `target` (§7c: a local repository skips GitHub; `github` is the client the target is
+    inspected with, the real `gh` when None; `own`: the branch and folder may be this
+    build's already)."""
     settings = settings or get_settings()
-    github = visibility is not BuildVisibility.LOCAL
+    existing = target is not None and target.existing
+    if existing and target is not None:
+        uses_github = target.kind == "github"
+    else:
+        uses_github = visibility is not BuildVisibility.LOCAL
     machine = (
-        machine_checks(probe, settings, github=github)
+        machine_checks(probe, settings, github=uses_github)
         if probe is not None
-        else cached_machine_checks(settings, github=github)
+        else cached_machine_checks(settings, github=uses_github)
     )
-    return Preflight(checks=[*machine, *paper_checks(paper_brief(session, document))])
+    target_checks: list[PreflightCheck] = []
+    inspection = None
+    if existing and target is not None:
+        client = github if github is not None or not uses_github else GhCli(settings.gh_bin)
+        target_checks, inspection = targets.target_checks(
+            target, github=client, git_bin=settings.git_bin, push_main=push_main, own=own,
+            with_survey=False,
+        )  # fmt: skip
+    paper = paper_checks(paper_brief(session, document))
+    return Preflight(checks=[*machine, *target_checks, *paper], inspection=inspection)
