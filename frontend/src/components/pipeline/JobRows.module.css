@@ -9,6 +9,26 @@
   font-size: var(--text-sm);
 }
 
+/* Its kind is on hold or skipped: present, but not going to run as things stand. */
+.job[data-steered] > .jobKind,
+.job[data-steered] > .scope,
+.job[data-steered] > .jobTime {
+  opacity: 0.55;
+}
+
+.job[data-steered='skip'] > .jobKind {
+  text-decoration: line-through;
+}
+
+.steerLink {
+  color: var(--ink-3);
+  font-size: var(--text-xs);
+}
+
+.steerLink:hover {
+  color: var(--accent);
+}
+
 .jobKind {
   font-weight: 600;
 }

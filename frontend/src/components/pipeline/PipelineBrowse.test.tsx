@@ -93,3 +93,19 @@ describe('<PipelineView> on a long queue', () => {
     expect(screen.getByText('Nothing finished yet.')).toBeTruthy();
   });
 });
+
+describe('<PipelineView> with a kind turned off', () => {
+  it('greys its queued jobs and links to that kind in Settings, unless a person sent one to run now', () => {
+    const queue = { workers: [], queued: 2, running: 0, unclaimed_kinds: [], paused: false, max_running: null, slots: 2, kinds: { summarize: 'hold' as const } };
+    const jobs = [
+      job({ id: 'held', kind: 'summarize', state: 'queued', queue_position: 2 }),
+      job({ id: 'urgent', kind: 'summarize', anchor: 'ch09', state: 'queued', queue_position: 1, run_now: true }),
+    ];
+    render(<PipelineView jobs={jobs} documents={[attention]} queue={queue} api={fakeApi().api} live={false} />);
+
+    const links = within(region(/^Queued/)).getAllByRole('link', { name: 'Summarize is on hold: change it in Settings' });
+    expect(links).toHaveLength(1);
+    expect(links[0]?.getAttribute('href')).toBe('/settings#queue-kind-summarize');
+    expect(links[0]?.closest('li')?.getAttribute('data-steered')).toBe('hold');
+  });
+});

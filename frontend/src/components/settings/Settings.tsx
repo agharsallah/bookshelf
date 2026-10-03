@@ -20,6 +20,7 @@ import { AutoRunSection } from './AutoRunSection';
 import { BuildsSection } from './BuildsSection';
 import { Check, Row, Section, Segmented, titled } from './Controls';
 import { DatabaseSection } from './DatabaseSection';
+import { QueueKindsSection } from './QueueKindsSection';
 import { THEME_CHOICES, type ThemeChoice } from './model';
 import styles from './Settings.module.css';
 
@@ -159,6 +160,8 @@ export function Settings() {
       <AutoRunSection />
 
       <BuildsSection />
+
+      <QueueKindsSection />
 
       <DatabaseSection />
     </div>

@@ -271,3 +271,19 @@
   font-family: var(--font-ui);
   font-size: var(--text-sm);
 }
+
+/* Settings → Job kinds: a stage label over its tiles. */
+.kindGroup {
+  display: grid;
+  gap: var(--space-2);
+  margin-block-end: var(--space-4);
+}
+
+.kindGroupLabel {
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}

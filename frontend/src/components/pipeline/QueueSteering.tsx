@@ -11,7 +11,7 @@ import type { QueueStatus } from '../../lib/api/types/jobs';
 import { Problem } from '../common/Problem';
 import type { DocumentLabel } from '../review/api';
 import { KindModeTile, KindModeTiles } from './KindModeTile';
-import { steeringChips, steeringGroups, steeringRows } from './steering';
+import { QUEUE_SETTINGS_HREF, steeringChips, steeringGroups, steeringRows } from './steering';
 import { useQueueUpdate } from './useQueueUpdate';
 import styles from './QueueSteering.module.css';
 
@@ -70,7 +70,8 @@ export function QueueSteering({ queue, documents, api, onChanged }: QueueSteerin
           </section>
           <p className={styles.note}>
             First goes before other queued work; a first kind of a first book goes before either. Hold keeps jobs waiting, and their books’ later stages wait too.
-            Skip drops them like Cancel. Run now on a job ignores all of this.
+            Skip drops them like Cancel. Run now on a job ignores all of this. To set a kind before anything of it is queued, see{' '}
+            <a href={QUEUE_SETTINGS_HREF}>Settings → Job kinds</a>.
           </p>
         </div>
       </details>

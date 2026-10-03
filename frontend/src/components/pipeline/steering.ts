@@ -69,3 +69,9 @@ export function steeringChips(queue: QueueStatus, titleOf: (id: string) => strin
   }));
   return [...kinds, ...books];
 }
+
+/** Settings → Job kinds: every kind, including those with nothing queued. */
+export const QUEUE_SETTINGS_HREF = '/settings#queue-kinds';
+/** Where a kind's mode is set in Settings: `/settings#queue-kind-describe_figure`. */
+export const kindSettingsId = (kind: JobKind) => `queue-kind-${kind}`;
+export const kindSettingsHref = (kind: JobKind) => `/settings#${kindSettingsId(kind)}`;

@@ -4,7 +4,8 @@
  * A queued job can be sent to the front (`POST /jobs/{id}/run-now`: the next free slot
  * under the cap, even while paused) or cancelled (`DELETE /jobs/{id}`), a failed one retried
  * (`POST /jobs/{id}/retry`: same kind, scope, skill, note and payload). Every row carries
- * the job's log (./JobLog.tsx), closed until clicked.
+ * the job's log (./JobLog.tsx), closed until clicked. A queued job whose kind is on hold or
+ * skipped in the queue is greyed, with a link to its kind in Settings.
  */
 import { useState } from 'react';
 import { anchorLabel } from '../../lib/anchors';
@@ -16,6 +17,7 @@ import { jobTitle } from '../document/jobs';
 import { Problem, problemOf, type ProblemInfo } from '../common/Problem';
 import { relativeTime } from '../review/labels';
 import { JobLog } from './JobLog';
+import { kindSettingsHref } from './steering';
 import { elapsedMs, formatDuration, KIND_LABELS } from './model';
 import styles from './JobRows.module.css';
 
@@ -59,6 +61,9 @@ export function RunningRow({ job, title, now, api, onChanged, queue = null }: Jo
   const ms = elapsedMs(job, now);
   const sending = control?.state.state === 'sending';
   const name = `${jobTitle(job, kindLabel)} for ${title}`;
+  // A kind on hold or skipped in the queue: greyed, with where to change it.
+  const steered = job.state === 'queued' && !job.run_now ? queue?.kinds?.[job.kind] : undefined;
+  const turnedOff = steered === 'hold' || steered === 'skip' ? steered : undefined;
 
   const send = async (action: QueuedAction) => {
     setControl({ action, state: { state: 'sending' } });
@@ -77,7 +82,7 @@ export function RunningRow({ job, title, now, api, onChanged, queue = null }: Jo
   );
 
   return (
-    <li className={styles.job} data-state={job.state}>
+    <li className={styles.job} data-state={job.state} data-steered={turnedOff}>
       <span className={styles.jobKind}>{jobTitle(job, kindLabel)}</span>
       <Scope job={job} title={title} />
       <span className={styles.jobTime}>
@@ -88,6 +93,11 @@ export function RunningRow({ job, title, now, api, onChanged, queue = null }: Jo
         <span className={styles.retry}>
           {job.run_now ? null : button('runNow')}
           {button('cancel')}
+          {turnedOff ? (
+            <a className={styles.steerLink} href={kindSettingsHref(job.kind)}>
+              {kindLabel(job.kind)} is {turnedOff === 'hold' ? 'on hold' : 'skipped'}: change it in Settings
+            </a>
+          ) : null}
         </span>
       ) : null}
       {control?.state.state === 'error' ? <Problem title={ACTIONS[control.action].failed} problem={control.state.problem} inline /> : null}
