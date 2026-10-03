@@ -180,7 +180,12 @@ build runner).
 | `watch.py` | the watch loop: tail events, sync commits, push, enforce stops, heartbeat |
 | `service.py` | create, replan, approve, stop, continue, delete; state machine checks |
 | `planning.py` | the `build_plan` handler body: input → `run_structured(plan-build)` → plan |
-| `runner.py` | the `build_run` handler body: prepare (`publish`), launch (`launch`), watch, deliver the PR, finish |
+| `runner.py` | the `build_run` handler body: prepare (`publish` or `existing_repo`), launch (`launch`), watch, deliver the PR, release a local worktree, finish |
+| `options.py` | options and stops filled in layers (form → preset → settings), `merge_options`, and the preflight a create or an approve runs (`checked_options`); `service` re-exports them |
+| `checks.py` | `PreflightCheck`, shared by `preflight` and `targets` |
+| `survey.py` | §7c: `survey_local` (git object store at the base), `survey_github` (`gh api`), the pure `survey_from` / `detect_stack`, and `render_survey_md`, the one markdown the planner, the kickoff and the context view show |
+| `targets.py` | §7c: `inspect_target` (the target's preflight checks + the survey), `work_branch`, `resolve_base`, `survey_for` and `list_repos` (both cached 60 s) |
+| `existing_repo.py` | §7c: `prepare_workspace` (GitHub clone or local worktree, the work branch, the seed into the folder, the first push) and `release_workspace` (`git worktree remove --force` + `prune`) |
 
 Handlers register in `app/pipeline/handlers/builds.py`. Each external effect (gh, git, the
 claude process, the clock) sits behind a small seam, so the tests fake them and stay fast.
@@ -375,6 +380,120 @@ version · Back to current*. A **Compare** toggle diffs that version against the
 milestone by milestone (added, removed, changed fields marked; matched by position, then by
 title), plus the summary, the stack and the out-of-scope list. Once the build has started,
 the strip stays as read-only history and marks the version that was built.
+
+## 7c. Building into an existing repository
+
+A build can land in a folder of a repository you already have, on GitHub or on disk, instead
+of in a new one.
+
+| # | Decision | Rationale | Consequence |
+|---|---|---|---|
+| B17 | **Never work in your checkout** | Your working copy may have uncommitted work, and its branch is yours | GitHub: `gh repo clone` into the build's workspace. Local: `git worktree add <workspace>/repo -b build/<slug> <base>`; the worktree is removed when a run ends (so the branch is yours to check out) and added back on Continue |
+| B18 | **A branch by default; the base branch only if you say so** | An agent pushing to someone's main is the wrong default | GitHub: `delivery` defaults to `pull_request` (base → `build/<slug>`); `push_main` means *push to the base branch* and must be chosen. Local: the work stays on `build/<slug>` in your repo; `push_branch: true` also pushes it to `origin` |
+| B19 | **The folder is the agent's whole world for writes** | A build should never touch the rest of the repo | `Write(<folder>/**)` and `Edit(<folder>/**)` replace bare Write/Edit in the allowlist; Read stays repo-wide (the agent learns the repo's conventions). The watcher checks each new commit's files and adds an `error` event naming any path outside the folder; `confine: 'stop'` stops the run instead |
+| B20 | **The plan sees the repo** | A plan written blind would start a second project inside the first | `repo_survey` (top-level tree to depth 2, at most 200 entries; detected stack: pyproject, package.json, Cargo.toml…; README excerpt; the repo's own CLAUDE.md / AGENTS.md) goes into the planner input and the kickoff. GitHub repos are surveyed through `gh api` with no clone; local ones from disk |
+| B21 | **The repo's instructions are read, not loaded** | `--safe-mode` must stay (no hooks, no MCP from the repo), but the repo's conventions should count | Its CLAUDE.md / AGENTS.md text goes into the kickoff under *This repository's conventions* (when `use_repo_instructions`, default on); the AGENT.md hard rules outrank it |
+
+### Shape: `options.target`
+
+```ts
+BuildTarget { kind: 'new' | 'github' | 'local'            // default 'new' (as before)
+              repo: string | null        // github: 'owner/name'
+              path: string | null        // local: absolute path to a git repo
+              base_branch: string | null // null = the repo's default branch (github) / current HEAD branch (local)
+              folder: string | null      // relative, no '..', no leading '/'; e.g. 'papers/attention'. Required for github/local
+              branch: string | null      // null = 'build/<folder slug>'
+              use_repo_instructions: boolean   // default true
+              confine: 'warn' | 'stop'          // default 'warn'
+              push_branch: boolean }             // local only: also push the branch to origin (default false)
+```
+
+For an existing repo, `visibility`, `owner`, `description`, `topics` and `license` don't
+apply, and the form hides them. `repo_name` is null for an existing repo; `repo_url` is
+the existing repo (GitHub) or null (local).
+
+Seeding: the folder gets `README.md`, `docs/PAPER.md`, `docs/PLAN.md`, the references and
+the notes, *inside the folder*. The first commit is `chore(<folder slug>): seed <folder>
+from <paper>`. If the folder already exists and isn't empty, the build is refused (409, a
+preflight error), unless `continue` is used on the same build.
+
+### Endpoints
+
+| Method | Path | Result |
+|---|---|---|
+| GET | `/builds/repos?q=` | `RepoChoice[] {full_name, description, visibility, default_branch, updated_at, can_push}` from `gh repo list` (you and your orgs, at most 100, filtered by `q`) |
+| POST | `/builds/target/inspect` | body `BuildTarget` → `TargetInspection {ok, problems: PreflightCheck[], default_branch, branches: string[], folder_exists, folder_empty, survey: RepoSurvey}`. Used by the form; preflight runs the same checks |
+
+`RepoSurvey {tree: string[], stack: string[], readme: string | null, instructions:
+[{path, text}], toolchains: ('python' | 'node' | 'static')[]}`.
+
+Preflight additions:
+- **GitHub:** the repo exists; your permission is WRITE, MAINTAIN or ADMIN; not archived; the base branch exists.
+- **Local:** the path is a git repository; the base branch exists; the folder is free; the branch name isn't taken (unless it's this build's own branch on Continue); `git worktree` is available.
+
+### Notes on the implementation (deviations and choices)
+
+- **Shapes** live in `app/schemas/build_target.py`: `BuildTarget`, the partial
+  `BuildTargetInput` (merged key by key; a change of `kind` starts from a blank target),
+  `RepoChoice`, `RepoSurvey`, `TargetInspection`. `RepoChoice.visibility` is gh's
+  uppercase `PUBLIC | PRIVATE | INTERNAL`. `TargetInspection.problems` lists the failing
+  checks only (preflight lists the passing ones too).
+- **Validation**: `repo` matches `^[A-Za-z0-9-]{1,39}/[A-Za-z0-9._-]{1,100}$`; `path` is
+  absolute; `folder` is relative and normalized (no `.`, `..`, empty segment, `.git`, or
+  leading `/`; a trailing `/` is dropped), ≤ 200 chars, segments of `[A-Za-z0-9._-]`
+  starting with a letter, digit or `_`; `branch` / `base_branch` follow
+  `git check-ref-format --branch` (a safe-character subset: no `..`, `@{`, `//`, a part
+  starting with `.` or ending in `.lock`). A `new` target takes none of these, and
+  `push_branch` is refused outside `local`. Blank strings are null.
+- **The default branch** is `build/<slug of the folder's last segment>`
+  (`papers/attention` → `build/attention`); for a GitHub `push_main` the work branch is
+  the base itself. The seed commit's scope is the whole folder's slug
+  (`chore(papers-attention): seed papers/attention from …`).
+- **Normalization** (`BuildOptions`, on every validation): for an existing repository
+  `repo_name`, `owner`, `advanced.description` are null, `topics` `[]`, `license` `none`;
+  `visibility` is `local` for a local target, `private` for a GitHub one (not read). A
+  local target's `delivery` is `push_main` and never read (the work stays on its branch,
+  no PR); the "pull request needs a remote" rule only applies to a new repository. A GitHub
+  target's delivery is `pull_request` unless the form sends `push_main`.
+- **The base branch** left blank is resolved at create (and again at approve) from the
+  inspection and stored in `options.target.base_branch`; the runner resolves it too if a
+  row still lacks it. `repo_url` is the GitHub repo's URL from create on; null for local.
+- **Preflight**: `GET /builds/preflight` is unchanged (document + visibility); the target
+  checks run at create and approve (409 with the failing checks in `details`). Keys:
+  `target_repo`, `target_permission`, `target_archived`, `target_path`,
+  `target_worktree`, `target_base`, `target_branch`, `target_folder`. A taken branch is
+  also checked for GitHub targets (not only local). A re-approve after a run that already
+  started accepts the build's own branch and folder.
+- **Seeding** is skipped when this build seeded already (it has a workspace, or its branch
+  is ahead of the base); otherwise files under the folder at the base refuse the run.
+- **The survey** is read again (cached 60 s) by the planner, the context view and the
+  runner; the runner writes what the agent got to `<build dir>/survey.md`, which the
+  context view prefers once it exists. It reaches the context viewer as
+  **`BuildContextView.survey_md: string | null`** (not a file entry), and the planner as
+  `plan_input.repository = {kind, repo, folder, survey_md}` (`repo` is `owner/name` or the
+  path). With `use_repo_instructions` off the instruction files are only named.
+- **Confinement**: an out-of-folder commit is an `error` event `Commit abc1234 touched files
+  outside papers/attention: src/x.py`; with `confine: stop` the run stops (`stopped`,
+  reason `error`, that message in `error`), and nothing more is pushed or delivered.
+- **Toolchains**: unless `advanced.toolchains` is set, the survey's toolchains join the
+  preset's (or the plan-inferred ones).
+- **Local push**: `push_branch` pushes `build/…` to `origin` per the `push` cadence; with no
+  `origin` the run gets an `error` event and the branch stays local.
+- **Release**: a local worktree is removed at the end of every run (done, stopped, failed,
+  or a setup error), uncommitted changes in it are discarded with a warning event; deleting
+  a build removes one still attached. The GitHub clone stays.
+- **`POST /builds/target/inspect`** only reads, so it needs no API key; a `new` target is
+  a `422`. `GET /builds/repos` is a `409` when gh cannot list (no login). Both take an
+  injectable GitHub client (`get_github`) in tests.
+
+**UI**: a **Where** choice at the top of the repository options, as three cards: *New
+repository* (as today), *A GitHub repository* (searchable picker), *A repository on this
+machine* (a path field with **Check**). For an existing repo, the next fields are base
+branch (filled from the inspection), folder (suggested `papers/<paper slug>`, with a live
+"exists / empty / free" hint), branch, and delivery. Then an inspection card: the tree (as
+a folded list), the detected stack, the instruction files found (each with a preview), and
+any problems with their fixes. The context viewer gains a **Repository** tab: the survey,
+exactly as the planner and the agent receive it.
 
 ## 8. Next (not built yet)
 
