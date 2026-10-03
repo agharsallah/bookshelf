@@ -1,0 +1,311 @@
+---
+/**
+ * One paper in the shelf's catalogue: where, when and how cited, title and authors, the
+ * card's tl;dr when there is one; then, in the margin, what is yours (stars, verdict,
+ * the three passes by name), what the pipeline has made of it (a draft dashed), how
+ * much of its bibliography is already on your shelf, and the tick that picks it for
+ * comparing. The coloured edge repeats its spine's verdict colour in the bookcase.
+ */
+import type { PaperSummary } from '../../lib/api/types/papers';
+import { PASSES } from '../../lib/api/types/papers';
+import { citedLine } from './bookcase';
+import { authorLine, PASS_LABELS, starsLabel, VERDICT_LABELS, venueLine } from './labels';
+import { artifactChips } from './shelf';
+import { paperHref } from './tabs';
+
+interface Props {
+  paper: PaperSummary;
+  tldr: string | null;
+}
+
+const { paper, tldr } = Astro.props;
+const where = [venueLine(paper.venue, paper.year) || 'Venue not known', citedLine(paper.cited_by_count)].filter(Boolean).join('. ');
+const chips = artifactChips(paper.artifacts);
+const rating = paper.rating;
+const passes = paper.highest_pass ?? 0;
+const passWords = passes === 0 ? 'Not started' : `Pass ${passes} of 3 done: ${PASS_LABELS[paper.highest_pass ?? 1].name.toLowerCase()}`;
+const { references, references_on_shelf: onShelf, claims } = paper.counts;
+const titleId = `paper-${paper.id}`;
+---
+
+<article class="row" aria-labelledby={titleId} data-verdict={rating?.verdict ?? undefined}>
+  <div class="main">
+    <p class="where">{where}</p>
+    <h3 id={titleId}><a href={paperHref(paper.slug)}>{paper.title}</a></h3>
+    {paper.authors.length > 0 && <p class="authors">{authorLine(paper.authors)}</p>}
+    {tldr ? <p class="tldr">{tldr}</p> : <p class="tldr none">No card yet, so no summary.</p>}
+  </div>
+
+  <div class="margin">
+    <p class="judged">
+      {
+        rating ? (
+          <span class="stars" role="img" aria-label={starsLabel(rating.stars)}>
+            {'★'.repeat(rating.stars)}
+            <span class="off">{'★'.repeat(5 - rating.stars)}</span>
+          </span>
+        ) : (
+          <span class="unrated">Not rated</span>
+        )
+      }
+      {rating?.verdict && <span class="verdict">{VERDICT_LABELS[rating.verdict]}</span>}
+    </p>
+
+    <ol class="passes" aria-label={passWords}>
+      {
+        PASSES.map((n) => (
+          <li data-done={n <= passes ? '' : undefined} aria-hidden="true">
+            {PASS_LABELS[n].name}
+          </li>
+        ))
+      }
+    </ol>
+
+    {
+      chips.length > 0 && (
+        <ul class="made" aria-label="Made so far">
+          {chips.map((chip) => (
+            <li data-standing={chip.standing} title={chip.standing === 'draft' ? 'Draft, waiting for review' : undefined}>
+              {chip.label}
+            </li>
+          ))}
+        </ul>
+      )
+    }
+
+    {
+      (references > 0 || claims > 0) && (
+        <p class="counts">
+          {references > 0 && <span>{`${onShelf} of ${references} references on your shelf`}</span>}
+          {claims > 0 && <span>{`${claims} ${claims === 1 ? 'claim' : 'claims'}`}</span>}
+        </p>
+      )
+    }
+
+    <label class="pick">
+      <input type="checkbox" name="ids" value={paper.id} />
+      <span>Compare</span>
+    </label>
+  </div>
+</article>
+
+<style>
+  .row {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 15rem;
+    gap: var(--space-3) var(--space-6);
+    padding: var(--space-5) var(--space-5) var(--space-5) var(--space-6);
+    border-inline-start: 0.45rem solid var(--rule-strong);
+    background: var(--paper-raised);
+  }
+
+  .row:hover {
+    background: light-dark(#fbfbf8, #1f242c);
+  }
+
+  /* The edge carries the spine's colour, so a row and its spine read as one paper. */
+  .row[data-verdict='must_read'] {
+    border-inline-start-color: var(--accent);
+  }
+
+  .row[data-verdict='useful'] {
+    border-inline-start-color: var(--series-2);
+  }
+
+  .row[data-verdict='skim'] {
+    border-inline-start-color: var(--ink-3);
+  }
+
+  .row[data-verdict='skip'] {
+    border-inline-start-style: dashed;
+    border-inline-start-color: var(--ink-3);
+  }
+
+  .row:has(.pick input:checked) {
+    border-inline-start-color: var(--marker);
+  }
+
+  .main {
+    display: grid;
+    gap: var(--space-2);
+    align-content: start;
+    max-inline-size: 68ch;
+  }
+
+  .where {
+    color: var(--accent);
+    font-family: var(--font-ui);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  h3 {
+    font-family: var(--font-read);
+    font-size: var(--text-md);
+    font-weight: 560;
+    line-height: 1.25;
+    text-wrap: balance;
+  }
+
+  h3 a {
+    color: var(--ink);
+    text-decoration: none;
+  }
+
+  h3 a:hover {
+    color: var(--accent);
+  }
+
+  /* The whole row is the title link's hit area; the margin's controls sit above it. */
+  h3 a::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+  }
+
+  .row:has(h3 a:focus-visible) {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+
+  .authors {
+    color: var(--ink-2);
+    font-size: var(--text-sm);
+    font-style: italic;
+  }
+
+  .tldr {
+    color: var(--ink-2);
+    font-size: var(--text-sm);
+    line-height: 1.6;
+  }
+
+  .tldr.none {
+    color: var(--ink-3);
+    font-family: var(--font-ui);
+    font-size: var(--text-xs);
+  }
+
+  .margin {
+    display: grid;
+    gap: var(--space-3);
+    align-content: start;
+    padding-inline-start: var(--space-5);
+    border-inline-start: 1px solid var(--rule);
+    font-family: var(--font-ui);
+    font-size: var(--text-xs);
+  }
+
+  .judged {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    align-items: baseline;
+  }
+
+  .stars {
+    color: light-dark(var(--marker-ink), var(--marker));
+    font-size: var(--text-sm);
+    letter-spacing: 0.04em;
+  }
+
+  .off {
+    color: var(--rule-strong);
+  }
+
+  .unrated {
+    color: var(--ink-3);
+  }
+
+  .verdict {
+    color: var(--ink);
+    font-weight: 600;
+  }
+
+  /* Keshav's passes as a ladder: done steps inked, the rest waiting. */
+  .passes {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 3px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .passes li {
+    padding-block-start: var(--space-1);
+    border-block-start: 3px solid var(--rule);
+    color: var(--ink-3);
+  }
+
+  .passes li[data-done] {
+    border-block-start-color: var(--accent);
+    color: var(--ink);
+    font-weight: 600;
+  }
+
+  .made {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .made li {
+    padding: 0 var(--space-2);
+    border: 1px solid var(--rule-strong);
+    border-radius: var(--radius-s);
+    color: var(--ink-2);
+  }
+
+  .made li[data-standing='draft'] {
+    border-style: dashed;
+    color: var(--ink-3);
+  }
+
+  .counts {
+    display: grid;
+    color: var(--ink-3);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .pick {
+    position: relative;
+    z-index: 1;
+    display: inline-flex;
+    gap: var(--space-2);
+    align-items: center;
+    justify-self: start;
+    color: var(--ink-2);
+    font-size: var(--text-sm);
+    cursor: pointer;
+  }
+
+  .pick input {
+    accent-color: var(--accent);
+  }
+
+  .pick:has(input:checked) {
+    color: var(--ink);
+    font-weight: 600;
+  }
+
+  @media (max-width: 48rem) {
+    .row {
+      grid-template-columns: 1fr;
+      padding: var(--space-4);
+    }
+
+    .margin {
+      padding: var(--space-3) 0 0;
+      border-inline-start: none;
+      border-block-start: 1px solid var(--rule);
+    }
+  }
+</style>
