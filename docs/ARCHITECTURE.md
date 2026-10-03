@@ -1628,6 +1628,12 @@ narration forms cast first. **Pipeline** choices live on the server, in the one-
 study-material skills queued when a document is distilled (its brief, or a paper's card,
 approved). Books default to none; papers default to their `PAPER_DERIVES`, as before. Only
 whole-document, non-narrated `derive` skills are offered (`services/app_settings.eligible`).
+`auto_approve` skips the human review of skill output: `off` (default, every artifact waits),
+`passing` (a `draft` that passed every soft gate is approved on arrival) or `all`
+(`needs_review` too; its `gates.flags` stay on the row). `pipeline/auto_approval.settle`
+applies it right after a batch job or an interactive import stores the artifact, and
+propagates the approval through `orchestrator.on_review` like a human one. Artifacts already
+waiting are left alone.
 
 **Database** (`/database`, `app/db/targets.py`, `app/db/sync.py`, `services/database.py`).
 Two databases can be configured: `BOOKSHELF_DATABASE_URL` (the main one, Supabase) and
