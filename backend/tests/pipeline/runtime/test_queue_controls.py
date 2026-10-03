@@ -13,6 +13,7 @@ from app.jobs.registry import HandlerResult, JobContext
 from app.jobs.worker import Worker
 from app.models import Job
 from app.models.enums import JobKind, JobState
+from app.pipeline.runner import UsageLimitError
 from app.services.app_settings import QueueControls, set_queue_controls
 from tests.conftest import AUTH
 
@@ -145,3 +146,35 @@ def test_slots_count_only_workers_that_run_capped_kinds(session: Session, client
                   concurrency=1, running=0)  # fmt: skip
 
     assert client.get(URL).json()["slots"] == 2
+
+
+def test_a_usage_limit_pauses_the_queue_and_hands_the_job_back_unspent(
+    session: Session, client: TestClient
+):
+    limited = enqueue(session, "a")
+    waiting = enqueue(session, "b")
+    control(session, max_running=2)
+
+    def handler(_ctx: JobContext) -> HandlerResult:
+        raise UsageLimitError("usage limit reached: You've hit your session limit · resets 8pm")
+
+    worker = Worker(concurrency=1, poll_seconds=0.01, handlers={JobKind.EXPORT: handler},
+                    on_done=lambda *_: None)  # fmt: skip
+
+    assert worker.run(once=True) == 1  # the first job hit the limit; the second never started
+    for job in (limited, waiting):
+        session.refresh(job)
+    assert (limited.state, limited.attempts) == (JobState.QUEUED, 0)
+    assert "resets 8pm" in (limited.error or "")
+    assert (waiting.state, waiting.attempts) == (JobState.QUEUED, 0)
+    status = client.get(URL).json()
+    assert status["paused"] is True
+    assert "resets 8pm" in status["paused_reason"]
+    assert status["max_running"] == 2  # the cap is kept
+
+    resumed = client.patch(URL, json={"paused": False}, headers=AUTH).json()
+    assert (resumed["paused"], resumed["paused_reason"]) == (False, None)
+
+
+def test_a_person_pausing_gives_no_reason(client: TestClient):
+    assert client.patch(URL, json={"paused": True}, headers=AUTH).json()["paused_reason"] is None

@@ -131,6 +131,9 @@ class QueueStatus(BaseModel):
     unclaimed_kinds: list[JobKind]
     # Paused: no worker starts a job; running ones finish, queued ones wait for a resume.
     paused: bool = False
+    # Why the queue paused itself (the model's usage limit, with when it resets); `None`
+    # when a person paused it or it runs.
+    paused_reason: str | None = None
     # Jobs that may run at once across every worker (`None`: as many as there are slots).
     # Embedding and narration are not counted: they spend no tokens and run one at a time.
     max_running: int | None = None

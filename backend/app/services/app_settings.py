@@ -14,7 +14,7 @@ every soft gate) or `all` (`needs_review` too).
 """
 
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any, Literal, get_args
 
 from sqlmodel import Session
@@ -110,10 +110,13 @@ def _save(session: Session, key: str, value: Any) -> None:
 @dataclass(frozen=True, slots=True)
 class QueueControls:
     """`paused`: claim nothing (running jobs finish). `max_running`: jobs running at once
-    across every worker (`None`: as many as the workers have slots)."""
+    across every worker (`None`: as many as the workers have slots). `paused_reason`: why
+    the queue paused itself (a usage limit), `None` when a person paused it; a resume
+    clears it."""
 
     paused: bool = False
     max_running: int | None = None
+    paused_reason: str | None = None
 
 
 def queue_controls(session: Session) -> QueueControls:
@@ -122,15 +125,26 @@ def queue_controls(session: Session) -> QueueControls:
     if not isinstance(stored, dict):
         return QueueControls()
     cap = stored.get("max_running")
+    paused = stored.get("paused") is True
+    reason = stored.get("paused_reason")
     return QueueControls(
-        paused=stored.get("paused") is True,
+        paused=paused,
         max_running=cap if isinstance(cap, int) and cap > 0 else None,
+        paused_reason=reason if paused and isinstance(reason, str) else None,
     )
 
 
 def set_queue_controls(session: Session, controls: QueueControls) -> QueueControls:
-    _save(session, "queue", {"paused": controls.paused, "max_running": controls.max_running})
+    reason = controls.paused_reason if controls.paused else None
+    _save(session, "queue", {"paused": controls.paused, "max_running": controls.max_running,
+                             "paused_reason": reason})  # fmt: skip
     return controls
+
+
+def pause_queue(session: Session, reason: str) -> None:
+    """Pause every worker, saying why; the cap is kept. A resume (`paused: false`) lifts it."""
+    current = queue_controls(session)
+    set_queue_controls(session, replace(current, paused=True, paused_reason=reason))
 
 
 AutoApprove = Literal["off", "passing", "all"]

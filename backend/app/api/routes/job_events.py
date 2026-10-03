@@ -120,6 +120,7 @@ def _health(status: QueueStatus) -> tuple[object, ...]:
         status.running,
         tuple(status.unclaimed_kinds),
         status.paused,
+        status.paused_reason,
         status.max_running,
         status.slots,
     )

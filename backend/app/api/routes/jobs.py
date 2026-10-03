@@ -70,6 +70,8 @@ def update_queue(body: QueueControlsUpdate, session: SessionDep) -> QueueStatus:
     changes = body.model_dump(include=body.model_fields_set)
     if changes.get("paused", False) is None:
         changes.pop("paused")
+    if "paused" in changes:  # a person's pause or resume replaces the queue's own reason
+        changes["paused_reason"] = None
     current = app_settings.queue_controls(session)
     app_settings.set_queue_controls(session, replace(current, **changes))
     return queue_status(session)

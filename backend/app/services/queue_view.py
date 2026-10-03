@@ -54,6 +54,7 @@ def queue_status(session: Session) -> QueueStatus:
         running=counts.get("running", 0),
         unclaimed_kinds=sorted(k for k in runnable if k.value not in claimed),
         paused=controls.paused,
+        paused_reason=controls.paused_reason,
         max_running=controls.max_running,
         slots=sum(w.concurrency for w in workers if set(w.kinds) - uncapped),
     )

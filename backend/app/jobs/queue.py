@@ -236,6 +236,19 @@ def release(session: Session, job_ids: list[uuid.UUID]) -> int:
     return len(rows)
 
 
+def hold(session: Session, job: Job, error: str) -> None:
+    """Put a claimed job back in the queue as if this attempt never ran, keeping `error`
+    so the reason shows: a run the usage limit refused did no work. Commits."""
+    job.state = JobState.QUEUED
+    job.error = error[:4000]
+    job.locked_at = None
+    job.started_at = None
+    job.attempts = max(job.attempts - 1, 0)
+    job.run_after = _now()
+    session.add(job)
+    session.commit()
+
+
 def positions(session: Session) -> dict[uuid.UUID, int]:
     """Each queued job's place in line (1 = next), in `claim()`'s order: runnable jobs by
     priority then age, then jobs still waiting out a retry backoff, soonest first."""

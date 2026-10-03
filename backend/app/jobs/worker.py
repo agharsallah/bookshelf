@@ -13,6 +13,12 @@ long CLI runs), and only a dead worker's job may be reclaimed. The
 worker owns state transitions: success → `complete`, `PermanentJobError` → `failed`,
 anything else → retry with backoff. Then the orchestrator decides what comes next.
 
+A `UsageLimitError` (the account's usage limit: every run fails until it resets) pauses
+the whole queue for every worker (`app_settings.pause_queue`, reason shown in the
+pipeline view) and hands the job back unchanged (`queue.hold`): no attempt is spent and
+nothing new starts until someone resumes. Jobs already running finish; one that hits the
+limit too is held the same way.
+
 While it runs, the worker keeps a row in `workers` fresh (`app.jobs.presence`), so the API
 can say whether queued work will be picked up at all. The API runs one of these itself
 (`app.jobs.background`); `abandon()` is how it stops mid-job on a reload: the jobs go back
@@ -53,6 +59,7 @@ from app.jobs.registry import (
 )
 from app.models import Job
 from app.models.enums import JobKind, JobState
+from app.pipeline.runner import UsageLimitError
 
 logger = logging.getLogger("app.jobs.worker")
 
@@ -238,6 +245,9 @@ class Worker:
             if self._is_released(job.id):  # abandoned mid-run: the queue already has it back
                 session.rollback()
                 return JobState.QUEUED
+            if isinstance(error, UsageLimitError):
+                self._pause_for_limit(session, job, error)
+                return job.state
             if isinstance(error, PermanentJobError):
                 queue.fail(session, job, str(error), retry=False)
                 logger.warning("Job failed permanently", extra={**extra, "error": str(error)})
@@ -265,6 +275,16 @@ class Worker:
                     session.rollback()
                     logger.exception("Orchestrator failed after job", extra=extra)
             return job.state
+
+    def _pause_for_limit(self, session: Session, job: Job, error: UsageLimitError) -> None:
+        from app.services.app_settings import pause_queue
+
+        pause_queue(session, str(error))
+        queue.hold(session, job, str(error))
+        logger.warning(
+            "Usage limit reached: queue paused",
+            extra={"job_id": str(job.id), "kind": job.kind.value, "error": str(error)},
+        )
 
     # -- loops -------------------------------------------------------------------------
 
