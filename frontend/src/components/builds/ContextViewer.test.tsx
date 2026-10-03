@@ -30,4 +30,17 @@ describe('<ContextViewer>', () => {
     expect(items.map((li) => li.textContent)).toEqual(['Read', 'Write', 'Bash(git commit:*)', 'Bash(make:*)you added']);
     expect(screen.getByText('4 tools')).toBeTruthy();
   });
+
+  it('shows the repository survey in its own tab for a build into an existing repository', async () => {
+    render(<ContextViewer view={contextView({ survey_md: '## Tree\n- src/\n- pyproject.toml' })} />);
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toContain('Repository');
+
+    await userEvent.click(screen.getByRole('tab', { name: 'Repository' }));
+    expect(screen.getByLabelText('Repository', { selector: 'pre' }).textContent).toBe('## Tree\n- src/\n- pyproject.toml');
+  });
+
+  it('has no Repository tab for a new repository', () => {
+    render(<ContextViewer view={contextView()} />);
+    expect(screen.queryByRole('tab', { name: 'Repository' })).toBeNull();
+  });
 });

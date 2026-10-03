@@ -8,6 +8,12 @@ describe('viewerTabs', () => {
     expect(viewerTabs(contextView({ plan_input: { goal: 'x' } })).at(-1)?.label).toBe('Planner input');
   });
 
+  it('adds a Repository tab after the files when the build has a repository survey', () => {
+    const tabs = viewerTabs(contextView({ survey_md: '## Tree\n- src/' }));
+    expect(tabs.map((t) => t.label)).toEqual(['PAPER.md', 'REFERENCES.md', 'Repository', 'Kickoff', 'Agent brief', 'Allowed tools', 'Command']);
+    expect(tabs[2]?.text).toBe('## Tree\n- src/');
+  });
+
   it('writes the command one flag per line, quoting what a shell would split', () => {
     expect(shellJoin(['claude', '-p', '--allowedTools', 'Read', 'Bash(git add:*)'])).toBe("claude \\\n  -p \\\n  --allowedTools Read 'Bash(git add:*)'");
   });

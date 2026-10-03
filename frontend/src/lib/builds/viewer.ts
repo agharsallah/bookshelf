@@ -1,6 +1,7 @@
 /**
- * A `BuildContextView` as the viewer's tabs: one per file, then the kickoff, the agent
- * brief, the allowed tools, the command and (when there is one) the planner's input.
+ * A `BuildContextView` as the viewer's tabs: one per file, the repository survey (a build
+ * into an existing repository, §7c), then the kickoff, the agent brief, the allowed tools,
+ * the command and (when there is one) the planner's input.
  */
 import type { BuildContextView } from '../api/types/builds';
 import { wordsOf } from './context';
@@ -37,6 +38,8 @@ export const isExtraTool = (tool: string, extras: readonly string[]) => extras.s
 export function viewerTabs(view: BuildContextView): ViewerTab[] {
   const text = (key: string, label: string, body: string): ViewerTab => ({ key, label, kind: 'text', text: body, words: wordsOf(body) });
   const tabs: ViewerTab[] = view.files.map((f) => ({ key: `file:${f.path}`, label: fileLabel(f.path), kind: 'text', text: f.content, words: f.words }));
+  // The survey's one place in the viewer: `survey_md` is its wire name (to reconcile with the backend).
+  if (view.survey_md) tabs.push(text('repository', 'Repository', view.survey_md));
   tabs.push(text('kickoff', 'Kickoff', view.kickoff), text('brief', 'Agent brief', view.agent_brief));
   tabs.push({ key: 'tools', label: 'Allowed tools', kind: 'tools', text: view.allowed_tools.join('\n'), words: view.allowed_tools.length });
   tabs.push(text('command', 'Command', shellJoin(view.command)));
