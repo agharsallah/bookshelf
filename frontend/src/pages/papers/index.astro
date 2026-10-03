@@ -1,15 +1,20 @@
 ---
 /**
- * The paper shelf (docs/PAPERS.md §8): every document with genre `paper`, as cards with
- * venue and year, authors, the card's tl;dr, your stars, verdict and passes, and what the
- * pipeline has made of it. Filters and order are query params sent to `GET /papers`, so
- * the page is server-rendered and linkable; the script only submits the form when a
- * choice changes. "Add a paper" opens the library's ingest desk set to papers.
+ * The paper shelf (docs/PAPERS.md §8), in two parts. On top, the bookcase
+ * (Bookcase.astro): every paper as a spine on its year's plank, so the collection's
+ * shape, your verdicts and your reading progress show at a glance. Below, the
+ * catalogue: one row per matching paper with venue, citations, authors, the card's
+ * tl;dr, your marks, what the pipeline made and a tick to compare. Filters and order
+ * are query params sent to `GET /papers`, so the page is server-rendered and linkable;
+ * while filtering, the whole shelf is fetched too, so the bookcase can dim what does
+ * not match. "Add a paper" opens the library's ingest desk set to papers.
  */
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { Problem } from '../../components/common/Problem';
-import ShelfCard from '../../components/papers/ShelfCard.astro';
+import Bookcase from '../../components/papers/Bookcase.astro';
+import ShelfRow from '../../components/papers/ShelfRow.astro';
 import ShelfFilters from '../../components/papers/ShelfFilters.astro';
+import { cardedIds, shelfTally, tallyLine } from '../../components/papers/bookcase';
 import { hasShelfFilters, NO_FILTERS, papersQuery, parseShelfFilters, shelfHref, shelfSummary, tldrByDocument } from '../../components/papers/shelf';
 import { fetchAll } from '../../lib/api/fetch-all';
 import { serverApi } from '../../lib/api/server';
@@ -25,18 +30,23 @@ const ADD_HREF = '/library?add=paper';
 const filters = parseShelfFilters(Astro.url.searchParams);
 const filtered = hasShelfFilters(filters);
 const loaded = await load(async () => {
-  const [page, cards] = await Promise.all([
+  const [page, whole, cards] = await Promise.all([
     listPapers(serverApi(), papersQuery(filters)),
+    // The bookcase always shows the whole shelf; unfiltered, that is the page itself.
+    filtered ? listPapers(serverApi(), papersQuery({ ...NO_FILTERS, sort: filters.sort })) : null,
     // One request for every card: the tl;drs are best effort.
     fetchAll<ArtifactListItem>(serverApi(), 'artifacts', { type: 'paper_card', latest: true })
       .then((r) => r.items)
       .catch(() => []),
   ]);
-  return { page, tldrs: tldrByDocument(cards) };
+  return { page, whole: whole ?? page, tldrs: tldrByDocument(cards) };
 });
 const data = loaded.ok ? loaded.value : null;
 // Unfiltered, the total is the whole shelf.
-const shelfEmpty = data !== null && data.page.total === 0 && !filtered;
+const shelfEmpty = data !== null && data.whole.total === 0;
+const carded = data ? cardedIds(data.whole.items) : new Set<string>();
+const tally = data ? shelfTally(data.whole.items, carded) : null;
+const matching = data && filtered ? new Set(data.page.items.map((p) => p.id)) : null;
 ---
 
 <BaseLayout title="Papers" description="Scientific papers on your shelf: cards, explainers, ratings and passes.">
@@ -44,7 +54,7 @@ const shelfEmpty = data !== null && data.page.total === 0 && !filtered;
     <header class="head">
       <div class="heading">
         <h1>Papers</h1>
-        {data && !shelfEmpty && <p class="count">{shelfSummary(data.page.items.length, data.page.total, filtered)}</p>}
+        {tally && !shelfEmpty && <p class="count">{tallyLine(tally)}</p>}
       </div>
       <nav class="actions" aria-label="Across the shelf">
         <a class="btn" href="/papers/next">What to read next</a>
@@ -55,7 +65,7 @@ const shelfEmpty = data !== null && data.page.total === 0 && !filtered;
     </header>
 
     {
-      !data ? (
+      !data || !tally ? (
         !loaded.ok && <Problem title="The paper shelf could not be loaded." problem={loaded.problem} />
       ) : shelfEmpty ? (
         <section class="empty" aria-labelledby="empty-title">
@@ -70,37 +80,44 @@ const shelfEmpty = data !== null && data.page.total === 0 && !filtered;
         </section>
       ) : (
         <>
-          <ShelfFilters filters={filters} facets={data.page.facets} />
-          {data.page.items.length === 0 ? (
-            <p class="no-match">
-              No papers match these filters. <a href={shelfHref(NO_FILTERS, { sort: filters.sort })}>Show every paper</a>
-            </p>
-          ) : (
-            <form method="get" action="/papers/compare" class="picks" data-compare-picks>
-              <ul class="grid" aria-label={filtered ? 'Matching papers' : 'All papers'}>
-                {data.page.items.map((paper) => (
-                  <li>
-                    <ShelfCard paper={paper} tldr={data.tldrs[paper.id] ?? null} />
-                    <label class="pick">
-                      <input type="checkbox" name="ids" value={paper.id} />
-                      <span>Compare</span>
-                    </label>
-                  </li>
-                ))}
-              </ul>
-              <div class="compare-bar" data-compare-bar>
-                <span data-compare-count aria-live="polite">Tick papers to compare their results.</span>
-                <button type="submit" class="btn btn-primary" data-compare-go>
-                  Compare selected
-                </button>
-              </div>
-            </form>
+          <Bookcase papers={data.whole.items} matching={matching} carded={carded} filters={filters} tally={tally} />
+          {data.whole.total > data.whole.items.length && (
+            <p class="more">The bookcase shows the first {data.whole.items.length} of {data.whole.total} papers.</p>
           )}
-          {data.page.total > data.page.items.length && (
-            <p class="more">
-              Showing the first {data.page.items.length} of {data.page.total}. Narrow the filters to see the rest.
-            </p>
-          )}
+
+          <section class="catalogue" aria-labelledby="catalogue-title">
+            <div class="catalogue-head">
+              <h2 id="catalogue-title">{filtered ? 'Matching papers' : 'Every paper'}</h2>
+              <p class="more">{shelfSummary(data.page.items.length, data.page.total, filtered)}</p>
+            </div>
+            <ShelfFilters filters={filters} facets={data.page.facets} />
+            {data.page.items.length === 0 ? (
+              <p class="no-match">
+                No papers match these filters. <a href={shelfHref(NO_FILTERS, { sort: filters.sort })}>Show every paper</a>
+              </p>
+            ) : (
+              <form method="get" action="/papers/compare" class="picks" data-compare-picks>
+                <ul class="rows" aria-label={filtered ? 'Matching papers' : 'All papers'}>
+                  {data.page.items.map((paper) => (
+                    <li>
+                      <ShelfRow paper={paper} tldr={data.tldrs[paper.id] ?? null} />
+                    </li>
+                  ))}
+                </ul>
+                <div class="compare-bar" data-compare-bar>
+                  <span data-compare-count aria-live="polite">Tick papers to compare their results.</span>
+                  <button type="submit" class="btn btn-primary" data-compare-go>
+                    Compare selected
+                  </button>
+                </div>
+              </form>
+            )}
+            {data.page.total > data.page.items.length && (
+              <p class="more">
+                Showing the first {data.page.items.length} of {data.page.total}. Narrow the filters to see the rest.
+              </p>
+            )}
+          </section>
         </>
       )
     }
@@ -110,7 +127,8 @@ const shelfEmpty = data !== null && data.page.total === 0 && !filtered;
 <script>
   import { onPage } from '../../lib/page';
 
-  // Ticking papers on the shelf picks them for /papers/compare (a plain GET form).
+  // Ticking papers in the catalogue picks them for /papers/compare (a plain GET form),
+  // and pulls their spines half out of the bookcase.
   onPage((signal) => {
     const picks = document.querySelector<HTMLFormElement>('[data-compare-picks]');
     if (!picks) return;
@@ -118,13 +136,41 @@ const shelfEmpty = data !== null && data.page.total === 0 && !filtered;
     const go = picks.querySelector<HTMLButtonElement>('[data-compare-go]');
     const bar = picks.querySelector<HTMLElement>('[data-compare-bar]');
     const update = () => {
-      const n = picks.querySelectorAll('input[name="ids"]:checked').length;
+      const ticked = [...picks.querySelectorAll<HTMLInputElement>('input[name="ids"]')];
+      const n = ticked.filter((box) => box.checked).length;
+      for (const box of ticked) {
+        document.querySelector(`[data-bookcase] [data-paper="${CSS.escape(box.value)}"]`)?.toggleAttribute('data-picked', box.checked);
+      }
       if (go) go.disabled = n < 2;
       if (bar) bar.toggleAttribute('data-active', n > 0);
       if (count) count.textContent = n === 0 ? 'Tick papers to compare their results.' : n === 1 ? '1 paper ticked: tick one more.' : `${n} papers ticked.`;
     };
     update();
     picks.addEventListener('change', update, { signal });
+  });
+
+  // Pointing at a spine (or focusing it) reads its label onto the plaque.
+  onPage((signal) => {
+    const bookcase = document.querySelector<HTMLElement>('[data-bookcase]');
+    const plaque = bookcase?.querySelector<HTMLElement>('[data-plaque]');
+    if (!bookcase || !plaque) return;
+    const idle = plaque.querySelector<HTMLElement>('[data-idle]');
+    const peek = plaque.querySelector<HTMLElement>('[data-peek]');
+    const fields = ['where', 'title', 'authors', 'marks'] as const;
+    const show = (spine: HTMLElement | null) => {
+      idle?.toggleAttribute('hidden', spine !== null);
+      peek?.toggleAttribute('hidden', spine === null);
+      if (!spine) return;
+      for (const field of fields) {
+        const slot = plaque.querySelector<HTMLElement>(`[data-peek-${field}]`);
+        if (slot) slot.textContent = spine.dataset[field] ?? '';
+      }
+    };
+    const spineOf = (target: EventTarget | null) => (target instanceof Element ? target.closest<HTMLElement>('.spine') : null);
+    bookcase.addEventListener('pointerover', (e) => spineOf(e.target) && show(spineOf(e.target)), { signal });
+    bookcase.addEventListener('focusin', (e) => spineOf(e.target) && show(spineOf(e.target)), { signal });
+    bookcase.addEventListener('pointerleave', () => show(null), { signal });
+    bookcase.addEventListener('focusout', (e) => !spineOf(e.relatedTarget) && show(null), { signal });
   });
 
   onPage((signal) => {
@@ -145,7 +191,8 @@ const shelfEmpty = data !== null && data.page.total === 0 && !filtered;
 <style>
   .papers {
     display: grid;
-    gap: var(--space-5);
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-6);
   }
 
   .head {
@@ -158,7 +205,7 @@ const shelfEmpty = data !== null && data.page.total === 0 && !filtered;
 
   .heading {
     display: grid;
-    gap: var(--space-1);
+    gap: var(--space-2);
   }
 
   h1 {
@@ -167,7 +214,13 @@ const shelfEmpty = data !== null && data.page.total === 0 && !filtered;
     line-height: 1;
   }
 
-  .count,
+  .count {
+    color: var(--ink-2);
+    font-family: var(--font-read);
+    font-size: var(--text-base);
+    font-style: italic;
+  }
+
   .more,
   .no-match {
     color: var(--ink-2);
@@ -176,43 +229,39 @@ const shelfEmpty = data !== null && data.page.total === 0 && !filtered;
     font-variant-numeric: tabular-nums;
   }
 
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr));
-    gap: var(--space-4);
-    margin: 0;
-    padding: var(--space-2) 0 0;
-    list-style: none;
-  }
-
-  .grid > li {
-    position: relative;
-    display: grid;
-  }
-
   .actions {
     display: flex;
     flex-wrap: wrap;
     gap: var(--space-2);
   }
 
-  /* The compare tick sits in the card's top corner, over its venue line's end. */
-  .pick {
-    position: absolute;
-    inset-block-start: var(--space-3);
-    inset-inline-end: var(--space-3);
-    display: inline-flex;
-    gap: var(--space-1);
-    align-items: center;
-    color: var(--ink-3);
-    font-family: var(--font-ui);
-    font-size: var(--text-xs);
-    cursor: pointer;
+  .catalogue {
+    display: grid;
+    gap: var(--space-4);
+    padding-block-start: var(--space-5);
+    border-block-start: 1px solid var(--rule);
   }
 
-  .pick:has(input:checked) {
-    color: var(--accent);
-    font-weight: 600;
+  .catalogue-head {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-3);
+    align-items: baseline;
+  }
+
+  .catalogue-head h2 {
+    font-family: var(--font-ui);
+    font-size: var(--text-lg);
+    font-weight: 650;
+    letter-spacing: -0.01em;
+  }
+
+  .rows {
+    display: grid;
+    gap: var(--space-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
   }
 
   .compare-bar {
@@ -235,8 +284,10 @@ const shelfEmpty = data !== null && data.page.total === 0 && !filtered;
   }
 
   .compare-bar[data-active] {
-    border-color: var(--accent);
-    box-shadow: var(--shadow-lift);
+    border-color: var(--ink);
+    box-shadow:
+      inset 0.35rem 0 0 var(--marker),
+      var(--shadow-lift);
   }
 
   .empty {
