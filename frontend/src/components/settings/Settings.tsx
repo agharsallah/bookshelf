@@ -15,6 +15,7 @@ import { readPref, savePref, VIEWS, type LibraryView } from '../library/view';
 import { ALIGNS, FONTS, LEADINGS, MARGINS, prefsVars, SIZES, SPACINGS, WIDTHS } from '../reader/prefs';
 import { useReaderPrefs } from '../reader/usePrefs';
 import { EncouragementSection } from './EncouragementSection';
+import { ApprovalSection } from './ApprovalSection';
 import { AutoRunSection } from './AutoRunSection';
 import { Check, Row, Section, Segmented, titled } from './Controls';
 import { DatabaseSection } from './DatabaseSection';
@@ -151,6 +152,8 @@ export function Settings() {
           </select>
         </Row>
       </Section>
+
+      <ApprovalSection />
 
       <AutoRunSection />
 

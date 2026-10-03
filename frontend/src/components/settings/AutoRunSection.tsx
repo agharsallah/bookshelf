@@ -23,7 +23,7 @@ export function AutoRunSection({ api = browserApi }: { api?: Pick<ApiClient, 'ge
   const toggle = async (group: AutoDeriveGroup, skill: string) => {
     if (!settings) return;
     const next: AutoDeriveChoice[] = withToggled(settings.auto_derive[group], skill);
-    setSettings({ auto_derive: { ...settings.auto_derive, [group]: next } });
+    setSettings({ ...settings, auto_derive: { ...settings.auto_derive, [group]: next } });
     try {
       setSettings(await api.patch<SettingsPublic>('settings', { auto_derive: { [group]: enabledSkills(next) } }));
       setStatus('Saved. It applies to what is distilled from now on.');
