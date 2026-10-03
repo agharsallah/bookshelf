@@ -3,7 +3,8 @@
  * queued job says what it waits for: its place in line, a retry, or a missing worker.
  * A queued job can be sent to the front (`POST /jobs/{id}/run-now`: the next free slot
  * under the cap, even while paused) or cancelled (`DELETE /jobs/{id}`), a failed one retried
- * (`POST /jobs/{id}/retry`: same kind, scope, skill, note and payload).
+ * (`POST /jobs/{id}/retry`: same kind, scope, skill, note and payload). Every row carries
+ * the job's log (./JobLog.tsx), closed until clicked.
  */
 import { useState } from 'react';
 import { anchorLabel } from '../../lib/anchors';
@@ -14,6 +15,7 @@ import { describeJob } from '../../lib/jobs/progress';
 import { jobTitle } from '../document/jobs';
 import { Problem, problemOf, type ProblemInfo } from '../common/Problem';
 import { relativeTime } from '../review/labels';
+import { JobLog } from './JobLog';
 import { elapsedMs, formatDuration, KIND_LABELS } from './model';
 import styles from './JobRows.module.css';
 
@@ -41,7 +43,9 @@ function Scope({ job, title }: { job: JobPublic; title: string }) {
 
 type Control = { state: 'idle' } | { state: 'sending' } | { state: 'sent'; deduplicated: boolean } | { state: 'error'; problem: ProblemInfo };
 
-type JobControlProps = JobRowProps & { api: Pick<ApiClient, 'post' | 'delete'>; onChanged: (job: JobPublic) => void };
+export type JobApi = Pick<ApiClient, 'get' | 'post' | 'delete'>;
+
+type JobControlProps = JobRowProps & { api: JobApi; onChanged: (job: JobPublic) => void };
 
 type QueuedAction = 'cancel' | 'runNow';
 
@@ -87,6 +91,7 @@ export function RunningRow({ job, title, now, api, onChanged, queue = null }: Jo
         </span>
       ) : null}
       {control?.state.state === 'error' ? <Problem title={ACTIONS[control.action].failed} problem={control.state.problem} inline /> : null}
+      <JobLog job={job} api={api} />
     </li>
   );
 }
@@ -141,11 +146,12 @@ export function FailedRow({ job, title, now, api, onChanged, paused = false, ret
         </span>
       </span>
       {retry.state === 'error' ? <Problem title="The retry was not queued." problem={retry.problem} inline /> : null}
+      <JobLog job={job} api={api} />
     </li>
   );
 }
 
-export function RecentRow({ job, title, now }: JobRowProps) {
+export function RecentRow({ job, title, now, api }: JobRowProps & { api: Pick<ApiClient, 'get'> }) {
   const ms = elapsedMs(job, now);
   return (
     <li className={styles.job} data-state={job.state}>
@@ -155,6 +161,7 @@ export function RecentRow({ job, title, now }: JobRowProps) {
         <span className={styles.stateCell}>{job.state === 'skipped' ? (job.error ?? 'skipped') : 'done'}</span>
         {ms !== null ? ` · took ${formatDuration(ms)}` : ''} · {relativeTime(job.finished_at ?? job.created_at, now)}
       </span>
+      <JobLog job={job} api={api} />
     </li>
   );
 }

@@ -4,8 +4,8 @@
  * per-document stage bars and jobs by kind, running work with elapsed time (queued jobs
  * can be sent to run now or cancelled), failures grouped by cause with "Retry all",
  * documents the run ceiling paused, with Resume, and queue controls: pause/resume all,
- * and a running cap. Long lists come a page at a time and filters (text included) live
- * in the URL.
+ * and a running cap. Long lists come a page at a time, filters (text included) live in
+ * the URL, and every job opens onto its log.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { browserApi, type ApiClient } from '../../lib/api/client';
@@ -186,7 +186,7 @@ export function PipelineView({ jobs: seed, documents: initialDocuments, queue: i
         {finished.length === 0 ? <p className={styles.muted}>Nothing finished yet.</p> : null}
         <ul className={styles.jobs}>
           {finished.slice(0, recentPage.limit).map((job) => (
-            <RecentRow key={job.id} job={job} title={title(job)} now={now} />
+            <RecentRow key={job.id} job={job} title={title(job)} now={now} api={api} />
           ))}
         </ul>
         <ShowMore shown={Math.min(recentPage.limit, finished.length)} total={finished.length} step={RECENT_PAGE} noun="finished jobs" onMore={recentPage.more} onAll={recentPage.all} />

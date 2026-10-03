@@ -1,0 +1,132 @@
+/* A job's log: a quiet disclosure under the row, dense and monospaced where it is data. */
+.log {
+  grid-column: 2 / -1;
+  font-size: var(--text-sm);
+}
+
+.log > summary {
+  inline-size: fit-content;
+  color: var(--ink-3);
+  font-size: var(--text-xs);
+  cursor: pointer;
+}
+
+.log > summary:hover,
+.log[open] > summary {
+  color: var(--ink);
+}
+
+.body {
+  display: grid;
+  gap: var(--space-4);
+  margin-block-start: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-inline-start: 2px solid var(--rule-strong);
+  background: var(--paper-sunken);
+  border-radius: 0 var(--radius-m) var(--radius-m) 0;
+}
+
+.heading {
+  margin-block-end: var(--space-1);
+  color: var(--ink-3);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.timeline {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+}
+
+.timeline dt {
+  color: var(--ink-3);
+  font-size: var(--text-xs);
+}
+
+.timeline dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.timeline code {
+  font-size: var(--text-xs);
+}
+
+.totals {
+  margin-block-end: var(--space-2);
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.tableWrap {
+  overflow-x: auto;
+}
+
+.table {
+  inline-size: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-xs);
+}
+
+.table th {
+  padding: var(--space-1) var(--space-3) var(--space-1) 0;
+  border-block-end: 1px solid var(--rule-strong);
+  color: var(--ink-3);
+  font-weight: 500;
+  text-align: start;
+  white-space: nowrap;
+}
+
+.table td {
+  padding: var(--space-1) var(--space-3) var(--space-1) 0;
+  border-block-end: 1px solid var(--rule);
+  vertical-align: baseline;
+}
+
+.table .num {
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+  white-space: nowrap;
+}
+
+.sub {
+  display: block;
+  color: var(--ink-3);
+  font-size: var(--text-xs);
+}
+
+.errorRow td {
+  padding-block-start: 0;
+}
+
+.bad {
+  color: var(--tone-important);
+}
+
+.muted {
+  color: var(--ink-3);
+}
+
+.pre {
+  max-block-size: 16rem;
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  overflow: auto;
+  border-radius: var(--radius-m);
+  background: var(--paper-raised);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 52rem) {
+  .log {
+    grid-column: 1 / -1;
+  }
+}

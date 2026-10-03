@@ -6,20 +6,19 @@
  * out: resuming the document requeues them.
  */
 import { useState } from 'react';
-import type { ApiClient } from '../../lib/api/client';
 import type { JobPublic } from '../../lib/api/types/jobs';
 import { retryJob } from '../../lib/jobs/api';
 import { problemOf } from '../common/Problem';
 import { relativeTime } from '../review/labels';
 import { compactAnchors, runAll, type FailureGroup } from './failures';
-import { FailedRow } from './JobRows';
+import { FailedRow, type JobApi } from './JobRows';
 import { KIND_LABELS } from './model';
 import styles from './FailureGroups.module.css';
 
 export interface FailureGroupsProps {
   groups: readonly FailureGroup[];
   now: number;
-  api: Pick<ApiClient, 'post' | 'delete'>;
+  api: JobApi;
   onChanged: (job: JobPublic) => void;
   title: (job: JobPublic) => string;
   isPaused: (job: JobPublic) => boolean;

@@ -62,6 +62,31 @@ export interface JobPublic {
   run_now?: boolean;
 }
 
+/** One CLI call a job made (`GET /jobs/{id}/runs`): its run log, failures included. */
+export interface ModelRunPublic {
+  id: string;
+  attempt: number;
+  call: number;
+  skill: string | null;
+  skill_version: string | null;
+  tier: string | null;
+  model: string | null;
+  ok: boolean;
+  error: string | null;
+  input_tokens: number | null;
+  output_tokens: number | null;
+  cache_read_tokens: number | null;
+  cache_write_tokens: number | null;
+  cost_usd: number | null;
+  duration_ms: number;
+  api_ms: number | null;
+  turns: number | null;
+  prompt_chars: number;
+  reply_chars: number | null;
+  images: number;
+  created_at: string;
+}
+
 /** A worker process polling the queue (`GET /jobs/queue`). */
 export interface WorkerPublic {
   name: string;
