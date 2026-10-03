@@ -27,6 +27,12 @@ cp .env.example .env
 uv run python -m app.db.migrate        # apply supabase/migrations/*.sql
 uv run fastapi dev app/main.py         # http://127.0.0.1:8000/docs — also runs the job worker
 
+# 2b. Or, with BOOKSHELF_DATABASE_URL on Supabase: the API plus a Podman Postgres as
+#     "This computer" in Settings → Database (port 54330). The container starts with the
+#     server and stops when it exits (PG_KEEP=1 keeps it). By hand: scripts/pg-podman.sh
+#     start | stop | status | logs | reset.
+scripts/dev-backend.sh
+
 # 3. Optional: a standalone worker (another terminal), e.g. with BOOKSHELF_API_WORKER=false.
 #    It shares the queue with the API's own worker; `GET /jobs/queue` lists live workers.
 cd backend && uv run python -m app.jobs.worker
