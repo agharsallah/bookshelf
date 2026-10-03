@@ -11,10 +11,12 @@ And `queue`: whether the job queue is paused and how many jobs may run at once, 
 And `auto_approve`: whether a skill's fresh artifact is approved on arrival instead of
 waiting for a review (`pipeline.auto_approval`): `off`, `passing` (only drafts that passed
 every soft gate) or `all` (`needs_review` too).
+
+And `builds`: the defaults a new build starts from (`BuildDefaults`, docs/BUILDS.md §4).
 """
 
 from collections.abc import Mapping
-from dataclasses import dataclass, replace
+from dataclasses import asdict, dataclass, fields, replace
 from typing import Any, Literal, get_args
 
 from sqlmodel import Session
@@ -23,8 +25,18 @@ from app.jobs.queue import JobSpec
 from app.models import AppSettings
 from app.models._columns import utcnow
 from app.models.app_settings import SINGLETON_ID
+from app.models.build import BuildVisibility
 from app.models.enums import Genre, JobKind, Review
 from app.pipeline.skills import Skill
+from app.schemas.build_options import (
+    CommitStyle,
+    Delivery,
+    EffortChoice,
+    License,
+    ModelChoice,
+    PushPolicy,
+    TestsPolicy,
+)
 from app.services.errors import InvalidInputError
 
 GROUPS = ("book", "paper")
@@ -170,3 +182,75 @@ def set_auto_approve(session: Session, mode: AutoApprove) -> None:
 def approves(mode: AutoApprove, review: Review) -> bool:
     """Whether `mode` approves an artifact the gates stored as `review`."""
     return review in _APPROVES[mode]
+
+
+@dataclass(frozen=True, slots=True)
+class AdvancedDefaults:
+    """The defaults of `options.advanced` a new build starts from (docs/BUILDS.md §7)."""
+
+    model: ModelChoice = "auto"
+    effort: EffortChoice = "auto"
+    plan_model: ModelChoice = "auto"
+    commit_style: CommitStyle = "milestone"
+    tests: TestsPolicy = "each_milestone"
+    license: License = "none"
+    delivery: Delivery = "push_main"
+    push: PushPolicy = "each_commit"
+
+
+_ADVANCED_CHOICES: dict[str, tuple[str, ...]] = {
+    f.name: get_args(f.type) for f in fields(AdvancedDefaults)
+}
+
+
+def _advanced(stored: Any) -> AdvancedDefaults:
+    """Stored advanced defaults; a value no longer allowed falls back to its default."""
+    if not isinstance(stored, dict):
+        return AdvancedDefaults()
+    kept = {k: v for k, v in stored.items() if v in _ADVANCED_CHOICES.get(k, ())}
+    return AdvancedDefaults(**kept)
+
+
+@dataclass(frozen=True, slots=True)
+class BuildDefaults:
+    """What a new build starts from (docs/BUILDS.md §4), before its preset and its form:
+    the GitHub `owner` (`None`: the signed-in gh account), visibility, attribution, whether
+    the README links the paper, and the default limits."""
+
+    owner: str | None = None
+    visibility: BuildVisibility = BuildVisibility.PRIVATE
+    claude_attribution: bool = False
+    link_paper: bool = True
+    max_minutes: int = 90
+    max_commits: int = 30
+    max_budget_usd: float | None = None
+    advanced: AdvancedDefaults = AdvancedDefaults()
+
+
+_BUILD_FIELDS = {f.name for f in fields(BuildDefaults)}
+
+
+def build_defaults(session: Session) -> BuildDefaults:
+    """The stored defaults; a value that no longer validates falls back to its default."""
+    row = session.get(AppSettings, SINGLETON_ID)
+    stored = (row.data if row else {}).get("builds")
+    if not isinstance(stored, dict):
+        return BuildDefaults()
+    known = {k: v for k, v in stored.items() if k in _BUILD_FIELDS}
+    known["advanced"] = _advanced(known.get("advanced"))
+    try:
+        known["visibility"] = BuildVisibility(known.get("visibility", "private"))
+        return BuildDefaults(**known)
+    except (TypeError, ValueError):
+        return BuildDefaults(advanced=known["advanced"])
+
+
+def set_build_defaults(session: Session, changes: Mapping[str, Any]) -> BuildDefaults:
+    """Merge `changes` (already validated by the wire schema) into the stored defaults;
+    `advanced` merges key by key."""
+    current = build_defaults(session)
+    plain = {k: v for k, v in changes.items() if k in _BUILD_FIELDS and k != "advanced"}
+    advanced = replace(current.advanced, **dict(changes.get("advanced") or {}))
+    merged = replace(current, **plain, advanced=advanced)
+    _save(session, "builds", {**asdict(merged), "visibility": merged.visibility.value})
+    return merged
