@@ -1,9 +1,12 @@
-/** The pieces of a run's page: limit meters, the commits, the event tail and the final report. */
+/** The pieces of a run's page: limit meters, the commits, the event tail, the final report, and where a local build left its work. */
 import { useState } from 'react';
 import type { BuildCommit, BuildEvent, BuildReport, BuildSummary } from '../../lib/api/types/builds';
 import { commitUrl, limitMeters, shortSha } from '../../lib/builds/state';
+import type { LocalBranchNote } from '../../lib/builds/target-view';
+import { CopyCommand } from '../papers/CopyCommand';
 import fields from './Fields.module.css';
 import styles from './Run.module.css';
+import target from './Target.module.css';
 
 /** Events shown outside workshop mode. */
 export const TAIL = 20;
@@ -145,6 +148,18 @@ export function RunReport({ report }: { report: BuildReport }) {
           </pre>
         </div>
       ) : null}
+    </section>
+  );
+}
+
+/** A local build's work is on a branch of your repository (never your checkout): how to get to it. */
+export function BranchNote({ note }: { note: LocalBranchNote }) {
+  return (
+    <section className={target.branchNote} aria-label="Where the work is">
+      <p>
+        The work is on branch <code>{note.branch}</code> in <code>{note.path}</code>. To look at it there:
+      </p>
+      <CopyCommand command={note.command} />
     </section>
   );
 }

@@ -60,6 +60,15 @@
   line-clamp: 2;
 }
 
+.itemWhere {
+  overflow: hidden;
+  color: var(--ink-3);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .itemMeta {
   display: flex;
   gap: var(--space-2);

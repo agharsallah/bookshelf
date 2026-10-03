@@ -3,13 +3,16 @@
  * far it is against each limit, its commits, what the agent is doing, and at the end its
  * report. Stop while it runs; Continue or Delete once it has finished. Polls while active.
  * A Context tab beside the run shows what the agent received; a PR link once one is open.
- * A build whose plan was replanned or edited keeps a read-only Plan history (§7b).
+ * A build whose plan was replanned or edited keeps a read-only Plan history (§7b). A build
+ * into an existing repository (§7c) names its repo and folder; a local one, once ended,
+ * says which branch of your repository holds the work.
  */
 import { useState } from 'react';
 import { browserApi, type ApiClient } from '../../lib/api/client';
 import type { BuildPublic } from '../../lib/api/types/builds';
 import { remove, stop } from '../../lib/builds/api';
 import { canContinue, canDelete, isActive, repoLabel, STOP_REASON_LABELS } from '../../lib/builds/state';
+import { localBranchNote, targetLabel } from '../../lib/builds/target-view';
 import { Problem, problemOf, type ProblemInfo } from '../common/Problem';
 import { WithContext } from './BuildContextTab';
 import { ConfirmButton } from './ConfirmButton';
@@ -18,8 +21,9 @@ import { StateBadge } from './Field';
 import fields from './Fields.module.css';
 import { PlanHistoryDisclosure } from './PlanVersions';
 import { ReplanForm } from './ReplanForm';
-import { CommitList, EventTail, LimitMeters, RunReport } from './RunParts';
+import { BranchNote, CommitList, EventTail, LimitMeters, RunReport } from './RunParts';
 import styles from './Run.module.css';
+import target from './Target.module.css';
 import { POLL_MS, usePolledBuild } from './usePolledBuild';
 
 export interface RunViewProps {
@@ -56,6 +60,8 @@ export function RunView({ build, onChange, onDeleted, api = browserApi, pollMs =
   };
 
   const neverRan = build.state === 'failed' && !build.run_job_id;
+  const where = targetLabel(build.options);
+  const branchNote = neverRan ? null : localBranchNote(build);
 
   return (
     <div className={styles.run}>
@@ -66,8 +72,10 @@ export function RunView({ build, onChange, onDeleted, api = browserApi, pollMs =
         </p>
         {build.repo_url ? (
           <a className={styles.repo} href={build.repo_url} target="_blank" rel="noreferrer">
-            {repoLabel(build.repo_url)} ↗
+            {where ?? repoLabel(build.repo_url)} ↗
           </a>
+        ) : where ? (
+          <span className={target.where}>{where}</span>
         ) : build.state !== 'planning' && build.options.visibility === 'local' ? (
           <span className={fields.hint}>Kept on this computer</span>
         ) : null}
@@ -90,6 +98,8 @@ export function RunView({ build, onChange, onDeleted, api = browserApi, pollMs =
           {!neverRan ? <LimitMeters build={build} /> : null}
 
           {build.report ? <RunReport report={build.report} /> : null}
+
+          {branchNote ? <BranchNote note={branchNote} /> : null}
 
           {!neverRan ? (
             <section aria-labelledby="commits-title">

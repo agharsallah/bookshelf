@@ -7,7 +7,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { browserApi, type ApiClient } from '../../lib/api/client';
 import type { BuildPublic, BuildSummary } from '../../lib/api/types/builds';
 import { getBuild } from '../../lib/builds/api';
-import { phaseOf } from '../../lib/builds/state';
+import { phaseOf, repoLabel } from '../../lib/builds/state';
+import { targetLabel } from '../../lib/builds/target-view';
 import { Problem, problemOf, type ProblemInfo } from '../common/Problem';
 import { toast } from '../document/toast';
 import { BuildForm } from './BuildForm';
@@ -33,6 +34,9 @@ const day = (iso: string) => {
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString([], { day: 'numeric', month: 'short' });
 };
+
+/** Where a build went: an existing repository's repo and folder, else the new repository once there is one. */
+const whereOf = (b: BuildSummary) => targetLabel(b.options) ?? (b.repo_url ? repoLabel(b.repo_url) : null);
 
 export function BuildStudio({ documentId, paperRef, paperTitle, initialBuilds, api = browserApi, pollMs = POLL_MS }: BuildStudioProps) {
   const [builds, setBuilds] = useState<BuildSummary[]>(initialBuilds);
@@ -99,6 +103,7 @@ export function BuildStudio({ documentId, paperRef, paperTitle, initialBuilds, a
               <li key={b.id}>
                 <button type="button" className={styles.item} aria-current={b.id === selectedId ? 'true' : undefined} onClick={() => open(b.id)}>
                   <span className={styles.itemGoal}>{b.goal}</span>
+                  {whereOf(b) ? <span className={styles.itemWhere}>{whereOf(b)}</span> : null}
                   <span className={styles.itemMeta}>
                     <StateBadge state={b.state} />
                     <span>{day(b.created_at)}</span>
