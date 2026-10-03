@@ -1,0 +1,113 @@
+/* The Build tab: earlier builds in a narrow column, the open one beside them. */
+.studio {
+  display: grid;
+  grid-template-columns: minmax(13rem, 17rem) minmax(0, 1fr);
+  gap: var(--space-5);
+  align-items: start;
+  max-width: 76rem;
+  margin-inline: auto;
+}
+
+.side {
+  position: sticky;
+  inset-block-start: var(--space-4);
+  display: grid;
+  gap: var(--space-3);
+}
+
+.list {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  display: grid;
+  gap: var(--space-1);
+  inline-size: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid transparent;
+  border-radius: var(--radius-m);
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  text-align: start;
+  cursor: pointer;
+}
+
+.item:hover {
+  border-color: var(--rule);
+}
+
+.item[aria-current='true'] {
+  border-color: var(--rule-strong);
+  background: var(--paper-raised);
+}
+
+.item:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+.itemGoal {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.itemMeta {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  color: var(--ink-3);
+  font-size: var(--text-xs);
+}
+
+.main {
+  min-inline-size: 0;
+}
+
+.buildHead {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
+  align-items: baseline;
+}
+
+.goal {
+  margin: 0;
+  max-inline-size: var(--measure);
+  font-family: var(--font-read);
+  font-size: var(--text-lg);
+  font-weight: 500;
+  line-height: var(--leading-tight);
+}
+
+.planning {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.planning p {
+  margin: 0;
+}
+
+@media (max-width: 52rem) {
+  .studio {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .side {
+    position: static;
+  }
+}

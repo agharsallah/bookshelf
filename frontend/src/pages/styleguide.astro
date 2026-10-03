@@ -7,11 +7,13 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { Blocks } from '../components/blocks/Blocks';
 import { Spans } from '../components/blocks/Spans';
+import { StateBadge } from '../components/builds/Field';
 import CheerSpecimens from '../components/styleguide/CheerSpecimens.astro';
 import CiteDemo from '../components/styleguide/CiteDemo';
 import Swatches from '../components/styleguide/Swatches.astro';
 import TypeScale from '../components/styleguide/TypeScale.astro';
 import { TONES } from '../components/blocks/callout-tones';
+import { BUILD_STATES } from '../lib/api/types/builds';
 import { CALLOUT_TONES, HIGHLIGHT_COLORS, type RenderBlock } from '../lib/contract';
 import { prepareBlocks } from '../lib/prepare';
 import {
@@ -50,6 +52,7 @@ const SECTIONS = [
   ['charts', 'Charts'],
   ['cites', 'Cites in an island'],
   ['encouragement', 'Encouragement'],
+  ['builds', 'Build states'],
 ] as const;
 ---
 
@@ -189,11 +192,23 @@ const SECTIONS = [
         <h2 id="encouragement-h">Encouragement</h2>
         <CheerSpecimens />
       </section>
+
+      <section id="builds" aria-labelledby="builds-h">
+        <h2 id="builds-h">Build states</h2>
+        <p class="lede">A paper's build, from its plan to its end. The working states breathe; the one waiting for you is amber.</p>
+        <p class="badges">{BUILD_STATES.map((state) => <StateBadge state={state} />)}</p>
+      </section>
     </div>
   </div>
 </BaseLayout>
 
 <style>
+  .badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
   .guide {
     display: grid;
     grid-template-columns: 11rem minmax(0, 1fr);

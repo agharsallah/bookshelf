@@ -11,7 +11,7 @@ describe('the paper tab registry', () => {
   });
 
   it('has every tab of docs/PAPERS.md §8, in its order', () => {
-    expect(PAPER_TABS.map((t) => t.key)).toEqual(['card', 'explain', 'math', 'claims', 'results', 'references', 'notation', 'review', 'club']);
+    expect(PAPER_TABS.map((t) => t.key)).toEqual(['card', 'explain', 'math', 'claims', 'results', 'references', 'notation', 'review', 'club', 'build']);
   });
 
   it('shows the review tab ready once either the assessment or the peer review is approved', () => {
@@ -71,6 +71,7 @@ describe('tabItems', () => {
       ['notation', 'missing', false],
       ['review', 'missing', false],
       ['club', 'missing', false],
+      ['build', 'data', false],
     ]);
     expect(items[5]?.href).toBe('/documents/bert/paper/references');
   });

@@ -1,0 +1,264 @@
+/* Plan versions (§7b): the strip of pills, the banner over an older version, the diff,
+   and the previous plan kept in view while the next one is drafted. */
+.history {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.strip {
+  display: grid;
+  gap: var(--space-2);
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.pill {
+  position: relative;
+  padding: 0.2rem var(--space-3);
+  border: 1px solid var(--rule-strong);
+  border-radius: 999px;
+  background: var(--paper-raised);
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.pill:hover {
+  border-color: var(--accent);
+}
+
+.pill:has(:checked) {
+  border-color: var(--accent);
+  background: var(--accent-wash);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.pill:has(:focus-visible) {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.strip:disabled .pill {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.pillVersion {
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+}
+
+.pillCurrent {
+  color: var(--accent);
+}
+
+.caption {
+  margin: 0;
+  max-inline-size: var(--measure);
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+}
+
+.viewing {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.banner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-m);
+  background: var(--marker-soft);
+  color: var(--ink);
+}
+
+.bannerText {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+/* ── The diff ─────────────────────────────────────────────────────────────── */
+.diff {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.diffLede {
+  margin: 0;
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.diff ins {
+  color: var(--tone-insight);
+  text-decoration: none;
+}
+
+.diff del {
+  color: var(--tone-important);
+  text-decoration: line-through;
+}
+
+.marker {
+  display: inline-block;
+  padding: 0 var(--space-2);
+  border: 1px solid currentcolor;
+  border-radius: var(--radius-s);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  font-weight: 650;
+  vertical-align: 0.1em;
+}
+
+.marker[data-kind='added'] {
+  color: var(--tone-insight);
+}
+
+.marker[data-kind='removed'] {
+  color: var(--tone-important);
+}
+
+.marker[data-kind='changed'] {
+  border-color: transparent;
+  background: var(--marker);
+  color: var(--marker-ink);
+}
+
+.marker[data-kind='same'] {
+  color: var(--ink-3);
+}
+
+.diffList,
+.diffMilestones {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.diffList {
+  padding: 0;
+  list-style: none;
+}
+
+.diffMilestones {
+  gap: var(--space-3);
+  padding-inline-start: var(--space-5);
+}
+
+.diffMilestone {
+  display: grid;
+  gap: var(--space-1);
+  padding-inline-start: var(--space-2);
+}
+
+.diffMilestone[data-kind='same'] {
+  color: var(--ink-3);
+}
+
+.diffMilestone[data-kind='changed'] {
+  border-inline-start: 3px solid var(--marker);
+}
+
+.diffMilestone[data-kind='added'] {
+  border-inline-start: 3px solid var(--tone-insight);
+}
+
+.diffMilestone[data-kind='removed'] {
+  border-inline-start: 3px dashed var(--tone-important);
+}
+
+.summaryChange {
+  display: grid;
+  gap: var(--space-1);
+  justify-items: start;
+  margin: 0;
+  max-inline-size: var(--measure);
+  font-family: var(--font-read);
+}
+
+.fieldChanges {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+}
+
+.fieldChanges div {
+  display: grid;
+  grid-template-columns: minmax(6rem, max-content) minmax(0, 1fr);
+  gap: var(--space-3);
+}
+
+.fieldChanges dt {
+  color: var(--ink-3);
+  font-weight: 650;
+}
+
+.fieldChanges dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* ── The previous plan while the next is drafted ─────────────────────────── */
+.drafting {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.dimmed {
+  opacity: 0.55;
+  pointer-events: none;
+  user-select: none;
+}
+
+@media (max-width: 40rem) {
+  .fieldChanges div {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+}
+
+/* ── The run view's plan history ─────────────────────────────────────────── */
+.disclosure {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.disclosureToggle {
+  justify-self: start;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font-family: var(--font-ui);
+  font-size: var(--text-ui);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.disclosureToggle::before {
+  content: '▸ ';
+}
+
+.disclosureToggle[aria-expanded='true']::before {
+  content: '▾ ';
+}

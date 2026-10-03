@@ -4,6 +4,7 @@
  * Views are Astro components taking `TabViewProps`; they load what they show.
  */
 import type { PaperTabKey, TabViewProps } from './tabs';
+import BuildTab from './views/BuildTab.astro';
 import CardTab from './views/CardTab.astro';
 import ClaimsTab from './views/ClaimsTab.astro';
 import ClubTab from './views/ClubTab.astro';
@@ -27,4 +28,5 @@ export const TAB_VIEWS: Record<PaperTabKey, TabView> = {
   notation: NotationTab,
   review: ReviewTab,
   club: ClubTab,
+  build: BuildTab,
 };

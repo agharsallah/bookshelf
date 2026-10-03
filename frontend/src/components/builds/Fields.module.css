@@ -1,0 +1,228 @@
+/* Builds: the form pieces every build island shares (fields, panels, chips, the state badge). */
+.panel {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-l);
+  background: var(--paper-raised);
+}
+
+.panelTitle {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: var(--text-md);
+  line-height: var(--leading-tight);
+}
+
+.legend {
+  padding: 0;
+  margin-block-end: var(--space-2);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: var(--text-ui);
+  font-weight: 650;
+}
+
+.fieldset {
+  display: grid;
+  gap: var(--space-3);
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.field {
+  display: grid;
+  gap: var(--space-1);
+  min-inline-size: 0;
+  font-family: var(--font-ui);
+  font-size: var(--text-ui);
+}
+
+.label {
+  color: var(--ink);
+  font-weight: 550;
+}
+
+.hint {
+  margin: 0;
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  line-height: var(--leading-ui);
+}
+
+.error {
+  margin: 0;
+  color: var(--tone-important);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.input,
+.textarea {
+  inline-size: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-m);
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+}
+
+.textarea {
+  min-block-size: 5rem;
+  resize: vertical;
+  line-height: var(--leading-ui);
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+
+.input:focus-visible,
+.textarea:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+.input[aria-invalid='true'],
+.textarea[aria-invalid='true'] {
+  border-color: var(--tone-important);
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: end;
+}
+
+.row > .field {
+  flex: 1 1 9rem;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chip {
+  padding: 0.1rem var(--space-2);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-pill);
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+}
+
+button.chip {
+  background: transparent;
+  cursor: pointer;
+}
+
+button.chip:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.status {
+  margin: 0;
+  min-block-size: 1.2em;
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+/* The state badge: busy states breathe, the rest sit still. */
+.badge {
+  display: inline-flex;
+  gap: var(--space-1);
+  align-items: center;
+  padding: 0.1rem var(--space-2);
+  border: 1px solid currentcolor;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.badge::before {
+  content: '';
+  inline-size: 0.45rem;
+  block-size: 0.45rem;
+  border-radius: 50%;
+  background: currentcolor;
+}
+
+.badge[data-tone='busy'] {
+  color: var(--accent);
+}
+
+.badge[data-tone='busy']::before {
+  animation: breathe 1.4s var(--ease-out) infinite alternate;
+}
+
+.badge[data-tone='wait'] {
+  color: var(--tone-caution);
+}
+
+.badge[data-tone='good'] {
+  color: var(--tone-insight);
+}
+
+.badge[data-tone='quiet'] {
+  color: var(--ink-3);
+}
+
+.badge[data-tone='bad'] {
+  color: var(--tone-important);
+}
+
+@keyframes breathe {
+  to {
+    opacity: 0.25;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .badge[data-tone='busy']::before {
+    animation: none;
+  }
+}
+
+/* A row of list items you can edit in place (done-when lines, milestones). */
+.lines {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.iconBtn {
+  min-inline-size: 2.5rem;
+  padding: 0 var(--space-2);
+}

@@ -8,6 +8,7 @@
 import { ActivityBeacon } from '../../../../lib/activity/ActivityBeacon';
 import BaseLayout from '../../../../layouts/BaseLayout.astro';
 import { Problem } from '../../../../components/common/Problem';
+import BuildCta from '../../../../components/papers/BuildCta.astro';
 import { loadPaper } from '../../../../components/papers/load';
 import PaperHeader from '../../../../components/papers/PaperHeader.astro';
 import PaperTabs from '../../../../components/papers/PaperTabs.astro';
@@ -35,6 +36,7 @@ const View = tab ? TAB_VIEWS[tab.key] : null;
         <PaperHeader paper={data.paper} ratings={data.ratings} />
         <PaperTabs items={tabItems(data.paper.slug, data.paper.artifacts, tab.key)} />
         <View paper={data.paper} url={Astro.url} />
+        {tab.key !== 'build' && <BuildCta slug={data.paper.slug} />}
       </>
     ) : data ? (
       <div class="missing">

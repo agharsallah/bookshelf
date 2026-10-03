@@ -1,0 +1,65 @@
+---
+/**
+ * The quiet invitation at the foot of each paper tab: build something from the paper
+ * (docs/BUILDS.md §6). The page leaves it out on the Build tab itself.
+ */
+import { paperHref } from './tabs';
+
+interface Props {
+  slug: string;
+}
+
+const { slug } = Astro.props;
+---
+
+<aside class="build-cta" aria-label="Build from this paper">
+  <p>Turn what you read into code: a small implementation, a demo, a site that explains it.</p>
+  <a href={paperHref(slug, 'build')}>Build from this paper <span aria-hidden="true">→</span></a>
+</aside>
+
+<style>
+  .build-cta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-4);
+    align-items: baseline;
+    justify-content: space-between;
+    max-width: 68rem;
+    margin: var(--space-7) auto 0;
+    padding-block-start: var(--space-4);
+    border-block-start: 1px solid var(--rule);
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+  }
+
+  p {
+    margin: 0;
+    color: var(--ink-3);
+  }
+
+  a {
+    color: var(--accent);
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  a:hover {
+    text-decoration: underline;
+  }
+
+  a span {
+    display: inline-block;
+    transition: translate var(--dur-1) var(--ease-out);
+  }
+
+  a:hover span {
+    translate: 0.2em 0;
+  }
+
+  @media print {
+    .build-cta {
+      display: none;
+    }
+  }
+</style>

@@ -1,0 +1,152 @@
+/* The new-build form: preset cards, the goal and its examples, repo options, preflight. */
+.form {
+  display: grid;
+  gap: var(--space-5);
+  padding: var(--space-5);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-l);
+  background: var(--paper-raised);
+}
+
+.presets {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+  gap: var(--space-2);
+}
+
+.preset {
+  position: relative;
+  display: grid;
+  gap: var(--space-1);
+  align-content: start;
+  justify-items: start;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-m);
+  background: var(--paper);
+  font-family: var(--font-ui);
+  cursor: pointer;
+  transition: border-color var(--dur-1) var(--ease-out);
+}
+
+.preset:hover {
+  border-color: var(--rule-strong);
+}
+
+.preset input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.preset:has(input:checked) {
+  border-color: var(--accent);
+  background: var(--accent-wash);
+}
+
+.preset:has(input:focus-visible) {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.presetLabel {
+  font-size: var(--text-ui);
+  font-weight: 650;
+}
+
+.presetHint {
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+  line-height: var(--leading-ui);
+}
+
+.examples {
+  display: grid;
+  gap: var(--space-1);
+  margin-block-start: calc(-1 * var(--space-3));
+}
+
+.segmentRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+  font-family: var(--font-ui);
+}
+
+.disclosures {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.checks {
+  display: grid;
+  gap: var(--space-3);
+}
+
+/* Preflight: a quiet box, its failing checks tinted by level. */
+.preflight {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px dashed var(--rule-strong);
+  border-radius: var(--radius-m);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.preflightHead {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  justify-content: space-between;
+}
+
+.preflightTitle {
+  margin: 0;
+  font-size: var(--text-ui);
+}
+
+.allSet {
+  margin: 0;
+  color: var(--tone-insight);
+}
+
+.checkList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.check {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-inline-start: 3px solid var(--tone-caution);
+  border-radius: var(--radius-s);
+  background: var(--paper-sunken);
+}
+
+.check + .check {
+  margin-block-start: var(--space-2);
+}
+
+.check[data-level='error'] {
+  border-inline-start-color: var(--tone-important);
+}
+
+.checkMessage,
+.checkFix {
+  margin: 0;
+  line-height: var(--leading-ui);
+}
+
+.checkFix {
+  color: var(--ink-2);
+}
+
+.checkFix code {
+  font-family: var(--font-mono);
+}

@@ -1,0 +1,25 @@
+---
+/**
+ * Build tab (docs/BUILDS.md §6): turn the paper into a git repository. The paper's builds
+ * load here; the studio island takes it from there (the form, the plan, the run).
+ */
+import BuildStudio from '../../builds/BuildStudio';
+import { Problem } from '../../common/Problem';
+import { serverApi } from '../../../lib/api/server';
+import { listBuilds } from '../../../lib/builds/api';
+import { load } from '../../../lib/documents/server';
+import type { TabViewProps } from '../tabs';
+
+type Props = TabViewProps;
+
+const { paper } = Astro.props;
+const loaded = await load(() => listBuilds(serverApi(), paper.slug));
+---
+
+{
+  loaded.ok ? (
+    <BuildStudio client:load documentId={paper.id} paperRef={paper.slug} paperTitle={paper.title} initialBuilds={loaded.value} />
+  ) : (
+    <Problem title="The builds could not be loaded." problem={loaded.problem} />
+  )
+}

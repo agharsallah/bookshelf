@@ -1,0 +1,194 @@
+/* A build plan: read as a short document, edited as fields, confirmed in a closing block. */
+.review {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.reviewHead {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+  justify-content: space-between;
+}
+
+.plan {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.summary {
+  margin: 0;
+  max-inline-size: var(--measure);
+  font-family: var(--font-read);
+  font-size: var(--text-md);
+  line-height: var(--leading-read);
+}
+
+.subhead {
+  margin: 0 0 var(--space-2);
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.milestones {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding-inline-start: var(--space-5);
+}
+
+.milestone {
+  display: grid;
+  gap: var(--space-1);
+  padding-inline-start: var(--space-2);
+}
+
+.milestone::marker {
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-variant-numeric: tabular-nums;
+}
+
+.milestoneTitle {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-weight: 650;
+}
+
+.commit {
+  justify-self: start;
+  padding: 0.05rem var(--space-2);
+  border-radius: var(--radius-s);
+  background: var(--paper-sunken);
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+}
+
+.deliverable,
+.doneWhen {
+  margin: 0;
+  max-inline-size: var(--measure);
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  line-height: var(--leading-ui);
+}
+
+.doneWhen span {
+  color: var(--ink-3);
+  font-weight: 650;
+}
+
+.layout {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.layout div {
+  display: grid;
+  grid-template-columns: minmax(10rem, max-content) minmax(0, 1fr);
+  gap: var(--space-3);
+}
+
+.layout dt code {
+  font-family: var(--font-mono);
+}
+
+.layout dd {
+  margin: 0;
+  color: var(--ink-2);
+}
+
+.asides {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: var(--space-4);
+}
+
+.aside ul,
+.questions ul {
+  margin: 0;
+  padding-inline-start: var(--space-4);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  line-height: var(--leading-ui);
+}
+
+.aside ul {
+  color: var(--ink-2);
+}
+
+/* Questions want your eye: the marker's wash behind them. */
+.questions {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-m);
+  background: var(--marker-soft);
+}
+
+.editor,
+.editList {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.editList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.editItem {
+  padding: var(--space-4);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-m);
+}
+
+.replan summary {
+  color: var(--accent);
+  font-family: var(--font-ui);
+  font-size: var(--text-ui);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.replan[open] summary {
+  margin-block-end: var(--space-3);
+}
+
+.confirm {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-m);
+  background: var(--accent-wash);
+}
+
+.facts {
+  margin: 0;
+  padding-inline-start: var(--space-4);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  line-height: var(--leading-ui);
+}
+
+.facts code {
+  font-family: var(--font-mono);
+}
+
+@media (max-width: 40rem) {
+  .layout div {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+}

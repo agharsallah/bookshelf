@@ -36,6 +36,7 @@ export const PAPER_TABS = [
   { key: 'notation', label: 'Notation', types: ['notation_table'] },
   { key: 'review', label: 'Review', types: ['paper_assessment', 'paper_review'] },
   { key: 'club', label: 'Journal club', types: ['journal_club'] },
+  { key: 'build', label: 'Build', types: [] },
 ] as const satisfies readonly PaperTab[];
 
 export type PaperTabKey = (typeof PAPER_TABS)[number]['key'];
