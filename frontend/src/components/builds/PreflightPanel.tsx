@@ -6,12 +6,40 @@
  */
 import { useCallback, useEffect, useState } from 'react';
 import type { ApiClient } from '../../lib/api/client';
-import type { BuildVisibility, Preflight } from '../../lib/api/types/builds';
+import type { BuildVisibility, Preflight, PreflightCheck } from '../../lib/api/types/builds';
 import { preflight } from '../../lib/builds/api';
 import { blocks, failingChecks, fixParts } from '../../lib/builds/plan';
 import { Problem, problemOf, type ProblemInfo } from '../common/Problem';
 import { CopyCommand } from '../papers/CopyCommand';
 import styles from './Form.module.css';
+
+/** Failing checks, errors first, each with its fix; the commands in a fix are copyable. Shared with the repository inspection. */
+export function CheckList({ checks }: { checks: readonly PreflightCheck[] }) {
+  if (checks.length === 0) return null;
+  return (
+    <ul className={styles.checkList}>
+      {checks.map((c) => {
+        const fix = fixParts(c.fix);
+        return (
+          <li key={c.key} className={styles.check} data-level={c.level}>
+            <p className={styles.checkMessage}>
+              <strong>{c.level === 'error' ? 'Needed' : 'Worth knowing'}:</strong> {c.message}
+            </p>
+            {fix.text ? <p className={styles.checkFix}>{fix.text}</p> : null}
+            {fix.commands.map((command) => (
+              <div key={command}>
+                <CopyCommand command={command} />
+                <p className={styles.checkFix}>
+                  Type <code>! {command}</code> in Claude Code, or run it in a terminal.
+                </p>
+              </div>
+            ))}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
 
 export interface PreflightPanelProps {
   api: Pick<ApiClient, 'get'>;
@@ -62,29 +90,7 @@ export function PreflightPanel({ api, document, visibility, recheck = 0, onBlock
       </div>
       {problem ? <Problem inline title="The setup could not be checked." problem={problem} /> : null}
       {result && failing.length === 0 ? <p className={styles.allSet}>All set: nothing stands in the way.</p> : null}
-      {failing.length > 0 ? (
-        <ul className={styles.checkList}>
-          {failing.map((c) => {
-            const fix = fixParts(c.fix);
-            return (
-              <li key={c.key} className={styles.check} data-level={c.level}>
-                <p className={styles.checkMessage}>
-                  <strong>{c.level === 'error' ? 'Needed' : 'Worth knowing'}:</strong> {c.message}
-                </p>
-                {fix.text ? <p className={styles.checkFix}>{fix.text}</p> : null}
-                {fix.commands.map((command) => (
-                  <div key={command}>
-                    <CopyCommand command={command} />
-                    <p className={styles.checkFix}>
-                      Type <code>! {command}</code> in Claude Code, or run it in a terminal.
-                    </p>
-                  </div>
-                ))}
-              </li>
-            );
-          })}
-        </ul>
-      ) : null}
+      <CheckList checks={failing} />
     </section>
   );
 }

@@ -1,0 +1,316 @@
+/*
+ * Where a build lands (§7c): the repository search, the local path, the inspection card
+ * with its folded tree, and the target's notes in the run view.
+ */
+.target {
+  display: grid;
+  gap: var(--space-4);
+  min-inline-size: 0;
+}
+
+.warn {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-inline-start: 3px solid var(--tone-caution);
+  border-radius: var(--radius-s);
+  background: var(--paper-sunken);
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  line-height: var(--leading-ui);
+}
+
+.pathRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-2);
+  align-items: start;
+}
+
+/* The button sits level with the input, under the label. */
+.pathRow > button {
+  margin-block-start: calc(var(--text-ui) * 1.5 + var(--space-1));
+}
+
+/* The repository combobox: a listbox dropping under the input. */
+.combo {
+  position: relative;
+}
+
+.options {
+  position: absolute;
+  inset-block-start: calc(100% + var(--space-1));
+  inset-inline: 0;
+  z-index: 5;
+  max-block-size: 18rem;
+  margin: 0;
+  padding: var(--space-1);
+  overflow: auto;
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-m);
+  background: var(--paper-raised);
+  box-shadow: var(--shadow-pop);
+  list-style: none;
+}
+
+.options[hidden] {
+  display: none;
+}
+
+.option {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0 var(--space-3);
+  align-items: baseline;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-s);
+  cursor: pointer;
+}
+
+.option[aria-selected='true'] {
+  background: var(--accent-wash);
+}
+
+.option[aria-disabled='true'] {
+  color: var(--ink-3);
+  cursor: not-allowed;
+}
+
+.option[aria-disabled='true'] .optionName {
+  color: var(--ink-3);
+}
+
+.optionName {
+  overflow: hidden;
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.optionMeta {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  color: var(--ink-3);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+}
+
+.optionHint {
+  grid-column: 1 / -1;
+  overflow: hidden;
+  color: var(--ink-2);
+  font-size: var(--text-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pill {
+  padding: 0 var(--space-2);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-pill);
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  line-height: 1.6;
+  white-space: nowrap;
+}
+
+.pill[data-tone='caution'] {
+  border-color: var(--tone-caution);
+  color: var(--tone-caution);
+}
+
+.pill[data-tone='accent'] {
+  border-color: var(--accent);
+  background: var(--accent-wash);
+  color: var(--accent-strong);
+  font-weight: 650;
+}
+
+/* The inspection: a quiet card, like preflight's but solid. */
+.inspection {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-m);
+  background: var(--paper);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.inspectionHead {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.inspectionTitle {
+  margin: 0;
+  font-size: var(--text-ui);
+}
+
+.inspectionTitle code {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+
+.blockLabel {
+  color: var(--ink-2);
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.fileRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-3);
+  align-items: center;
+  padding: var(--space-2) var(--space-3);
+}
+
+.fileRow code {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+
+/* The tree: a folded list, a twisty per directory, your folder in the accent. */
+.tree,
+.subtree {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tree {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-m);
+  background: var(--paper-raised);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+
+.subtree {
+  grid-column: 2 / -1;
+  margin-inline-start: var(--space-1);
+  padding-inline-start: var(--space-3);
+  border-inline-start: 1px solid var(--rule);
+}
+
+.treeItem {
+  display: grid;
+  grid-template-columns: 1.25rem minmax(0, 1fr);
+  gap: 0 var(--space-1);
+  align-items: center;
+  padding-block: 0.1rem;
+}
+
+.subtree .treeItem {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.twisty,
+.twistySpace {
+  inline-size: 1.25rem;
+  block-size: 1.25rem;
+}
+
+.twisty {
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-s);
+  background: transparent;
+  cursor: pointer;
+}
+
+/* A chevron drawn with two borders, as in the disclosures. */
+.twisty::before {
+  content: '';
+  inline-size: 0.4rem;
+  block-size: 0.4rem;
+  border-block-end: 2px solid var(--ink-3);
+  border-inline-end: 2px solid var(--ink-3);
+  transform: rotate(-45deg);
+  transition: transform var(--dur-2) var(--ease-out);
+}
+
+.twisty[aria-expanded='true']::before {
+  transform: rotate(45deg);
+}
+
+.twisty:hover {
+  background: var(--paper-sunken);
+}
+
+.twisty:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+.entry {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  min-inline-size: 0;
+  color: var(--ink-2);
+}
+
+.entryName {
+  overflow-wrap: anywhere;
+}
+
+.entry[data-mark] .entryName {
+  color: var(--ink);
+}
+
+.entry[data-mark='target'] .entryName {
+  color: var(--accent-strong);
+  font-weight: 650;
+}
+
+.entry[data-ghost] .entryName {
+  font-style: italic;
+}
+
+/* The run view: where it went, and the local branch to switch to. */
+.where {
+  color: var(--ink-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+
+.branchNote {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-inline-start: 3px solid var(--tone-insight);
+  border-radius: var(--radius-s);
+  background: var(--paper-sunken);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.branchNote p {
+  margin: 0;
+  line-height: var(--leading-ui);
+}
+
+.branchNote code {
+  font-family: var(--font-mono);
+}
+
+@media (max-width: 40rem) {
+  .optionMeta > :last-child {
+    display: none;
+  }
+}

@@ -5,6 +5,7 @@
 import type { BuildAdvanced, BuildCreate, BuildDefaults, BuildOptions, BuildPreset, BuildReference, BuildStops, BuildVisibility, ContextSectionKey } from '../api/types/builds';
 import { advancedBaseline, advancedDefaultsOf, advancedOut, validateAdvanced, type AdvancedField } from './advanced';
 import { CONTEXT_LIMITS, contextOptions, referencesOut, validateReferences } from './context';
+import { advancedFor, defaultTarget, targetOut, validateTarget, visibilityFor, type TargetDraft, type TargetField } from './target';
 
 /** The backend's limits, mirrored so the form can say what is wrong before sending. */
 export const LIMITS = {
@@ -63,6 +64,8 @@ export interface BuildDraft {
   notes: string;
   references: BuildReference[];
   advanced: BuildAdvanced;
+  /** Where it lands (§7c): a new repository, or a folder of one you have. */
+  target: TargetDraft;
 }
 
 /** A repository name out of a paper's title: `attention-is-all-you-need`. */
@@ -77,7 +80,7 @@ export function suggestRepoName(title: string): string {
   return cut || 'paper-build';
 }
 
-/** The form before any preset: your settings' defaults and a suggested repo name. */
+/** The form before any preset: your settings' defaults and a suggested repo name (the paper's slug, which also names the folder an existing repository would get). */
 export function initialDraft(defaults: BuildDefaults, repoName: string): BuildDraft {
   return {
     preset: null,
@@ -97,6 +100,7 @@ export function initialDraft(defaults: BuildDefaults, repoName: string): BuildDr
     notes: '',
     references: [],
     advanced: advancedBaseline(defaults.advanced),
+    target: defaultTarget(repoName),
   };
 }
 
@@ -121,7 +125,7 @@ export function applyPreset(draft: BuildDraft, preset: BuildPreset | null, defau
   };
 }
 
-export type DraftField = 'goal' | 'repoName' | 'maxMinutes' | 'maxCommits' | 'maxBudget' | 'doneWhen' | 'notes' | 'references' | AdvancedField;
+export type DraftField = 'goal' | 'repoName' | 'maxMinutes' | 'maxCommits' | 'maxBudget' | 'doneWhen' | 'notes' | 'references' | AdvancedField | TargetField;
 export type DraftErrors = Partial<Record<DraftField, string>>;
 
 const inRange = (n: number, min: number, max: number) => Number.isFinite(n) && n >= min && n <= max;
@@ -172,12 +176,12 @@ export function validateDraft(draft: BuildDraft): DraftErrors {
   const goal = draft.goal.trim().length;
   if (goal < LIMITS.goal.min) errors.goal = `Say a little more: at least ${LIMITS.goal.min} characters.`;
   else if (goal > LIMITS.goal.max) errors.goal = `At most ${LIMITS.goal.max} characters.`;
-  const repo = validateRepoName(draft.repoName);
+  const repo = draft.target.kind === 'new' ? validateRepoName(draft.repoName) : null;
   if (repo) errors.repoName = repo;
   if (draft.notes.length > CONTEXT_LIMITS.notes) errors.notes = `At most ${CONTEXT_LIMITS.notes} characters.`;
   const references = validateReferences(draft.references);
   if (references) errors.references = references;
-  return { ...errors, ...validateAdvanced(draft.advanced) };
+  return { ...errors, ...validateAdvanced(draft.advanced), ...validateTarget(draft.target) };
 }
 
 export function stopsOf(draft: Pick<BuildDraft, 'maxMinutes' | 'maxCommits' | 'maxBudget' | 'doneWhen'>): BuildStops {
@@ -197,19 +201,26 @@ export function createBody(draft: BuildDraft): BuildCreate {
   return { goal: draft.goal.trim(), preset: draft.preset, options: optionsOf(draft), stops: stopsOf(draft) };
 }
 
-/** The options as sent, on create and to render the context preview (the full advanced object, explicitly). */
+/**
+ * The options as sent, on create and to render the context preview (the full advanced
+ * object, explicitly). Into an existing repository: no repo name, the target's visibility
+ * and delivery, and `target`; for a new one `target` is left out.
+ */
 export function optionsOf(draft: BuildDraft): BuildOptions {
+  const target = targetOut(draft.target);
+  const visibility = visibilityFor(draft.target.kind, draft.visibility);
   return {
-    repo_name: draft.repoName.trim(),
-    visibility: draft.visibility,
-    owner: draft.owner?.trim() || null,
+    repo_name: target ? null : draft.repoName.trim(),
+    visibility,
+    owner: target ? null : draft.owner?.trim() || null,
     claude_attribution: draft.claudeAttribution,
     link_paper: draft.linkPaper,
     stack: draft.stack.trim() || null,
     allow_web: draft.allowWeb,
     context: contextOptions(draft.sectionsOff, draft.notes),
     references: referencesOut(draft.references),
-    advanced: advancedOut(draft.advanced, draft.visibility),
+    advanced: advancedOut(advancedFor(draft.target, draft.advanced), visibility),
+    ...(target ? { target } : {}),
   };
 }
 

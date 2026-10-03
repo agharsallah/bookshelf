@@ -22,6 +22,7 @@ import {
   validateTopic,
   type AdvancedErrors,
 } from '../../lib/builds/advanced';
+import { repoFieldsFor, type RepoFields } from '../../lib/builds/target';
 import { Check, Segmented } from '../settings/Controls';
 import styles from './Context.module.css';
 import { ChipsInput, Counter, Disclosure } from './Disclosure';
@@ -32,6 +33,8 @@ export interface AdvancedPanelProps {
   advanced: BuildAdvanced;
   allowWeb: boolean;
   visibility: BuildVisibility;
+  /** Which repository options apply (an existing repository keeps its license, description and topics, and picks its delivery under Where). */
+  repoFields?: RepoFields;
   /** Where a new build starts: the reset target and what "changed" counts against. */
   baseline: BuildAdvanced;
   /** The chosen preset's toolchains, what *Auto* means. */
@@ -51,10 +54,68 @@ function Setting({ label, hint, children }: { label: string; hint: string; child
   );
 }
 
-export function AdvancedPanel({ advanced, allowWeb, visibility, baseline, presetToolchains, errors, onChange }: AdvancedPanelProps) {
+interface RepositoryGroupProps {
+  advanced: BuildAdvanced;
+  visibility: BuildVisibility;
+  shown: RepoFields;
+  errors: AdvancedErrors;
+  set: (patch: Partial<BuildAdvanced>) => void;
+}
+
+/** License, delivery, push, description, topics: those that apply to where the build lands. */
+function RepositoryGroup({ advanced, visibility, shown, errors, set }: RepositoryGroupProps) {
+  const local = visibility === 'local';
+  return (
+    <fieldset className={styles.group}>
+      <legend className={fields.legend}>Repository</legend>
+      {shown.license ? (
+        <Setting label="License" hint="Adds a LICENSE file to the repository.">
+          <Segmented label="License" value={advanced.license} options={LICENSE_OPTIONS} onChange={(license) => set({ license })} />
+        </Setting>
+      ) : null}
+      {shown.delivery ? (
+        <Setting
+          label="Delivery"
+          hint={local ? 'A pull request needs GitHub: a local build commits on main.' : 'A pull request works on build/<repo> and opens the PR at the end, for you to review and merge.'}
+        >
+          <Segmented
+            label="Delivery"
+            value={effectiveDelivery(advanced.delivery, visibility)}
+            options={DELIVERY_OPTIONS.map((o) => ({ ...o, disabled: local && o.value === 'pull_request' }))}
+            onChange={(delivery) => set({ delivery })}
+          />
+        </Setting>
+      ) : null}
+      {shown.push ? (
+        <Setting label="Push" hint="Each commit: GitHub follows the run live. At the end: one push when it stops.">
+          <Segmented label="Push" value={advanced.push} options={PUSH_OPTIONS} onChange={(push) => set({ push })} />
+        </Setting>
+      ) : null}
+      {shown.description ? (
+        <Field label="Description" hint="The GitHub description. Blank: the plan's summary." error={errors.description}>
+          <input className={fields.input} maxLength={ADVANCED_LIMITS.description} value={advanced.description ?? ''} onChange={(e) => set({ description: e.target.value })} />
+        </Field>
+      ) : null}
+      {shown.topics ? (
+        <ChipsInput
+          label="Topics"
+          hint="GitHub topics, to find the repository again."
+          placeholder="transformers"
+          values={advanced.topics}
+          max={ADVANCED_LIMITS.topics.count}
+          validate={validateTopic}
+          error={errors.topics}
+          onChange={(topics) => set({ topics })}
+        />
+      ) : null}
+    </fieldset>
+  );
+}
+
+export function AdvancedPanel({ advanced, allowWeb, visibility, repoFields = repoFieldsFor('new'), baseline, presetToolchains, errors, onChange }: AdvancedPanelProps) {
+  const anyRepo = Object.values(repoFields).some(Boolean);
   const set = (patch: Partial<BuildAdvanced>) => onChange({ advanced: { ...advanced, ...patch } });
   const changed = changedCount(advanced, allowWeb, baseline);
-  const local = visibility === 'local';
   const auto = presetToolchains.length ? presetToolchains.join(', ') : 'inferred from the stack';
   const toggleChain = (chain: BuildToolchain) => {
     const current = advanced.toolchains ?? BUILD_TOOLCHAINS.filter((c) => presetToolchains.includes(c));
@@ -63,7 +124,7 @@ export function AdvancedPanel({ advanced, allowWeb, visibility, baseline, preset
   };
 
   return (
-    <Disclosure title="Advanced" meta="Model · Tools · Workflow · Repository" badge={changed ? `${changed} changed` : null} forceOpen={Boolean(errors.extraCommands ?? errors.instructions ?? errors.description ?? errors.topics)}>
+    <Disclosure title="Advanced" meta={anyRepo ? 'Model · Tools · Workflow · Repository' : 'Model · Tools · Workflow'} badge={changed ? `${changed} changed` : null} forceOpen={Boolean(errors.extraCommands ?? errors.instructions ?? errors.description ?? errors.topics)}>
       <div className={styles.advancedHead}>
         <p className={styles.lede}>For when you know what you want. Every default here is safe; your settings choose most of them.</p>
         <button type="button" className="btn btn-quiet" disabled={changed === 0} onClick={() => onChange({ advanced: baseline, allowWeb: false })}>
@@ -139,39 +200,7 @@ export function AdvancedPanel({ advanced, allowWeb, visibility, baseline, preset
         <Counter length={(advanced.instructions ?? '').length} max={ADVANCED_LIMITS.instructions} />
       </fieldset>
 
-      <fieldset className={styles.group}>
-        <legend className={fields.legend}>Repository</legend>
-        <Setting label="License" hint="Adds a LICENSE file to the repository.">
-          <Segmented label="License" value={advanced.license} options={LICENSE_OPTIONS} onChange={(license) => set({ license })} />
-        </Setting>
-        <Setting
-          label="Delivery"
-          hint={local ? 'A pull request needs GitHub: a local build commits on main.' : 'A pull request works on build/<repo> and opens the PR at the end, for you to review and merge.'}
-        >
-          <Segmented
-            label="Delivery"
-            value={effectiveDelivery(advanced.delivery, visibility)}
-            options={DELIVERY_OPTIONS.map((o) => ({ ...o, disabled: local && o.value === 'pull_request' }))}
-            onChange={(delivery) => set({ delivery })}
-          />
-        </Setting>
-        <Setting label="Push" hint="Each commit: GitHub follows the run live. At the end: one push when it stops.">
-          <Segmented label="Push" value={advanced.push} options={PUSH_OPTIONS} onChange={(push) => set({ push })} />
-        </Setting>
-        <Field label="Description" hint="The GitHub description. Blank: the plan's summary." error={errors.description}>
-          <input className={fields.input} maxLength={ADVANCED_LIMITS.description} value={advanced.description ?? ''} onChange={(e) => set({ description: e.target.value })} />
-        </Field>
-        <ChipsInput
-          label="Topics"
-          hint="GitHub topics, to find the repository again."
-          placeholder="transformers"
-          values={advanced.topics}
-          max={ADVANCED_LIMITS.topics.count}
-          validate={validateTopic}
-          error={errors.topics}
-          onChange={(topics) => set({ topics })}
-        />
-      </fieldset>
+      {anyRepo ? <RepositoryGroup advanced={advanced} visibility={visibility} shown={repoFields} errors={errors} set={set} /> : null}
     </Disclosure>
   );
 }

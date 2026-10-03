@@ -1,7 +1,9 @@
 /**
  * A new build: pick a preset (or say it yourself), the goal, what done looks like, the
- * limits and where the repository goes. Preflight runs alongside and holds the submit
- * button while a required check fails. Submitting queues the plan (`POST /papers/{ref}/builds`).
+ * limits and where it goes: a new repository, or a folder of one you have (§7c). Preflight
+ * runs alongside and holds the submit button while a required check fails; so does an
+ * existing repository until its inspection is clean. Submitting queues the plan
+ * (`POST /papers/{ref}/builds`).
  */
 import { useEffect, useState, type FormEvent } from 'react';
 import { ApiError, browserApi, type ApiClient } from '../../lib/api/client';
@@ -9,22 +11,9 @@ import type { BuildDefaults, BuildPreset, BuildPublic } from '../../lib/api/type
 import type { SettingsPublic } from '../../lib/api/types/settings';
 import { advancedBaseline } from '../../lib/builds/advanced';
 import { createBuild, listPresets } from '../../lib/builds/api';
-import {
-  applyPreset,
-  createBody,
-  FALLBACK_DEFAULTS,
-  GOAL_EXAMPLES,
-  initialDraft,
-  LIMITS,
-  optionsOf,
-  suggestRepoName,
-  validateDraft,
-  VISIBILITY_OPTIONS,
-  type BuildDraft,
-  type DraftErrors,
-} from '../../lib/builds/form';
+import { applyPreset, createBody, FALLBACK_DEFAULTS, GOAL_EXAMPLES, initialDraft, LIMITS, optionsOf, suggestRepoName, validateDraft, type BuildDraft, type DraftErrors } from '../../lib/builds/form';
+import { defaultTarget, repoFieldsFor, visibilityFor } from '../../lib/builds/target';
 import { Problem, problemOf, type ProblemInfo } from '../common/Problem';
-import { Check, Segmented } from '../settings/Controls';
 import { AdvancedPanel } from './AdvancedPanel';
 import { ContextPanel } from './ContextPanel';
 import { Field } from './Field';
@@ -33,6 +22,11 @@ import styles from './Form.module.css';
 import { DoneWhenEditor, LimitsFields } from './LimitsFields';
 import { PreflightPanel } from './PreflightPanel';
 import { PresetPicker } from './PresetPicker';
+import { RepositoryFields } from './RepositoryFields';
+import { useTarget } from './useTarget';
+
+/** What the target hook watches before the form is ready. */
+const NO_TARGET = defaultTarget('');
 
 export interface BuildFormProps {
   /** The paper's id or slug (preflight and the create route take either). */
@@ -41,9 +35,12 @@ export interface BuildFormProps {
   onCreated: (build: BuildPublic) => void;
   onCancel?: () => void;
   api?: Pick<ApiClient, 'get' | 'post'>;
+  /** Debounces for the repository inspection and search (tests pass 0). */
+  inspectDelayMs?: number;
+  searchDelayMs?: number;
 }
 
-export function BuildForm({ paperRef, paperTitle, onCreated, onCancel, api = browserApi }: BuildFormProps) {
+export function BuildForm({ paperRef, paperTitle, onCreated, onCancel, api = browserApi, inspectDelayMs, searchDelayMs }: BuildFormProps) {
   const [defaults, setDefaults] = useState<BuildDefaults | null>(null);
   const [presets, setPresets] = useState<BuildPreset[]>([]);
   const [draft, setDraft] = useState<BuildDraft | null>(null);
@@ -52,6 +49,7 @@ export function BuildForm({ paperRef, paperTitle, onCreated, onCancel, api = bro
   const [recheck, setRecheck] = useState(0);
   const [sending, setSending] = useState(false);
   const [problem, setProblem] = useState<ProblemInfo | null>(null);
+  const target = useTarget(api, draft?.target ?? NO_TARGET, inspectDelayMs);
 
   useEffect(() => {
     let live = true;
@@ -74,6 +72,8 @@ export function BuildForm({ paperRef, paperTitle, onCreated, onCancel, api = bro
   if (!draft || !defaults) return <p className={fields.status}>Getting the form ready…</p>;
 
   const set = (patch: Partial<BuildDraft>) => setDraft({ ...draft, ...patch });
+  const visibility = visibilityFor(draft.target.kind, draft.visibility);
+  const held = blocked || target.hold !== null;
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -133,25 +133,7 @@ export function BuildForm({ paperRef, paperTitle, onCreated, onCancel, api = bro
         <LimitsFields value={draft} errors={errors} onChange={set} />
       </fieldset>
 
-      <fieldset className={fields.fieldset}>
-        <legend className={fields.legend}>Repository</legend>
-        <Field label="Name" hint="Leave it blank to let the planner suggest one." error={errors.repoName}>
-          <input className={`${fields.input} ${fields.mono}`} maxLength={LIMITS.repoName.max} value={draft.repoName} onChange={(e) => set({ repoName: e.target.value })} />
-        </Field>
-        <div className={styles.segmentRow}>
-          <span className={fields.label}>Where</span>
-          <Segmented label="Visibility" value={draft.visibility} options={VISIBILITY_OPTIONS} onChange={(visibility) => set({ visibility })} />
-        </div>
-        <div className={styles.checks}>
-          <Check
-            label="Credit Claude in commits"
-            hint="A Co-Authored-By trailer on each commit."
-            checked={draft.claudeAttribution}
-            onChange={(claudeAttribution) => set({ claudeAttribution })}
-          />
-          <Check label="Name the paper in the README" checked={draft.linkPaper} onChange={(linkPaper) => set({ linkPaper })} />
-        </div>
-      </fieldset>
+      <RepositoryFields api={api} draft={draft} errors={errors} target={target} onChange={set} searchDelayMs={searchDelayMs} />
 
       <div className={styles.disclosures}>
         <ContextPanel
@@ -168,7 +150,8 @@ export function BuildForm({ paperRef, paperTitle, onCreated, onCancel, api = bro
         <AdvancedPanel
           advanced={draft.advanced}
           allowWeb={draft.allowWeb}
-          visibility={draft.visibility}
+          visibility={visibility}
+          repoFields={repoFieldsFor(draft.target.kind, draft.target.pushBranch)}
           baseline={advancedBaseline(defaults.advanced)}
           presetToolchains={presets.find((p) => p.key === draft.preset)?.toolchains ?? []}
           errors={errors}
@@ -176,11 +159,11 @@ export function BuildForm({ paperRef, paperTitle, onCreated, onCancel, api = bro
         />
       </div>
 
-      <PreflightPanel api={api} document={paperRef} visibility={draft.visibility} recheck={recheck} onBlocked={setBlocked} />
+      <PreflightPanel api={api} document={paperRef} visibility={visibility} recheck={recheck} onBlocked={setBlocked} />
 
       {problem ? <Problem inline title="The build was not started." problem={problem} /> : null}
       <div className={fields.actions}>
-        <button type="submit" className="btn btn-primary" disabled={blocked || sending}>
+        <button type="submit" className="btn btn-primary" disabled={held || sending}>
           {sending ? 'Sending…' : 'Draft the plan'}
         </button>
         {onCancel ? (
@@ -188,7 +171,7 @@ export function BuildForm({ paperRef, paperTitle, onCreated, onCancel, api = bro
             Cancel
           </button>
         ) : null}
-        {blocked ? <span className={fields.hint}>Fix what is needed above first.</span> : null}
+        {held ? <span className={fields.hint}>{target.hold ?? 'Fix what is needed above first.'}</span> : null}
       </div>
     </form>
   );
