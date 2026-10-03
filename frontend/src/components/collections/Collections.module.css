@@ -197,29 +197,58 @@
   gap: var(--space-4);
 }
 
+/* The trail: one line runs down through the stations, inked as far as you have read. */
 .members {
   display: grid;
   margin: 0;
   padding: 0;
   list-style: none;
-  border-block-start: 1px solid var(--rule);
 }
 
 .member {
+  --station: 2.25rem;
+  position: relative;
   display: grid;
-  grid-template-columns: 2.25rem minmax(0, 1fr) auto;
-  gap: var(--space-3);
-  padding-block: var(--space-4);
-  border-block-end: 1px solid var(--rule);
+  grid-template-columns: var(--station) minmax(0, 1fr) auto;
+  gap: var(--space-4);
+  padding-block: var(--space-3);
+}
+
+.member::before {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: calc(var(--station) / 2 - 1px);
+  inline-size: 2px;
+  background: var(--rule);
+}
+
+.member[data-done]::before {
+  background: var(--genre);
+}
+
+.member:first-child::before {
+  inset-block-start: calc(var(--space-3) + var(--station) / 2);
+}
+
+.member:last-child::before {
+  inset-block-end: auto;
+  block-size: calc(var(--space-3) + var(--station) / 2);
+}
+
+.member:only-child::before {
+  display: none;
 }
 
 .step {
+  position: relative;
   display: grid;
   place-items: center;
-  inline-size: 2rem;
-  block-size: 2rem;
+  inline-size: var(--station);
+  block-size: var(--station);
   border: 2px solid var(--genre);
   border-radius: 50%;
+  background: var(--paper);
   color: var(--genre);
   font-family: var(--font-ui);
   font-size: var(--text-sm);
@@ -227,15 +256,34 @@
   font-variant-numeric: tabular-nums;
 }
 
-.member[data-next] .step {
+.member[data-done] .step {
   background: var(--genre);
   color: var(--paper);
+}
+
+/* Up next: the station ringed in highlighter, its card lifted off the desk as a sheet. */
+.member[data-next] .step {
+  box-shadow:
+    0 0 0 3px var(--paper),
+    0 0 0 7px var(--marker);
 }
 
 .body {
   display: grid;
   gap: var(--space-1);
   min-inline-size: 0;
+  padding: var(--space-2) 0;
+}
+
+.member[data-next] .body {
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-l);
+  background: var(--paper-raised);
+  box-shadow: var(--shadow-lift);
+}
+
+.member[data-next] .title {
+  font-size: var(--text-lg);
 }
 
 .kicker {
@@ -269,7 +317,19 @@
 .title {
   font-family: var(--font-read);
   font-size: var(--text-md);
-  font-weight: 500;
+  font-weight: 560;
+  letter-spacing: -0.015em;
+  line-height: var(--leading-tight);
+}
+
+.title a {
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.title a:hover {
+  text-decoration: underline;
+  text-decoration-color: var(--genre);
 }
 
 .authors {
@@ -310,7 +370,10 @@
   margin-block-start: var(--space-1);
 }
 
+/* Your note on why it is here, written in the margin with the genre's pen. */
 .note p {
+  padding-inline-start: var(--space-3);
+  border-inline-start: 2px solid var(--genre);
   color: var(--ink-2);
   font-family: var(--font-read);
   font-style: italic;
@@ -325,6 +388,17 @@
   display: flex;
   gap: var(--space-1);
   align-items: flex-start;
+}
+
+.tools {
+  padding-block-start: var(--space-2);
+  opacity: 0.55;
+  transition: opacity var(--dur-1) var(--ease-out);
+}
+
+.member:hover .tools,
+.tools:focus-within {
+  opacity: 1;
 }
 
 .tools button {
@@ -348,10 +422,29 @@
   cursor: default;
 }
 
+/* The trail's open end: an empty dashed station where the next document goes. */
 .adder {
+  position: relative;
   display: grid;
   gap: var(--space-2);
-  max-inline-size: 32rem;
+  max-inline-size: calc(32rem + 2.25rem + var(--space-4));
+  padding-inline-start: calc(2.25rem + var(--space-4));
+}
+
+.adder::before {
+  content: '+';
+  position: absolute;
+  inset-inline-start: 0;
+  inset-block-start: 0;
+  display: grid;
+  place-items: center;
+  inline-size: 2.25rem;
+  block-size: 2.25rem;
+  border: 2px dashed var(--rule-strong);
+  border-radius: 50%;
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-weight: 600;
 }
 
 .matches {
@@ -385,7 +478,15 @@
 
 @media (max-width: 40rem) {
   .member {
-    grid-template-columns: 2.25rem minmax(0, 1fr);
+    grid-template-columns: var(--station) minmax(0, 1fr);
+  }
+
+  .member[data-next] .body {
+    padding: var(--space-3);
+  }
+
+  .tools {
+    opacity: 1;
   }
 
   .tools {

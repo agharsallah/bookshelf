@@ -105,9 +105,15 @@ export function CollectionPath({ collection, members: initial, shelf, api = brow
       ) : (
         <ol className={styles.members}>
           {members.map((m, index) => (
-            <li key={m.id} className={styles.member} data-genre={m.genre} data-next={m.id === next ? '' : undefined}>
+            <li
+              key={m.id}
+              className={styles.member}
+              data-genre={m.genre}
+              data-next={m.id === next ? '' : undefined}
+              data-done={memberShare(m) >= 1 ? '' : undefined}
+            >
               <span className={styles.step} aria-hidden="true">
-                {index + 1}
+                {memberShare(m) >= 1 ? '✓' : index + 1}
               </span>
               <div className={styles.body}>
                 <p className={styles.kicker}>

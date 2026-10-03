@@ -47,6 +47,13 @@ describe('<CollectionPath>', () => {
     expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual(['PUT documents/lora/reading/finished', 'DELETE documents/lora/reading/finished']);
   });
 
+  it('inks the trail through finished members only, a hand mark counting as finished', () => {
+    render(<CollectionPath collection="ft" members={[entry(lora, 1), entry(book, 0.4, true), entry(post, 0.5)]} shelf={[]} api={fakeApi().api} />);
+
+    const done = screen.getAllByRole('listitem').map((li) => li.hasAttribute('data-done'));
+    expect(done).toEqual([true, true, false]);
+  });
+
   it('offers no mark on a member its positions already finish', () => {
     render(<CollectionPath collection="ft" members={[entry(lora, 1)]} shelf={[]} api={fakeApi().api} />);
     expect(screen.queryByRole('button', { name: /Mark LoRA/ })).toBeNull();
