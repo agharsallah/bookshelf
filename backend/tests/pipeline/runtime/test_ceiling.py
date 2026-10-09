@@ -144,6 +144,25 @@ def test_a_run_the_usage_limit_refused_does_not_count(
     assert ceiling.count_runs(session, book.id, SKILL_JOB_KINDS) == 0
 
 
+def test_a_call_that_never_reached_the_model_does_not_count(
+    session: Session, book: Document, make_job, skills_dir: Path
+):
+    """A refused call (an error envelope with no API time) did no work: a run of them must
+    not pause the document and fail its jobs before they ever ran."""
+
+    def refused(prompt: str) -> str:
+        raise RunnerError("claude exited with 1: refused", reached_model=False)
+
+    job = make_job(JobKind.SUMMARIZE, book, "ch01")
+    queue.claim(session)
+    session.refresh(job)
+    with pytest.raises(RunnerError):
+        execute_skill_job(session, job, runner=FakeRunner(refused), skills_dir=skills_dir)
+    session.rollback()
+
+    assert ceiling.count_runs(session, book.id, SKILL_JOB_KINDS) == 0
+
+
 def test_a_paused_document_gets_no_dedup_model_calls(session: Session, book: Document):
     book.meta = {"paused": {"reason": "ceiling", "runs": 1, "limit": 1}}
     session.add(book)

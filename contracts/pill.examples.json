@@ -1,0 +1,1141 @@
+{
+  "$comment": "One valid pill per kind (contracts/pill.schema.json) and one body per pills API response (docs/PILLS.md §7); backend and frontend tests use them as fixtures, so the Pydantic models and the TS types cannot drift apart.",
+  "examples": {
+    "insight": {
+      "id": "00000000-0000-0000-0000-000000001001",
+      "kind": "insight",
+      "document": {
+        "id": "6f1c2a7e-3b4d-4c5e-8f90-1a2b3c4d5e6f",
+        "slug": "okafor-queueing",
+        "title": "Queueing for Managers",
+        "genre": "book",
+        "theme": "Operations"
+      },
+      "anchor": "ch03",
+      "unit_title": "Busy Is Not Fast",
+      "headline": null,
+      "body": {
+        "spans": [
+          {
+            "text": "Busyness is not productivity: beyond about 80% utilization, each extra percent of load buys a disproportionate amount of waiting.",
+            "cites": [
+              "ch03/s01/p004"
+            ]
+          }
+        ],
+        "why": [
+          {
+            "text": "The chapter's thesis: the rest of it measures how steep that curve gets.",
+            "cites": [
+              "ch03/s01/p004"
+            ]
+          }
+        ]
+      },
+      "cites": [
+        "ch03/s01/p004"
+      ],
+      "sources": {
+        "ch03/s01/p004": {
+          "document": {
+            "id": "6f1c2a7e-3b4d-4c5e-8f90-1a2b3c4d5e6f",
+            "slug": "okafor-queueing",
+            "title": "Queueing for Managers"
+          },
+          "anchor": "ch03/s01/p004"
+        }
+      },
+      "concepts": [
+        "utilization"
+      ],
+      "thread": null,
+      "est_seconds": 12,
+      "origin": "harvest:salience_marks",
+      "draft": false,
+      "review_item_id": null
+    },
+    "remember": {
+      "id": "00000000-0000-0000-0000-000000001002",
+      "kind": "remember",
+      "document": {
+        "id": "6f1c2a7e-3b4d-4c5e-8f90-1a2b3c4d5e6f",
+        "slug": "okafor-queueing",
+        "title": "Queueing for Managers",
+        "genre": "book",
+        "theme": "Operations"
+      },
+      "anchor": "ch03",
+      "unit_title": "Busy Is Not Fast",
+      "headline": null,
+      "body": {
+        "spans": [
+          {
+            "text": "Keep 15 to 20 percent of capacity unallocated for the work nobody can predict.",
+            "cites": [
+              "ch03/s03/p006"
+            ]
+          }
+        ]
+      },
+      "cites": [
+        "ch03/s03/p006"
+      ],
+      "sources": {
+        "ch03/s03/p006": {
+          "document": {
+            "id": "6f1c2a7e-3b4d-4c5e-8f90-1a2b3c4d5e6f",
+            "slug": "okafor-queueing",
+            "title": "Queueing for Managers"
+          },
+          "anchor": "ch03/s03/p006"
+        }
+      },
+      "concepts": [],
+      "thread": null,
+      "est_seconds": 8,
+      "origin": "harvest:chapter_distillation",
+      "draft": false,
+      "review_item_id": null
+    },
+    "antipattern": {
+      "id": "00000000-0000-0000-0000-000000001003",
+      "kind": "antipattern",
+      "document": {
+        "id": "6f1c2a7e-3b4d-4c5e-8f90-1a2b3c4d5e6f",
+        "slug": "okafor-queueing",
+        "title": "Queueing for Managers",
+        "genre": "book",
+        "theme": "Operations"
+      },
+      "anchor": "ch03",
+      "unit_title": "Busy Is Not Fast",
+      "headline": null,
+      "body": {
+        "spans": [
+          {
+            "text": "Planning to 100% capacity: unplanned work has nowhere to go, so queues are guaranteed.",
+            "cites": [
+              "ch03/s03/p002"
+            ]
+          }
+        ]
+      },
+      "cites": [
+        "ch03/s03/p002"
+      ],
+      "sources": {
+        "ch03/s03/p002": {
+          "document": {
+            "id": "6f1c2a7e-3b4d-4c5e-8f90-1a2b3c4d5e6f",
+            "slug": "okafor-queueing",
+            "title": "Queueing for Managers"
+          },
+          "anchor": "ch03/s03/p002"
+        }
+      },
+      "concepts": [],
+      "thread": null,
+      "est_seconds": 8,
+      "origin": "harvest:chapter_distillation",
+      "draft": true,
+      "review_item_id": null
+    },
+    "quote": {
+      "id": "00000000-0000-0000-0000-000000001004",
+      "kind": "quote",
+      "document": {
+        "id": "6f1c2a7e-3b4d-4c5e-8f90-1a2b3c4d5e6f",
+        "slug": "okafor-queueing",
+        "title": "Queueing for Managers",
+        "genre": "book",
+        "theme": "Operations"
+      },
+      "anchor": "ch03",
+      "unit_title": "Busy Is Not Fast",
+      "headline": null,
+      "body": {
+        "text": "If waiting is the price of busyness, slack is not waste. It is capacity held in reserve for the work you cannot predict.",
+        "page": 73,
+        "attribution": "Ines Okafor"
+      },
+      "cites": [
+        "ch03/s03/p001"
+      ],
+      "sources": {
+        "ch03/s03/p001": {
+          "document": {
+            "id": "6f1c2a7e-3b4d-4c5e-8f90-1a2b3c4d5e6f",
+            "slug": "okafor-queueing",
+            "title": "Queueing for Managers"
+          },
+          "anchor": "ch03/s03/p001"
+        }
+      },
+      "concepts": [],
+      "thread": null,
+      "est_seconds": 8,
+      "origin": "harvest:quote_set",
+      "draft": false,
+      "review_item_id": null
+    },
+    "definition": {
+      "id": "00000000-0000-0000-0000-000000001005",
+      "kind": "definition",
+      "document": {
+        "id": "6f1c2a7e-3b4d-4c5e-8f90-1a2b3c4d5e6f",
+        "slug": "okafor-queueing",
+        "title": "Queueing for Managers",
+        "genre": "book",
+        "theme": "Operations"
+      },
+      "anchor": "ch06",
+      "unit_title": "Flow",
+      "headline": null,
+      "body": {
+        "term": "flow efficiency",
+        "spans": [
+          {
+            "text": "The share of an item's elapsed time during which someone is actually working on it.",
+            "cites": [
+              "ch06/s02/p001"
+            ]
+          }
+        ]
+      },
+      "cites": [
+        "ch06/s02/p001"
+      ],
+      "sources": {
+        "ch06/s02/p001": {
+          "document": {
+            "id": "6f1c2a7e-3b4d-4c5e-8f90-1a2b3c4d5e6f",
+            "slug": "okafor-queueing",
+            "title": "Queueing for Managers"
+          },
+          "anchor": "ch06/s02/p001"
+        }
+      },
+      "concepts": [
+        "flow efficiency"
+      ],
+      "thread": null,
+      "est_seconds": 8,
+      "origin": "harvest:glossary",
+      "draft": false,
+      "review_item_id": null
+    },
+    "number": {
+      "id": "00000000-0000-0000-0000-000000001006",
+      "kind": "number",
+      "document": {
+        "id": "6f1c2a7e-3b4d-4c5e-8f90-1a2b3c4d5e6f",
+        "slug": "okafor-queueing",
+        "title": "Queueing for Managers",
+        "genre": "book",
+        "theme": "Operations"
+      },
+      "anchor": "ch03",
+      "unit_title": "Busy Is Not Fast",
+      "headline": null,
+      "body": {
+        "value": "~9×",
+        "label": [
+          {
+            "text": "Wait relative to service time at 90% utilization",
+            "cites": [
+              "ch03/s01/f001"
+            ]
+          }
+        ]
+      },
+      "cites": [
+        "ch03/s01/f001"
+      ],
+      "sources": {
+        "ch03/s01/f001": {
+          "document": {
+            "id": "6f1c2a7e-3b4d-4c5e-8f90-1a2b3c4d5e6f",
+            "slug": "okafor-queueing",
+            "title": "Queueing for Managers"
+          },
+          "anchor": "ch03/s01/f001"
+        }
+      },
+      "concepts": [],
+      "thread": null,
+      "est_seconds": 8,
+      "origin": "harvest:book_guide",
+      "draft": false,
+      "review_item_id": null
+    },
+    "figure": {
+      "id": "00000000-0000-0000-0000-000000001007",
+      "kind": "figure",
+      "document": {
+        "id": "6f1c2a7e-3b4d-4c5e-8f90-1a2b3c4d5e6f",
+        "slug": "okafor-queueing",
+        "title": "Queueing for Managers",
+        "genre": "book",
+        "theme": "Operations"
+      },
+      "anchor": "ch03",
+      "unit_title": "Busy Is Not Fast",
+      "headline": null,
+      "body": {
+        "image_url": "media/okafor-queueing/ch03-s01-f001.png",
+        "caption": "Figure 3.1 Waiting time as utilization rises",
+        "takeaway": [
+          {
+            "text": "Waiting time stays modest up to about 70% utilization and then rises steeply.",
+            "cites": [
+              "ch03/s01/f001"
+            ]
+          }
+        ]
+      },
+      "cites": [
+        "ch03/s01/f001"
+      ],
+      "sources": {
+        "ch03/s01/f001": {
+          "document": {
+            "id": "6f1c2a7e-3b4d-4c5e-8f90-1a2b3c4d5e6f",
+            "slug": "okafor-queueing",
+            "title": "Queueing for Managers"
+          },
+          "anchor": "ch03/s01/f001"
+        }
+      },
+      "concepts": [],
+      "thread": null,
+      "est_seconds": 10,
+      "origin": "harvest:figure_description",
+      "draft": false,
+      "review_item_id": null
+    },
+    "diagram": {
+      "id": "00000000-0000-0000-0000-000000001008",
+      "kind": "diagram",
+      "document": {
+        "id": "6f1c2a7e-3b4d-4c5e-8f90-1a2b3c4d5e6f",
+        "slug": "okafor-queueing",
+        "title": "Queueing for Managers",
+        "genre": "book",
+        "theme": "Operations"
+      },
+      "anchor": "ch03",
+      "unit_title": "Busy Is Not Fast",
+      "headline": null,
+      "body": {
+        "diagram": {
+          "type": "diagram",
+          "direction": "LR",
+          "nodes": [
+            {
+              "id": "util",
+              "label": "High utilization"
+            },
+            {
+              "id": "wait",
+              "label": "Waiting explodes"
+            }
+          ],
+          "edges": [
+            {
+              "from": "util",
+              "to": "wait",
+              "label": "past ~80%"
+            }
+          ],
+          "cites": [
+            "ch03/s01/p004"
+          ]
+        },
+        "caption": null
+      },
+      "cites": [
+        "ch03/s01/p004"
+      ],
+      "sources": {
+        "ch03/s01/p004": {
+          "document": {
+            "id": "6f1c2a7e-3b4d-4c5e-8f90-1a2b3c4d5e6f",
+            "slug": "okafor-queueing",
+            "title": "Queueing for Managers"
+          },
+          "anchor": "ch03/s01/p004"
+        }
+      },
+      "concepts": [],
+      "thread": null,
+      "est_seconds": 15,
+      "origin": "harvest:chapter_distillation",
+      "draft": false,
+      "review_item_id": null
+    },
+    "quiz": {
+      "id": "00000000-0000-0000-0000-000000001009",
+      "kind": "quiz",
+      "document": {
+        "id": "6f1c2a7e-3b4d-4c5e-8f90-1a2b3c4d5e6f",
+        "slug": "okafor-queueing",
+        "title": "Queueing for Managers",
+        "genre": "book",
+        "theme": "Operations"
+      },
+      "anchor": "ch03",
+      "unit_title": "Busy Is Not Fast",
+      "headline": null,
+      "body": {
+        "question": "A team's utilization rises from 80% to 90%. What happens to the average wait?",
+        "choices": [
+          "It rises by about an eighth",
+          "It more than doubles",
+          "It stays flat",
+          "It falls"
+        ],
+        "answer": 1,
+        "explanation": [
+          {
+            "text": "The curve turns steep past 80%: the wait goes from about 4 to about 9 times the service time.",
+            "cites": [
+              "ch03/s01/f001",
+              "ch03/s01/p004"
+            ]
+          }
+        ]
+      },
+      "cites": [
+        "ch03/s01/f001",
+        "ch03/s01/p004"
+      ],
+      "sources": {
+        "ch03/s01/f001": {
+          "document": {
+            "id": "6f1c2a7e-3b4d-4c5e-8f90-1a2b3c4d5e6f",
+            "slug": "okafor-queueing",
+            "title": "Queueing for Managers"
+          },
+          "anchor": "ch03/s01/f001"
+        },
+        "ch03/s01/p004": {
+          "document": {
+            "id": "6f1c2a7e-3b4d-4c5e-8f90-1a2b3c4d5e6f",
+            "slug": "okafor-queueing",
+            "title": "Queueing for Managers"
+          },
+          "anchor": "ch03/s01/p004"
+        }
+      },
+      "concepts": [],
+      "thread": null,
+      "est_seconds": 25,
+      "origin": "harvest:quiz",
+      "draft": false,
+      "review_item_id": null
+    },
+    "flip": {
+      "id": "00000000-0000-0000-0000-00000000100a",
+      "kind": "flip",
+      "document": {
+        "id": "6f1c2a7e-3b4d-4c5e-8f90-1a2b3c4d5e6f",
+        "slug": "okafor-queueing",
+        "title": "Queueing for Managers",
+        "genre": "book",
+        "theme": "Operations"
+      },
+      "anchor": "ch02",
+      "unit_title": "Little's Law",
+      "headline": null,
+      "body": {
+        "front": "What must be true of a system for Little's law to hold?",
+        "back": [
+          {
+            "text": "It must be stable: on average, items leave as fast as they arrive.",
+            "cites": [
+              "ch02/s01/p003"
+            ]
+          }
+        ]
+      },
+      "cites": [
+        "ch02/s01/p003"
+      ],
+      "sources": {
+        "ch02/s01/p003": {
+          "document": {
+            "id": "6f1c2a7e-3b4d-4c5e-8f90-1a2b3c4d5e6f",
+            "slug": "okafor-queueing",
+            "title": "Queueing for Managers"
+          },
+          "anchor": "ch02/s01/p003"
+        }
+      },
+      "concepts": [],
+      "thread": null,
+      "est_seconds": 18,
+      "origin": "harvest:flashcards",
+      "draft": false,
+      "review_item_id": null
+    },
+    "claim": {
+      "id": "00000000-0000-0000-0000-00000000100b",
+      "kind": "claim",
+      "document": {
+        "id": "9a2e4b6c-8d0f-4a1b-9c3d-5e7f9a1b3c5d",
+        "slug": "gated-retrieval",
+        "title": "Gated Retrieval Adapters",
+        "genre": "paper",
+        "theme": null
+      },
+      "anchor": "ch04",
+      "unit_title": "Experiments",
+      "headline": null,
+      "body": {
+        "text": "Gated retrieval adapters improve exact match over FiD-base by 2.1 points on Natural Questions.",
+        "claim_kind": "result",
+        "strength": "measured",
+        "support": {
+          "supports": 1,
+          "contradicts": 0,
+          "extends": 2
+        }
+      },
+      "cites": [
+        "ch04/s02/p001"
+      ],
+      "sources": {
+        "ch04/s02/p001": {
+          "document": {
+            "id": "9a2e4b6c-8d0f-4a1b-9c3d-5e7f9a1b3c5d",
+            "slug": "gated-retrieval",
+            "title": "Gated Retrieval Adapters"
+          },
+          "anchor": "ch04/s02/p001"
+        }
+      },
+      "concepts": [],
+      "thread": null,
+      "est_seconds": 8,
+      "origin": "harvest:claim_set",
+      "draft": false,
+      "review_item_id": null
+    },
+    "math": {
+      "id": "00000000-0000-0000-0000-00000000100c",
+      "kind": "math",
+      "document": {
+        "id": "9a2e4b6c-8d0f-4a1b-9c3d-5e7f9a1b3c5d",
+        "slug": "gated-retrieval",
+        "title": "Gated Retrieval Adapters",
+        "genre": "paper",
+        "theme": null
+      },
+      "anchor": "ch03",
+      "unit_title": "Method",
+      "headline": null,
+      "body": {
+        "latex": "g_i = \\sigma(w^\\top [q; p_i])",
+        "name": "The trust score",
+        "plain": [
+          {
+            "text": "Glue the question and the passage together, score them with learned weights, then squash the score between 0 and 1.",
+            "cites": [
+              "ch03/s01/m001"
+            ]
+          }
+        ],
+        "try_it": {
+          "question": "If the raw score is exactly 0, what trust score comes out?",
+          "answer": [
+            {
+              "text": "σ(0) = 0.5: an undecided, middle score.",
+              "cites": [
+                "ch03/s01/m001"
+              ]
+            }
+          ]
+        }
+      },
+      "cites": [
+        "ch03/s01/m001"
+      ],
+      "sources": {
+        "ch03/s01/m001": {
+          "document": {
+            "id": "9a2e4b6c-8d0f-4a1b-9c3d-5e7f9a1b3c5d",
+            "slug": "gated-retrieval",
+            "title": "Gated Retrieval Adapters"
+          },
+          "anchor": "ch03/s01/m001"
+        }
+      },
+      "concepts": [],
+      "thread": null,
+      "est_seconds": 22,
+      "origin": "harvest:math_explainer",
+      "draft": false,
+      "review_item_id": null
+    },
+    "connection": {
+      "id": "00000000-0000-0000-0000-00000000100d",
+      "kind": "connection",
+      "document": {
+        "id": "6f1c2a7e-3b4d-4c5e-8f90-1a2b3c4d5e6f",
+        "slug": "okafor-queueing",
+        "title": "Queueing for Managers",
+        "genre": "book",
+        "theme": "Operations"
+      },
+      "anchor": "ch03",
+      "unit_title": "Busy Is Not Fast",
+      "headline": null,
+      "body": {
+        "relation": "echoes",
+        "concept": "slack",
+        "sides": [
+          {
+            "document": {
+              "id": "6f1c2a7e-3b4d-4c5e-8f90-1a2b3c4d5e6f",
+              "slug": "okafor-queueing",
+              "title": "Queueing for Managers"
+            },
+            "anchor": "ch03/s03/p001",
+            "spans": [
+              {
+                "text": "If waiting is the price of busyness, slack is not waste.",
+                "cites": [
+                  "ch03/s03/p001"
+                ]
+              }
+            ]
+          },
+          {
+            "document": {
+              "id": "2b4d6f80-1a3c-4e5f-8a9b-0c1d2e3f4a5b",
+              "slug": "meadows-systems",
+              "title": "Thinking in Systems"
+            },
+            "anchor": "ch05/p002",
+            "spans": [
+              {
+                "text": "Buffers are stocks that stabilize a system against variable flows.",
+                "cites": [
+                  "ch05/p002"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "cites": [
+        "ch03/s03/p001",
+        "meadows-systems:ch05/p002"
+      ],
+      "sources": {
+        "ch03/s03/p001": {
+          "document": {
+            "id": "6f1c2a7e-3b4d-4c5e-8f90-1a2b3c4d5e6f",
+            "slug": "okafor-queueing",
+            "title": "Queueing for Managers"
+          },
+          "anchor": "ch03/s03/p001"
+        },
+        "meadows-systems:ch05/p002": {
+          "document": {
+            "id": "2b4d6f80-1a3c-4e5f-8a9b-0c1d2e3f4a5b",
+            "slug": "meadows-systems",
+            "title": "Thinking in Systems"
+          },
+          "anchor": "ch05/p002"
+        }
+      },
+      "concepts": [
+        "slack"
+      ],
+      "thread": null,
+      "est_seconds": 10,
+      "origin": "harvest:graph",
+      "draft": false,
+      "review_item_id": null
+    },
+    "listen": {
+      "id": "00000000-0000-0000-0000-00000000100e",
+      "kind": "listen",
+      "document": {
+        "id": "6f1c2a7e-3b4d-4c5e-8f90-1a2b3c4d5e6f",
+        "slug": "okafor-queueing",
+        "title": "Queueing for Managers",
+        "genre": "book",
+        "theme": "Operations"
+      },
+      "anchor": "ch02",
+      "unit_title": "Little's Law",
+      "headline": "The busiest team on the floor",
+      "body": {
+        "audio_url": "audio/files/6f1c2a7e-3b4d-4c5e-8f90-1a2b3c4d5e6f/77b0c1d2-e3f4-4a5b-8c6d-7e8f9a0b1c2d/0123456789abcdef.mp3",
+        "start_ms": 12000,
+        "end_ms": 21500,
+        "transcript": [
+          {
+            "text": "Once people are loaded past about eighty percent, waiting time doesn't creep up. It explodes.",
+            "cites": [
+              "ch02/s01/p004"
+            ]
+          }
+        ]
+      },
+      "cites": [
+        "ch02/s01/p004"
+      ],
+      "sources": {
+        "ch02/s01/p004": {
+          "document": {
+            "id": "6f1c2a7e-3b4d-4c5e-8f90-1a2b3c4d5e6f",
+            "slug": "okafor-queueing",
+            "title": "Queueing for Managers"
+          },
+          "anchor": "ch02/s01/p004"
+        }
+      },
+      "concepts": [],
+      "thread": null,
+      "est_seconds": 10,
+      "origin": "harvest:audio_summary",
+      "draft": false,
+      "review_item_id": null
+    },
+    "hook": {
+      "id": "00000000-0000-0000-0000-00000000100f",
+      "kind": "hook",
+      "document": {
+        "id": "6f1c2a7e-3b4d-4c5e-8f90-1a2b3c4d5e6f",
+        "slug": "okafor-queueing",
+        "title": "Queueing for Managers",
+        "genre": "book",
+        "theme": "Operations"
+      },
+      "anchor": "ch03",
+      "unit_title": "Busy Is Not Fast",
+      "headline": "Busy is slow",
+      "body": {
+        "spans": [
+          {
+            "text": "Why does the busiest team on the floor ship the least?",
+            "cites": [
+              "ch03/s01/p001"
+            ]
+          }
+        ],
+        "payoff": [
+          {
+            "text": "Past about 80% utilization, every extra percent of load buys a disproportionate amount of waiting.",
+            "cites": [
+              "ch03/s01/p004"
+            ]
+          }
+        ]
+      },
+      "cites": [
+        "ch03/s01/p001",
+        "ch03/s01/p004"
+      ],
+      "sources": {
+        "ch03/s01/p001": {
+          "document": {
+            "id": "6f1c2a7e-3b4d-4c5e-8f90-1a2b3c4d5e6f",
+            "slug": "okafor-queueing",
+            "title": "Queueing for Managers"
+          },
+          "anchor": "ch03/s01/p001"
+        },
+        "ch03/s01/p004": {
+          "document": {
+            "id": "6f1c2a7e-3b4d-4c5e-8f90-1a2b3c4d5e6f",
+            "slug": "okafor-queueing",
+            "title": "Queueing for Managers"
+          },
+          "anchor": "ch03/s01/p004"
+        }
+      },
+      "concepts": [],
+      "thread": {
+        "key": "3f9a1c0b2d4e6f81",
+        "index": 0,
+        "size": 4,
+        "title": "Why busy teams are slow"
+      },
+      "est_seconds": 10,
+      "origin": "skill:make-pills@1",
+      "draft": false,
+      "review_item_id": null
+    },
+    "review": {
+      "id": "00000000-0000-0000-0000-000000001010",
+      "kind": "review",
+      "document": {
+        "id": "6f1c2a7e-3b4d-4c5e-8f90-1a2b3c4d5e6f",
+        "slug": "okafor-queueing",
+        "title": "Queueing for Managers",
+        "genre": "book",
+        "theme": "Operations"
+      },
+      "anchor": "ch02",
+      "unit_title": "Little's Law",
+      "headline": null,
+      "body": {
+        "prompt": "What must be true of a system for Little's law to hold?",
+        "answer": [
+          {
+            "text": "It must be stable: on average, items leave as fast as they arrive.",
+            "cites": [
+              "ch02/s01/p003"
+            ]
+          }
+        ]
+      },
+      "cites": [
+        "ch02/s01/p003"
+      ],
+      "sources": {
+        "ch02/s01/p003": {
+          "document": {
+            "id": "6f1c2a7e-3b4d-4c5e-8f90-1a2b3c4d5e6f",
+            "slug": "okafor-queueing",
+            "title": "Queueing for Managers"
+          },
+          "anchor": "ch02/s01/p003"
+        }
+      },
+      "concepts": [],
+      "thread": null,
+      "est_seconds": 18,
+      "origin": "review:flashcard",
+      "draft": false,
+      "review_item_id": "5d0c7e1f-2a3b-4c5d-8e9f-0a1b2c3d4e5f"
+    }
+  },
+  "api": {
+    "session_start": {
+      "session": {
+        "id": "5b0f6a52-8d0c-4a63-9c1e-2f4b7d8e9a10",
+        "config": {
+          "sources": {
+            "documents": [
+              "okafor-queueing"
+            ],
+            "collections": [],
+            "paper_sets": [],
+            "concepts": [],
+            "genre": null
+          },
+          "mode": "consolidate",
+          "kinds": null,
+          "length": 20,
+          "spoilers": false
+        },
+        "seed": 42,
+        "position": 0,
+        "created_at": "2026-10-06T08:00:00Z",
+        "finished_at": null
+      },
+      "page": {
+        "pills": [
+          {
+            "id": "00000000-0000-0000-0000-000000001009",
+            "kind": "quiz",
+            "document": {
+              "id": "6f1c2a7e-3b4d-4c5e-8f90-1a2b3c4d5e6f",
+              "slug": "okafor-queueing",
+              "title": "Queueing for Managers",
+              "genre": "book",
+              "theme": "Operations"
+            },
+            "anchor": "ch03",
+            "unit_title": "Busy Is Not Fast",
+            "headline": null,
+            "body": {
+              "question": "A team's utilization rises from 80% to 90%. What happens to the average wait?",
+              "choices": [
+                "It rises by about an eighth",
+                "It more than doubles",
+                "It stays flat",
+                "It falls"
+              ],
+              "answer": 1,
+              "explanation": [
+                {
+                  "text": "The curve turns steep past 80%: the wait goes from about 4 to about 9 times the service time.",
+                  "cites": [
+                    "ch03/s01/f001",
+                    "ch03/s01/p004"
+                  ]
+                }
+              ]
+            },
+            "cites": [
+              "ch03/s01/f001",
+              "ch03/s01/p004"
+            ],
+            "sources": {
+              "ch03/s01/f001": {
+                "document": {
+                  "id": "6f1c2a7e-3b4d-4c5e-8f90-1a2b3c4d5e6f",
+                  "slug": "okafor-queueing",
+                  "title": "Queueing for Managers"
+                },
+                "anchor": "ch03/s01/f001"
+              },
+              "ch03/s01/p004": {
+                "document": {
+                  "id": "6f1c2a7e-3b4d-4c5e-8f90-1a2b3c4d5e6f",
+                  "slug": "okafor-queueing",
+                  "title": "Queueing for Managers"
+                },
+                "anchor": "ch03/s01/p004"
+              }
+            },
+            "concepts": [],
+            "thread": null,
+            "est_seconds": 25,
+            "origin": "harvest:quiz",
+            "draft": false,
+            "review_item_id": null
+          }
+        ],
+        "next_cursor": "1"
+      },
+      "supply": {
+        "unseen": 12,
+        "by_document": [
+          {
+            "document": {
+              "id": "6f1c2a7e-3b4d-4c5e-8f90-1a2b3c4d5e6f",
+              "slug": "okafor-queueing",
+              "title": "Queueing for Managers"
+            },
+            "unseen": 12,
+            "generatable": [
+              {
+                "anchor": "ch04",
+                "title": "Delays",
+                "estimate_tokens": 12400
+              },
+              {
+                "anchor": "ch05",
+                "title": null,
+                "estimate_tokens": null
+              }
+            ],
+            "undistilled": false
+          }
+        ],
+        "low": true
+      },
+      "notice": null
+    },
+    "session_continuation": {
+      "pills": [
+        {
+          "id": "00000000-0000-0000-0000-000000001009",
+          "kind": "quiz",
+          "document": {
+            "id": "6f1c2a7e-3b4d-4c5e-8f90-1a2b3c4d5e6f",
+            "slug": "okafor-queueing",
+            "title": "Queueing for Managers",
+            "genre": "book",
+            "theme": "Operations"
+          },
+          "anchor": "ch03",
+          "unit_title": "Busy Is Not Fast",
+          "headline": null,
+          "body": {
+            "question": "A team's utilization rises from 80% to 90%. What happens to the average wait?",
+            "choices": [
+              "It rises by about an eighth",
+              "It more than doubles",
+              "It stays flat",
+              "It falls"
+            ],
+            "answer": 1,
+            "explanation": [
+              {
+                "text": "The curve turns steep past 80%: the wait goes from about 4 to about 9 times the service time.",
+                "cites": [
+                  "ch03/s01/f001",
+                  "ch03/s01/p004"
+                ]
+              }
+            ]
+          },
+          "cites": [
+            "ch03/s01/f001",
+            "ch03/s01/p004"
+          ],
+          "sources": {
+            "ch03/s01/f001": {
+              "document": {
+                "id": "6f1c2a7e-3b4d-4c5e-8f90-1a2b3c4d5e6f",
+                "slug": "okafor-queueing",
+                "title": "Queueing for Managers"
+              },
+              "anchor": "ch03/s01/f001"
+            },
+            "ch03/s01/p004": {
+              "document": {
+                "id": "6f1c2a7e-3b4d-4c5e-8f90-1a2b3c4d5e6f",
+                "slug": "okafor-queueing",
+                "title": "Queueing for Managers"
+              },
+              "anchor": "ch03/s01/p004"
+            }
+          },
+          "concepts": [],
+          "thread": null,
+          "est_seconds": 25,
+          "origin": "harvest:quiz",
+          "draft": false,
+          "review_item_id": null
+        }
+      ],
+      "next_cursor": null,
+      "supply": {
+        "unseen": 12,
+        "by_document": [
+          {
+            "document": {
+              "id": "6f1c2a7e-3b4d-4c5e-8f90-1a2b3c4d5e6f",
+              "slug": "okafor-queueing",
+              "title": "Queueing for Managers"
+            },
+            "unseen": 12,
+            "generatable": [
+              {
+                "anchor": "ch04",
+                "title": "Delays",
+                "estimate_tokens": 12400
+              },
+              {
+                "anchor": "ch05",
+                "title": null,
+                "estimate_tokens": null
+              }
+            ],
+            "undistilled": false
+          }
+        ],
+        "low": true
+      },
+      "done": true,
+      "notice": null
+    },
+    "finished": {
+      "summary": {
+        "seen": 8,
+        "saved": 2,
+        "answered": 3,
+        "correct": 2,
+        "due_tomorrow": 5,
+        "minutes": 4,
+        "next_read": {
+          "document": {
+            "id": "6f1c2a7e-3b4d-4c5e-8f90-1a2b3c4d5e6f",
+            "slug": "okafor-queueing",
+            "title": "Queueing for Managers"
+          },
+          "anchor": "ch05",
+          "title": "Delays"
+        }
+      }
+    },
+    "events_result": {
+      "accepted": 3,
+      "duplicates": 1,
+      "ignored": 0
+    },
+    "supply": {
+      "unseen": 12,
+      "by_document": [
+        {
+          "document": {
+            "id": "6f1c2a7e-3b4d-4c5e-8f90-1a2b3c4d5e6f",
+            "slug": "okafor-queueing",
+            "title": "Queueing for Managers"
+          },
+          "unseen": 12,
+          "generatable": [
+            {
+              "anchor": "ch04",
+              "title": "Delays",
+              "estimate_tokens": 12400
+            },
+            {
+              "anchor": "ch05",
+              "title": null,
+              "estimate_tokens": null
+            }
+          ],
+          "undistilled": false
+        }
+      ],
+      "low": true
+    },
+    "generate_result": {
+      "jobs": [
+        "3e2d1c0b-9a8f-4e7d-8c6b-5a4f3e2d1c0b"
+      ],
+      "estimate_tokens": null
+    },
+    "jobs_queued": {
+      "jobs": [
+        "3e2d1c0b-9a8f-4e7d-8c6b-5a4f3e2d1c0b"
+      ]
+    },
+    "feed": {
+      "id": "7c1d2e3f-4a5b-4c6d-8e9f-0a1b2c3d4e5f",
+      "name": "Mornings",
+      "config": {
+        "sources": {
+          "documents": [
+            "okafor-queueing"
+          ],
+          "collections": [],
+          "paper_sets": [],
+          "concepts": [],
+          "genre": null
+        },
+        "mode": "consolidate",
+        "kinds": null,
+        "length": 20,
+        "spoilers": false
+      },
+      "created_at": "2026-10-06T08:00:00Z",
+      "updated_at": "2026-10-06T08:00:00Z"
+    },
+    "feed_list": {
+      "items": [
+        {
+          "id": "7c1d2e3f-4a5b-4c6d-8e9f-0a1b2c3d4e5f",
+          "name": "Mornings",
+          "config": {
+            "sources": {
+              "documents": [
+                "okafor-queueing"
+              ],
+              "collections": [],
+              "paper_sets": [],
+              "concepts": [],
+              "genre": null
+            },
+            "mode": "consolidate",
+            "kinds": null,
+            "length": 20,
+            "spoilers": false
+          },
+          "created_at": "2026-10-06T08:00:00Z",
+          "updated_at": "2026-10-06T08:00:00Z"
+        }
+      ]
+    }
+  }
+}

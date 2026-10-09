@@ -68,7 +68,8 @@ def test_reopening_indexed_approved_content_queues_embed_to_withdraw_it(api, ses
 
     reopen(api, artifact(session, book, Review.APPROVED))
 
-    assert queued_kinds(session) == [JobKind.EMBED]
+    # the distillation's pills follow its preferred version too (docs/PILLS.md §4)
+    assert sorted(queued_kinds(session)) == [JobKind.EMBED, JobKind.HARVEST_PILLS]
 
 
 def test_reopening_before_indexing_changes_nothing_downstream(api, session, book):

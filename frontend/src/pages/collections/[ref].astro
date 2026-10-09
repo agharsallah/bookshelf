@@ -5,6 +5,7 @@
  * narrowed to it, its map, its concepts, and a search inside it. Reading a member from here
  * keeps the collection in the reader's URL, so the reader offers the next one.
  */
+import { pillsHref } from '../../lib/pills/config';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { Problem } from '../../components/common/Problem';
 import BoxSet from '../../components/collections/BoxSet.astro';
@@ -115,6 +116,10 @@ const searchHref = `/search?${members.map((m) => `doc=${m.id}`).join('&')}`;
           <a href={searchHref}>
             <strong>Search inside</strong>
             <span>Ask only these documents</span>
+          </a>
+          <a href={pillsHref({ sources: { collections: [slug] } })}>
+            <strong>Pills</strong>
+            <span>Its ideas, one at a time</span>
           </a>
         </nav>
 

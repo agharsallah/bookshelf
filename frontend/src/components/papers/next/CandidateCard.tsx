@@ -110,12 +110,12 @@ export function CandidateCard({ candidate: c, rank, shelf, scale, busy, error, o
         ) : (
           <>
             {c.status !== 'dismissed' && canIngest(c) ? (
-              <button type="button" className="btn btn-primary" disabled={fetch.live || busy} aria-busy={fetch.live || undefined} onClick={() => void fetch.start()}>
+              <button type="button" className="btn btn-primary" data-demo-off disabled={fetch.live || busy} aria-busy={fetch.live || undefined} onClick={() => void fetch.start()}>
                 {fetch.live ? 'Adding…' : fetch.progress?.phase === 'failed' ? 'Try adding again' : 'Add to shelf'}
               </button>
             ) : null}
             {movesFor(c.status).map((move) => (
-              <button key={move} type="button" className={move === 'dismiss' ? 'btn btn-quiet' : 'btn'} disabled={busy || fetch.live} onClick={() => onMove(move)}>
+              <button key={move} type="button" className={move === 'dismiss' ? 'btn btn-quiet' : 'btn'} data-demo-off disabled={busy || fetch.live} onClick={() => onMove(move)}>
                 {MOVE_LABELS[move]}
               </button>
             ))}

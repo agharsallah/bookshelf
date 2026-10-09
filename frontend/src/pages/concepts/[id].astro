@@ -4,6 +4,7 @@
  * each book contributes, then every relation, grouped and strongest first, with evidence
  * across books linking into the reader. Server-rendered; the graph island is one link away.
  */
+import { pillsHref } from '../../lib/pills/config';
 import { ActivityBeacon } from '../../lib/activity/ActivityBeacon';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { ConceptRelations } from '../../components/concepts/ConceptRelations';
@@ -70,6 +71,11 @@ const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? o
           {!concept.merged_into && (
             <a class="btn" href={graphHref(`concept:${concept.id}`, { proposed: true })}>
               Open in graph
+            </a>
+          )}
+          {!concept.merged_into && edgeCount > 0 && (
+            <a class="btn" href={pillsHref({ sources: { concepts: [concept.id] }, mode: 'explore' })}>
+              Pills on this idea
             </a>
           )}
         </div>

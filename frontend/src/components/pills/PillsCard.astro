@@ -1,0 +1,37 @@
+---
+/**
+ * Today's "5-minute pills" card: ten pills from what you have read, one idea at a time.
+ */
+import { pillsHref } from '../../lib/pills/config';
+
+const href = pillsHref({ length: 10 });
+---
+
+<section class="pills" aria-labelledby="pills-card-title">
+  <h2 id="pills-card-title" class="section-title">5-minute pills</h2>
+  <p class="lede">Ten ideas from what you have read, each one tap from its passage.</p>
+  <a class="btn" href={href}>Start</a>
+</section>
+
+<style>
+  .pills {
+    display: grid;
+    justify-items: start;
+    gap: var(--space-2);
+    padding: var(--space-4);
+    border: 1px solid var(--rule);
+    border-inline-start: 3px solid var(--tone-insight);
+    border-radius: var(--radius-m);
+    background: var(--paper-raised);
+  }
+
+  .section-title {
+    font-size: var(--text-md);
+  }
+
+  .lede {
+    color: var(--ink-2);
+    font-family: var(--font-read);
+    font-size: var(--text-sm);
+  }
+</style>

@@ -4,8 +4,10 @@
  * and the browser needs no CORS. Request shaping lives in lib/api/proxy.ts.
  */
 import type { APIRoute } from 'astro';
+import { PUBLIC_DEMO } from 'astro:env/client';
 import {
   buildProxyRequest,
+  MUTATING_METHODS,
   proxyErrorResponse,
   proxyResponseHeaders,
   ProxyPathError,
@@ -16,6 +18,10 @@ import { staleTagsAfter } from '../../lib/route-cache';
 export const prerender = false;
 
 export const ALL: APIRoute = async ({ request, params, url, cache }) => {
+  // The read-only demo (docs/DEMO.md). The backend refuses writes too: it has no key from us.
+  if (PUBLIC_DEMO && MUTATING_METHODS.has(request.method.toUpperCase())) {
+    return proxyErrorResponse(403, 'demo_read_only', 'This is a read-only demo: changes are switched off.');
+  }
   const config = proxyConfig();
   let upstream;
   try {

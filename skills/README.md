@@ -37,6 +37,8 @@ gates:
                                 # `minutes` param; outside → too_short_to_fill / too_long_to_fit
   verbatim: false               # quoting output: each leaf span's text must be found in the
                                 # block it cites (whitespace, curly quotes aside) → not_verbatim
+  pill_words: null              # composed pills: [low, high] words each pill body reads
+                                # (any object with `kind` + `body`) → pill_too_short / _long
 params: {}                      # optional run parameters, chosen per job (below)
 variant: null                   # with params: the episode key they name, e.g. "{minutes}m-{format}"
 narrate: false                  # the artifact is a script to speak: storing one queues `narrate`
@@ -62,7 +64,8 @@ variant: "{minutes}m"
 or outside its choices is a `422`. The resolved params join the inputs as
 `inputs.params`, so each combination has its own `input_hash`, and they name the
 artifact's `variant`, which joins the version scope: one document keeps one history per
-variant. A skill without `params` has no variant. `write-audio-summary` is the one user.
+variant. A skill without `params` has no variant. `write-audio-summary` (minutes, format,
+language) and `make-pills` (style) use them.
 
 ### Utility skills
 
@@ -163,6 +166,7 @@ plus the selector-specific keys:
 | `paper_results` | `units: [{anchor, heading, role, blocks}]` (the results and experiments units, every block; all units when none is tagged so), `tables: [block]` (table and figure blocks outside them), `explanations: [{anchor, takeaway, blocks}]` (table explanations and figure descriptions, chart data included), `setup: {datasets, baselines, metrics: [name]} \| null` (the preferred card's names), `paper_meta`. Only anchors of those units and of table/figure blocks are valid | extract-results |
 | `paper_citations` | `references: [{ordinal, raw, contexts: [{anchor, role, text}]}]` — each in-text-cited bibliography entry (≤ 240 chars of `raw`) with ≤ 3 citing passages: `text` the sentence(s) holding its marker (`app.papers.citation_context`, ≤ 400 chars), `role` the unit's role. Only those passages are valid anchors | classify-citations |
 | `paper_concepts` | `unit_distillations` as in `paper_distillations`, `paper_card` and `results_table` (preferred bodies, or null), `existing_concepts` | link-paper-concepts |
+| `chapter_pills` | `distillation` (the chapter's preferred distillation body; none → `SelectorError`), `salience: [{tier: core\|key, text, cites}] \| null` (its preferred salience marks), `harvested: [{kind, text, key}]` (the chapter's live pills not made by make-pills: headline or first 12 words, a 12-char `source_key` prefix; ≤ 60). Book and chapter titles are `document.title` and `scope.heading` (`app/pills/skill_inputs.py`) | make-pills |
 | `note_context` | `note: {id, raw, anchor, highlighted_text}`, `blocks` (anchor's section), `distillation` (nearest chapter distillation body or null), `existing_concepts` | structure-note |
 
 A `block` is `{anchor, kind, text, page, meta}`; `meta` carries `table`, `caption`, `language`,
@@ -179,7 +183,8 @@ Gates walk the whole output: any object with `text` + `cites` is a leaf span, an
 `cites` / `evidence` array is checked for anchor validity against the document.
 A skill may add cross-field hard gates a JSON Schema cannot state (unique symbols, a
 figure anchor that must be a figure, slugs from the input): `backend/app/papers/checks.py`
-`CHECKS[<skill>]`, run after the schema and anchor gates in batch and interactive imports.
+`CHECKS[<skill>]`, run after the schema and anchor gates in batch and interactive imports
+(make-pills' live in `backend/app/pills/checks.py`).
 
 | Skill | Output shape |
 |---|---|
@@ -213,3 +218,4 @@ figure anchor that must be a figure, slugs from the input): `backend/app/papers/
 | catalogue-document | `{theme: {name, new}, subjects: [str] (1–6), form, audience, level: introductory\|intermediate\|advanced, description, facts: {publisher, published, edition, isbn, language, series} (null when not printed), cites: [anchor] (1–8)}`. Read where shown (`app.pipeline.catalogue`): the library's theme dimension and the lectern's card |
 | link-paper-concepts | as link-concepts, stored as `concept_links`; `kind` also method \| dataset \| metric \| task |
 | write-audio-summary | `{title, speakers: [{role, persona}] (1–4), sections: [{title, turns: [{speaker: 1–4, text, cites}]}]}`; each turn is a leaf span |
+| make-pills | `{threads: [{title, pills (3–6)}] (≤ 3), pills (≤ 10)}`, each pill `{kind: hook\|insight\|remember\|antipattern\|definition\|quiz\|flip, headline (≤ 80 chars), body (that kind's pill body, docs/PILLS.md §2, every span cited), cites (1–8)}`; quiz answers index a choice, no pill restates a `harvested` one or another (`app.pills.checks`); `params.style` plain \| story \| socratic is the variant. Stored as `pill_set`, harvested into `pills` (`skill:make-pills@<version>`) |

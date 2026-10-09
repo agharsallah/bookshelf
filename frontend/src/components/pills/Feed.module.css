@@ -1,0 +1,126 @@
+/* The feed: a bar with progress and controls, then a full-height scroller that snaps one
+   pill per screen. Phones take the whole width; wide screens a tall centred column. */
+
+.feed {
+  /* `--feed-top` (useFeedTop) is where the content starts: a pill ends at the screen's foot. */
+  --feed-height: calc(100dvh - var(--feed-top, 10rem) - var(--space-3) - var(--space-2));
+
+  display: grid;
+  gap: var(--space-3);
+  justify-items: center;
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  inline-size: min(100%, 40rem);
+}
+
+.controls {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.progress {
+  display: flex;
+  flex: 1 1 auto;
+  gap: 3px;
+  min-inline-size: 0;
+}
+
+.progress > span {
+  flex: 1 1 0;
+  block-size: 4px;
+  border-radius: 2px;
+  background: var(--rule);
+}
+
+.progress > span[data-state='done'] {
+  background: var(--ink-3);
+}
+
+.progress > span[data-state='current'] {
+  background: var(--accent);
+}
+
+.count {
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+}
+
+.notice {
+  inline-size: min(100%, 40rem);
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.scroller {
+  inline-size: min(100%, 40rem);
+  block-size: max(24rem, var(--feed-height));
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scroll-snap-type: y mandatory;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+}
+
+.scroller::-webkit-scrollbar {
+  display: none;
+}
+
+.slide {
+  block-size: 100%;
+  padding-block: var(--space-2);
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
+.column {
+  display: grid;
+  align-content: center;
+  justify-items: start;
+  gap: var(--space-4);
+  inline-size: min(100%, 40rem);
+  min-block-size: max(24rem, var(--feed-height));
+}
+
+.bone {
+  inline-size: 100%;
+  block-size: 100%;
+  min-block-size: 24rem;
+}
+
+.message {
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+}
+
+.closing {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: var(--space-4);
+  block-size: 100%;
+  color: var(--ink-2);
+  font-family: var(--font-read);
+  font-size: var(--text-lg);
+}
+
+.feed > section {
+  inline-size: min(100%, 40rem);
+}
+
+/* No smooth scrolling or forced stops where motion is reduced: the page jumps. */
+@media (prefers-reduced-motion: reduce) {
+  .scroller {
+    scroll-behavior: auto;
+  }
+
+  .slide {
+    scroll-snap-stop: normal;
+  }
+}

@@ -1,0 +1,45 @@
+---
+/**
+ * A quiet way into the pills feed with presets (`pillsHref`), for the pages that offer
+ * one: a document ("Pills from this book"), a paper set, a concept.
+ */
+interface Props {
+  href: string;
+  label: string;
+  /** A short line after the label. */
+  hint?: string;
+}
+
+const { href, label, hint } = Astro.props;
+---
+
+<a class="pills-link" href={href}>
+  <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+    <rect x="2" y="1.5" width="12" height="5.5" rx="2" />
+    <rect x="2" y="9" width="12" height="5.5" rx="2" />
+  </svg>
+  <span>{label}</span>
+  {hint && <span class="hint">{hint}</span>}
+</a>
+
+<style>
+  .pills-link {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+    font-weight: 600;
+  }
+
+  svg {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.4;
+  }
+
+  .hint {
+    color: var(--ink-3);
+    font-weight: 400;
+  }
+</style>

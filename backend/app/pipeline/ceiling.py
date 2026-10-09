@@ -12,9 +12,10 @@ ceiling reached`, before any model call. Idempotency hits still skip for free.
 
 `resume` clears the pause, sets the document's own ceiling (`meta.run_ceiling`, default:
 another full allowance on top of the runs so far) and requeues the jobs the ceiling
-stopped. Jobs finished before runs were counted per job count as one run each. A run the
-account's usage limit refused (`UsageLimitError`) did no work, so its reservation is given
-back (`refund_run`).
+stopped. Jobs finished before runs were counted per job count as one run each. A run that
+did no work is given back (`refund_run`): one the account's usage limit refused
+(`UsageLimitError`), or any call the CLI failed before it reached the model
+(`RunnerError.reached_model`), so refused calls never pause a document.
 """
 
 import uuid
@@ -31,7 +32,7 @@ from app.jobs.queue import RUNS, JobSpec
 from app.jobs.registry import PermanentJobError
 from app.models import Document, Job
 from app.models.enums import JobKind, JobState, Tier
-from app.pipeline.runner import ModelRunner, RunResult, UsageLimitError
+from app.pipeline.runner import ModelRunner, RunnerError, RunResult, UsageLimitError
 
 CEILING_ERROR = "run ceiling reached"
 PAUSED_KEY = "paused"
@@ -128,7 +129,8 @@ def refund_run(session: Session, job: Job) -> None:
 
 class _Metered:
     """A `ModelRunner` that reserves a run before every call it passes on, and gives it
-    back when the usage limit refused the call."""
+    back when the call did no work (the usage limit refused it, or it never reached the
+    model)."""
 
     def __init__(
         self, runner: ModelRunner, reserve: Callable[[], None], refund: Callable[[], None]
@@ -139,8 +141,9 @@ class _Metered:
         self._reserve()
         try:
             return self._runner.run(prompt, tier=tier, images=images)
-        except UsageLimitError:
-            self._refund()
+        except RunnerError as exc:
+            if isinstance(exc, UsageLimitError) or not exc.reached_model:
+                self._refund()
             raise
 
 

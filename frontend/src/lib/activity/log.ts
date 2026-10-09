@@ -6,7 +6,7 @@
  * than 60, and a report sends whole seconds, keeping the fraction for the next one.
  */
 
-export type Surface = 'read' | 'listen' | 'study' | 'recall' | 'review' | 'distill' | 'explore';
+export type Surface = 'read' | 'listen' | 'study' | 'recall' | 'review' | 'distill' | 'explore' | 'pills';
 
 /** Where attention is going. Every field but `surface` is optional. */
 export interface Where {

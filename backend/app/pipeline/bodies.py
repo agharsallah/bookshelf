@@ -6,7 +6,7 @@ anchors too. Everything here is shape-agnostic so new skills need no gate code.
 """
 
 import re
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
 from typing import Any
 
 _WORD = re.compile(r"\w+", re.UNICODE)
@@ -14,6 +14,10 @@ _CJK = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]")
 # Speech rate: ~250 Chinese characters take as long to say as ~150 English words.
 _WORDS_PER_CJK_CHAR = 0.6
 _ANCHOR_LISTS = ("cites", "evidence")
+# Keys whose values are not read: addresses, markup, numbers (`read_text`).
+UNREAD_KEYS = frozenset(
+    {"cites", "image_url", "audio_url", "latex", "id", "type", "direction", "mark", "from", "to"}
+)
 
 
 def iter_objects(value: Any) -> Iterator[dict[str, Any]]:
@@ -62,3 +66,15 @@ def spoken_words(text: str) -> float:
 def plain_text(value: Any) -> str:
     """The leaf spans' text joined with spaces: what a reader actually reads."""
     return " ".join(span["text"] for span in leaf_spans(value))
+
+
+def read_text(value: Any) -> str:
+    """Every word of a body a reader reads, spans or plain strings alike (a quiz's question
+    and choices, a flip's front), addresses and markup left out (`UNREAD_KEYS`)."""
+    if isinstance(value, str):
+        return value
+    if isinstance(value, Mapping):
+        return " ".join(read_text(v) for k, v in value.items() if k not in UNREAD_KEYS)
+    if isinstance(value, list):
+        return " ".join(read_text(v) for v in value)
+    return ""

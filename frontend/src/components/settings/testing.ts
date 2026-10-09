@@ -20,6 +20,7 @@ export const settingsOf = (over: Partial<SettingsPublic> = {}): SettingsPublic =
   auto_derive: { book: [], paper: [] },
   auto_approve: 'off',
   builds: buildDefaults(),
+  pills: { auto_generate: true, max_chapters_per_day: 4 },
   ...over,
 });
 

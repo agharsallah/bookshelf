@@ -82,6 +82,9 @@ class GateConfig(BaseModel):
     # Quoting output (leaf spans copied from the source): each span's text must be found in
     # the block it cites, whitespace and typographic quotes aside. Missing → a flag.
     verbatim: bool = False
+    # Composed pills (make-pills): words each pill's body reads, `[low, high]`; a pill
+    # outside the band flags `pill_too_short` / `pill_too_long`. None: not checked.
+    pill_words: tuple[int, int] | None = None
 
 
 class SkillMeta(BaseModel):

@@ -37,6 +37,8 @@ export const ARTIFACT_TYPES = [
   'math_explainer',
   // The library
   'catalogue_entry',
+  // Pills (docs/PILLS.md §5)
+  'pill_set',
 ] as const;
 export type ArtifactType = (typeof ARTIFACT_TYPES)[number];
 

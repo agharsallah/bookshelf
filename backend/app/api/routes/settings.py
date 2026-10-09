@@ -1,5 +1,6 @@
 """Server-side settings: which study material a distilled document makes on its own,
-whether a skill's new artifact is approved without a review, and the build defaults."""
+whether a skill's new artifact is approved without a review, the build defaults, and when
+the pills feed composes pills on its own."""
 
 from collections.abc import Mapping
 
@@ -15,6 +16,7 @@ from app.schemas.settings import (
     AutoDeriveChoice,
     AutoDerivePublic,
     BuildsSettings,
+    PillsSettings,
     SettingsPublic,
     SettingsUpdate,
 )
@@ -39,6 +41,7 @@ def _view(session: Session, catalogue: Mapping[str, Skill]) -> SettingsPublic:
         auto_derive=AutoDerivePublic(**groups),
         auto_approve=app_settings.auto_approve(session),
         builds=BuildsSettings.model_validate(app_settings.build_defaults(session)),
+        pills=PillsSettings.model_validate(app_settings.pills_settings(session)),
     )
 
 
@@ -57,7 +60,8 @@ def get_settings(session: SessionDep, skills_dir: SkillsDirDep) -> SettingsPubli
     "out is unchanged. Applies to documents distilled from now on. `auto_approve` sets "
     "which new skill artifacts are approved without a review (`off` · `passing` · `all`); "
     "artifacts already waiting are left as they are. `builds` merges into the defaults a new "
-    "build starts from (fields left out are unchanged).",
+    "build starts from (fields left out are unchanged). `pills` merges the same way: "
+    "`auto_generate` (a low feed queues make-pills on its own) and `max_chapters_per_day`.",
 )
 def update_settings(
     body: SettingsUpdate, session: SessionDep, skills_dir: SkillsDirDep
@@ -70,4 +74,6 @@ def update_settings(
         app_settings.set_auto_approve(session, body.auto_approve)
     if body.builds is not None:
         app_settings.set_build_defaults(session, body.builds.changes())
+    if body.pills is not None:
+        app_settings.set_pills_settings(session, body.pills.model_dump(exclude_none=True))
     return _view(session, catalogue)

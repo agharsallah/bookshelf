@@ -15,6 +15,8 @@ import ChapterStrip from '../../../components/document/ChapterStrip';
 import DocumentActions from '../../../components/document/DocumentActions';
 import StudyShelf from '../../../components/document/StudyShelf.astro';
 import PaperBanner from '../../../components/papers/PaperBanner.astro';
+import PillsLink from '../../../components/pills/PillsLink.astro';
+import { pillsHref } from '../../../lib/pills/config';
 import DocumentHeader from '../../../components/document/DocumentHeader';
 import Outline from '../../../components/document/Outline';
 import OutlineEditor from '../../../components/document/OutlineEditor';
@@ -180,6 +182,7 @@ const added = data ? new Date(data.doc.created_at).toLocaleDateString('en-GB', {
                   )}
                 </p>
               )}
+              {parsed && <PillsLink href={pillsHref({ sources: { documents: [data.doc.slug] } })} label="Pills from this book" />}
             </div>
             {parsed && units.length > 0 && (
               <div

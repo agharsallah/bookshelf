@@ -84,6 +84,7 @@ class ReviewSource(StrEnum):
     RECALL = "recall"  # an idea a recall missed or half-recalled
     QUESTION = "question"  # the "why is this true?" a graded recall asked
     FLASHCARD = "flashcard"  # a flashcard you marked
+    PILL = "pill"  # a pill you saved or missed (docs/PILLS.md §6)
 
 
 class Surface(StrEnum):
@@ -96,6 +97,7 @@ class Surface(StrEnum):
     REVIEW = "review"  # spaced reviews
     DISTILL = "distill"  # the brief, the guide: what the pipeline wrote
     EXPLORE = "explore"  # search, the concept graph, the map
+    PILLS = "pills"  # the pills feed (docs/PILLS.md)
 
 
 class ArtifactType(StrEnum):
@@ -132,6 +134,8 @@ class ArtifactType(StrEnum):
     MATH_EXPLAINER = "math_explainer"  # explain-math: the formulas taught from zero
     # The library (app/pipeline/catalogue.py)
     CATALOGUE_ENTRY = "catalogue_entry"  # catalogue-document: theme, subjects, facts
+    # Pills (docs/PILLS.md §5)
+    PILL_SET = "pill_set"  # make-pills → harvested into `pills` (app.pills.harvest)
 
 
 class Origin(StrEnum):
@@ -248,6 +252,47 @@ class JobKind(StrEnum):
     # Builds (docs/BUILDS.md): plan with a utility skill, then an agentic CLI run.
     BUILD_PLAN = "build_plan"  # plan-build utility skill → builds.plan
     BUILD_RUN = "build_run"  # agents/build-from-paper in a fresh repo (own runner)
+    # Pills (docs/PILLS.md §4): a document's pills recomputed from its artifacts.
+    HARVEST_PILLS = "harvest_pills"
+
+
+class PillKind(StrEnum):
+    """`pills.kind` (docs/PILLS.md §2); `review` is synthesized at feed time, never stored."""
+
+    INSIGHT = "insight"
+    REMEMBER = "remember"
+    ANTIPATTERN = "antipattern"
+    QUOTE = "quote"
+    DEFINITION = "definition"
+    NUMBER = "number"
+    FIGURE = "figure"
+    DIAGRAM = "diagram"
+    QUIZ = "quiz"
+    FLIP = "flip"
+    CLAIM = "claim"
+    MATH = "math"
+    CONNECTION = "connection"
+    LISTEN = "listen"
+    HOOK = "hook"
+    REVIEW = "review"
+
+    @property
+    def is_stored(self) -> bool:
+        return self is not PillKind.REVIEW
+
+
+class PillEventKind(StrEnum):
+    """`pill_events.kind`: what you did with a pill."""
+
+    SEEN = "seen"
+    DWELL = "dwell"
+    ANSWER = "answer"
+    SAVE = "save"
+    UNSAVE = "unsave"
+    SKIP = "skip"
+    TOO_EASY = "too_easy"
+    CONFUSING = "confusing"
+    OPEN_SOURCE = "open_source"
 
 
 class JobState(StrEnum):

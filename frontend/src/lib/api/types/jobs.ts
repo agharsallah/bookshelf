@@ -33,6 +33,8 @@ export const JOB_KINDS = [
   // Builds (docs/BUILDS.md): the plan skill, then the agent run
   'build_plan',
   'build_run',
+  // Pills (docs/PILLS.md §4)
+  'harvest_pills',
 ] as const;
 export type JobKind = (typeof JOB_KINDS)[number];
 

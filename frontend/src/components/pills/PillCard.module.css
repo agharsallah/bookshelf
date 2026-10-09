@@ -1,0 +1,230 @@
+/* One pill: a tall card with the idea and, beside it on wide screens (below it on phones),
+   the action rail. `--dye` is the source book's spine colour. */
+
+.pill {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-4);
+  block-size: 100%;
+  inline-size: 100%;
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-block-size: 0;
+  padding: var(--space-5);
+  border: 1px solid var(--rule);
+  border-block-start: 4px solid var(--dye);
+  border-radius: var(--radius-l);
+  background: var(--paper-raised);
+  box-shadow: var(--shadow-lift);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+}
+
+.chip {
+  display: inline-flex;
+  flex: 0 1 auto;
+  align-items: center;
+  gap: var(--space-2);
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  color: var(--ink-2);
+  text-decoration: none;
+}
+
+.chip:hover .book {
+  text-decoration: underline;
+}
+
+.spine {
+  flex: none;
+  inline-size: 0.5rem;
+  block-size: 1.3rem;
+  border-radius: 2px;
+  background: var(--dye);
+}
+
+.book {
+  flex: 0 1 auto;
+  min-inline-size: 4rem;
+  overflow: hidden;
+  color: var(--ink);
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-inline-size: 16rem;
+}
+
+.unit {
+  flex: 0 1 auto;
+  min-inline-size: 0;
+  overflow: hidden;
+  color: var(--ink-3);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.unit::before {
+  content: '· ';
+}
+
+.kind,
+.draft {
+  padding: 0.1rem var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--paper-sunken);
+  color: var(--ink-2);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.kind[data-active] {
+  background: var(--accent-wash);
+  color: var(--accent-strong);
+}
+
+.draft {
+  border: 1px dashed var(--rule-strong);
+  background: transparent;
+}
+
+.headline {
+  color: var(--ink);
+  font-size: var(--text-xl);
+  line-height: var(--leading-tight);
+}
+
+.body {
+  display: grid;
+  flex: 1 1 auto;
+  align-content: center; /* one idea, in the middle of the screen */
+}
+
+.sources {
+  font-size: var(--text-sm);
+}
+
+.thread {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+}
+
+.threadTitle {
+  flex: 1 1 auto;
+  font-weight: 600;
+}
+
+.dots {
+  display: inline-flex;
+  gap: 0.3rem;
+}
+
+.dots > span {
+  inline-size: 0.45rem;
+  block-size: 0.45rem;
+  border-radius: 50%;
+  background: var(--rule-strong);
+}
+
+.dots > span[data-on] {
+  background: var(--dye);
+}
+
+.step {
+  inline-size: 2rem;
+  block-size: 2rem;
+  border: 1px solid var(--rule-strong);
+  border-radius: 50%;
+  background: var(--paper);
+  font-size: var(--text-md);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.step:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+
+.rail {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.action {
+  display: grid;
+  justify-items: center;
+  gap: 0.15rem;
+  min-inline-size: 4.25rem;
+  padding: var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-m);
+  background: transparent;
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.action > span[aria-hidden] {
+  font-size: var(--text-lg);
+  line-height: 1;
+}
+
+.action:hover {
+  border-color: var(--rule-strong);
+  color: var(--ink);
+}
+
+.action[aria-pressed='true'] {
+  background: var(--accent-wash);
+  color: var(--accent-strong);
+}
+
+/* Phones: the rail runs under the card, and key hints go. */
+@media (max-width: 40rem) {
+  .pill {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+    gap: var(--space-2);
+  }
+
+  .main {
+    padding: var(--space-4);
+  }
+
+  .rail {
+    flex-direction: row;
+    justify-content: space-around;
+  }
+
+  .action {
+    min-inline-size: 0;
+  }
+
+  .action kbd {
+    display: none;
+  }
+}

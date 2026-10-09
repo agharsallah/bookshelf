@@ -21,6 +21,7 @@ const { waiting = 0 } = Astro.props;
   command="show-modal"
   aria-haspopup="dialog"
   data-add-book
+  data-demo-off
 >
   Add a book
   {waiting > 0 && <span class="waiting">{waiting} waiting</span>}

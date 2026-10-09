@@ -114,4 +114,5 @@ export const KIND_LABELS: Record<JobKind, string> = {
   synthesize_papers: 'Synthesize papers',
   build_plan: 'Plan a build',
   build_run: 'Build a repository',
+  harvest_pills: 'Harvest pills',
 };

@@ -56,6 +56,12 @@ describe('the navigation', () => {
     expect(isCurrent(item('/papers'), '/documents/paperclip/read/ch01')).toBe(false);
   });
 
+  it('offers the pills feed reading-side, marked on its page whatever its presets', () => {
+    expect(NAV.filter((i) => !i.workshop).map((i) => i.label)).toContain('Pills');
+    expect(isCurrent(item('/pills'), '/pills')).toBe(true);
+    expect(isCurrent(item('/pills'), '/pillsbury')).toBe(false);
+  });
+
   it('counts every book’s reader statistics as part of You', () => {
     expect(isCurrent(item('/you'), '/you/meadows-systems')).toBe(true);
   });

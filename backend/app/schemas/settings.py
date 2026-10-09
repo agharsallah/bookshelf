@@ -15,7 +15,7 @@ from app.schemas.build_options import (
     TestsPolicy,
 )
 from app.schemas.builds import MaxBudget, MaxCommits, MaxMinutes, Owner
-from app.services.app_settings import AutoApprove
+from app.services.app_settings import MAX_CHAPTERS_PER_DAY, AutoApprove
 
 
 class AutoDeriveChoice(BaseModel):
@@ -83,10 +83,39 @@ class BuildsSettings(BaseModel):
     advanced: BuildAdvancedDefaults
 
 
+MaxChaptersPerDay = Annotated[
+    int,
+    Field(
+        ge=1,
+        le=MAX_CHAPTERS_PER_DAY,
+        description="At most this many chapters a day get make-pills from feed top-ups.",
+    ),
+]
+
+
+class PillsSettings(BaseModel):
+    """When the pills feed composes new pills on its own (docs/PILLS.md §5)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    auto_generate: Annotated[
+        bool, Field(description="A feed running low queues make-pills for undone chapters.")
+    ]
+    max_chapters_per_day: MaxChaptersPerDay
+
+
+class PillsSettingsUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    auto_generate: bool | None = None
+    max_chapters_per_day: MaxChaptersPerDay | None = None
+
+
 class SettingsPublic(BaseModel):
     auto_derive: AutoDerivePublic
     auto_approve: AutoApproveField
     builds: BuildsSettings
+    pills: PillsSettings
 
 
 class AutoDeriveUpdate(BaseModel):
@@ -125,3 +154,4 @@ class SettingsUpdate(BaseModel):
     auto_derive: AutoDeriveUpdate | None = None
     auto_approve: AutoApproveField | None = None
     builds: BuildsSettingsUpdate | None = None
+    pills: PillsSettingsUpdate | None = None

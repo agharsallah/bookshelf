@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bookshelf.local/skills/make-pills/schema.json",
+  "title": "make-pills output",
+  "description": "Composed pills for one chapter: threads (3-6 pills telling its arc, in order) and standalone pills. Each pill has a kind, a headline, a body of that kind's shape (docs/PILLS.md §2) with every span cited, and the anchors it rests on. Quiz answer indexes and duplicates of harvested pills are checked by the runtime (app.pills.checks).",
+  "type": "object",
+  "required": ["threads", "pills"],
+  "additionalProperties": false,
+  "properties": {
+    "threads": {
+      "type": "array",
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "required": ["title", "pills"],
+        "additionalProperties": false,
+        "properties": {
+          "title": {"type": "string", "minLength": 3, "maxLength": 80},
+          "pills": {"type": "array", "minItems": 3, "maxItems": 6, "items": {"$ref": "#/$defs/pill"}}
+        }
+      }
+    },
+    "pills": {"type": "array", "maxItems": 10, "items": {"$ref": "#/$defs/pill"}}
+  },
+  "$defs": {
+    "cited": {
+      "description": "Spans, each citing at least one anchor.",
+      "allOf": [
+        {"$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/spans"},
+        {"maxItems": 4, "items": {"properties": {"cites": {"minItems": 1}}}}
+      ]
+    },
+    "text": {"type": "string", "minLength": 1, "maxLength": 300},
+    "pill": {
+      "type": "object",
+      "required": ["kind", "headline", "body", "cites"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {"enum": ["hook", "insight", "remember", "antipattern", "definition", "quiz", "flip"]},
+        "headline": {"type": "string", "minLength": 3, "maxLength": 80},
+        "body": {"type": "object"},
+        "cites": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "uniqueItems": true,
+          "items": {"$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/anchor"}
+        }
+      },
+      "allOf": [
+        {"if": {"properties": {"kind": {"const": "hook"}}}, "then": {"properties": {"body": {"$ref": "#/$defs/hook"}}}},
+        {"if": {"properties": {"kind": {"const": "insight"}}}, "then": {"properties": {"body": {"$ref": "#/$defs/insight"}}}},
+        {"if": {"properties": {"kind": {"enum": ["remember", "antipattern"]}}}, "then": {"properties": {"body": {"$ref": "#/$defs/plain"}}}},
+        {"if": {"properties": {"kind": {"const": "definition"}}}, "then": {"properties": {"body": {"$ref": "#/$defs/definition"}}}},
+        {"if": {"properties": {"kind": {"const": "quiz"}}}, "then": {"properties": {"body": {"$ref": "#/$defs/quiz"}}}},
+        {"if": {"properties": {"kind": {"const": "flip"}}}, "then": {"properties": {"body": {"$ref": "#/$defs/flip"}}}}
+      ]
+    },
+    "hook": {
+      "type": "object",
+      "required": ["spans", "payoff"],
+      "additionalProperties": false,
+      "properties": {"spans": {"$ref": "#/$defs/cited"}, "payoff": {"$ref": "#/$defs/cited"}}
+    },
+    "insight": {
+      "type": "object",
+      "required": ["spans"],
+      "additionalProperties": false,
+      "properties": {"spans": {"$ref": "#/$defs/cited"}, "why": {"$ref": "#/$defs/cited"}}
+    },
+    "plain": {
+      "type": "object",
+      "required": ["spans"],
+      "additionalProperties": false,
+      "properties": {"spans": {"$ref": "#/$defs/cited"}}
+    },
+    "definition": {
+      "type": "object",
+      "required": ["term", "spans"],
+      "additionalProperties": false,
+      "properties": {"term": {"type": "string", "minLength": 1, "maxLength": 80}, "spans": {"$ref": "#/$defs/cited"}}
+    },
+    "quiz": {
+      "type": "object",
+      "required": ["question", "choices", "answer", "explanation"],
+      "additionalProperties": false,
+      "properties": {
+        "question": {"$ref": "#/$defs/text"},
+        "choices": {"type": "array", "minItems": 3, "maxItems": 4, "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 120}},
+        "answer": {"type": "integer", "minimum": 0, "maximum": 3},
+        "explanation": {"$ref": "#/$defs/cited"}
+      }
+    },
+    "flip": {
+      "type": "object",
+      "required": ["front", "back"],
+      "additionalProperties": false,
+      "properties": {"front": {"$ref": "#/$defs/text"}, "back": {"$ref": "#/$defs/cited"}}
+    }
+  }
+}

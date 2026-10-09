@@ -22,7 +22,7 @@ export function QueueJob({ request, label, initialJob = null, api = browserApi }
   const { start, job, progress, sending, error, live, finished } = useJobRun(async () => (await enqueueJob(api, request)).job, initialJob, request.document_id);
 
   return (
-    <div className={styles.queue} data-phase={progress?.phase ?? 'idle'}>
+    <div className={styles.queue} data-demo-off data-phase={progress?.phase ?? 'idle'}>
       {finished ? (
         <button type="button" className="btn btn-primary" onClick={() => location.reload()}>
           Show it

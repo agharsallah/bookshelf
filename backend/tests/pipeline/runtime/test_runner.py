@@ -102,6 +102,20 @@ def test_other_error_envelopes_are_not_usage_limits():
     assert not isinstance(caught.value, UsageLimitError)
 
 
+def test_an_error_envelope_says_its_own_words_and_whether_the_model_was_reached():
+    refused = {"type": "result", "is_error": True, "duration_api_ms": 0, "total_cost_usd": 0,
+               "result": "Credit balance is too low"}  # fmt: skip
+    called = {**refused, "duration_api_ms": 1200, "result": "Overloaded"}
+
+    with pytest.raises(RunnerError, match="Credit balance is too low") as never:
+        parse_envelope(json.dumps(refused))
+    with pytest.raises(RunnerError) as reached:
+        parse_envelope(json.dumps(called))
+
+    assert never.value.reached_model is False
+    assert reached.value.reached_model is True
+
+
 def test_non_json_stdout_is_a_runner_error():
     with pytest.raises(RunnerError, match="no JSON envelope"):
         parse_envelope("Error: not logged in")
@@ -290,6 +304,17 @@ def test_a_limit_envelope_on_a_failed_exit_is_a_usage_limit(fake_claude):
 
     with pytest.raises(UsageLimitError, match="resets 8pm"):
         cli(script).run("P", tier=Tier.DISTIL)
+
+
+def test_a_failed_exit_quotes_the_envelope_not_its_raw_json(fake_claude):
+    refused = {"type": "result", "is_error": True, "duration_api_ms": 0, "result": "Not logged in"}
+    script = fake_claude(f"cat <<'EOF'\n{json.dumps(refused)}\nEOF\nexit 1")
+
+    with pytest.raises(RunnerError) as error:
+        cli(script).run("P", tier=Tier.DISTIL)
+
+    assert str(error.value) == "claude exited with 1: Not logged in"
+    assert error.value.reached_model is False
 
 
 def test_timeout_kills_the_process_and_raises(fake_claude, tmp_path):

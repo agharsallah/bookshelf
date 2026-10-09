@@ -1,0 +1,65 @@
+{
+  "threads": [
+    {
+      "title": "Why the busiest team is the slowest",
+      "pills": [
+        {
+          "kind": "hook",
+          "headline": "Full calendars, empty progress",
+          "body": {
+            "spans": [{"text": "Your team is booked to 100% and still misses every date. How can more busyness mean less done?", "cites": ["ch03/s01/p001"]}],
+            "payoff": [{"text": "Past a point, every extra percent of load buys a disproportionate amount of waiting.", "cites": ["ch03/s01/p001"]}]
+          },
+          "cites": ["ch03/s01/p001"]
+        },
+        {
+          "kind": "insight",
+          "headline": "The curve bends hard at 90%",
+          "body": {
+            "spans": [{"text": "At 90% utilization work waits nine times as long as it takes; at 95%, nineteen times.", "cites": ["ch03/s01/p004"]}],
+            "why": [{"text": "The last few percent of load cost more waiting than all the rest together.", "cites": ["ch03/s01/p004"]}]
+          },
+          "cites": ["ch03/s01/p004"]
+        },
+        {
+          "kind": "quiz",
+          "headline": "Half the story",
+          "body": {
+            "question": "Load is only half of what makes work wait. What is the other half?",
+            "choices": ["Team size", "Variability", "Meeting load"],
+            "answer": 1,
+            "explanation": [{"text": "Utilization is half the story; variability in arrivals and work sizes is the other.", "cites": ["ch03/s02/p003"]}]
+          },
+          "cites": ["ch03/s02/p003"]
+        },
+        {
+          "kind": "remember",
+          "headline": "Slack is not waste",
+          "body": {
+            "spans": [{"text": "Slack is capacity held in reserve for the work you cannot predict, not idle time to cut.", "cites": ["ch03/s03/p001"]}]
+          },
+          "cites": ["ch03/s03/p001"]
+        }
+      ]
+    }
+  ],
+  "pills": [
+    {
+      "kind": "antipattern",
+      "headline": "Planning to a full plate",
+      "body": {
+        "spans": [{"text": "Scheduling everyone at full capacity guarantees queues: any surprise has nowhere to go but the wait.", "cites": ["ch03/s01/p004", "ch03/s03/p001"]}]
+      },
+      "cites": ["ch03/s01/p004", "ch03/s03/p001"]
+    },
+    {
+      "kind": "flip",
+      "headline": "Kingman in one line",
+      "body": {
+        "front": "Kingman's formula: queue time is a product of which three terms?",
+        "back": [{"text": "A utilization term, a variability term and the mean service time.", "cites": ["ch03/s02/p005"]}]
+      },
+      "cites": ["ch03/s02/p005"]
+    }
+  ]
+}

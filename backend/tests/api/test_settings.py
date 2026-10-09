@@ -104,3 +104,23 @@ def test_an_unknown_auto_approve_mode_is_refused(client):
     response = client.patch("/api/v1/settings", json={"auto_approve": "yes"}, headers=AUTH)
 
     assert response.status_code == 422
+
+
+def test_pills_settings_default_to_lazy_generation_within_a_daily_cap(client):
+    assert client.get("/api/v1/settings").json()["pills"] == {
+        "auto_generate": True,
+        "max_chapters_per_day": 4,
+    }
+    assert "make-pills" not in choices(client, "book")  # lazy by design, never auto-derived
+
+
+def test_pills_settings_merge_and_are_validated(client):
+    patch = {"pills": {"max_chapters_per_day": 8}}
+    assert client.patch("/api/v1/settings", json=patch, headers=AUTH).status_code == 200
+    patch = {"pills": {"auto_generate": False}}
+    body = client.patch("/api/v1/settings", json=patch, headers=AUTH).json()
+
+    assert body["pills"] == {"auto_generate": False, "max_chapters_per_day": 8}
+    for bad in ({"max_chapters_per_day": 0}, {"max_chapters_per_day": 51}, {"often": True}):
+        response = client.patch("/api/v1/settings", json={"pills": bad}, headers=AUTH)
+        assert response.status_code == 422

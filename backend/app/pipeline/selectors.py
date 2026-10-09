@@ -483,11 +483,13 @@ SELECTORS: dict[str, Callable[[Context], Selection]] = {
 
 
 def registry() -> dict[str, Callable[[Context], Selection]]:
-    """`SELECTORS` plus the paper skills' (`app.papers.selectors`), imported on first use
-    because they build on this module's `Context` and `Selection`."""
+    """`SELECTORS` plus the paper skills' (`app.papers.selectors`) and make-pills'
+    (`app.pills.skill_inputs`), imported on first use because they build on this module's
+    `Context` and `Selection`."""
     from app.papers.selectors import SELECTORS as PAPER_SELECTORS
+    from app.pills.skill_inputs import SELECTORS as PILL_SELECTORS
 
-    return {**SELECTORS, **PAPER_SELECTORS}
+    return {**SELECTORS, **PAPER_SELECTORS, **PILL_SELECTORS}
 
 
 def select_inputs(

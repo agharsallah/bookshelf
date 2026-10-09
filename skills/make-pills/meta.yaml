@@ -1,0 +1,19 @@
+name: make-pills
+version: 1
+description: Compose a chapter's learning pills — hooks, threads of 3-6 pills that tell its arc, and headlines — from its distillation, never restating a pill already harvested. Run lazily when a feed runs low.
+tier: explore  # rewrites an already-cited distillation; promote to distil if the gates show it
+job_kind: derive
+artifact_type: pill_set  # materialized into `pills` (origin skill:make-pills@<version>)
+scope: chapter
+selector: chapter_pills  # distillation + salience marks + the chapter's harvested pills
+vision: false
+# Chosen per run (POST /jobs `params`, POST /pills/generate `style`).
+params:
+  style:
+    choices: [plain, story, socratic]
+    default: plain
+    description: How the pills talk — plainly, as a small story, or by asking first.
+variant: "{style}"
+gates:
+  grounding_min: 0.9
+  pill_words: [8, 60]  # words a pill body reads; outside → pill_too_short / pill_too_long

@@ -50,7 +50,7 @@ export interface RecallCreated extends RecallPublic {
   job: JobPublic | null;
 }
 
-export type ReviewSource = 'recall' | 'question' | 'flashcard';
+export type ReviewSource = 'recall' | 'question' | 'flashcard' | 'pill';
 
 /** `GET /reviews/due`: a card waiting for you, prompt only. */
 export interface DueCard {

@@ -3,6 +3,7 @@ import { defineConfig, envField, fontProviders, memoryCache } from 'astro/config
 
 import react from '@astrojs/react';
 import node from '@astrojs/node';
+import vercel from '@astrojs/vercel';
 
 // https://astro.build/config
 export default defineConfig({
@@ -15,6 +16,13 @@ export default defineConfig({
       }),
       // Public backend base URL (including /api/v1). Used server-side unless
       // API_INTERNAL_URL overrides it; the browser always goes through /api.
+      // Read-only showcase (docs/DEMO.md): greys out adding and the local-only tools,
+      // and the /api proxy refuses every write.
+      PUBLIC_DEMO: envField.boolean({
+        context: 'client',
+        access: 'public',
+        default: false,
+      }),
       PUBLIC_API_URL: envField.string({
         context: 'client',
         access: 'public',
@@ -87,7 +95,6 @@ export default defineConfig({
 
   integrations: [react()],
 
-  adapter: node({
-    mode: 'standalone',
-  }),
+  // Vercel sets VERCEL during its builds (the demo deploy); everywhere else, Node.
+  adapter: process.env.VERCEL ? vercel() : node({ mode: 'standalone' }),
 });

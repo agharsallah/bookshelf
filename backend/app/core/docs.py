@@ -52,6 +52,7 @@ TAGS_METADATA: list[dict[str, object]] = [
     {"name": "reader stats", "description": "How you read, listen, annotate and remember."},
     {"name": "recalls", "description": "Chapters recalled from memory, predictions; graded."},
     {"name": "reviews", "description": "Spaced retrieval reviews (FSRS) and flashcard marks."},
+    {"name": "pills", "description": "A feed of one-idea, cited learning pills."},
     {"name": "artifacts", "description": "Summaries, distillations, briefs; review queue."},
     {"name": "jobs", "description": "The pipeline queue. Long work returns `202` + a job."},
     {"name": "search", "description": "Address-first, two-tier hybrid search with citations."},

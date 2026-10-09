@@ -19,7 +19,7 @@ export interface RefreshJobsProps {
 
 function JobButton({ label, run, primary = false }: { label: string; run: ReturnType<typeof useJobRun>; primary?: boolean }) {
   return (
-    <div className={styles.job} data-phase={run.progress?.phase ?? 'idle'}>
+    <div className={styles.job} data-demo-off data-phase={run.progress?.phase ?? 'idle'}>
       {run.finished ? (
         <button type="button" className="btn btn-primary" onClick={() => location.reload()}>
           Show the new suggestions

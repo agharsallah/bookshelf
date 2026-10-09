@@ -12,7 +12,7 @@ interface Props {
 const { slug } = Astro.props;
 ---
 
-<aside class="build-cta" aria-label="Build from this paper">
+<aside class="build-cta" data-demo-off aria-label="Build from this paper">
   <p>Turn what you read into code: a small implementation, a demo, a site that explains it.</p>
   <a href={paperHref(slug, 'build')}>Build from this paper <span aria-hidden="true">→</span></a>
 </aside>

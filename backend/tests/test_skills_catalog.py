@@ -52,6 +52,8 @@ SELECTORS = {
     "paper_citations",
     "paper_concepts",
     "paper_math",
+    # Pills (app/pills/skill_inputs.py)
+    "chapter_pills",
 }
 REQUIRED_META = {
     "name",
@@ -85,6 +87,8 @@ PYTHON_JOBS = {
     # Builds (docs/BUILDS.md): the plan runs plan-build inline; the run is an agent package.
     JobKind.BUILD_PLAN,
     JobKind.BUILD_RUN,
+    # Pills (docs/PILLS.md §4): harvesting is pure Python.
+    JobKind.HARVEST_PILLS,
 }
 # Skill-backed kinds whose skill package is not written yet. The paper-skills stage removes
 # each entry as it adds the package (and adds the kind to `SKILL_JOB_KINDS`); keep it empty.

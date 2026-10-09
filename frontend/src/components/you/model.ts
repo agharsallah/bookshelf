@@ -22,6 +22,8 @@ export const SURFACES: readonly (Series & { key: Surface; hint: string })[] = [
   { key: 'review', label: 'Review', color: SLOTS[4], hint: 'spaced reviews on Today' },
   { key: 'distill', label: 'Brief & guide', color: SLOTS[5], hint: 'what the pipeline wrote' },
   { key: 'explore', label: 'Exploring', color: OTHER, hint: 'search, concepts, the map' },
+  // Six series colours for eight surfaces: pills share study's, the nearest in kind.
+  { key: 'pills', label: 'Pills', color: SLOTS[2], hint: 'the pills feed, one idea at a time' },
 ];
 
 /** The surfaces that have time in `seconds`, in their fixed order. */

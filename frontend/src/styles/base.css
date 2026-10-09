@@ -147,6 +147,26 @@ html:not([data-workshop]) .workshop-only {
   display: none !important;
 }
 
+/* The read-only demo (docs/DEMO.md): what would add to the shelf or run on the owner's
+   computer stays visible, greyed and inert. */
+html[data-demo] [data-demo-off] {
+  opacity: 0.45;
+  filter: grayscale(1);
+  pointer-events: none;
+  user-select: none;
+}
+
+.demo-banner {
+  margin: 0;
+  padding: var(--space-2) var(--space-4);
+  border-block-end: 1px solid var(--rule);
+  background: var(--paper-sunken);
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  text-align: center;
+}
+
 /* Hidden in workshop mode: the reader's simpler stand-in for something the workshop shows. */
 html[data-workshop] .reading-only {
   display: none !important;

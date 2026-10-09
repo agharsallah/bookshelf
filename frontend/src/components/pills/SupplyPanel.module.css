@@ -1,0 +1,86 @@
+/* Workshop-only: how much each book has left, and what could still be made. */
+
+.supply {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px dashed var(--rule-strong);
+  border-radius: var(--radius-m);
+  background: var(--paper-sunken);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.supply h2 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+  font-size: var(--text-md);
+}
+
+.total {
+  color: var(--ink-3);
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+
+.low {
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--tone-caution) 20%, transparent);
+  font-size: var(--text-xs);
+}
+
+.docs,
+.chapters {
+  display: grid;
+  gap: var(--space-2);
+  padding: 0;
+  list-style: none;
+}
+
+.doc {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-weight: 600;
+}
+
+.doc span {
+  color: var(--ink-3);
+  font-weight: 400;
+}
+
+.chapters {
+  padding-inline-start: var(--space-4);
+}
+
+.chapters li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+
+.chapter {
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
+.estimate {
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.queued {
+  color: var(--ink-2);
+}
+
+.failed {
+  color: var(--tone-antipattern);
+}
+
+.undistilled {
+  color: var(--ink-2);
+}

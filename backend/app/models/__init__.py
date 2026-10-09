@@ -20,6 +20,7 @@ from app.models.paper import (
     PaperSynthesis,
     ReadingCandidate,
 )
+from app.models.pill import Feed, Pill, PillEvent, PillSession
 from app.models.reading import ReadingPosition
 from app.models.recall import Recall, RecallGrade, ReviewItem, ReviewLog
 from app.models.worker import WorkerRow
@@ -36,6 +37,7 @@ __all__ = [
     "Concept",
     "Document",
     "Edge",
+    "Feed",
     "Job",
     "ModelRun",
     "Node",
@@ -46,6 +48,9 @@ __all__ = [
     "PaperReference",
     "PaperSet",
     "PaperSynthesis",
+    "Pill",
+    "PillEvent",
+    "PillSession",
     "ReadingCandidate",
     "ReadingPosition",
     "Recall",

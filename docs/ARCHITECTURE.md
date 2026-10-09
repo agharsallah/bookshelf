@@ -22,7 +22,8 @@ Scientific papers have a dedicated mode on the same infrastructure (own pipeline
 skills, tables and pages: claims, results, citations, ratings, reading recommendations). Its
 design lives in [PAPERS.md](PAPERS.md); this document covers what both share. A paper can
 also be turned into a git repository by an agent run (plan, approve, build): see
-[BUILDS.md](BUILDS.md).
+[BUILDS.md](BUILDS.md). Pills, a vertical feed of one-idea, cited learning cards harvested
+from the shelf's artifacts, are designed in [PILLS.md](PILLS.md).
 
 ### Explicit non-goals
 
@@ -32,7 +33,7 @@ Named so they stop showing up in scope discussions:
 |---|---|
 | Generated videos | Highest cost, lowest knowledge value per hour of work. Narration was on this list; audio summaries (§9) are now in, as derived study material |
 | Multi-user accounts, sharing, permissions | Single-user system; auth is one API key (already built) |
-| Mobile app | Responsive web is enough |
+| Mobile app | Responsive web is enough for now. Pills are web first, but their contract (`contracts/pill.schema.json`), API and framework-free client core (`frontend/src/lib/pills/`) keep a future mobile client possible without backend changes ([PILLS.md](PILLS.md) §8) |
 | Real-time collaborative editing | No second user |
 | Web crawling / feed ingestion | Ingest is deliberate: you choose what enters the shelf |
 | DOCX, audio | PDF, EPUB and HTML cover the real corpus; the parser interface leaves the seam |
@@ -175,6 +176,7 @@ Each decision states the call, the reason, and what it costs.
 | D18 | **Claude Code CLI is the model runtime; no API key in the backend** | Skills already run there; subscription covers the cost; interactive exploration is free-form | Worker shells out to `claude -p`; structured output enforced by post-validation; concurrency capped; a `ModelRunner` seam keeps the API swap possible |
 | D19 | **Papers are a document genre with their own pipeline profile** (`documents.genre`) | Reuses tree, anchors, artifacts, gates, search, graph and FSRS; a paper still needs its own ranks, skills and atoms (claims, results, references) | Orchestrator rules are chosen per genre (`rules_for`); see [PAPERS.md](PAPERS.md) P1–P9 |
 | D20 | **Builds: an agent package turns a paper into a repository** (`builds`) | The shelf's card, claims, results and explainer are enough context to build a learning implementation or explainer; the CLI stays the runtime (D18) | Plan with a utility skill, approve, then an agentic `build_run` on its own slot; see [BUILDS.md](BUILDS.md) B1–B10 |
+| D21 | **Pills: a feed harvested, not generated** ([PILLS.md](PILLS.md)) | One-idea, cited cards already exist in the shelf's artifacts; harvesting them costs zero tokens, and one lazy, budgeted skill (`make-pills`) writes only hooks and threads | `pills` is derived and rebuildable (D1), events and saves are human data; a closed set of kinds; the feed is a deterministic ranked query, saves join the FSRS queue; see PILLS.md L1–L8 |
 | D17 | **Non-prose content is parsed, not skipped** | Charts, diagrams, tables, code, and formulas often carry the argument; a distillation that ignores them is of a weaker book | Region classifier at parse time; per-kind skills (`describe-figure`, `explain-code`, `describe-math`, `explain-table`) emit structured, cited blocks; one call per element, never per page |
 
 ---
@@ -574,6 +576,7 @@ Consequences:
 | `mark-salience` | `salience_marks` | chapter | distil | `{marks: [{tier: core · key · term, text, cites: [one anchor], why}]}`, `text` verbatim from the cited block (`verbatim` gate); read by the reader's "Mark what matters" mode |
 | `grade-recall` | — (utility: `recall_grades` + `review_items`) | chapter | distil | `{ideas: [{id, status: recalled · partial · missed, feedback, cue?}], question: {idea, text} \| null, comparison: {predicted, argues, ideas} \| null}`; grades by idea id, Python maps ids to cites (§9 "Remembering it") |
 | `write-audio-summary` | `audio_summary` | document | reason | a spoken script: `{title, speakers[1–4], sections: [{title, turns: [{speaker, text, cites}]}]}`, per run `params` minutes · format · language (§9 "Audio summaries") |
+| `make-pills` | `pill_set` | chapter | explore | `{threads: [{title, pills: [3–6]}], pills: []}`, each pill `{kind: hook · insight · remember · antipattern · definition · quiz · flip, headline, body, cites}`; per run `params` style · plain · story · socratic; never auto-derived: queued lazily by the pills feed (`app/pills/generate.py`, docs/PILLS.md §5) and harvested into `pills` |
 | `catalogue-document` | `catalogue_entry` | document | explore | the library card: `{theme: {name, new}, subjects[], form, audience, level, description, facts: {publisher, published, edition, isbn, language, series}, cites[]}`; reuses the shelf's themes (`existing_themes`); read where shown (`app/pipeline/catalogue.py`), never copied onto `documents` |
 
 The four study skills marked *chapter · document* are one package each: a job with an anchor
@@ -1195,6 +1198,7 @@ Keep Astro as the shell and routing layer; add React islands only where interact
 | **Listen** | Astro + one React island | Audio summaries: pick an episode and cast, a player (skip, speed, parts, download, resume where you stopped, Media Session and keys), a transcript that follows the audio and links each line to its passage, and the form that makes an episode |
 | **Review queue** | React island | Draft artifacts, diff against the previous version, approve / edit / reject / re-run |
 | **Papers** | Astro + islands | Paper shelf, paper tabs (card · explain · claims · results · references · notation · review · club · build), reading queue, compare, sets, three-pass reader mode ([PAPERS.md](PAPERS.md) §8) |
+| **Pills** | Astro + one React island | `/pills`: a vertical, snap-scrolling feed of one-idea pills (quiz, flashcard, figure, formula, connection, listening clip…), each cited and one tap from its passage, with story-style progress, keyboard control, a settings sheet (sources, mode, kinds, length, saved feeds), an end card, and a workshop-only supply panel ("Make pills" per chapter with its token estimate). Entry points on Today, documents, collections, concepts and paper sets ([PILLS.md](PILLS.md) §9) |
 | **You** | Astro + React islands | Reader statistics (§12 "Reader statistics"): `/you` for the shelf, `/you/{slug}` for one book, with a window (7 / 30 / 90 days, a year, all time); Milestones on `/you` and the whole badge collection at `/you/badges` (§12 "Encouragement") |
 
 ### Rendering and speed
@@ -1396,7 +1400,8 @@ GET    /stats                          pipeline statistics for every book, skill
 GET    /documents/{ref}/stats          one book: passes, stages, chapters, skills, insights
 ```
 
-Paper endpoints (`/papers…`, `/claims…`, `/paper-sets…`) are listed in [PAPERS.md](PAPERS.md) §7.
+Paper endpoints (`/papers…`, `/claims…`, `/paper-sets…`) are listed in [PAPERS.md](PAPERS.md) §7,
+pills endpoints (`/pills…`) in [PILLS.md](PILLS.md) §7.
 All of it sits behind the existing `/api/v1` prefix, error envelope, and API-key guard on writes.
 Ingest and job endpoints return `202` with a job id; the frontend polls `/jobs`.
 
@@ -1650,7 +1655,10 @@ whole-document, non-narrated `derive` skills are offered (`services/app_settings
 (`needs_review` too; its `gates.flags` stay on the row). `pipeline/auto_approval.settle`
 applies it right after a batch job or an interactive import stores the artifact, and
 propagates the approval through `orchestrator.on_review` like a human one. Artifacts already
-waiting are left alone.
+waiting are left alone. `pills.auto_generate` (default on) lets a pills feed running low queue
+`make-pills` for distilled chapters with no `pill_set`, at most `pills.max_chapters_per_day`
+(default 4, 1–50) a day (docs/PILLS.md §5); `make-pills` is chapter-scope, so it is never an
+`auto_derive` choice.
 
 **Database** (`/database`, `app/db/targets.py`, `app/db/sync.py`, `services/database.py`).
 Two databases can be configured: `BOOKSHELF_DATABASE_URL` (the main one, Supabase) and

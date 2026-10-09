@@ -15,7 +15,7 @@
  */
 import { Font } from 'astro:assets';
 import { ClientRouter } from 'astro:transitions';
-import { PUBLIC_APP_NAME } from 'astro:env/client';
+import { PUBLIC_APP_NAME, PUBLIC_DEMO } from 'astro:env/client';
 import '../styles/base.css';
 import ApiStatus from '../components/shell/ApiStatus.astro';
 import NavigationProgress from '../components/shell/NavigationProgress.astro';
@@ -45,7 +45,7 @@ const afterSwapScript = `document.addEventListener('astro:after-swap', () => { $
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang="en" data-demo={PUBLIC_DEMO ? '' : undefined}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -113,6 +113,14 @@ const afterSwapScript = `document.addEventListener('astro:after-swap', () => { $
       </div>
     </header>
 
+    {
+      PUBLIC_DEMO && (
+        <p class="demo-banner" role="note">
+          A read-only demo of the paper shelf: adding papers and the tools that run on the owner's computer are switched off.
+        </p>
+      )
+    }
+
     <main id="main" class:list={['main', `main--${width}`]} tabindex="-1">
       <slot />
       <NavigationSkeleton />
@@ -123,7 +131,7 @@ const afterSwapScript = `document.addEventListener('astro:after-swap', () => { $
     <footer class="colophon">
       <div class="colophon-inner">
         <ApiStatus />
-        <a href="/settings">Settings</a>
+        <a href="/settings" data-demo-off>Settings</a>
         <a class="workshop-only" href="/styleguide">Styleguide</a>
       </div>
     </footer>

@@ -56,6 +56,14 @@ export function ReadInPlace({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * The drawer's opener, for islands that open passages from their own controls (a pill's
+ * cite or `o` key); null outside any `ReadInPlace`.
+ */
+export function usePassageOpener(): Open | null {
+  return useContext(OpenPassage);
+}
+
 export interface ReadLinkProps extends Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'href'> {
   slug: string;
   /** The passage or chapter to open. */

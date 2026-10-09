@@ -4,13 +4,14 @@
  * (`server:defer` in pages/index.astro): the line that says what today holds (with a word
  * of encouragement about the book you are in, components/cheer), the cards
  * due for review, a passage from your margins, the book to pick up with the others still
- * open, and the next paper. It takes no props, so the route cache finds it again
+ * open, five minutes of pills, and the next paper. It takes no props, so the route cache finds it again
  * (lib/route-cache.ts). Each part degrades alone when its data fails.
  */
 import { Cheer } from '../cheer/Cheer';
 import { bookCheer } from '../cheer/lines';
 import { Problem } from '../common/Problem';
 import NextPaperCard from '../papers/next/NextPaperCard.astro';
+import PillsCard from '../pills/PillsCard.astro';
 import { loadNextPaper } from '../papers/next/load';
 import DueToday from '../recall/DueToday';
 import { serverApi } from '../../lib/api/server';
@@ -60,6 +61,7 @@ const cheer = bookCheer(heroStanding(hero), today);
     </div>
     <aside class="side" aria-label="Your reading">
       {loaded.ok && <PickUp hero={hero} others={others} />}
+      <PillsCard />
       {nextPaper && <NextPaperCard candidate={nextPaper} />}
     </aside>
   </div>

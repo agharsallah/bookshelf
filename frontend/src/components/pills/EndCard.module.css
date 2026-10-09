@@ -1,0 +1,77 @@
+.end {
+  display: grid;
+  align-content: center;
+  justify-items: start;
+  gap: var(--space-5);
+  min-block-size: 100%;
+  padding: var(--space-6);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-l);
+  background: var(--paper-raised);
+  box-shadow: var(--shadow-lift);
+}
+
+.end h2 {
+  font-family: var(--font-read);
+  font-size: var(--text-2xl);
+  font-weight: 480;
+}
+
+.lede {
+  color: var(--ink-2);
+  font-size: var(--text-md);
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(6.5rem, 1fr));
+  gap: var(--space-3);
+  inline-size: 100%;
+}
+
+.stats > div {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  border-radius: var(--radius-m);
+  background: var(--paper-sunken);
+}
+
+.stats dt {
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+}
+
+.stats dd {
+  color: var(--ink);
+  font-family: var(--font-read);
+  font-size: var(--text-xl);
+  font-variant-numeric: tabular-nums;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* "Continue reading" takes a row of its own, the chapter under it. */
+.continue {
+  display: grid;
+  flex: 1 1 100%;
+  justify-items: start;
+  gap: 0.1rem;
+  text-align: start;
+}
+
+.where {
+  overflow: hidden;
+  max-inline-size: 100%;
+  font-size: var(--text-sm);
+  font-weight: 400;
+  opacity: 0.85;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

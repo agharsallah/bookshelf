@@ -44,7 +44,7 @@ export function SynthesisActions({ setId, version, review, canWrite, initialJob 
   };
 
   return (
-    <div className={styles.actions}>
+    <div className={styles.actions} data-demo-off>
       {version !== null && review
         ? verdictsFor(review).map((v) => (
             <button key={v} type="button" className={v === 'approve' ? 'btn btn-primary' : 'btn'} disabled={judging || run.live} onClick={() => void judge(v)}>

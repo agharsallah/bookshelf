@@ -5,9 +5,9 @@ Two kinds of gate:
 * **Hard** (`output_problems`): schema and anchor validity. A failure rejects the output;
   the batch runner retries once with the problems appended, then fails the job.
 * **Soft** (`evaluate`): grounding, compression band, max words, non-prose confidence,
-  verbatim code, verbatim quotes, duplication between sibling section notes, and chapter
-  coverage of book-wide study material. A failure stores the artifact
-  as `needs_review` with the reasons in `gates.flags`.
+  verbatim code, verbatim quotes, duplication between sibling section notes, chapter
+  coverage of book-wide study material, and the length of each composed pill. A failure
+  stores the artifact as `needs_review` with the reasons in `gates.flags`.
 
 Human-authored artifacts (D15) pass the hard gates only: `origin = human` bypasses the rest.
 """
@@ -31,6 +31,7 @@ from app.pipeline.bodies import (
     iter_objects,
     leaf_spans,
     plain_text,
+    read_text,
     spoken_words,
 )
 from app.pipeline.skills import GateConfig
@@ -253,6 +254,23 @@ def unquoted(output: Any, sources: Mapping[str, str]) -> list[str]:
     return found
 
 
+def pill_word_counts(output: Any) -> list[int]:
+    """Words each pill's body reads: every object with a `kind` and a `body` object (the
+    pills of make-pills, in threads or standalone), in document order."""
+    return [
+        count_words(read_text(obj["body"]))
+        for obj in iter_objects(output)
+        if isinstance(obj.get("kind"), str) and isinstance(obj.get("body"), dict)
+    ]
+
+
+def _pill_flags(output: Any, band: tuple[int, int]) -> list[str]:
+    low, high = band
+    counts = pill_word_counts(output)
+    flags = ["pill_too_short"] if any(c < low for c in counts) else []
+    return flags + (["pill_too_long"] if any(c > high for c in counts) else [])
+
+
 def evaluate(
     output: dict[str, Any],
     *,
@@ -309,6 +327,8 @@ def evaluate(
         report.flags.append("code_not_verbatim")
     if config.verbatim and sources is not None and unquoted(output, sources):
         report.flags.append("not_verbatim")
+    if config.pill_words is not None:
+        report.flags.extend(_pill_flags(output, config.pill_words))
     if visible_anchors is not None and cited_anchors(output) - set(visible_anchors):
         report.flags.append("out_of_scope_cites")
     if chapters and config.coverage_min is not None:

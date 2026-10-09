@@ -30,6 +30,7 @@ const SOURCE_LABELS: Record<ReviewSource, string> = {
   recall: 'Missed in a recall',
   question: 'Why is it true?',
   flashcard: 'Flashcard',
+  pill: 'Saved from pills',
 };
 
 const RATINGS: readonly { rating: Rating; label: string }[] = [

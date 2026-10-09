@@ -21,6 +21,11 @@ Pipeline order per document:
           → link_concepts → linked
           → (concept_links applied to the idea graph) dedup: link_concepts, mode=dedup
 
+Pills (docs/PILLS.md §4) follow every entry point: a job that stored a harvestable artifact,
+or a review that moved the preferred version, queues the document's `harvest_pills`
+(`app.pills.triggers`), whatever the profile. It is queued beside the pipeline, so the
+entry points' return values (the pipeline's own jobs) leave it out.
+
 A paper (`genre = paper`) runs its own profile, `app.papers.profile` (docs/PAPERS.md §3):
 `rules_for(document)` picks the tables, so book rules stay as they are.
 """
@@ -47,6 +52,7 @@ from app.models.enums import (
     NodeKind,
     Review,
 )
+from app.pills import triggers as pill_triggers
 from app.pipeline import artifacts
 from app.pipeline.parse.text import is_prose_grid
 from app.pipeline.skills import load_catalogue
@@ -438,6 +444,7 @@ def on_job_done(session: Session, job: Job) -> list[Job]:
     # it only releases barriers (a cancelled embed must not make the document `indexed`).
     cancelled = job.state is JobState.SKIPPED and job.error in queue.NOT_RUN
     finished = job.state is JobState.DONE or (job.state is JobState.SKIPPED and not cancelled)
+    pill_triggers.after_job(session, job)  # docs/PILLS.md §4, queued beside the pipeline
     if rule is None:
         return []
     if not finished and not (
@@ -455,6 +462,7 @@ def on_review(session: Session, artifact: Artifact) -> list[Job]:
     rules = rules_for(document) if document is not None else BOOK_RULES
     tables = {Review.APPROVED: rules.after_approval, Review.REJECTED: rules.after_rejection}
     rule = tables[artifact.review].get(artifact.type) if artifact.review in tables else None
+    pill_triggers.after_artifact(session, artifact)  # the preferred version may have moved
     if rule is None:
         return []
     state = _state(session, artifact.document_id)
@@ -470,6 +478,7 @@ def on_reopen(session: Session, artifact: Artifact, *, was_approved: bool) -> li
     * an approved, indexed type on an already indexed document queues `embed`, so search
       (approved content only) drops it; its previous approved version, if any, comes back.
     """
+    pill_triggers.after_artifact(session, artifact)  # the preferred version moved
     state = _state(session, artifact.document_id)
     if state is None:
         return []

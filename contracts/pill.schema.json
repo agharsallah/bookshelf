@@ -1,0 +1,303 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bookshelf.local/contracts/pill.schema.json",
+  "title": "Pill",
+  "description": "One learning pill on the wire (docs/PILLS.md §2): one idea, cited, self-contained. Spans, cites and diagrams are the render contract's. `cites` lists every anchor the pill rests on: a bare anchor is in the pill's own document, `<slug>:<anchor>` in another; `sources` resolves each one. Inside a body, span cites are bare anchors of the pill's document, except a connection side's, which are anchors of that side's document.",
+  "$ref": "#/$defs/pill",
+  "$defs": {
+    "uuid": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+    },
+    "anchor": { "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/anchor" },
+    "span": { "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/span" },
+    "spans": { "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/spans" },
+    "cite": {
+      "description": "A bare anchor (the pill's document) or `<slug>:<anchor>` (another document).",
+      "type": "string",
+      "pattern": "^([^:\\s]+:)?[a-z]+[0-9]+(/[a-z]+[0-9]+)*$",
+      "maxLength": 400
+    },
+    "kind": {
+      "enum": [
+        "insight", "remember", "antipattern", "quote", "definition", "number", "figure",
+        "diagram", "quiz", "flip", "claim", "math", "connection", "listen", "hook", "review"
+      ]
+    },
+    "documentRef": {
+      "type": "object",
+      "required": ["id", "slug", "title"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/uuid" },
+        "slug": { "type": "string", "minLength": 1 },
+        "title": { "type": "string" }
+      }
+    },
+    "document": {
+      "type": "object",
+      "required": ["id", "slug", "title", "genre", "theme"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/uuid" },
+        "slug": { "type": "string", "minLength": 1 },
+        "title": { "type": "string" },
+        "genre": { "enum": ["book", "paper", "article"] },
+        "theme": { "type": ["string", "null"], "description": "The catalogue theme name." }
+      }
+    },
+    "source": {
+      "type": "object",
+      "required": ["document", "anchor"],
+      "additionalProperties": false,
+      "properties": {
+        "document": { "$ref": "#/$defs/documentRef" },
+        "anchor": { "$ref": "#/$defs/anchor" }
+      }
+    },
+    "thread": {
+      "type": "object",
+      "required": ["key", "index", "size", "title"],
+      "additionalProperties": false,
+      "properties": {
+        "key": { "type": "string", "minLength": 1 },
+        "index": { "type": "integer", "minimum": 0 },
+        "size": { "type": "integer", "minimum": 1 },
+        "title": { "type": ["string", "null"] }
+      }
+    },
+    "insightBody": {
+      "type": "object",
+      "required": ["spans"],
+      "additionalProperties": false,
+      "properties": { "spans": { "$ref": "#/$defs/spans" }, "why": { "$ref": "#/$defs/spans" } }
+    },
+    "spansBody": {
+      "type": "object",
+      "required": ["spans"],
+      "additionalProperties": false,
+      "properties": { "spans": { "$ref": "#/$defs/spans" } }
+    },
+    "quoteBody": {
+      "type": "object",
+      "required": ["text"],
+      "additionalProperties": false,
+      "properties": {
+        "text": { "type": "string", "minLength": 1 },
+        "page": { "type": ["integer", "null"], "minimum": 0 },
+        "attribution": { "type": ["string", "null"] }
+      }
+    },
+    "definitionBody": {
+      "type": "object",
+      "required": ["term", "spans"],
+      "additionalProperties": false,
+      "properties": {
+        "term": { "type": "string", "minLength": 1 },
+        "spans": { "$ref": "#/$defs/spans" }
+      }
+    },
+    "numberBody": {
+      "type": "object",
+      "required": ["value", "label"],
+      "additionalProperties": false,
+      "properties": {
+        "value": { "type": "string", "minLength": 1 },
+        "label": { "$ref": "#/$defs/spans" }
+      }
+    },
+    "figureBody": {
+      "type": "object",
+      "required": ["image_url", "takeaway"],
+      "additionalProperties": false,
+      "properties": {
+        "image_url": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Relative to the API base, e.g. `media/<image_path>`."
+        },
+        "caption": { "type": ["string", "null"] },
+        "takeaway": { "$ref": "#/$defs/spans" }
+      }
+    },
+    "diagramBody": {
+      "type": "object",
+      "required": ["diagram"],
+      "additionalProperties": false,
+      "properties": {
+        "diagram": { "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/diagram" },
+        "caption": { "type": ["string", "null"] }
+      }
+    },
+    "quizBody": {
+      "type": "object",
+      "required": ["question", "choices", "answer", "explanation"],
+      "additionalProperties": false,
+      "properties": {
+        "question": { "type": "string", "minLength": 1 },
+        "choices": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 6,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "answer": { "type": "integer", "minimum": 0 },
+        "explanation": { "$ref": "#/$defs/spans" }
+      }
+    },
+    "flipBody": {
+      "type": "object",
+      "required": ["front", "back"],
+      "additionalProperties": false,
+      "properties": {
+        "front": { "type": "string", "minLength": 1 },
+        "back": { "$ref": "#/$defs/spans" }
+      }
+    },
+    "claimBody": {
+      "type": "object",
+      "required": ["text", "claim_kind", "strength", "support"],
+      "additionalProperties": false,
+      "properties": {
+        "text": { "type": "string", "minLength": 1 },
+        "claim_kind": { "enum": ["method", "result", "theory", "dataset", "benchmark", "position"] },
+        "strength": { "enum": ["measured", "argued", "speculated"] },
+        "support": {
+          "type": "object",
+          "required": ["supports", "contradicts", "extends"],
+          "additionalProperties": false,
+          "properties": {
+            "supports": { "type": "integer", "minimum": 0 },
+            "contradicts": { "type": "integer", "minimum": 0 },
+            "extends": { "type": "integer", "minimum": 0 }
+          }
+        }
+      }
+    },
+    "mathBody": {
+      "type": "object",
+      "required": ["latex", "name", "plain"],
+      "additionalProperties": false,
+      "properties": {
+        "latex": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "plain": { "$ref": "#/$defs/spans" },
+        "try_it": {
+          "type": ["object", "null"],
+          "required": ["question", "answer"],
+          "additionalProperties": false,
+          "properties": {
+            "question": { "type": "string", "minLength": 1 },
+            "answer": { "$ref": "#/$defs/spans" }
+          }
+        }
+      }
+    },
+    "connectionSide": {
+      "type": "object",
+      "required": ["document", "anchor", "spans"],
+      "additionalProperties": false,
+      "properties": {
+        "document": { "$ref": "#/$defs/documentRef" },
+        "anchor": { "$ref": "#/$defs/anchor" },
+        "spans": { "$ref": "#/$defs/spans" }
+      }
+    },
+    "connectionBody": {
+      "type": "object",
+      "required": ["relation", "sides"],
+      "additionalProperties": false,
+      "properties": {
+        "relation": {
+          "enum": ["echoes", "supports", "contradicts", "extends", "example_of", "same_as"]
+        },
+        "concept": { "type": ["string", "null"] },
+        "sides": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": { "$ref": "#/$defs/connectionSide" }
+        }
+      }
+    },
+    "listenBody": {
+      "type": "object",
+      "required": ["audio_url", "start_ms", "end_ms", "transcript"],
+      "additionalProperties": false,
+      "properties": {
+        "audio_url": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Relative to the API base, e.g. `audio/files/<doc>/<source>/<key>.mp3`."
+        },
+        "start_ms": { "type": "integer", "minimum": 0 },
+        "end_ms": { "type": "integer", "minimum": 0 },
+        "transcript": { "$ref": "#/$defs/spans" }
+      }
+    },
+    "hookBody": {
+      "type": "object",
+      "required": ["spans", "payoff"],
+      "additionalProperties": false,
+      "properties": { "spans": { "$ref": "#/$defs/spans" }, "payoff": { "$ref": "#/$defs/spans" } }
+    },
+    "reviewBody": {
+      "type": "object",
+      "required": ["prompt", "answer"],
+      "additionalProperties": false,
+      "properties": {
+        "prompt": { "type": "string", "minLength": 1 },
+        "answer": { "$ref": "#/$defs/spans" }
+      }
+    },
+    "pill": {
+      "type": "object",
+      "required": [
+        "id", "kind", "document", "anchor", "unit_title", "headline", "body", "cites",
+        "sources", "concepts", "thread", "est_seconds", "origin", "draft", "review_item_id"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/uuid" },
+        "kind": { "$ref": "#/$defs/kind" },
+        "document": { "$ref": "#/$defs/document" },
+        "anchor": { "$ref": "#/$defs/anchor" },
+        "unit_title": { "type": ["string", "null"] },
+        "headline": { "type": ["string", "null"], "maxLength": 200 },
+        "body": { "type": "object" },
+        "cites": { "type": "array", "items": { "$ref": "#/$defs/cite" }, "uniqueItems": true },
+        "sources": {
+          "type": "object",
+          "propertyNames": { "$ref": "#/$defs/cite" },
+          "additionalProperties": { "$ref": "#/$defs/source" }
+        },
+        "concepts": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "thread": { "oneOf": [{ "$ref": "#/$defs/thread" }, { "type": "null" }] },
+        "est_seconds": { "type": "integer", "minimum": 1, "maximum": 600 },
+        "origin": {
+          "type": "string",
+          "pattern": "^(harvest:[a-z_]+|skill:[a-z0-9-]+@[A-Za-z0-9._-]+|review:[a-z_]+)$"
+        },
+        "draft": { "type": "boolean" },
+        "review_item_id": { "oneOf": [{ "$ref": "#/$defs/uuid" }, { "type": "null" }] }
+      },
+      "allOf": [
+        { "if": { "properties": { "kind": { "enum": ["insight"] } } }, "then": { "properties": { "body": { "$ref": "#/$defs/insightBody" } } } },
+        { "if": { "properties": { "kind": { "enum": ["remember", "antipattern"] } } }, "then": { "properties": { "body": { "$ref": "#/$defs/spansBody" } } } },
+        { "if": { "properties": { "kind": { "const": "quote" } } }, "then": { "properties": { "body": { "$ref": "#/$defs/quoteBody" } } } },
+        { "if": { "properties": { "kind": { "const": "definition" } } }, "then": { "properties": { "body": { "$ref": "#/$defs/definitionBody" } } } },
+        { "if": { "properties": { "kind": { "const": "number" } } }, "then": { "properties": { "body": { "$ref": "#/$defs/numberBody" } } } },
+        { "if": { "properties": { "kind": { "const": "figure" } } }, "then": { "properties": { "body": { "$ref": "#/$defs/figureBody" } } } },
+        { "if": { "properties": { "kind": { "const": "diagram" } } }, "then": { "properties": { "body": { "$ref": "#/$defs/diagramBody" } } } },
+        { "if": { "properties": { "kind": { "const": "quiz" } } }, "then": { "properties": { "body": { "$ref": "#/$defs/quizBody" } } } },
+        { "if": { "properties": { "kind": { "const": "flip" } } }, "then": { "properties": { "body": { "$ref": "#/$defs/flipBody" } } } },
+        { "if": { "properties": { "kind": { "const": "claim" } } }, "then": { "properties": { "body": { "$ref": "#/$defs/claimBody" } } } },
+        { "if": { "properties": { "kind": { "const": "math" } } }, "then": { "properties": { "body": { "$ref": "#/$defs/mathBody" } } } },
+        { "if": { "properties": { "kind": { "const": "connection" } } }, "then": { "properties": { "body": { "$ref": "#/$defs/connectionBody" } } } },
+        { "if": { "properties": { "kind": { "const": "listen" } } }, "then": { "properties": { "body": { "$ref": "#/$defs/listenBody" } } } },
+        { "if": { "properties": { "kind": { "const": "hook" } } }, "then": { "properties": { "body": { "$ref": "#/$defs/hookBody" } } } },
+        { "if": { "properties": { "kind": { "const": "review" } } }, "then": { "properties": { "body": { "$ref": "#/$defs/reviewBody" } } } }
+      ]
+    }
+  }
+}

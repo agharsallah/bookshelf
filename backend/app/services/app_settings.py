@@ -13,6 +13,9 @@ waiting for a review (`pipeline.auto_approval`): `off`, `passing` (only drafts t
 every soft gate) or `all` (`needs_review` too).
 
 And `builds`: the defaults a new build starts from (`BuildDefaults`, docs/BUILDS.md §4).
+
+And `pills`: whether a feed running low queues `make-pills` on its own, and how many
+chapters it may queue a day (`PillsSettings`, docs/PILLS.md §5).
 """
 
 import uuid
@@ -290,4 +293,41 @@ def set_build_defaults(session: Session, changes: Mapping[str, Any]) -> BuildDef
     advanced = replace(current.advanced, **dict(changes.get("advanced") or {}))
     merged = replace(current, **plain, advanced=advanced)
     _save(session, "builds", {**asdict(merged), "visibility": merged.visibility.value})
+    return merged
+
+
+MAX_CHAPTERS_PER_DAY = 50  # the highest daily cap the settings accept
+
+
+@dataclass(frozen=True, slots=True)
+class PillsSettings:
+    """`auto_generate`: a feed running low queues make-pills for chapters with no composed
+    pills (`app.pills.generate.top_up`). `max_chapters_per_day`: at most that many make-pills
+    jobs a day from those top-ups (explicit `POST /pills/generate` requests are not capped)."""
+
+    auto_generate: bool = True
+    max_chapters_per_day: int = 4
+
+
+def pills_settings(session: Session) -> PillsSettings:
+    """The stored pill settings; a value that no longer validates falls back to its default."""
+    row = session.get(AppSettings, SINGLETON_ID)
+    stored = (row.data if row else {}).get("pills")
+    default = PillsSettings()
+    if not isinstance(stored, dict):
+        return default
+    auto, cap = stored.get("auto_generate"), stored.get("max_chapters_per_day")
+    if not (isinstance(cap, int) and not isinstance(cap, bool) and 0 < cap <= MAX_CHAPTERS_PER_DAY):
+        cap = default.max_chapters_per_day
+    return PillsSettings(
+        auto_generate=auto if isinstance(auto, bool) else default.auto_generate,
+        max_chapters_per_day=cap,
+    )
+
+
+def set_pills_settings(session: Session, changes: Mapping[str, Any]) -> PillsSettings:
+    """Merge `changes` (validated by the wire schema) into the stored pill settings."""
+    known = {k: v for k, v in changes.items() if k in {"auto_generate", "max_chapters_per_day"}}
+    merged = replace(pills_settings(session), **known)
+    _save(session, "pills", asdict(merged))
     return merged

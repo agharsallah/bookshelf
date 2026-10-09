@@ -1,0 +1,50 @@
+---
+/**
+ * Pills (docs/PILLS.md §9): a vertical feed of one-idea pills, each cited and one tap from
+ * its passage. The feed's presets come from the query (`?document= ?collection= ?concept=
+ * ?paper_set= ?mode= ?length=`, lib/pills/config.ts), so every entry point is a link;
+ * `?feed=<id>` starts a saved feed and `?session=<id>` resumes a session. The shelf, the
+ * collections, the paper sets and the saved feeds are loaded here only for the settings
+ * sheet: the feed starts without them if any fails. The island owns the session.
+ */
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PillFeed from '../../components/pills/PillFeed';
+import type { SheetOptions } from '../../components/pills/ConfigSheet';
+import type { Page } from '../../lib/api/types';
+import type { DocumentSummary } from '../../lib/api/types/documents';
+import { serverApi } from '../../lib/api/server';
+import { listCollections } from '../../lib/collections/api';
+import { listPaperSets } from '../../lib/papers/shelf-api';
+import { pillsClientOver } from '../../lib/pills/client';
+import { configFromQuery } from '../../lib/pills/config';
+import type { Feed } from '../../lib/pills/types';
+
+export const prerender = false;
+
+const params = Astro.url.searchParams;
+const config = configFromQuery(params);
+const feedId = params.get('feed');
+const resume = params.get('session');
+
+const api = serverApi();
+const [shelf, collections, sets, feeds] = await Promise.allSettled([
+  api.get<Page<DocumentSummary>>('documents', { query: { limit: 100 } }),
+  listCollections(api),
+  listPaperSets(api, { limit: 100 }),
+  pillsClientOver(api).feeds(),
+]);
+const options: SheetOptions = {
+  documents:
+    shelf.status === 'fulfilled'
+      ? shelf.value.items.map((d) => ({ id: d.id, slug: d.slug, title: d.title, genre: d.genre })).sort((a, b) => a.title.localeCompare(b.title))
+      : [],
+  collections: collections.status === 'fulfilled' ? collections.value.map((c) => ({ slug: c.slug, name: c.name })) : [],
+  paperSets: sets.status === 'fulfilled' ? sets.value.items.map((s) => ({ id: s.id, name: s.name })) : [],
+};
+const saved: Feed[] = feeds.status === 'fulfilled' ? feeds.value : [];
+---
+
+<BaseLayout title="Pills" description="One idea at a time, each cited and one tap from its passage.">
+  <h1 class="visually-hidden">Pills</h1>
+  <PillFeed client:load initialConfig={config} feedId={feedId} resume={resume} options={options} feeds={saved} />
+</BaseLayout>

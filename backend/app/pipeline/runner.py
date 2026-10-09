@@ -44,7 +44,15 @@ _STDERR_TAIL = 2000
 
 
 class RunnerError(RuntimeError):
-    """The CLI failed (exit code, timeout, error envelope). Transient: the queue retries."""
+    """The CLI failed (exit code, timeout, error envelope). Transient: the queue retries.
+
+    `reached_model` is False when the envelope shows the model was never called (no API
+    time): the call did no work, so the run ceiling gives its run back (`app.pipeline.ceiling`).
+    """
+
+    def __init__(self, message: str, *, reached_model: bool = True) -> None:
+        super().__init__(message)
+        self.reached_model = reached_model
 
 
 class UsageLimitError(RunnerError):
@@ -60,6 +68,20 @@ def _limit_error(envelope: dict[str, Any]) -> UsageLimitError | None:
     if envelope.get("api_error_status") == 429 or _LIMIT_TEXT.search(detail):
         return UsageLimitError(f"usage limit reached: {(detail or 'HTTP 429')[:500]}")
     return None
+
+
+def _envelope_error(envelope: dict[str, Any], prefix: str) -> RunnerError:
+    """The error an error envelope reports, in its own words (`result`, else the API status
+    or subtype): a `UsageLimitError` for a limit, else a `RunnerError` that knows whether
+    the model was reached at all (`duration_api_ms` of 0: it was not)."""
+    if limit := _limit_error(envelope):
+        return limit
+    detail = next(
+        (envelope[k] for k in ("result", "api_error_status", "subtype") if envelope.get(k)),
+        "unknown error",
+    )
+    reached = envelope.get("duration_api_ms") != 0
+    return RunnerError(f"{prefix}: {str(detail)[:500]}", reached_model=reached)
 
 
 def _error_envelope(stdout: str) -> dict[str, Any] | None:
@@ -108,13 +130,7 @@ def parse_envelope(stdout: str, *, duration_ms: int = 0) -> RunResult:
     if not isinstance(envelope, dict):
         raise RunnerError("CLI envelope is not a JSON object")
     if envelope.get("is_error") or envelope.get("subtype", "success") != "success":
-        if limit := _limit_error(envelope):
-            raise limit
-        detail = next(
-            (envelope[k] for k in ("result", "api_error_status", "subtype") if envelope.get(k)),
-            "unknown error",
-        )
-        raise RunnerError(f"CLI reported an error: {str(detail)[:500]}")
+        raise _envelope_error(envelope, "CLI reported an error")
     text = envelope.get("result")
     if not isinstance(text, str):
         raise RunnerError("CLI envelope has no `result` text")
@@ -352,8 +368,8 @@ class ClaudeCliRunner:
             run_log.event("stderr", text=run_log.clip(stderr.strip(), _STDERR_TAIL))
         if proc.returncode != 0:
             envelope = _error_envelope(stdout or "")
-            if envelope is not None and (limit := _limit_error(envelope)):
-                raise limit
+            if envelope is not None:
+                raise _envelope_error(envelope, f"claude exited with {proc.returncode}")
             tail = (stderr or stdout or "")[-_STDERR_TAIL:].strip()
             raise RunnerError(f"claude exited with {proc.returncode}: {tail}")
         return stdout

@@ -41,7 +41,7 @@ export function CandidateAction({ id, status: initial, api = browserApi }: Candi
   };
 
   return (
-    <span className={styles.candidate} data-status={status}>
+    <span className={styles.candidate} data-demo-off data-status={status}>
       <span aria-live="polite">{STATUS_WORDS[status]}</span>
       {status === 'suggested' || status === 'dismissed' ? (
         <button type="button" className={styles.linkButton} disabled={busy} onClick={() => void change('queued')}>

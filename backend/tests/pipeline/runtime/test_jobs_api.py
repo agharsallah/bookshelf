@@ -182,3 +182,31 @@ def test_only_failed_jobs_can_be_retried(api: TestClient, session: Session, book
 def post_to(api: TestClient, url: str) -> tuple[int, dict]:
     response = api.post(url, headers=AUTH)
     return response.status_code, response.json()
+
+
+def test_a_retried_job_whose_output_exists_is_skipped_without_a_model_call(
+    api: TestClient, session: Session, book: Document, skills_dir: Path
+):
+    """Retry queues the work again without `force`: when its output is already there (same
+    input), the new job skips for free instead of redoing it."""
+    from app.pipeline.execution import execute_skill_job
+    from app.pipeline.runner import FakeRunner
+    from tests.pipeline.runtime.conftest import body, paragraph, reply
+
+    first = job_of(session, JobKind.SUMMARIZE, book, "ch01")
+    queue.claim(session)
+    session.refresh(first)
+    grounded = reply(body(paragraph("A stock remembers its flows.", "ch01/s01/p001")))
+    execute_skill_job(session, first, runner=FakeRunner(grounded), skills_dir=skills_dir)
+    queue.fail(session, first, "lost after the output was saved", retry=False)
+
+    again_id = api.post(f"{URL}/{first.id}/retry", headers=AUTH).json()["job"]["id"]
+    again = session.get(Job, uuid.UUID(again_id))
+    assert again is not None and "force" not in (again.payload or {})
+    queue.claim(session)
+    session.refresh(again)
+    never = FakeRunner(lambda _p: pytest.fail("a retry must not call the model for done work"))
+    outcome = execute_skill_job(session, again, runner=never, skills_dir=skills_dir)
+
+    assert outcome.state is JobState.SKIPPED
+    assert outcome.result["reason"] == "unchanged input"

@@ -27,6 +27,7 @@ from app.api.routes import (
     paper_compare,
     paper_sets,
     papers,
+    pills,
     reader_stats,
     reading,
     recalls,
@@ -50,6 +51,7 @@ api_router.include_router(builds.router)  # /papers/{ref}/builds, /builds/preset
 api_router.include_router(papers.router)  # after every fixed /papers/<word> router
 api_router.include_router(paper_sets.router)
 api_router.include_router(collections.router)
+api_router.include_router(pills.router)
 api_router.include_router(documents.router)
 api_router.include_router(nodes.router)
 api_router.include_router(notes.router)

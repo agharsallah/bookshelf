@@ -6,6 +6,8 @@
  * on show is the default (latest approved, else the latest draft) or `?version=`; drafts
  * can be approved or rejected here, and the synthesis written again.
  */
+import PillsLink from '../../../components/pills/PillsLink.astro';
+import { pillsHref } from '../../../lib/pills/config';
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import { Blocks } from '../../../components/blocks';
 import { Problem } from '../../../components/common/Problem';
@@ -81,6 +83,7 @@ const when = (at: string) => new Date(at).toLocaleDateString('en-GB', { day: 'nu
               {data.set.document_ids.length} papers, made {when(data.set.created_at)}.{' '}
               <a href={`/papers/compare?ids=${data.set.document_ids.join(',')}`}>Compare their results</a>
             </p>
+            <PillsLink href={pillsHref({ sources: { paper_sets: [data.set.id] }, mode: 'explore' })} label="Pills from this set" />
           </header>
 
           <div class="columns">

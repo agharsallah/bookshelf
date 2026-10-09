@@ -1,0 +1,35 @@
+# Render blueprint for the read-only demo API (docs/DEMO.md). Free tier: sleeps when idle.
+services:
+  - type: web
+    name: bookshelf-demo-api
+    runtime: docker
+    plan: free
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: BOOKSHELF_ENVIRONMENT
+        value: production
+      # Required in production. Writes need it; nobody is given it, so the API is read-only.
+      - key: BOOKSHELF_API_KEY
+        generateValue: true
+      # The demo Supabase database, for both: Settings → Database has nothing to switch.
+      - key: BOOKSHELF_DATABASE_URL
+        sync: false
+      - key: BOOKSHELF_LOCAL_DATABASE_URL
+        sync: false
+      # e.g. bookshelf-demo-api.onrender.com
+      - key: BOOKSHELF_ALLOWED_HOSTS
+        sync: false
+      # e.g. https://bookshelf-demo.vercel.app
+      - key: BOOKSHELF_CORS_ORIGINS
+        sync: false
+      # Nothing runs: no worker, no embedding, no narration, no builds.
+      - key: BOOKSHELF_API_WORKER
+        value: "false"
+      - key: BOOKSHELF_API_EMBED_RUNNER
+        value: "false"
+      - key: BOOKSHELF_API_NARRATE_RUNNER
+        value: "false"
+      - key: BOOKSHELF_API_BUILD_RUNNER
+        value: "false"
