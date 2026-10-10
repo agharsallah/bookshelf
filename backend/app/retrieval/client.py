@@ -46,7 +46,11 @@ def make_client() -> "QdrantClient":
 
     settings = get_settings()
     if settings.qdrant_url:
-        return QdrantClient(url=settings.qdrant_url, api_key=settings.qdrant_api_key)
+        return QdrantClient(
+            url=settings.qdrant_url,
+            api_key=settings.qdrant_api_key,
+            timeout=settings.qdrant_timeout_seconds,
+        )
     settings.qdrant_path.mkdir(parents=True, exist_ok=True)
     return QdrantClient(path=str(settings.qdrant_path))
 

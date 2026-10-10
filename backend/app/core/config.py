@@ -81,6 +81,9 @@ class Settings(BaseSettings):
     qdrant_api_key: str | None = Field(
         default=None, validation_alias=AliasChoices("BOOKSHELF_QDRANT_API_KEY", "QDRANT_API_KEY")
     )
+    # Per request, remote only. qdrant-client's 5 s default is too short for a 64-point
+    # upsert with `wait=True` on a small cloud cluster (embed jobs timed out on it).
+    qdrant_timeout_seconds: Annotated[int, Field(gt=0)] = 60
     qdrant_path: Path = REPO_ROOT / ".qdrant"
     qdrant_collection_prefix: str = ""  # tests set this so they never touch real collections
     dense_model: str = "BAAI/bge-small-en-v1.5"

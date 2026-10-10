@@ -145,3 +145,25 @@ def test_collections_that_vanish_are_recreated_instead_of_failing(
         collections.delete_collection(name)
 
     assert search(client, "balancing feedback loops")["index_state"] == "empty"
+
+
+def test_remote_client_uses_the_configured_timeout(monkeypatch):
+    """qdrant-client's 5 s default timed out bulk upserts on a cloud cluster."""
+    import qdrant_client
+
+    from app.retrieval import client as client_module
+
+    settings = get_settings().model_copy(
+        update={
+            "qdrant_url": "http://qdrant.internal:6333",
+            "qdrant_api_key": "key",
+            "qdrant_timeout_seconds": 42,
+        }
+    )
+    monkeypatch.setattr(client_module, "get_settings", lambda: settings)
+    made: list[dict[str, object]] = []
+    monkeypatch.setattr(qdrant_client, "QdrantClient", lambda **kwargs: made.append(kwargs))
+
+    client_module.make_client()
+
+    assert made == [{"url": "http://qdrant.internal:6333", "api_key": "key", "timeout": 42}]
