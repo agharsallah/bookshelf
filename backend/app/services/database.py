@@ -32,6 +32,7 @@ from app.schemas.database import (
     DatabaseTargetPublic,
     SyncProgress,
 )
+from app.services.exclusive import Exclusive
 
 logger = logging.getLogger(__name__)
 
@@ -50,9 +51,16 @@ def _reason(exc: BaseException) -> str:
 
 
 class DatabaseService:
-    def __init__(self, settings: Settings, runners: RunnersOf = lambda: None) -> None:
+    def __init__(
+        self,
+        settings: Settings,
+        runners: RunnersOf = lambda: None,
+        exclusive: Exclusive | None = None,
+    ) -> None:
         self.settings = settings
         self._runners = runners
+        # Shared with the snapshots (`app.services.snapshots`): one of them at a time.
+        self.exclusive = exclusive or Exclusive()
         self._lock = threading.Lock()
         self._progress = SyncProgress()
         self._thread: threading.Thread | None = None
@@ -129,10 +137,6 @@ class DatabaseService:
                 "BOOKSHELF_DATABASE_URL to two different databases."
             )
 
-    def _require_idle(self) -> None:
-        if self._progress.state == "running":
-            raise ConflictError("A sync is running; wait for it to finish.")
-
     def _prepare(self, *targets: DatabaseTarget) -> dict[DatabaseTarget, Tables]:
         """Reach each database (migrating this computer's first) and return its tables.
         Raises `ConflictError` with the reason when one cannot be used."""
@@ -162,21 +166,26 @@ class DatabaseService:
 
     def switch(self, target: DatabaseTarget) -> DatabaseStatus:
         self._require_two()
-        with self._lock:
-            self._require_idle()
         if target is not db_session.active_target():
-            self._require_same_schema(self._prepare(*DatabaseTarget))
-            runners = self._runners()
-            if runners is not None:
-                runners.stop()
+            self.exclusive.claim("A switch")
             try:
-                db_session.use_target(target, self.url(target))
-                save_target(self.settings, target)
+                self._switch(target)
             finally:
-                if runners is not None:
-                    runners.start()
-            logger.info("Database switched", extra={"target": target.value})
+                self.exclusive.release()
         return self.status()
+
+    def _switch(self, target: DatabaseTarget) -> None:
+        self._require_same_schema(self._prepare(*DatabaseTarget))
+        runners = self._runners()
+        if runners is not None:
+            runners.stop()
+        try:
+            db_session.use_target(target, self.url(target))
+            save_target(self.settings, target)
+        finally:
+            if runners is not None:
+                runners.start()
+        logger.info("Database switched", extra={"target": target.value})
 
     # -- syncing ------------------------------------------------------------------------
 
@@ -185,8 +194,8 @@ class DatabaseService:
         thread. Raises `ConflictError` (nothing started) when it cannot."""
         self._require_two()
         dest = other(source)
+        self.exclusive.claim("A sync")
         with self._lock:
-            self._require_idle()
             self._progress = SyncProgress(
                 state="running", source=source, dest=dest, step="Checking both databases",
                 started_at=_now(),
@@ -199,6 +208,7 @@ class DatabaseService:
         except Exception:
             with self._lock:
                 self._progress = SyncProgress()
+            self.exclusive.release()
             raise
         self._thread = threading.Thread(
             target=self._sync, args=(source, dest, backup), name="database-sync", daemon=True
@@ -263,3 +273,4 @@ class DatabaseService:
         finally:
             if stopped and runners is not None:
                 runners.start()
+            self.exclusive.release()

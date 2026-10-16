@@ -12,6 +12,7 @@ export type Query = Record<string, QueryValue | QueryValue[]>;
 
 export interface RequestOptions {
   query?: Query;
+  /** JSON-encoded, except a `Blob` (a `File`), which is sent as it is: an upload. */
   body?: unknown;
   headers?: HeadersInit;
   signal?: AbortSignal;
@@ -72,7 +73,10 @@ export function createApiClient(config: ClientConfig): ApiClient {
     new Headers(options.headers).forEach((value, key) => headers.set(key, value));
     headers.set('Accept', 'application/json');
     let body: BodyInit | undefined;
-    if (options.body !== undefined) {
+    if (options.body instanceof Blob) {
+      headers.set('Content-Type', options.body.type || 'application/octet-stream');
+      body = options.body;
+    } else if (options.body !== undefined) {
       headers.set('Content-Type', 'application/json');
       body = JSON.stringify(options.body);
     }

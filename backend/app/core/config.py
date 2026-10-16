@@ -59,6 +59,11 @@ class Settings(BaseSettings):
     local_database_url: str = "postgresql+psycopg://bookshelf@127.0.0.1:54329/bookshelf"
     database_target_file: Path = REPO_ROOT / ".database-target"
     database_backups_dir: Path = REPO_ROOT / ".backups" / "database"  # before a sync overwrites
+    # Snapshots (`app/db/snapshot.py`): the last one made here, and a restore's working files
+    # and the folders it replaced. Keep it on the same disk as the library: folders move in.
+    snapshots_dir: Path = REPO_ROOT / ".backups" / "snapshots"
+    # The largest snapshot a restore accepts (the general request cap does not apply to it).
+    snapshot_max_bytes: Annotated[int, Field(gt=0)] = 50 * 1024**3
     database_echo: bool = False
 
     # --- Files (D13) -----------------------------------------------------

@@ -148,6 +148,62 @@ def _alter_keys(conn: psycopg.Connection, keys: list[tuple[str, str]], mode: str
         )
 
 
+Fill = Callable[[str, Columns, psycopg.Copy], None]  # writes one table's rows into a COPY
+
+
+def replace_rows(
+    dest: psycopg.Connection,
+    names: Mapping[str, Columns],
+    fill: Fill,
+    on_table: OnTable | None = None,
+    *,
+    copy_format: str = "binary",
+) -> dict[str, int]:
+    """Truncate every table of `names` in `dest` and load each again through `fill`, in one
+    transaction (all or nothing). Returns the rows loaded per table.
+
+    `dest` must be in autocommit mode; `names` must match its schema (`schema_diff`).
+    """
+    copied: dict[str, int] = {}
+    with dest.transaction():
+        dest.execute("set local statement_timeout = 0")  # a big table may outlast it
+        dest.execute("set local idle_in_transaction_session_timeout = 0")
+        keys = _foreign_keys(dest)
+        _alter_keys(dest, keys, "deferrable initially deferred")
+        dest.execute("set constraints all deferred")
+        dest.execute(
+            sql.SQL("truncate {}").format(sql.SQL(", ").join(map(sql.Identifier, sorted(names))))
+        )
+        in_sql = sql.SQL("copy {} ({}) from stdin (format {})")
+        for index, name in enumerate(sorted(names)):
+            if on_table is not None:
+                on_table(name, index, len(names))
+            cols = sql.SQL(", ").join(sql.Identifier(col) for col, _ in names[name])
+            with dest.cursor() as write:
+                with write.copy(
+                    in_sql.format(sql.Identifier(name), cols, sql.SQL(copy_format))
+                ) as into:
+                    fill(name, names[name], into)
+                copied[name] = write.rowcount  # set once the copy is finished, until close
+        dest.execute("set constraints all immediate")  # every foreign key checked, here
+        _alter_keys(dest, keys, "not deferrable")
+        for seq, table_name, col in _sequences(dest):
+            setval = sql.SQL("select setval({}, coalesce((select max({}) from {}), 0) + 1, false)")
+            dest.execute(
+                setval.format(sql.Literal(seq), sql.Identifier(col), sql.Identifier(table_name))
+            )
+    return copied
+
+
+def copy_out(conn: psycopg.Connection, name: str, columns: Columns, copy_format: str) -> str:
+    """`COPY ... TO STDOUT` for one table's stored columns (run it in a transaction)."""
+    cols = sql.SQL(", ").join(sql.Identifier(col) for col, _ in columns)
+    query = sql.SQL("copy (select {} from {}) to stdout (format {})").format(
+        cols, sql.Identifier(name), sql.SQL(copy_format)
+    )
+    return query.as_string(conn)
+
+
 def copy_all(
     source: psycopg.Connection,
     dest: psycopg.Connection,
@@ -163,43 +219,18 @@ def copy_all(
     if problems:
         raise ValueError("The two databases have different schemas: " + "; ".join(problems))
 
-    copied: dict[str, int] = {}
-    # The source's (read-only) transaction ends first; were it to fail, the destination's
-    # rolls back with it.
-    with dest.transaction(), source.transaction():
+    def fill(name: str, columns: Columns, into: psycopg.Copy) -> None:
+        with source.cursor() as read, read.copy(copy_out(source, name, columns, "binary")) as out:
+            for chunk in out:
+                into.write(chunk)
+
+    # The source is read in one read-only snapshot; it ends after the destination commits,
+    # and a read-only commit has nothing left to fail on.
+    with source.transaction():
         source.execute("set transaction isolation level repeatable read, read only")
-        for conn in (source, dest):  # a big table may outlast a server's default timeouts
-            conn.execute("set local statement_timeout = 0")
-            conn.execute("set local idle_in_transaction_session_timeout = 0")
-        keys = _foreign_keys(dest)
-        _alter_keys(dest, keys, "deferrable initially deferred")
-        dest.execute("set constraints all deferred")
-        dest.execute(
-            sql.SQL("truncate {}").format(sql.SQL(", ").join(map(sql.Identifier, sorted(names))))
-        )
-        for index, name in enumerate(sorted(names)):
-            if on_table is not None:
-                on_table(name, index, len(names))
-            cols = sql.SQL(", ").join(sql.Identifier(col) for col, _ in names[name])
-            table = sql.Identifier(name)
-            out_sql = sql.SQL("copy (select {} from {}) to stdout (format binary)")
-            in_sql = sql.SQL("copy {} ({}) from stdin (format binary)")
-            with source.cursor() as read, dest.cursor() as write:
-                with (
-                    read.copy(out_sql.format(cols, table)) as out,
-                    write.copy(in_sql.format(table, cols)) as into,
-                ):
-                    for chunk in out:
-                        into.write(chunk)
-                copied[name] = write.rowcount  # set once the copy is finished, until close
-        dest.execute("set constraints all immediate")  # every foreign key checked, here
-        _alter_keys(dest, keys, "not deferrable")
-        for seq, table_name, col in _sequences(dest):
-            setval = sql.SQL("select setval({}, coalesce((select max({}) from {}), 0) + 1, false)")
-            dest.execute(
-                setval.format(sql.Literal(seq), sql.Identifier(col), sql.Identifier(table_name))
-            )
-    return copied
+        source.execute("set local statement_timeout = 0")
+        source.execute("set local idle_in_transaction_session_timeout = 0")
+        return replace_rows(dest, names, fill, on_table)
 
 
 # -- backups ------------------------------------------------------------------------------

@@ -9,6 +9,7 @@ Docs: https://fastapi.tiangolo.com/advanced/middleware/
 import logging
 import time
 import uuid
+from collections.abc import Mapping
 
 from starlette.datastructures import MutableHeaders
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
@@ -91,21 +92,29 @@ class RequestContextMiddleware:
 
 
 class MaxBodySizeMiddleware:
-    """Rejects oversized bodies, including chunked ones that lie about Content-Length."""
+    """Rejects oversized bodies, including chunked ones that lie about Content-Length.
 
-    def __init__(self, app: ASGIApp, max_bytes: int) -> None:
+    `limits` gives a path (exact match) a cap of its own: an upload route streams far more
+    than any JSON body may hold.
+    """
+
+    def __init__(
+        self, app: ASGIApp, max_bytes: int, limits: Mapping[str, int] | None = None
+    ) -> None:
         self.app = app
         self.max_bytes = max_bytes
+        self.limits = dict(limits or {})
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
 
+        max_bytes = self.limits.get(scope.get("path", ""), self.max_bytes)
         headers = {k.decode("latin-1").lower(): v.decode("latin-1") for k, v in scope["headers"]}
         declared = headers.get("content-length")
-        if declared is not None and declared.isdigit() and int(declared) > self.max_bytes:
-            await self._reject(scope, receive, send)
+        if declared is not None and declared.isdigit() and int(declared) > max_bytes:
+            await self._reject(scope, receive, send, max_bytes)
             return
 
         received = 0
@@ -115,27 +124,25 @@ class MaxBodySizeMiddleware:
             message = await receive()
             if message["type"] == "http.request":
                 received += len(message.get("body", b""))
-                if received > self.max_bytes:
+                if received > max_bytes:
                     # Raised inside the route's `await receive()`, so the registered
                     # AppError handler turns it into the standard 413 envelope.
-                    logger.warning("Request body exceeded limit", extra={"limit": self.max_bytes})
-                    raise PayloadTooLargeError(
-                        f"Request body exceeds the {self.max_bytes} byte limit."
-                    )
+                    logger.warning("Request body exceeded limit", extra={"limit": max_bytes})
+                    raise PayloadTooLargeError(f"Request body exceeds the {max_bytes} byte limit.")
             return message
 
         await self.app(scope, receive_capped, send)
 
-    async def _reject(self, scope: Scope, receive: Receive, send: Send) -> None:
-        await self._drain(receive)
+    async def _reject(self, scope: Scope, receive: Receive, send: Send, max_bytes: int) -> None:
+        await self._drain(receive, max_bytes)
         response = error_response(
             413,
             "payload_too_large",
-            f"Request body exceeds the {self.max_bytes} byte limit.",
+            f"Request body exceeds the {max_bytes} byte limit.",
         )
         await response(scope, receive, send)
 
-    async def _drain(self, receive: Receive) -> None:
+    async def _drain(self, receive: Receive, max_bytes: int) -> None:
         """Read and discard the rejected body so the client can read the 413.
 
         Answering mid-upload resets the connection and the caller sees a transport
@@ -143,7 +150,7 @@ class MaxBodySizeMiddleware:
         make the server read an unlimited body.
         """
         discarded = 0
-        while discarded <= self.max_bytes * _DRAIN_FACTOR:
+        while discarded <= max_bytes * _DRAIN_FACTOR:
             message = await receive()
             if message["type"] != "http.request":
                 return

@@ -1,7 +1,8 @@
-/** Fixtures for the settings tests: `GET /settings` and `GET /database` answers. */
+/** Fixtures for the settings tests: `GET /settings`, `GET /database` and `GET /database/snapshot` answers. */
 import type { BuildDefaults } from '../../lib/api/types/builds';
 import type { DatabaseCounts, DatabaseStatus, DatabaseTargetPublic, SyncProgress } from '../../lib/api/types/database';
 import type { SettingsPublic } from '../../lib/api/types/settings';
+import type { SnapshotProgress, SnapshotStatus } from '../../lib/api/types/snapshots';
 
 export const buildDefaults = (over: Partial<BuildDefaults> = {}): BuildDefaults => ({
   owner: null,
@@ -70,3 +71,29 @@ export function dbStatus(
     ],
   };
 }
+
+/* A `GET /database/snapshot` answer: nothing made yet, nothing running. */
+
+export const idleSnapshot: SnapshotProgress = {
+  state: 'idle',
+  action: null,
+  step: '',
+  done: 0,
+  total: 0,
+  rows: 0,
+  backup_path: null,
+  kept_path: null,
+  reindex_job: null,
+  error: null,
+  started_at: null,
+  finished_at: null,
+};
+
+export const snapshotStatus = (over: Partial<SnapshotStatus> = {}): SnapshotStatus => ({
+  database: 'This computer',
+  can_back_up: true,
+  max_bytes: 50 * 1024 ** 3,
+  latest: null,
+  progress: idleSnapshot,
+  ...over,
+});

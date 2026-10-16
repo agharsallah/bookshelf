@@ -14,6 +14,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from app.api.router import api_router
 from app.api.routes import health
+from app.api.routes.snapshots import UPLOAD_PATH as SNAPSHOT_UPLOAD_PATH
 from app.core import lifecycle
 from app.core.config import Settings, get_settings
 from app.core.docs import DESCRIPTION, TAGS_METADATA
@@ -88,7 +89,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # Middleware runs outermost-first, so this list reads top-down as the request path:
     # context/logging -> host check -> CORS -> rate limit -> body cap -> gzip -> routes.
     app.add_middleware(GZipMiddleware, minimum_size=1000)
-    app.add_middleware(MaxBodySizeMiddleware, max_bytes=settings.max_request_bytes)
+    app.add_middleware(
+        MaxBodySizeMiddleware,
+        max_bytes=settings.max_request_bytes,
+        limits={f"{settings.api_prefix}{SNAPSHOT_UPLOAD_PATH}": settings.snapshot_max_bytes},
+    )
     app.add_middleware(
         RateLimitMiddleware,
         max_requests=settings.rate_limit_requests,

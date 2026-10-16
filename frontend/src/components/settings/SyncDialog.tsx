@@ -65,7 +65,7 @@ export function SyncDialog({ status, source, busy, onConfirm, onClose }: SyncDia
           <p className={styles.muted}>
             Every document, note, highlight, study item, collection and reading position on {to?.label} is replaced by{' '}
             {from?.label}&rsquo;s, in one go: if anything fails halfway, {to?.label} is left exactly as it was. Files in{' '}
-            <code>library/</code> and the search index are shared and stay as they are.
+            <code>library/</code> and the search index stay as they are; a snapshot (below) carries the files too.
           </p>
           {warning ? (
             <p className={styles.warning} role="alert">

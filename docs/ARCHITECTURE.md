@@ -1678,3 +1678,25 @@ identity sequences forward. It is a mirror, not a merge, so it fails as a whole 
 all. It refuses when the schemas differ, or while jobs are running on either side. The
 local cluster is migrated first; Supabase never is. `workers` and `_local_migrations` are
 not copied. Qdrant and the files on disk are shared, so they are not copied either.
+A sync, a switch, a snapshot and a restore hold one lock between them
+(`services/exclusive.py`), so only one runs at a time.
+
+**Snapshot** (`/database/snapshot`, `app/db/snapshot.py`, `services/snapshots.py`). To give
+another install the same state, rows *and* files: `POST /database/snapshot` packs the
+database in use and `library/`, `.media/` and `.audio/` into one
+`.backups/snapshots/bookshelf-<stamp>.tar.gz` on a background thread (only the newest is kept).
+Its layout is `manifest.json` first (format version, each table's columns and row count, file
+counts), then `database/<table>.copy` and `files/<root>/…`. Rows are written as COPY *text*
+(a sync uses binary), with time zone, date style and float settings fixed, so any Postgres
+reads them back the same. `POST /database/snapshot/download` returns it. It is a POST so the
+proxy adds the API key, which it adds to writes only; the page uses a plain form post.
+`POST /database/snapshot/restore` takes the file as the raw request body. It has its own body
+cap, `BOOKSHELF_SNAPSHOT_MAX_BYTES` (50 GiB by default), and the Astro proxy streams request
+bodies instead of buffering them. It is refused up front while anything runs (jobs included).
+In the background it unpacks into a folder of its own (tarfile's `data` filter, only expected
+members), checks the manifest's schema against this database, takes an optional `pg_dump`,
+stops the runners, and replaces every row in one transaction (`sync.replace_rows`, shared with
+the sync). Only after that commits are the unpacked folders moved in; the ones they replace go
+to `.backups/snapshots/before-restore/`. Jobs the snapshot caught `running` are handed back to
+the queue, and one `embed` rebuild is queued. Qdrant is derived (D1), so it is never in a
+snapshot.

@@ -37,13 +37,16 @@ export const ALL: APIRoute = async ({ request, params, url, cache }) => {
   const hasBody = upstream.method !== 'GET' && upstream.method !== 'HEAD';
   let response: Response;
   try {
+    // The body is streamed through, not read into memory first: a snapshot restore
+    // uploads the whole library. Node's fetch needs `duplex` to send a stream.
     response = await fetch(upstream.url, {
       method: upstream.method,
       headers: upstream.headers,
-      body: hasBody ? await request.arrayBuffer() : undefined,
+      body: hasBody ? request.body : undefined,
+      duplex: 'half',
       redirect: 'manual',
       signal: request.signal,
-    });
+    } as RequestInit);
   } catch {
     return proxyErrorResponse(502, 'upstream_unavailable', 'The Bookshelf API could not be reached.');
   }

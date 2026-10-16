@@ -51,6 +51,18 @@ describe('createApiClient against a real HTTP server', () => {
     ]);
   });
 
+  it('sends a file as it is, with its own type, for an upload', async () => {
+    const api = createApiClient({ baseUrl });
+    const file = new File(['{"not": "json-encoded"}'], 'shelf.tar.gz', { type: 'application/gzip' });
+    await api.post('database/snapshot/restore', file, { query: { backup: false } });
+    const last = received.at(-1);
+    expect([last?.url, last?.headers['content-type'], last?.body]).toEqual([
+      '/api/v1/database/snapshot/restore?backup=false',
+      'application/gzip',
+      '{"not": "json-encoded"}',
+    ]);
+  });
+
   it('throws an ApiError carrying the backend envelope', async () => {
     const api = createApiClient({ baseUrl });
     const error = await api.get('missing/42').catch((e: unknown) => e);

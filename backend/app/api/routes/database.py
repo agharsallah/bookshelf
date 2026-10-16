@@ -9,13 +9,14 @@ from app.core.config import get_settings
 from app.core.security import require_api_key
 from app.schemas.database import DatabaseStatus, SwitchRequest, SyncProgress, SyncRequest
 from app.services.database import DatabaseService
+from app.services.exclusive import process_wide
 
 router = APIRouter(prefix="/database", tags=["database"])
 
 
 @lru_cache
 def _service() -> DatabaseService:
-    return DatabaseService(get_settings())
+    return DatabaseService(get_settings(), exclusive=process_wide())
 
 
 def get_database_service(request: Request) -> DatabaseService:
