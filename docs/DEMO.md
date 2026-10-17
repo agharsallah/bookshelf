@@ -68,10 +68,11 @@ Both platforms build the `demo` branch on every push to it.
 ## Caching
 
 The demo data does not change between deploys, and the free API renders some pages slowly
-(the map's atlas takes ~20 s). With `PUBLIC_DEMO` the middleware lets Vercel's CDN keep
-every successful GET for a day and serve it stale for a week while it re-renders
-(`lib/demo-cache.ts`, `CDN-Cache-Control`). A deployment starts with an empty cache:
-redeploy the frontend after reloading the demo data.
+(the map's atlas takes ~20 s). With `PUBLIC_DEMO` the middleware opts every GET into
+Astro's route caching, which on Vercel is the CDN (`cacheVercel()`): fresh for ten minutes,
+then served stale for a week while one request renders it again (`lib/demo-cache.ts`). A
+page rendered while the API was asleep heals itself on the next visit after ten minutes. A
+deployment starts with an empty cache: redeploy the frontend after reloading the demo data.
 
 ## Keeping it awake
 

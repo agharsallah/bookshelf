@@ -4,6 +4,7 @@ import { defineConfig, envField, fontProviders, memoryCache } from 'astro/config
 import react from '@astrojs/react';
 import node from '@astrojs/node';
 import vercel from '@astrojs/vercel';
+import { cacheVercel } from '@astrojs/vercel/cache';
 
 // https://astro.build/config
 export default defineConfig({
@@ -86,11 +87,12 @@ export default defineConfig({
     defaultStrategy: 'tap',
   },
 
-  // In-process cache for on-demand responses that opt in (lib/route-cache.ts). A server
-  // island's URL carries its component encrypted afresh on every render (`e`); left out
-  // of the key, a prop-less island such as Today's is found again on the next visit.
+  // Cache for on-demand responses that opt in (lib/route-cache.ts, lib/demo-cache.ts): in
+  // process, or Vercel's CDN on Vercel (the demo deploy). A server island's URL carries its
+  // component encrypted afresh on every render (`e`); left out of the memory key, a
+  // prop-less island such as Today's is found again on the next visit.
   cache: {
-    provider: memoryCache({ query: { exclude: ['e'] } }),
+    provider: process.env.VERCEL ? cacheVercel() : memoryCache({ query: { exclude: ['e'] } }),
   },
 
   integrations: [react()],

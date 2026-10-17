@@ -1,19 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { DEMO_CDN_CACHE_CONTROL, demoCdnCacheControl } from './demo-cache';
+import { demoCacheable } from './demo-cache';
 
-const response = (status = 200, headers: Record<string, string> = { 'content-type': 'text/html' }) => new Response(null, { status, headers });
+const request = (method = 'GET', accept = 'text/html') => new Request('https://demo.example/map', { method, headers: { accept } });
 
-describe('demoCdnCacheControl', () => {
-  it('lets the CDN keep a successful read', () => {
-    expect(demoCdnCacheControl('GET', response())).toBe(DEMO_CDN_CACHE_CONTROL);
-    expect(demoCdnCacheControl('get', response(200, { 'content-type': 'application/json' }))).toBe(DEMO_CDN_CACHE_CONTROL);
+describe('demoCacheable', () => {
+  it('caches reads of pages and API answers', () => {
+    expect(demoCacheable(request())).toBe(true);
+    expect(demoCacheable(request('get', 'application/json'))).toBe(true);
   });
 
-  it('leaves writes, failures, cookies and streams uncached', () => {
-    expect(demoCdnCacheControl('POST', response())).toBeNull();
-    expect(demoCdnCacheControl('GET', response(404))).toBeNull();
-    expect(demoCdnCacheControl('GET', response(502))).toBeNull();
-    expect(demoCdnCacheControl('GET', response(200, { 'content-type': 'text/html', 'set-cookie': 'a=1' }))).toBeNull();
-    expect(demoCdnCacheControl('GET', response(200, { 'content-type': 'text/event-stream' }))).toBeNull();
+  it('leaves writes and live streams alone', () => {
+    expect(demoCacheable(request('POST'))).toBe(false);
+    expect(demoCacheable(request('GET', 'text/event-stream'))).toBe(false);
   });
 });
