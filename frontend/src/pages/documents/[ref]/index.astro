@@ -7,6 +7,7 @@
  * archiving or deleting the book and, when the outline was guessed (`needs_review`), the
  * fix-up editor, opened first. An archived book says so at the top, with Restore.
  */
+import { PUBLIC_DEMO } from 'astro:env/client';
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import AddToCollection from '../../../components/collections/AddToCollection';
 import { collectionOf } from '../../../components/collections/load';
@@ -110,6 +111,11 @@ const chapterStudy: Record<string, AvailableMaterial[]> = data
     )
   : {};
 const trail = data?.collection?.slug ?? null;
+// The demo keeps a visitor's progress in their browser (components/document/demo-progress.ts).
+const localProgress =
+  PUBLIC_DEMO && data && parsed
+    ? JSON.stringify({ slug: data.doc.slug, units: units.map((u) => ({ ...u, children: [] })), reading, collection: trail }).replace(/</g, '\\u003c')
+    : null;
 const readAt = (anchor: string) => inCollection(`/documents/${data?.doc.slug ?? ref}/read/${anchor}`, trail);
 const added = data ? new Date(data.doc.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
 ---
@@ -349,7 +355,18 @@ const added = data ? new Date(data.doc.created_at).toLocaleDateString('en-GB', {
       </article>
     )
   }
+  {localProgress && <script type="application/json" id="local-progress" set:html={localProgress} />}
 </BaseLayout>
+
+<script>
+  import { showLocalProgress, type ReadingBlockData } from '../../../components/document/demo-progress';
+  import { onPage } from '../../../lib/page';
+
+  onPage(() => {
+    const data = document.getElementById('local-progress')?.textContent;
+    if (data) showLocalProgress(document, JSON.parse(data) as ReadingBlockData);
+  });
+</script>
 
 <style>
   .document {

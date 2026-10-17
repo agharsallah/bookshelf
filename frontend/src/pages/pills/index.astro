@@ -7,6 +7,7 @@
  * collections, the paper sets and the saved feeds are loaded here only for the settings
  * sheet: the feed starts without them if any fails. The island owns the session.
  */
+import { PUBLIC_DEMO } from 'astro:env/client';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import PillFeed from '../../components/pills/PillFeed';
 import type { SheetOptions } from '../../components/pills/ConfigSheet';
@@ -46,5 +47,5 @@ const saved: Feed[] = feeds.status === 'fulfilled' ? feeds.value : [];
 
 <BaseLayout title="Pills" description="One idea at a time, each cited and one tap from its passage.">
   <h1 class="visually-hidden">Pills</h1>
-  <PillFeed client:load initialConfig={config} feedId={feedId} resume={resume} options={options} feeds={saved} />
+  <PillFeed client:load initialConfig={config} feedId={feedId} resume={resume} options={options} feeds={saved} demo={PUBLIC_DEMO} />
 </BaseLayout>

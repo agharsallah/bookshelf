@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { localReading } from '../../lib/documents/local-reading';
 import { SAVE_DELAY_MS, useSavePosition } from './useSavePosition';
 
 const api = vi.hoisted(() => ({ put: vi.fn() }));
@@ -70,5 +71,20 @@ describe('useSavePosition', () => {
       keepalive: false,
     });
     Object.defineProperty(window, 'scrollY', { value: 0, configurable: true });
+  });
+
+  it('keeps the place in this browser in the demo', () => {
+    document.documentElement.setAttribute('data-demo', '');
+    try {
+      const { rerender } = render({ active: 'ch01/p001', progress: 0.1 });
+      rerender({ active: 'ch01/p005', progress: 0.5 });
+      act(() => vi.advanceTimersByTime(SAVE_DELAY_MS));
+
+      expect(api.put).not.toHaveBeenCalled();
+      expect(localReading('meadows').positions).toMatchObject([{ unit: 'ch01', anchor: 'ch01/p005', progress: 0.5 }]);
+    } finally {
+      document.documentElement.removeAttribute('data-demo');
+      localStorage.clear();
+    }
   });
 });

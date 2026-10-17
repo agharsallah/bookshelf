@@ -41,6 +41,7 @@ from app.schemas.pills import (
     Supply,
 )
 from app.services.documents import get_document
+from app.services.errors import InvalidInputError
 
 router = APIRouter(prefix="/pills", tags=["pills"])
 
@@ -166,6 +167,38 @@ def get_supply(
     session: SessionDep, config: Annotated[str | None, Query(max_length=8000)] = None
 ) -> Supply:
     return supply.compute(session, scope.resolve(session, parse_config(config)))
+
+
+@router.get(
+    "/compose",
+    response_model=SessionContinuation,
+    summary="A page of a session nobody stores",
+    description="For a read-only deployment (the demo), which keeps the session in the "
+    "browser: the `limit` pills that follow `served` (comma-separated ids, in order) in the "
+    "feed of `config` (a FeedConfig as JSON) with `seed`. Writes nothing. `next_cursor` is "
+    "how many will have been served; null once the length is reached or the scope ran dry.",
+)
+def compose_page(
+    session: SessionDep,
+    seed: Annotated[int, Query(ge=0, lt=2**31)],
+    config: Annotated[str | None, Query(max_length=8000)] = None,
+    served: Annotated[str, Query(max_length=8000)] = "",
+    limit: Annotated[int, Query(ge=1, le=50)] = sessions.PAGE_LIMIT,
+) -> SessionContinuation:
+    try:
+        ids = [uuid.UUID(part) for part in served.split(",") if part.strip()]
+    except ValueError as exc:
+        raise InvalidInputError(
+            "`served` is comma-separated pill ids.", field="query.served"
+        ) from exc
+    page = sessions.compose(session, parse_config(config), seed=seed, served=ids, limit=limit)
+    return SessionContinuation(
+        pills=page.pills,
+        next_cursor=page.next_cursor,
+        supply=page.supply,
+        done=page.done,
+        notice=page.notice,
+    )
 
 
 @router.post(

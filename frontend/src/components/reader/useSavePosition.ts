@@ -3,10 +3,13 @@
  * (`PUT /documents/{ref}/reading`) as the block being read changes: debounced while
  * scrolling, flushed when the page is hidden or left. Opening a chapter and leaving
  * without scrolling does not move your place; reaching the bottom of the page finishes it.
+ * In the read-only demo the place is kept in this browser (lib/documents/local-reading.ts).
  * Returns whether you are at the bottom of the page.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { browserApi } from '../../lib/api/client';
+import { isDemo } from '../../lib/demo';
+import { saveLocalPosition } from '../../lib/documents/local-reading';
 
 export const SAVE_DELAY_MS = 1500;
 
@@ -45,6 +48,10 @@ export function useSavePosition(slug: string, unit: string, active: string | nul
       const body = pending.current;
       if (!body) return;
       pending.current = null;
+      if (isDemo()) {
+        saveLocalPosition(slug, body);
+        return;
+      }
       browserApi.put(`documents/${encodeURIComponent(slug)}/reading`, body, { keepalive }).catch(() => {
         // Progress is a convenience: a failed save just keeps the previous place.
       });

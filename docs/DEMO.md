@@ -13,6 +13,7 @@ Postgres VM, read through a role that can only read.
 | Jobs, embedding, narration, builds | `BOOKSHELF_API_*_RUNNER=false` and `BOOKSHELF_API_WORKER=false` (render.yaml). |
 | Adding books or papers, starting jobs, builds, workshop mode, Settings | Marked `data-demo-off`, so `html[data-demo]` greys them out and makes them unclickable (base.css). A banner says why. |
 | Where the data lives | Settings shows only what is kept in the browser (look, reading, encouragement); the API runs with `BOOKSHELF_DATABASE_ADMIN=false`, so `/database` and snapshots are not mounted at all. |
+| A visitor's progress | Kept in their browser, never in the database: pill sessions, their events and saved feeds (`lib/pills/local.ts`; each page comes from `GET /pills/compose`, the feed engine over the browser's session, which writes nothing), and the reader's place and finished marks (`lib/documents/local-reading.ts`), merged back over the document page (`components/document/demo-progress.ts`). Shelf, collection and Today progress still show the demo data. |
 | Default tone | Playful (`<html data-cheer-default>`), until a visitor picks one in Settings. |
 | Books | Not in the data: `scripts/demo/prune-to-papers.sql` deletes them. |
 | Figures, audio, search | No media or Qdrant is deployed. Figures, narrations and search do not work. |

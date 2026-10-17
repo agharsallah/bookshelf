@@ -7,15 +7,17 @@
  * Keys: j / ↓ / space next, k / ↑ previous, ← / → within a thread, s save, o open the
  * source passage, ? confusing, e too easy, Esc end. Cite chips and `o` open the passage in
  * the guide's drawer; figures and diagrams magnify in the reader's lightbox. Time here
- * counts as activity surface `pills`.
+ * counts as activity surface `pills`. In the read-only demo (`demo`) the session, its events
+ * and saved feeds stay in this browser (lib/pills/local.ts).
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAttention } from '../../lib/activity/useAttention';
 import { browserApi } from '../../lib/api/client';
 import { createPillsClient, type PillsClient } from '../../lib/pills/client';
+import { createLocalPillsClient, localReviewApi } from '../../lib/pills/local';
 import { configToQuery } from '../../lib/pills/config';
 import { currentPill, flatIndex } from '../../lib/pills/session';
-import type { StorageAdapter } from '../../lib/pills/storage';
+import { localStorageAdapter, type StorageAdapter } from '../../lib/pills/storage';
 import type { Feed, FeedConfig, Pill } from '../../lib/pills/types';
 import { problemOf } from '../common/Problem';
 import { toast } from '../document/toast';
@@ -37,6 +39,8 @@ import styles from './Feed.module.css';
 /** Where the browser reaches the API: the same-origin proxy, like every island. */
 export const PILLS_API_BASE = '/api';
 const browserPills = createPillsClient({ baseUrl: PILLS_API_BASE });
+const demoPills = createLocalPillsClient({ api: browserApi, storage: localStorageAdapter() });
+const demoReviews = localReviewApi(browserApi);
 
 /** Slides either side of the current one that are drawn; the rest hold their place empty. */
 const DRAWN_AROUND = 2;
@@ -50,6 +54,8 @@ export interface PillFeedProps {
   options: SheetOptions;
   feeds: Feed[];
   client?: PillsClient;
+  /** The read-only demo: the feed's progress is kept in this browser. */
+  demo?: boolean;
   reviewApi?: RecallApi;
   storage?: StorageAdapter;
 }
@@ -62,7 +68,7 @@ export function PillFeed(props: PillFeedProps) {
   );
 }
 
-function FeedView({ initialConfig, feedId = null, resume = null, options, feeds: initialFeeds, client = browserPills, reviewApi = browserApi, storage }: PillFeedProps) {
+function FeedView({ initialConfig, feedId = null, resume = null, options, feeds: initialFeeds, demo = false, client = demo ? demoPills : browserPills, reviewApi = demo ? demoReviews : browserApi, storage }: PillFeedProps) {
   const queue = useEventQueue(client, storage);
   const { session, state } = useSessionStore(client, queue);
   const [config, setConfig] = useState(initialConfig);

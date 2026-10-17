@@ -9,6 +9,7 @@ from sqlmodel import Session, select
 
 from app.models import Document, Job, ReviewItem
 from app.models.enums import ArtifactType, JobKind, PillKind
+from app.models.pill import PillSession
 from app.pills.contract import PILL_SCHEMA_ID
 from app.pipeline.gates import schema_errors
 from tests.api.factories import make_artifact
@@ -203,3 +204,35 @@ def test_review_pills_render_on_a_session_page(
     (pill,) = body["page"]["pills"]
     assert schema_errors({"$ref": PILL_SCHEMA_ID}, pill) == []
     assert (pill["kind"], pill["review_item_id"]) == ("review", str(item.id))
+
+
+def compose(client: TestClient, config: dict[str, object], served: list[str], **params: object):
+    query = {"config": json.dumps(config), "seed": 7, "served": ",".join(served), **params}
+    response = client.get(f"{URL}/compose", params=query)
+    assert response.status_code == 200, response.text
+    return response.json()
+
+
+def test_compose_pages_a_session_kept_by_the_client_and_stores_nothing(
+    client: TestClient, session: Session, book: Document
+):
+    for i in range(14):
+        make_pill(session, book, f"ch0{i % 6 + 1}")
+    config = {**EXPLORE, "length": 20}
+
+    first = compose(client, config, [])
+    again = compose(client, config, [])
+    ids = [p["id"] for p in first["pills"]]
+    rest = compose(client, config, ids)
+
+    assert len(ids) == 10 and first["next_cursor"] == "10" and not first["done"]
+    assert [p["id"] for p in again["pills"]] == ids  # same seed, same page
+    assert not {p["id"] for p in rest["pills"]} & set(ids)
+    assert (len(rest["pills"]), rest["next_cursor"], rest["done"]) == (4, None, True)
+    assert session.exec(select(PillSession)).all() == []
+
+
+def test_compose_needs_no_key_and_rejects_bad_ids(client: TestClient, book: Document):
+    response = client.get(f"{URL}/compose", params={"seed": 1, "served": "not-an-id"})
+    assert response.status_code == 422
+    assert client.get(f"{URL}/compose", params={"seed": 1}).status_code == 200

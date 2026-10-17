@@ -11,6 +11,10 @@ nothing is left to serve.
 
 A page also reports the scope's supply; when it is low, `generate.top_up` queues
 make-pills (lazily, within its own budget).
+
+`compose` is the same engine for a session nobody stores: a read-only deployment (the
+demo) keeps `seed` and `served` in the browser and asks for what follows. It writes
+nothing, so it never tops up the supply either.
 """
 
 import secrets
@@ -87,14 +91,15 @@ def _trim(ranked: list[Ranked]) -> list[Ranked]:
     return out
 
 
-def _extend(session: Session, row: PillSession, scope: Scope, upto: int, now: datetime) -> None:
-    """Serve more, so that `served` reaches `upto` (fewer when the scope runs dry)."""
-    served = list(row.served)
+def _following(
+    session: Session, scope: Scope, served: list[uuid.UUID], seed: int, upto: int, now: datetime
+) -> list[uuid.UUID]:
+    """What to serve after `served` so it reaches `upto` (fewer when the scope runs dry)."""
     pool = candidates.load(session, scope, now, exclude=served)
     if not pool:
-        return
+        return []
     signals = history.kind_signals(session, now=now)
-    ranked = _trim(rank.rank(pool, seed=row.seed + len(served), signals=signals))
+    ranked = _trim(rank.rank(pool, seed=seed + len(served), signals=signals))
     picked = mixer.mix(
         ranked,
         max(upto - len(served), BATCH),
@@ -104,8 +109,16 @@ def _extend(session: Session, row: PillSession, scope: Scope, upto: int, now: da
     length = scope.config.length
     if length is not None:
         picked = picked[: max(length - len(served), 0)]
-    row.served = served + [c.id for c in picked]
-    session.add(row)
+    return [c.id for c in picked]
+
+
+def _extend(session: Session, row: PillSession, scope: Scope, upto: int, now: datetime) -> None:
+    """Serve more, so that `served` reaches `upto` (fewer when the scope runs dry)."""
+    served = list(row.served)
+    more = _following(session, scope, served, row.seed, upto, now)
+    if more:
+        row.served = served + more
+        session.add(row)
 
 
 def _supply(session: Session, scope: Scope) -> Supply:
@@ -161,3 +174,30 @@ def create(
     first = page(session, row.id, cursor="0", now=now)
     session.refresh(row)
     return row, first
+
+
+def compose(
+    session: Session,
+    config: FeedConfig,
+    *,
+    seed: int,
+    served: list[uuid.UUID],
+    limit: int = PAGE_LIMIT,
+    now: datetime | None = None,
+) -> Page:
+    """The `limit` pills that follow `served` in a session nobody stores. Writes nothing:
+    `next_cursor` is how many the session will have served, the next call's `served`."""
+    scope = resolve(session, config)
+    length = scope.config.length
+    start = len(served)
+    end = start + limit if length is None else min(start + limit, length)
+    ids = _following(session, scope, served, seed, end, now or utcnow())[: end - start]
+    reached = start + len(ids)
+    finished = length is not None and reached >= length
+    more = not finished and len(ids) == end - start and bool(ids)
+    return Page(
+        pills=render(session, ids),
+        next_cursor=str(reached) if more else None,
+        supply=supply.compute(session, scope),
+        notice=scope.notice,
+    )
