@@ -6,7 +6,8 @@ Docs: https://fastapi.tiangolo.com/advanced/settings/
 from enum import StrEnum
 from functools import lru_cache
 from pathlib import Path
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
+from urllib.parse import quote
 
 from pydantic import AliasChoices, Field, computed_field, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
@@ -56,6 +57,14 @@ class Settings(BaseSettings):
     # the app reads and writes (`app/db/targets.py`, kept in `database_target_file`) and syncs
     # one into the other (`app/db/sync.py`).
     database_url: str = "postgresql+psycopg://bookshelf@127.0.0.1:54329/bookshelf"
+    # A Postgres server of your own (a VM, say) by libpq's variables, unprefixed: when `PGHOST`
+    # is set they make `database_url` (`_database_url_from_pg`), ahead of BOOKSHELF_DATABASE_URL.
+    pghost: str | None = Field(default=None, validation_alias="PGHOST")
+    pgport: Annotated[int, Field(gt=0)] = Field(default=5432, validation_alias="PGPORT")
+    pgdatabase: str | None = Field(default=None, validation_alias="PGDATABASE")
+    pguser: str | None = Field(default=None, validation_alias="PGUSER")
+    pgpassword: str | None = Field(default=None, validation_alias="PGPASSWORD", repr=False)
+    pgsslmode: str | None = Field(default=None, validation_alias="PGSSLMODE")
     local_database_url: str = "postgresql+psycopg://bookshelf@127.0.0.1:54329/bookshelf"
     database_target_file: Path = REPO_ROOT / ".database-target"
     database_backups_dir: Path = REPO_ROOT / ".backups" / "database"  # before a sync overwrites
@@ -199,6 +208,27 @@ class Settings(BaseSettings):
     # Docs are not a security boundary, but there is no reason to publish them by default.
     # https://fastapi.tiangolo.com/how-to/conditional-openapi/
     enable_docs: bool | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _database_url_from_pg(cls, data: Any) -> Any:
+        """`PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSWORD` (and `PGSSLMODE`) →
+        `database_url`. Never under tests: their database is set by `tests/conftest.py`, and a
+        `PGHOST` in `.env` must not send them to a real server."""
+        if not isinstance(data, dict):
+            return data
+        host = str(data.get("PGHOST") or "").strip()
+        if not host or str(data.get("environment", "")).strip().lower() == Environment.TEST:
+            return data
+        user = quote(str(data.get("PGUSER") or "postgres"), safe="")
+        password = str(data.get("PGPASSWORD") or "")
+        auth = f"{user}:{quote(password, safe='')}" if password else user
+        port = str(data.get("PGPORT") or "").strip() or "5432"
+        name = quote(str(data.get("PGDATABASE") or "").strip() or user, safe="")
+        sslmode = str(data.get("PGSSLMODE") or "").strip()
+        query = f"?sslmode={quote(sslmode, safe='')}" if sslmode else ""
+        url = f"postgresql+psycopg://{auth}@{host}:{port}/{name}{query}"
+        return {**data, "database_url": url}
 
     @field_validator("cors_origins", "allowed_hosts", mode="before")
     @classmethod

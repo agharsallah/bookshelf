@@ -114,6 +114,10 @@ Postgres only (JSONB, arrays, FTS, `SKIP LOCKED`). The schema lives in
 `../supabase/migrations/` as plain SQL, applied:
 
 - locally (and per test run, into a throwaway database) by `uv run python -m app.db.migrate`;
+- on a self-hosted Postgres (a VM, say) by the same command with `PGHOST`, `PGPORT`,
+  `PGDATABASE`, `PGUSER`, `PGPASSWORD` (optionally `PGSSLMODE`) in `.env`; with `PGHOST` set
+  they replace `BOOKSHELF_DATABASE_URL` (never under tests). Settings → Database also applies
+  pending migrations before a switch, sync or snapshot;
 - on Supabase through the Supabase MCP `apply_migration` or `supabase db push`. Point the
   backend at it with the **session pooler** URL:
   `BOOKSHELF_DATABASE_URL=postgresql+psycopg://postgres.<ref>:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres`.
@@ -158,7 +162,7 @@ Every setting is an environment variable prefixed `BOOKSHELF_`, read from `.env`
 
 | Variable | Default | |
 |---|---|---|
-| `BOOKSHELF_DATABASE_URL` | `postgresql+psycopg://bookshelf@127.0.0.1:54329/bookshelf` | pg-local; Supabase session pooler in production |
+| `BOOKSHELF_DATABASE_URL` | `postgresql+psycopg://bookshelf@127.0.0.1:54329/bookshelf` | pg-local; Supabase session pooler or a self-hosted Postgres in production |
 | `BOOKSHELF_API_KEY` | unset | required for writes when set; mandatory in production |
 | `BOOKSHELF_QDRANT_URL` / `_API_KEY` | unset | unset = embedded store in `.qdrant/` |
 | `BOOKSHELF_API_EMBED_RUNNER` | `true` | API runs embed jobs when Qdrant is embedded |

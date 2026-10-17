@@ -1,8 +1,10 @@
-"""Apply `supabase/migrations/*.sql` to a non-Supabase Postgres (local dev, tests).
+"""Apply `supabase/migrations/*.sql` to a Postgres that is not Supabase (the local cluster,
+a self-hosted server such as one on a VM, the test databases).
 
 The SQL files are the single schema source. Supabase applies them through its own
-migration tracking (Supabase MCP `apply_migration` / `supabase db push`); this runner
-exists so the local cluster and the test databases get the exact same schema.
+migration tracking (Supabase MCP `apply_migration` / `supabase db push`), so this runner
+leaves a Supabase database alone (`supabase_managed`); everywhere else it gives the exact
+same schema, tracked in `_local_migrations`.
 
     uv run python -m app.db.migrate            # uses BOOKSHELF_DATABASE_URL
 """
@@ -29,10 +31,35 @@ def pending_migrations(applied: set[str]) -> list[Path]:
     return [path for path in sorted(MIGRATIONS_DIR.glob("*.sql")) if path.name not in applied]
 
 
+def supabase_managed(conn: psycopg.Connection) -> bool:
+    """Whether Supabase applies this database's migrations: every Supabase database, hosted
+    or self-hosted, has the `supabase_admin` role."""
+    return (
+        conn.execute("select 1 from pg_roles where rolname = 'supabase_admin'").fetchone()
+        is not None
+    )
+
+
+def pending(conn: psycopg.Connection) -> list[Path]:
+    """The migrations this runner would apply to `conn`'s database: none on Supabase."""
+    if supabase_managed(conn):
+        return []
+    exists = conn.execute("select to_regclass('public._local_migrations')").fetchone()
+    if not (exists and exists[0]):
+        return pending_migrations(set())
+    return pending_migrations(
+        {row[0] for row in conn.execute("select name from _local_migrations")}
+    )
+
+
 def migrate(database_url: str) -> list[str]:
-    """Apply every pending migration, each in its own transaction. Returns their names."""
+    """Apply every pending migration, each in its own transaction. Returns their names.
+    A Supabase database is left untouched (it returns no names)."""
     done: list[str] = []
     with psycopg.connect(libpq_url(database_url), autocommit=True) as conn:
+        if supabase_managed(conn):
+            logger.info("Supabase applies its own migrations; nothing done")
+            return done
         conn.execute(
             "create table if not exists _local_migrations "
             "(name text primary key, applied_at timestamptz not null default now())"

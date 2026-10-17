@@ -28,6 +28,19 @@ def peer_url() -> Iterator[str]:
 
 
 @pytest.fixture
+def bare_url() -> Iterator[str]:
+    """An empty database, never migrated: a Postgres server set up for the app just now."""
+    main = get_settings().database_url
+    name = main.rsplit("/", 1)[1].replace("bookshelf_test_", "bookshelf_bare_", 1)
+    with _admin() as conn:
+        conn.execute(f'drop database if exists "{name}" with (force)')
+        conn.execute(f'create database "{name}"')
+    yield f"{main.rsplit('/', 1)[0]}/{name}"
+    with _admin() as conn:
+        conn.execute(f'drop database if exists "{name}" with (force)')
+
+
+@pytest.fixture
 def peer(peer_url: str) -> Iterator[psycopg.Connection]:
     """The peer database, emptied: each test starts from nothing there."""
     with psycopg.connect(libpq_url(peer_url), autocommit=True) as conn:

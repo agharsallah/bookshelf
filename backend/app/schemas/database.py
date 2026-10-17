@@ -28,8 +28,8 @@ class DatabaseTargetPublic(BaseModel):
     active: bool
     reachable: bool
     error: str | None = None
-    # Migrations this computer's cluster has not applied yet (applied before a switch or
-    # sync touches it); always 0 for the main database, whose migrations Supabase applies.
+    # Migrations this database has not applied yet (applied before a switch or sync touches
+    # it); always 0 for a Supabase database, which applies its own.
     pending_migrations: int = 0
     counts: DatabaseCounts | None = None
 

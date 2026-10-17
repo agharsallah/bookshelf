@@ -1,4 +1,5 @@
-"""Which database the app reads and writes: the local cluster or the main (Supabase) one.
+"""Which database the app reads and writes: the local cluster or the main one (Supabase, or
+any Postgres server such as one on a VM).
 
 Two URLs are configured (`Settings.local_database_url`, `Settings.database_url`). The choice
 between them is not an environment variable but a one-word file (`database_target_file`),

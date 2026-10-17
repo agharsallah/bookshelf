@@ -75,6 +75,40 @@ in the shell if your API needs a key. Details in [`skills/README.md`](skills/REA
 The Data API is locked down (RLS on, no grants to `anon`/`authenticated`); only the backend
 reads and writes.
 
+## Pointing at a Postgres server (a VM, say)
+
+Any Postgres 15+ works in place of Supabase; the migrations are plain SQL.
+
+1. On the server, make a role and a database the app owns, and let the backend reach it:
+
+   ```bash
+   sudo -u postgres psql -c "create role bookshelf login password '<password>'"
+   sudo -u postgres psql -c "create database bookshelf owner bookshelf"
+   # postgresql.conf: listen_addresses = '*'   (or the VM's private address)
+   # pg_hba.conf:     hostssl bookshelf bookshelf <your-ip>/32 scram-sha-256
+   sudo systemctl restart postgresql
+   ```
+
+   Keep port 5432 closed to the internet except for your address. Better still, reach the
+   server over a VPN or an SSH tunnel (`ssh -L 5433:127.0.0.1:5432 <vm>`, then `127.0.0.1:5433`).
+2. Set libpq's variables in `backend/.env`. When `PGHOST` is set they take the place of
+   `BOOKSHELF_DATABASE_URL`. Add `PGSSLMODE=require` when the server has TLS on:
+
+   ```bash
+   PGHOST=<vm-host>
+   PGPORT=5432
+   PGDATABASE=bookshelf
+   PGUSER=bookshelf
+   PGPASSWORD=<password>
+   ```
+3. Apply the migrations: `cd backend && uv run python -m app.db.migrate`. Settings → Database
+   also applies any that are pending before a switch, a sync or a snapshot. Unlike on
+   Supabase, the app owns this schema. `app.db.migrate` tells the two apart by the
+   `supabase_admin` role, so it never touches a Supabase database.
+
+To start from what you already have, use Settings → Database (sync "This computer" up to it)
+or restore a snapshot.
+
 ## Pointing at a Qdrant cluster
 
 Without configuration Qdrant runs embedded in `.qdrant/`, owned by the API process (which

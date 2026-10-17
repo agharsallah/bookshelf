@@ -83,6 +83,23 @@ def test_an_unreachable_database_is_reported_not_raised(settings, peer):
     assert not local.reachable and local.error and local.counts is None
 
 
+def test_a_self_hosted_main_database_is_migrated_before_a_switch(settings, runners, bare_url):
+    """A main database on a Postgres server (a VM, say) gets the schema from here."""
+    service = DatabaseService(settings.model_copy(update={"database_url": bare_url}),
+                              lambda: runners)  # type: ignore[arg-type, return-value]  # fmt: skip
+    try:
+        before = {t.target: t for t in service.status().targets}
+        assert before[REMOTE].pending_migrations > 0 and before[REMOTE].counts is None
+
+        service.switch(LOCAL)
+
+        after = {t.target: t for t in service.status().targets}
+        assert after[REMOTE].pending_migrations == 0
+        assert after[REMOTE].counts is not None and after[REMOTE].counts.documents == 0
+    finally:
+        db_session.use_target(REMOTE, get_settings().database_url)
+
+
 def test_with_one_database_there_is_nothing_to_switch_or_sync():
     service = DatabaseService(get_settings())  # tests: one database
 

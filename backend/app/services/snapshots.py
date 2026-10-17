@@ -88,11 +88,10 @@ class SnapshotService:
         return db_session.active_target()
 
     def _url(self) -> str:
-        """The database the app uses, its pending migrations applied when it is this
-        computer's (as `scripts/pg-local.sh` does): a snapshot is always of the latest schema."""
+        """The database the app uses, its pending migrations applied (as `scripts/pg-local.sh`
+        does; Supabase applies its own): a snapshot is always of the latest schema."""
         url = url_for(self.settings, self._target())
-        if self._target() is DatabaseTarget.LOCAL:
-            migrate(url)
+        migrate(url)
         return url
 
     # -- reading ----------------------------------------------------------------------

@@ -6,8 +6,9 @@ came from), points new sessions at the other database, saves the choice and star
 runners again. A sync runs on a thread of its own; the page polls `status()` for progress.
 While a sync writes into the database the app is using, the runners are stopped too.
 
-Before either touches this computer's cluster, its pending migrations are applied, as
-`scripts/pg-local.sh` does. The main database is migrated by Supabase, never from here.
+Before either touches a database, its pending migrations are applied (`app.db.migrate`, as
+`scripts/pg-local.sh` does), to this computer's cluster and to a self-hosted main database
+alike. A Supabase main database applies its own migrations, never from here.
 """
 
 import logging
@@ -22,7 +23,7 @@ from app.core.config import Settings
 from app.core.errors import ConflictError
 from app.db import session as db_session
 from app.db import sync
-from app.db.migrate import migrate, pending_migrations
+from app.db.migrate import migrate, pending
 from app.db.sync import Columns
 from app.db.targets import DatabaseTarget, has_two, host, label, other, save_target, url_for
 from app.jobs.runners import Runners
@@ -74,17 +75,6 @@ class DatabaseService:
     def url(self, target: DatabaseTarget) -> str:
         return url_for(self.settings, target)
 
-    def _pending(self, conn: psycopg.Connection, target: DatabaseTarget) -> int:
-        if target is not DatabaseTarget.LOCAL:
-            return 0
-        exists = conn.execute("select to_regclass('public._local_migrations')").fetchone()
-        applied = (
-            {row[0] for row in conn.execute("select name from _local_migrations")}
-            if exists and exists[0]
-            else set()
-        )
-        return len(pending_migrations(applied))
-
     def _describe(self, target: DatabaseTarget) -> tuple[DatabaseTargetPublic, Tables | None]:
         url = self.url(target)
         view = DatabaseTargetPublic(
@@ -97,7 +87,7 @@ class DatabaseService:
         try:
             with sync.connect(url, autocommit=True) as conn:
                 view.reachable = True
-                view.pending_migrations = self._pending(conn, target)
+                view.pending_migrations = len(pending(conn))
                 tables = sync.tables(conn)
                 if view.pending_migrations == 0:
                     view.counts = DatabaseCounts(**vars(sync.summary(conn)))
@@ -114,8 +104,9 @@ class DatabaseService:
             described = list(pool.map(self._describe, targets))
         problems: list[str] = []
         if available:
-            (local, local_tables), (_, remote_tables) = described
-            if local.pending_migrations == 0 and local_tables is not None and remote_tables:
+            (local, local_tables), (remote, remote_tables) = described
+            migrated = local.pending_migrations == 0 and remote.pending_migrations == 0
+            if migrated and local_tables is not None and remote_tables:
                 problems = sync.schema_diff(local_tables, remote_tables)
         with self._lock:
             progress = self._progress.model_copy()
@@ -138,14 +129,13 @@ class DatabaseService:
             )
 
     def _prepare(self, *targets: DatabaseTarget) -> dict[DatabaseTarget, Tables]:
-        """Reach each database (migrating this computer's first) and return its tables.
+        """Reach each database (migrating it first) and return its tables.
         Raises `ConflictError` with the reason when one cannot be used."""
         found: dict[DatabaseTarget, Tables] = {}
         for target in targets:
             name = label(self.settings, target)
             try:
-                if target is DatabaseTarget.LOCAL:
-                    migrate(self.url(target))
+                migrate(self.url(target))
                 with sync.connect(self.url(target), autocommit=True) as conn:
                     found[target] = sync.tables(conn)
             except psycopg.Error as exc:

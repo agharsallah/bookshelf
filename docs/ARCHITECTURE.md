@@ -142,8 +142,8 @@ flowchart LR
 **Mapping to what exists today**: `backend/` already provides the app factory, settings,
 guardrails, error envelope, and a `books` resource — that resource becomes `documents`.
 `frontend/` is Astro; it stays Astro with React islands (§12). The Qdrant key in `.env` is for
-the index in §10. Postgres is the Supabase project; schema changes go through Supabase
-migrations.
+the index in §10. Postgres is the Supabase project or a self-hosted server (a VM); schema
+changes go through `supabase/migrations/`.
 
 **PDFs stay in the repo for now** (D13). `library/` holds the originals; ingest takes a path,
 not an upload. `documents.source_path` points at the file, `sha256` guards against duplicates.
@@ -1565,7 +1565,7 @@ The design above is a guideline. Where the build diverged, the reason is recorde
 | Area | Planned | Built | Why |
 |---|---|---|---|
 | Job queue | `arq` on Redis | `jobs` table as the queue: `claim()` = `UPDATE … WHERE id = (SELECT … FOR UPDATE SKIP LOCKED)`, exponential backoff, stale-lock reclaim (a live worker heartbeats its running jobs' locks, so only a dead worker's job is reclaimed), partial unique index dedupes *queued* work, and `claim()` holds a queued job back while an identical one runs, so a re-run requested mid-run waits instead of being dropped (migration `20260924023412_dedupe_queued_only`) | One less service; the queue state *is* the domain state the review UI shows (`app/jobs/queue.py`) |
-| Database timing | SQLite in phase 0 | Postgres from the start; schema in `supabase/migrations/`, applied to Supabase via MCP and locally by `python -m app.db.migrate` | JSONB, `text[]`, FTS and `SKIP LOCKED` are needed immediately; one SQL source for both targets |
+| Database timing | SQLite in phase 0 | Postgres from the start; schema in `supabase/migrations/`, applied to Supabase via MCP, and by `python -m app.db.migrate` to every other Postgres (local, a self-hosted server), which skips a Supabase database (`supabase_admin` role) | JSONB, `text[]`, FTS and `SKIP LOCKED` are needed immediately; one SQL source for every target |
 | Dev database | — | `scripts/pg-local.sh`: isolated cluster in `.pgdata/` on port 54329, trust auth on localhost; tests create a throwaway DB per process | No passwords, no collision with a system Postgres, parallel test runs never share state |
 | Notes ↔ nodes | notes FK to nodes | notes reference only `documents`; re-parse upserts nodes by anchor; a note whose anchor vanished is shown as *detached* | A cascading FK let a re-parse delete notes, violating D11 |
 | D11 enforcement | API rule | plus a `before update` trigger rejecting any change to `notes.raw` | Defence in depth for the one irreplaceable artifact |
@@ -1661,7 +1661,7 @@ waiting are left alone. `pills.auto_generate` (default on) lets a pills feed run
 `auto_derive` choice.
 
 **Database** (`/database`, `app/db/targets.py`, `app/db/sync.py`, `services/database.py`).
-Two databases can be configured: `BOOKSHELF_DATABASE_URL` (the main one, Supabase) and
+Two databases can be configured: `BOOKSHELF_DATABASE_URL` (the main one: Supabase, or any Postgres server) and
 `BOOKSHELF_LOCAL_DATABASE_URL` (the `scripts/pg-local.sh` cluster by default; `scripts/dev-backend.sh`
 points it at a Podman Postgres 17, `scripts/pg-podman.sh`, started and stopped with the API). Settings shows both
 side by side and is the switch between them: `PUT /database/active` stops the API's
@@ -1675,8 +1675,8 @@ polls `GET /database`): optional `pg_dump` backup of the destination into
 each one with binary `COPY` from a repeatable-read snapshot of the source, makes foreign
 keys deferrable for the copy (so `notes` ↔ `artifacts` loads in any order) and moves the
 identity sequences forward. It is a mirror, not a merge, so it fails as a whole or not at
-all. It refuses when the schemas differ, or while jobs are running on either side. The
-local cluster is migrated first; Supabase never is. `workers` and `_local_migrations` are
+all. It refuses when the schemas differ, or while jobs are running on either side. Both
+databases are migrated first (`app.db.migrate`), except a Supabase one, which applies its own. `workers` and `_local_migrations` are
 not copied. Qdrant and the files on disk are shared, so they are not copied either.
 A sync, a switch, a snapshot and a restore hold one lock between them
 (`services/exclusive.py`), so only one runs at a time.

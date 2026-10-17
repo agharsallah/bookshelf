@@ -1,6 +1,6 @@
 /**
  * Settings → Database (`/database`): the two databases side by side — this computer's and
- * the main (Supabase) one — as a choice of which the app reads and writes, plus upload and
+ * the main one (Supabase or a Postgres server) — as a choice of which the app reads and writes, plus upload and
  * download buttons that copy one over the other. A sync runs on the server; this polls it.
  */
 import { useCallback, useEffect, useState } from 'react';
