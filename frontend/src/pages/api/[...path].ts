@@ -13,6 +13,7 @@ import {
   ProxyPathError,
 } from '../../lib/api/proxy';
 import { proxyConfig } from '../../lib/api/server';
+import { upstreamFetch, WAKE_DELAYS_MS } from '../../lib/api/upstream';
 import { staleTagsAfter } from '../../lib/route-cache';
 
 export const prerender = false;
@@ -39,7 +40,9 @@ export const ALL: APIRoute = async ({ request, params, url, cache }) => {
   try {
     // The body is streamed through, not read into memory first: a snapshot restore
     // uploads the whole library. Node's fetch needs `duplex` to send a stream.
-    response = await fetch(upstream.url, {
+    // A read waits for a sleeping demo API to wake (lib/api/upstream.ts); a write never repeats.
+    const send = PUBLIC_DEMO && !hasBody ? upstreamFetch(globalThis.fetch, WAKE_DELAYS_MS) : fetch;
+    response = await send(upstream.url, {
       method: upstream.method,
       headers: upstream.headers,
       body: hasBody ? request.body : undefined,

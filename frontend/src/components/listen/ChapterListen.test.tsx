@@ -51,8 +51,9 @@ describe('ChapterListen', () => {
     const { get } = setup();
     await screen.findByRole('button', { name: 'Play' });
     expect(get).toHaveBeenCalledWith('documents/doc/audio/read/ch01');
-    expect(screen.getByText('Listen · About 3 min')).toBeTruthy();
-    expect(audioElement().getAttribute('src')).toBe('/api/audio/files/doc/read~ch01/read-1.mp3');
+    // The length and the source settle after the button: wait for them, not just for it.
+    expect(await screen.findByText('Listen · About 3 min')).toBeTruthy();
+    await waitFor(() => expect(audioElement().getAttribute('src')).toBe('/api/audio/files/doc/read~ch01/read-1.mp3'));
   });
 
   it('records an unrecorded chapter with the voice you choose', async () => {

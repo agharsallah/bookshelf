@@ -2,11 +2,11 @@
  * Server-only API access (page frontmatter, endpoints). Reads secrets from
  * `astro:env/server`, so importing this from an island is a build error by design.
  */
-import { PUBLIC_API_URL } from 'astro:env/client';
+import { PUBLIC_API_URL, PUBLIC_DEMO } from 'astro:env/client';
 import { API_INTERNAL_URL, API_SECRET } from 'astro:env/server';
 import { createApiClient, type ApiClient } from './client';
 import { API_KEY_HEADER, type ProxyConfig } from './proxy';
-import { upstreamFetch } from './upstream';
+import { RETRY_DELAYS_MS, upstreamFetch, WAKE_DELAYS_MS } from './upstream';
 
 export const DEFAULT_API_URL = 'http://localhost:8000/api/v1';
 
@@ -21,12 +21,13 @@ export function proxyConfig(): ProxyConfig {
 
 /**
  * A client that talks to the backend directly and authenticates every call. A GET the
- * backend was not ready for is tried once more (lib/api/upstream.ts).
+ * backend was not ready for is tried again (lib/api/upstream.ts): for longer in the demo,
+ * whose free API sleeps.
  */
 export function serverApi(fetchImpl?: typeof fetch): ApiClient {
   return createApiClient({
     baseUrl: backendBaseUrl(),
-    fetch: fetchImpl ?? upstreamFetch(),
+    fetch: fetchImpl ?? upstreamFetch(globalThis.fetch, PUBLIC_DEMO ? WAKE_DELAYS_MS : RETRY_DELAYS_MS),
     headers: API_SECRET ? { [API_KEY_HEADER]: API_SECRET } : undefined,
   });
 }
