@@ -19,8 +19,12 @@ DUMP="$ROOT/.backups/demo.sql"
 TARGET_URL="${1:-}"
 
 psql_() { psql -X -v ON_ERROR_STOP=1 -q "$@"; }
-# A newer pg_dump than the server writes settings the server does not know.
-dump() { pg_dump --no-owner --no-privileges "$@" | grep -v '^SET transaction_timeout'; }
+# A newer pg_dump than the server writes settings the server does not know, and a
+# `--schema=public` dump creates the schema every new database already has.
+dump() {
+  pg_dump --no-owner --no-privileges "$@" | grep -v '^SET transaction_timeout' |
+    sed 's/^CREATE SCHEMA public;$/CREATE SCHEMA IF NOT EXISTS public;/'
+}
 
 echo "Copying the local shelf into bookshelf_demo…"
 psql_ "$SOURCE_URL" -c "drop database if exists bookshelf_demo" -c "create database bookshelf_demo"

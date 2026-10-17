@@ -1,22 +1,38 @@
-# Render blueprint for the read-only demo API (docs/DEMO.md). Free tier: sleeps when idle.
+# Render blueprint for the read-only demo API (docs/DEMO.md). Free tier: sleeps after 15
+# minutes idle; `scripts/demo/keep-alive.sh` on a cron keeps it awake.
 services:
   - type: web
     name: bookshelf-demo-api
     runtime: docker
     plan: free
+    # Next to the database (a Contabo VM in Germany) and the frontend's functions (fra1).
+    region: frankfurt
+    branch: demo
     rootDir: backend
     dockerfilePath: ./Dockerfile
     healthCheckPath: /health
     envVars:
+      - key: PORT
+        value: "8000"
+      # Render's proxy terminates TLS: trust its X-Forwarded-* headers (uvicorn).
+      - key: FORWARDED_ALLOW_IPS
+        value: "*"
       - key: BOOKSHELF_ENVIRONMENT
         value: production
       # Required in production. Writes need it; nobody is given it, so the API is read-only.
       - key: BOOKSHELF_API_KEY
         generateValue: true
-      # The demo Supabase database, for both: Settings → Database has nothing to switch.
-      - key: BOOKSHELF_DATABASE_URL
+      # The demo database (scripts/demo/build-demo-db.sh) through its read-only role, by
+      # libpq's variables (they make BOOKSHELF_DATABASE_URL). Values: .demo/render-db.env.
+      - key: PGHOST
         sync: false
-      - key: BOOKSHELF_LOCAL_DATABASE_URL
+      - key: PGPORT
+        value: "5432"
+      - key: PGDATABASE
+        value: bookshelf_demo
+      - key: PGUSER
+        value: bookshelf_demo_ro
+      - key: PGPASSWORD
         sync: false
       # e.g. bookshelf-demo-api.onrender.com
       - key: BOOKSHELF_ALLOWED_HOSTS
@@ -24,6 +40,10 @@ services:
       # e.g. https://bookshelf-demo.vercel.app
       - key: BOOKSHELF_CORS_ORIGINS
         sync: false
+      # Every page is rendered by the frontend's functions, so most requests share a few
+      # client addresses: the default 120 a minute would throttle a single visitor.
+      - key: BOOKSHELF_RATE_LIMIT_REQUESTS
+        value: "1200"
       # Nothing runs: no worker, no embedding, no narration, no builds.
       - key: BOOKSHELF_API_WORKER
         value: "false"
