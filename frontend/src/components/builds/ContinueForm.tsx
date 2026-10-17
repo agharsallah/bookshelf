@@ -59,7 +59,7 @@ export function ContinueForm({ build, api, onChange }: { build: BuildPublic; api
         </p>
       ) : null}
       <div className={fields.actions}>
-        <button type="submit" className="btn btn-primary" disabled={sending}>
+        <button type="submit" className="btn btn-primary" data-demo-off disabled={sending}>
           {sending ? 'Starting…' : 'Continue the build'}
         </button>
       </div>

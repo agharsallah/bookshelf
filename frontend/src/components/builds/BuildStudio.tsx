@@ -94,7 +94,7 @@ export function BuildStudio({ documentId, paperRef, paperTitle, initialBuilds, a
   return (
     <div className={styles.studio}>
       <aside className={styles.side} aria-label="Your builds">
-        <button type="button" className="btn btn-primary" onClick={() => open(null)} aria-pressed={selectedId === null}>
+        <button type="button" className="btn btn-primary" data-demo-off onClick={() => open(null)} aria-pressed={selectedId === null}>
           New build
         </button>
         {builds.length > 0 ? (

@@ -224,7 +224,7 @@ export function ChapterListen(props: ChapterListenProps) {
               <input type="checkbox" checked={follow} onChange={(event) => setFollow(event.currentTarget.checked)} /> Follow along in the text
             </label>
             {!recordAnother && catalogue && (
-              <button type="button" className="btn btn-quiet" onClick={() => setRecordAnother(true)}>
+              <button type="button" className="btn btn-quiet" data-demo-off onClick={() => setRecordAnother(true)}>
                 Another voice
               </button>
             )}
@@ -247,7 +247,7 @@ export function ChapterListen(props: ChapterListenProps) {
       )}
 
       {showForm && (
-        <form className={styles.form} onSubmit={(event) => void record(event)}>
+        <form className={styles.form} data-demo-off onSubmit={(event) => void record(event)}>
           <VoiceSelect role="Reader" voices={options} value={voice} onChange={setVoice} preview={preview} />
           <div className={styles.row}>
             <button type="submit" className="btn btn-primary" disabled={sending || !voice} aria-busy={sending || undefined}>

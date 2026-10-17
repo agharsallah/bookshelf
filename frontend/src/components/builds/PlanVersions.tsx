@@ -90,7 +90,7 @@ function OldVersion({ build, version, currentWord, onBack, onUse, restoring }: O
         </p>
         <div className={fields.actions}>
           {onUse ? (
-            <button type="button" className="btn btn-primary" disabled={restoring} onClick={onUse}>
+            <button type="button" className="btn btn-primary" data-demo-off disabled={restoring} onClick={onUse}>
               {restoring ? 'Restoring…' : 'Use this version'}
             </button>
           ) : null}

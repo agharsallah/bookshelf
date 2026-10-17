@@ -59,7 +59,7 @@ export function DeriveButton({ skill, documentId, anchor, job, queue, now, madeI
   };
 
   return (
-    <span className={styles.item} data-phase={progress?.phase ?? 'idle'}>
+    <span className={styles.item} data-demo-off data-phase={progress?.phase ?? 'idle'}>
       <button
         type="button"
         className={styles.button}

@@ -228,7 +228,7 @@ export function Listen({ slug, bookTitle, documentId, shelf: initial, catalogue,
               api={api}
             />
           ) : (
-            <button type="button" className="btn" onClick={() => setMaking(true)}>
+            <button type="button" className="btn" data-demo-off onClick={() => setMaking(true)}>
               Choose a length, format and voices
             </button>
           )}

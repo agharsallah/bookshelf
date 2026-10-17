@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
-from app.api.router import api_router
+from app.api.router import api_router, database_router
 from app.api.routes import health
 from app.api.routes.snapshots import UPLOAD_PATH as SNAPSHOT_UPLOAD_PATH
 from app.core import lifecycle
@@ -116,6 +116,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app.include_router(health.router)
     app.include_router(api_router, prefix=settings.api_prefix)
+    if settings.database_admin:
+        app.include_router(database_router, prefix=settings.api_prefix)
     return app
 
 

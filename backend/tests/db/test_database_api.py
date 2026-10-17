@@ -9,9 +9,10 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from app.api.routes.database import get_database_service
-from app.core.config import Environment, get_settings
+from app.core.config import Environment, Settings, get_settings
 from app.db import session as db_session
 from app.db.targets import DatabaseTarget
+from app.main import create_app
 from app.services.database import DatabaseService
 from tests.api.factories import make_document
 from tests.conftest import AUTH
@@ -69,3 +70,11 @@ def test_switch_then_sync_back(client, two_databases, session, peer):
 
     titles = [d["title"] for d in client.get("/api/v1/documents").json()["items"]]
     assert titles == ["Thinking in Systems"]
+
+
+def test_a_public_deployment_does_not_mount_the_database_routes():
+    settings = Settings(environment="test", database_admin=False, api_key="k", log_json=False)  # type: ignore[arg-type]
+    with TestClient(create_app(settings)) as client:
+        assert client.get("/api/v1/database").status_code == 404
+        assert client.get("/api/v1/database/snapshot").status_code == 404
+        assert client.get("/health").status_code == 200

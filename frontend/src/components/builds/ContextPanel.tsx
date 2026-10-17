@@ -151,7 +151,7 @@ export function ContextPanel({ api, paperRef, value, onChange, linkPaper, allowW
       </section>
 
       <div className={styles.footer}>
-        <button type="button" className="btn" onClick={() => setViewing(true)}>
+        <button type="button" className="btn" data-demo-off onClick={() => setViewing(true)}>
           Preview files
         </button>
         <span className={fields.hint}>The exact files, kickoff and tools, rendered from this form.</span>

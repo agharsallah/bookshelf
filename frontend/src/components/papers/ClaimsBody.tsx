@@ -84,7 +84,7 @@ export function FindRelations({ slug, api = browserApi }: { slug: string; api?: 
     }
   };
   return (
-    <div className={styles.find}>
+    <div className={styles.find} data-demo-off>
       <button type="button" className="btn" disabled={state.phase === 'sending' || state.phase === 'queued'} onClick={() => void run()}>
         Find relations on your shelf
       </button>

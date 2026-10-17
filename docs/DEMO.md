@@ -12,6 +12,8 @@ Postgres VM, read through a role that can only read.
 | Every write | The database role `bookshelf_demo_ro` has `SELECT` only and `default_transaction_read_only = on`. The backend runs with `ENVIRONMENT=production`, which requires an API key on writes. The frontend is never given it (`API_SECRET` unset), and with `PUBLIC_DEMO=true` its `/api` proxy refuses writes itself with `demo_read_only`. |
 | Jobs, embedding, narration, builds | `BOOKSHELF_API_*_RUNNER=false` and `BOOKSHELF_API_WORKER=false` (render.yaml). |
 | Adding books or papers, starting jobs, builds, workshop mode, Settings | Marked `data-demo-off`, so `html[data-demo]` greys them out and makes them unclickable (base.css). A banner says why. |
+| Where the data lives | Settings shows only what is kept in the browser (look, reading, encouragement); the API runs with `BOOKSHELF_DATABASE_ADMIN=false`, so `/database` and snapshots are not mounted at all. |
+| Default tone | Playful (`<html data-cheer-default>`), until a visitor picks one in Settings. |
 | Books | Not in the data: `scripts/demo/prune-to-papers.sql` deletes them. |
 | Figures, audio, search | No media or Qdrant is deployed. Figures, narrations and search do not work. |
 
@@ -62,6 +64,14 @@ Both platforms build the `demo` branch on every push to it.
    - `PUBLIC_DEMO=true`
    - `PUBLIC_API_URL=https://<render host>/api/v1`
    - `ALLOWED_HOSTS=<vercel host>`
+
+## Caching
+
+The demo data does not change between deploys, and the free API renders some pages slowly
+(the map's atlas takes ~20 s). With `PUBLIC_DEMO` the middleware lets Vercel's CDN keep
+every successful GET for a day and serve it stale for a week while it re-renders
+(`lib/demo-cache.ts`, `CDN-Cache-Control`). A deployment starts with an empty cache:
+redeploy the frontend after reloading the demo data.
 
 ## Keeping it awake
 

@@ -40,7 +40,7 @@ export function SaveAsSet({ documentIds, defaultName, api = browserApi, go = (hr
   };
 
   return (
-    <form className={styles.save} onSubmit={(e) => void save(e)}>
+    <form className={styles.save} data-demo-off onSubmit={(e) => void save(e)}>
       <label className={styles.saveField}>
         <span>Set name</span>
         <input type="text" value={name} maxLength={200} onChange={(e) => setName(e.target.value)} disabled={busy || saved.current !== null} />

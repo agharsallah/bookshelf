@@ -68,8 +68,12 @@ api_router.include_router(audio.router)
 api_router.include_router(artifacts.router)
 api_router.include_router(skills.router)
 api_router.include_router(settings.router)
-api_router.include_router(snapshots.router)  # before database: /database/snapshot
-api_router.include_router(database.router)
 api_router.include_router(search.router)
 api_router.include_router(concepts.router)
 api_router.include_router(graph.router)
+
+# Settings → Database and snapshots: which database the server uses (its host) and the whole
+# shelf as one file. Mounted only with `Settings.database_admin` (off for the public demo).
+database_router = APIRouter()
+database_router.include_router(snapshots.router)  # before database: /database/snapshot
+database_router.include_router(database.router)

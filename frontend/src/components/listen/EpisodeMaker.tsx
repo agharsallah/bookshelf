@@ -76,7 +76,7 @@ export function EpisodeMaker({ documentId, catalogue, params, existing, onQueued
   };
 
   return (
-    <form className={styles.maker} onSubmit={(event) => void submit(event)}>
+    <form className={styles.maker} data-demo-off onSubmit={(event) => void submit(event)}>
       <fieldset className={styles.choice}>
         <legend>How long</legend>
         {minutesChoices.map((m) => (

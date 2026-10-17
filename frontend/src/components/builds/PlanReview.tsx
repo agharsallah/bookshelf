@@ -64,7 +64,7 @@ export function PlanReview({ build, onChange, api = browserApi }: PlanReviewProp
               {build.plan_origin === 'human' ? ', as you edited it' : ''}
             </h3>
             {!editing ? (
-              <button type="button" className="btn" onClick={() => setEditing(true)}>
+              <button type="button" className="btn" data-demo-off onClick={() => setEditing(true)}>
                 Edit milestones
               </button>
             ) : null}

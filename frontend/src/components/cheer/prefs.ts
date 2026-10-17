@@ -6,6 +6,8 @@
  * The tone is written to `<html data-cheer>` before first paint by `bootstrapCheer`
  * (serialized inline like the theme and workshop bootstraps), so server-rendered copy can
  * carry both voices and let CSS show one (`data-cheer-only`, base.css; see `Cheer.tsx`).
+ * With nothing chosen in this browser the tone is quiet, or `<html data-cheer-default>`
+ * when the page sets one (the demo: playful).
  */
 
 export const CHEER_TONES = ['quiet', 'playful'] as const;
@@ -33,9 +35,11 @@ export function bootstrapCheer(host: CheerHost): void {
   try {
     stored = host.localStorage.getItem('bookshelf:cheer');
   } catch {
-    // Blocked storage means the default: quiet.
+    // Blocked storage means the default.
   }
-  host.document.documentElement.dataset.cheer = stored === 'playful' ? 'playful' : 'quiet';
+  const root = host.document.documentElement.dataset;
+  const tone = stored === 'playful' || stored === 'quiet' ? stored : root.cheerDefault;
+  root.cheer = tone === 'playful' ? 'playful' : 'quiet';
 }
 
 export const cheerBootstrapScript = `(${bootstrapCheer.toString()})(window);`;

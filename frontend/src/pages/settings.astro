@@ -2,8 +2,9 @@
 /**
  * Settings: theme, library layout, reading defaults, encouragement, the default voice, what a new book
  * makes on its own, how the queue runs each kind of job, and which database it all lives in. One island; everything in it
- * saves as it changes.
+ * saves as it changes. The demo shows only what is kept in this browser.
  */
+import { PUBLIC_DEMO } from 'astro:env/client';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { Settings } from '../components/settings/Settings';
 
@@ -13,9 +14,15 @@ export const prerender = false;
 <BaseLayout title="Settings" width="reading">
   <header class="intro">
     <h1>Settings</h1>
-    <p>How the app looks, reads, cheers you on and listens for you, what a new book makes on its own, how the queue runs each kind of job, and where your library is kept.</p>
+    {
+      PUBLIC_DEMO ? (
+        <p>How the app looks, reads and cheers you on. Kept in this browser.</p>
+      ) : (
+        <p>How the app looks, reads, cheers you on and listens for you, what a new book makes on its own, how the queue runs each kind of job, and where your library is kept.</p>
+      )
+    }
   </header>
-  <Settings client:load />
+  <Settings client:load demo={PUBLIC_DEMO} />
 </BaseLayout>
 
 <style>

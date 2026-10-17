@@ -71,7 +71,7 @@ export function SupplyPanel({ supply, onGenerate }: SupplyPanelProps) {
                         {status?.state === 'queued' ? (
                           <span className={styles.queued}>Queued</span>
                         ) : (
-                          <button type="button" className="btn btn-quiet" disabled={status?.state === 'busy'} onClick={() => void make(document.id, anchor)}>
+                          <button type="button" className="btn btn-quiet" data-demo-off disabled={status?.state === 'busy'} onClick={() => void make(document.id, anchor)}>
                             Make pills
                           </button>
                         )}

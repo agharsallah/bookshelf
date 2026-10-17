@@ -45,7 +45,7 @@ const afterSwapScript = `document.addEventListener('astro:after-swap', () => { $
 ---
 
 <!doctype html>
-<html lang="en" data-demo={PUBLIC_DEMO ? '' : undefined}>
+<html lang="en" data-demo={PUBLIC_DEMO ? '' : undefined} data-cheer-default={PUBLIC_DEMO ? 'playful' : undefined}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -131,7 +131,7 @@ const afterSwapScript = `document.addEventListener('astro:after-swap', () => { $
     <footer class="colophon">
       <div class="colophon-inner">
         <ApiStatus />
-        <a href="/settings" data-demo-off>Settings</a>
+        <a href="/settings">Settings</a>
         <a class="workshop-only" href="/styleguide">Styleguide</a>
       </div>
     </footer>

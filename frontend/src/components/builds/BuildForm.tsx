@@ -94,7 +94,7 @@ export function BuildForm({ paperRef, paperTitle, onCreated, onCancel, api = bro
   };
 
   return (
-    <form className={styles.form} onSubmit={(event) => void submit(event)} noValidate aria-labelledby="build-form-title">
+    <form className={styles.form} data-demo-off onSubmit={(event) => void submit(event)} noValidate aria-labelledby="build-form-title">
       <h2 id="build-form-title" className={fields.panelTitle}>
         Build from this paper
       </h2>

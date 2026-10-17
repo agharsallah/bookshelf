@@ -38,7 +38,7 @@ export function ReplanForm({ build, api, onChange, label = 'Replan with this fee
         <textarea className={fields.textarea} value={feedback} onChange={(e) => setFeedback(e.target.value)} />
       </Field>
       <div className={fields.actions}>
-        <button type="submit" className="btn" disabled={sending || !feedback.trim()}>
+        <button type="submit" className="btn" data-demo-off disabled={sending || !feedback.trim()}>
           {sending ? 'Sending…' : label}
         </button>
       </div>

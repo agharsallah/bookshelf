@@ -119,7 +119,7 @@ export function RunView({ build, onChange, onDeleted, api = browserApi, pollMs =
           {neverRan ? <ReplanForm build={build} api={api} onChange={onChange} label="Plan again" /> : null}
           {canContinue(build.state) ? <ContinueForm build={build} api={api} onChange={onChange} /> : null}
 
-          <div className={fields.actions}>
+          <div className={fields.actions} data-demo-off>
             {build.state === 'building' ? (
               <ConfirmButton
                 label="Stop the build"

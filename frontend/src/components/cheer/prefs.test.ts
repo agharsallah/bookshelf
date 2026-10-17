@@ -2,9 +2,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { bootstrapCheer, CHEER_CHANGE_EVENT, cheerBootstrapScript, cheerTone, readGoal, saveGoal, setCheerTone } from './prefs';
 
-const host = (stored: string | null) => ({
+const host = (stored: string | null, dataset: DOMStringMap = {}) => ({
   localStorage: { getItem: () => stored },
-  document: { documentElement: { dataset: {} as DOMStringMap } },
+  document: { documentElement: { dataset } },
 });
 
 afterEach(() => {
@@ -16,6 +16,14 @@ describe('bootstrapCheer', () => {
   it('is quiet unless playful was chosen', () => {
     for (const [stored, tone] of [[null, 'quiet'], ['junk', 'quiet'], ['quiet', 'quiet'], ['playful', 'playful']] as const) {
       const h = host(stored);
+      bootstrapCheer(h);
+      expect(h.document.documentElement.dataset.cheer).toBe(tone);
+    }
+  });
+
+  it('starts from the page default until a tone is chosen', () => {
+    for (const [stored, tone] of [[null, 'playful'], ['junk', 'playful'], ['quiet', 'quiet'], ['playful', 'playful']] as const) {
+      const h = host(stored, { cheerDefault: 'playful' });
       bootstrapCheer(h);
       expect(h.document.documentElement.dataset.cheer).toBe(tone);
     }

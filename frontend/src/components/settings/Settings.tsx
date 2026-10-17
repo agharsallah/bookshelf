@@ -5,6 +5,10 @@
  * the whole shelf (rows and files) to carry it to another install.
  * The reading choices are the reader's preferences themselves, so changing one here or in the
  * reader is the same change.
+ *
+ * In the read-only demo (`demo`) only what lives in this browser is shown: the look, the
+ * reading defaults and the encouragement. The rest configures the owner's server (and the
+ * database section would show where it lives).
  */
 import { useEffect, useState, type CSSProperties } from 'react';
 import { browserApi } from '../../lib/api/client';
@@ -27,7 +31,7 @@ import { SnapshotSection } from './SnapshotSection';
 import { THEME_CHOICES, type ThemeChoice } from './model';
 import styles from './Settings.module.css';
 
-export function Settings() {
+export function Settings({ demo = false }: { demo?: boolean }) {
   const [prefs, update] = useReaderPrefs();
   const [theme, setThemeChoice] = useState<ThemeChoice>('system');
   const [view, setView] = useState<LibraryView>('shelf');
@@ -41,8 +45,8 @@ export function Settings() {
     setView(readPref(window.localStorage, 'view'));
     setWorkshopOn(isWorkshop());
     setVoice(readVoice() ?? '');
-    browserApi.get<VoiceCatalogue>('audio/voices').then((c) => setVoices(c.voices), () => undefined);
-  }, []);
+    if (!demo) browserApi.get<VoiceCatalogue>('audio/voices').then((c) => setVoices(c.voices), () => undefined);
+  }, [demo]);
 
   const chooseTheme = (choice: ThemeChoice) => {
     setThemeChoice(choice);
@@ -67,16 +71,18 @@ export function Settings() {
             }}
           />
         </Row>
-        <Row label="Workshop mode">
-          <Check
-            label="Show the review queue, pipeline and job details"
-            checked={workshop}
-            onChange={(on) => {
-              setWorkshopOn(on);
-              setWorkshop(on);
-            }}
-          />
-        </Row>
+        {!demo && (
+          <Row label="Workshop mode">
+            <Check
+              label="Show the review queue, pipeline and job details"
+              checked={workshop}
+              onChange={(on) => {
+                setWorkshopOn(on);
+                setWorkshop(on);
+              }}
+            />
+          </Row>
+        )}
       </Section>
 
       <Section id="reading" eyebrow="Reader" title="Reading" hint="Defaults for every book. The reader's own toolbar changes the same settings.">
@@ -137,40 +143,44 @@ export function Settings() {
 
       <EncouragementSection />
 
-      <Section id="listening" eyebrow="Audio" title="Listening" hint="The voice that reads first when you record a chapter or an audio summary.">
-        <Row label="Default voice">
-          <select
-            className={styles.select}
-            aria-label="Default voice"
-            value={voice}
-            onChange={(e) => {
-              setVoice(e.target.value);
-              saveVoice(e.target.value || null);
-            }}
-          >
-            <option value="">The language&rsquo;s own</option>
-            {voices.map((v) => (
-              <option key={v.id} value={v.id}>
-                {v.name}
-              </option>
-            ))}
-          </select>
-        </Row>
-      </Section>
+      {!demo && (
+        <>
+          <Section id="listening" eyebrow="Audio" title="Listening" hint="The voice that reads first when you record a chapter or an audio summary.">
+            <Row label="Default voice">
+              <select
+                className={styles.select}
+                aria-label="Default voice"
+                value={voice}
+                onChange={(e) => {
+                  setVoice(e.target.value);
+                  saveVoice(e.target.value || null);
+                }}
+              >
+                <option value="">The language&rsquo;s own</option>
+                {voices.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.name}
+                  </option>
+                ))}
+              </select>
+            </Row>
+          </Section>
 
-      <ApprovalSection />
+          <ApprovalSection />
 
-      <AutoRunSection />
+          <AutoRunSection />
 
-      <PillsSection />
+          <PillsSection />
 
-      <BuildsSection />
+          <BuildsSection />
 
-      <QueueKindsSection />
+          <QueueKindsSection />
 
-      <DatabaseSection />
+          <DatabaseSection />
 
-      <SnapshotSection />
+          <SnapshotSection />
+        </>
+      )}
     </div>
   );
 }

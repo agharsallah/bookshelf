@@ -84,7 +84,7 @@ export function ApproveBlock({ build, api, onChange }: { build: BuildPublic; api
         </p>
       ) : null}
       <div className={fields.actions}>
-        <button type="button" className="btn btn-primary" disabled={sending || nameProblem !== null} onClick={() => void start()}>
+        <button type="button" className="btn btn-primary" data-demo-off disabled={sending || nameProblem !== null} onClick={() => void start()}>
           {sending ? 'Starting…' : 'Approve & start building'}
         </button>
       </div>

@@ -50,7 +50,7 @@ function LocalPath({ value, onChange, state, error }: Pick<TargetPickerProps, 'v
       <Field label="Path" hint={hint} error={error}>
         <input className={`${fields.input} ${fields.mono}`} placeholder="/Users/you/code/project" spellCheck={false} value={value.path} onChange={(e) => onChange({ path: e.target.value })} />
       </Field>
-      <button type="button" className="btn" disabled={!typed || (state.chosen && !state.problem)} onClick={state.check}>
+      <button type="button" className="btn" data-demo-off disabled={!typed || (state.chosen && !state.problem)} onClick={state.check}>
         {state.chosen && state.inspecting ? 'Checking…' : 'Check'}
       </button>
     </div>

@@ -126,7 +126,7 @@ export function IngestPanel({ initialFiles, initialProblem = null, initialGenre 
               {outcomes[file.path] ? (
                 status(file.path)
               ) : (
-                <button type="button" className={styles.add} onClick={() => void add(file.path, { path: file.path })}>
+                <button type="button" className={styles.add} data-demo-off onClick={() => void add(file.path, { path: file.path })}>
                   Add to shelf
                 </button>
               )}
@@ -135,7 +135,7 @@ export function IngestPanel({ initialFiles, initialProblem = null, initialGenre 
         </ul>
       ) : null}
 
-      <form className={styles.url} onSubmit={submitUrl}>
+      <form className={styles.url} data-demo-off onSubmit={submitUrl}>
         <label htmlFor="ingest-url" className={styles.urlLabel}>
           Or add an article by URL
         </label>

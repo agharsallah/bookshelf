@@ -74,6 +74,9 @@ class Settings(BaseSettings):
     # The largest snapshot a restore accepts (the general request cap does not apply to it).
     snapshot_max_bytes: Annotated[int, Field(gt=0)] = 50 * 1024**3
     database_echo: bool = False
+    # The `/database` routes (Settings → Database, snapshots). Off for a public deployment such
+    # as the demo: they would publish the database's host and hand out the whole shelf.
+    database_admin: bool = True
 
     # --- Files (D13) -----------------------------------------------------
     library_dir: Path = REPO_ROOT / "library"  # originals, ingested by path, never mutated

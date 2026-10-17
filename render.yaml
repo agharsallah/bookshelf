@@ -44,6 +44,12 @@ services:
       # client addresses: the default 120 a minute would throttle a single visitor.
       - key: BOOKSHELF_RATE_LIMIT_REQUESTS
         value: "1200"
+      # No /database routes: they would publish the database host and hand out the shelf.
+      - key: BOOKSHELF_DATABASE_ADMIN
+        value: "false"
+      # No search index is deployed; an empty embedded store where the app user can write.
+      - key: BOOKSHELF_QDRANT_PATH
+        value: /tmp/qdrant
       # Nothing runs: no worker, no embedding, no narration, no builds.
       - key: BOOKSHELF_API_WORKER
         value: "false"
