@@ -8,6 +8,9 @@ export const API_KEY_HEADER = 'X-API-Key';
 
 export const MUTATING_METHODS: ReadonlySet<string> = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
+/** Reads the backend guards like writes: they look at the machine (`gh`, git), not the data. */
+const KEYED_READ_PATHS: ReadonlySet<string> = new Set(['builds/preflight', 'builds/repos']);
+
 /** Client headers worth forwarding. Everything else (cookies, auth, keys) stays behind. */
 const FORWARDED_REQUEST_HEADERS = [
   'accept',
@@ -90,7 +93,7 @@ export function proxyTarget(backendUrl: string, path: string, search = ''): stri
   return target;
 }
 
-/** Build the upstream request: allow-listed headers, plus the key on mutating methods. */
+/** Build the upstream request: allow-listed headers, plus the key on writes and keyed reads. */
 export function buildProxyRequest(incoming: IncomingProxyRequest, config: ProxyConfig): ProxyRequest {
   const method = incoming.method.toUpperCase();
   const headers = new Headers();
@@ -98,7 +101,8 @@ export function buildProxyRequest(incoming: IncomingProxyRequest, config: ProxyC
     const value = incoming.headers.get(name);
     if (value !== null) headers.set(name, value);
   }
-  if (MUTATING_METHODS.has(method) && config.apiSecret) {
+  const keyed = MUTATING_METHODS.has(method) || KEYED_READ_PATHS.has(incoming.path.replace(/^\/+|\/+$/g, ''));
+  if (keyed && config.apiSecret) {
     headers.set(API_KEY_HEADER, config.apiSecret);
   }
   return {

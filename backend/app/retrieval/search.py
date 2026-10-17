@@ -19,6 +19,7 @@ from dataclasses import dataclass
 from qdrant_client import QdrantClient
 from sqlmodel import Session, col, select
 
+from app.core.config import get_settings
 from app.models import Artifact, Node
 from app.models.enums import ArtifactType, Review
 from app.retrieval import hybrid, lexical, relations, resolve
@@ -196,7 +197,10 @@ def _vector_search(
 ) -> tuple[list[SearchGroup], IndexState]:
     """The vector tiers, degrading instead of failing: collections that vanished are
     recreated once (then the index is `empty`), and an unreachable Qdrant yields no groups
-    with `unavailable`. Addressed and lexical queries never come here."""
+    with `unavailable`, as does `vector_search` off. Addressed and lexical queries never
+    come here."""
+    if not get_settings().vector_search:
+        return [], "unavailable"
     try:
         client = client or open_client()
         try:

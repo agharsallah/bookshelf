@@ -5,7 +5,7 @@ services:
     name: bookshelf-demo-api
     runtime: docker
     plan: free
-    # Next to the database (a Contabo VM in Germany) and the frontend's functions (fra1).
+    # Next to the database and the frontend's functions (fra1).
     region: frankfurt
     branch: demo
     rootDir: backend
@@ -44,12 +44,19 @@ services:
       # client addresses: the default 120 a minute would throttle a single visitor.
       - key: BOOKSHELF_RATE_LIMIT_REQUESTS
         value: "1200"
+      # Render's proxy appends the real peer to X-Forwarded-For; the entries left of it are
+      # the client's to write, so the limiter counts that last one.
+      - key: BOOKSHELF_RATE_LIMIT_PROXY_HOPS
+        value: "1"
       # No /database routes: they would publish the database host and hand out the shelf.
       - key: BOOKSHELF_DATABASE_ADMIN
         value: "false"
       # No search index is deployed; an empty embedded store where the app user can write.
       - key: BOOKSHELF_QDRANT_PATH
         value: /tmp/qdrant
+      # Nor any embedding model: discovery searches answer `unavailable` instead of loading one.
+      - key: BOOKSHELF_VECTOR_SEARCH
+        value: "false"
       # Nothing runs: no worker, no embedding, no narration, no builds.
       - key: BOOKSHELF_API_WORKER
         value: "false"

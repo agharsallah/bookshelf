@@ -6,8 +6,9 @@ Plan first (`POST /papers/{ref}/builds` queues `build_plan`), approve, then the 
 checks in `details`).
 
 Building into an existing repository (§7c): `GET /builds/repos` lists what you can push to
-(cached 60 s) and `POST /builds/target/inspect` checks a target and surveys it; it only
-reads, so like the context render it needs no API key.
+(cached 60 s) and `POST /builds/target/inspect` checks a target and surveys it. They, the
+preflight and the context render only read, but they read the machine (any local path,
+`gh` as you) rather than the database, so they need the API key like a write.
 
 The fixed `/builds/presets`, `/builds/preflight`, `/builds/repos` and
 `/builds/target/inspect` are declared before `/builds/{build_id}`,
@@ -87,6 +88,7 @@ def list_presets() -> list[PresetPublic]:
 
 @router.get(
     "/builds/preflight",
+    dependencies=_WRITE,
     response_model=PreflightPublic,
     summary="What a build of this paper needs",
     description="Errors block a build, warnings say what the repo will lack; every failing "
@@ -108,6 +110,7 @@ def get_preflight(
 
 @router.get(
     "/builds/repos",
+    dependencies=_WRITE,
     response_model=list[RepoChoice],
     summary="GitHub repositories a build can go into",
     description="Yours and your organizations' (the 100 updated last, archived ones left "
@@ -132,12 +135,13 @@ def list_repos(
 
 @router.post(
     "/builds/target/inspect",
+    dependencies=_WRITE,
     response_model=TargetInspection,
     summary="Check an existing repository as a build target, and survey it",
     description="The checks preflight runs for this target (each problem with its fix), the "
     "default branch, the branches, whether the folder exists and is empty at the base, and "
-    "the survey the planner and the agent will read. It only reads (gh api, git), so it "
-    "needs no API key. A `new` target has nothing to inspect: `422`.",
+    "the survey the planner and the agent will read. A `new` target has nothing to inspect: "
+    "`422`.",
 )
 def inspect_target(body: BuildTarget, github: GitHubDep) -> TargetInspection:
     if not body.existing:
@@ -165,6 +169,7 @@ def get_context_preview(
 
 @router.post(
     "/papers/{ref}/builds/context/render",
+    dependencies=_WRITE,
     response_model=BuildContextView,
     summary="Render what a build not created yet would read",
     description="The form's live preview: the options are filled from the preset and the "

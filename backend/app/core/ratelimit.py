@@ -49,12 +49,19 @@ class _InMemoryCounter:
 
 class RateLimitMiddleware:
     def __init__(
-        self, app: ASGIApp, *, max_requests: int, window_seconds: int, api_key: str | None = None
+        self,
+        app: ASGIApp,
+        *,
+        max_requests: int,
+        window_seconds: int,
+        api_key: str | None = None,
+        proxy_hops: int = 0,
     ) -> None:
         self.app = app
         self.max_requests = max_requests
         self.counter = _InMemoryCounter(window_seconds)
         self._api_key = api_key.encode() if api_key else None
+        self._proxy_hops = proxy_hops
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http" or self.max_requests <= 0:
@@ -64,7 +71,7 @@ class RateLimitMiddleware:
             await self.app(scope, receive, send)
             return
 
-        key = _client_key(scope, self._api_key)
+        key = _client_key(scope, self._api_key, self._proxy_hops)
         now = time.time()
         count, reset_at = self.counter.hit(key, now)
 
@@ -88,17 +95,23 @@ class RateLimitMiddleware:
         await self.app(scope, receive, send)
 
 
-def _client_key(scope: Scope, api_key: bytes | None) -> str:
-    """Identify the caller by the API key when it presents the real one, else by peer
-    address. Any other `X-API-Key` value counts against the address: otherwise a fresh junk
-    value per request would get a fresh bucket, i.e. no limit at all (key guessing included).
+def _client_key(scope: Scope, api_key: bytes | None, proxy_hops: int = 0) -> str:
+    """Identify the caller by the API key when it presents the real one, else by address.
+    Any other `X-API-Key` value counts against the address: otherwise a fresh junk value
+    per request would get a fresh bucket, i.e. no limit at all (key guessing included).
 
-    `X-Forwarded-For` is deliberately ignored: it is trivially spoofed unless the app
-    sits behind a proxy that overwrites it. Run behind a proxy with `--proxy-headers`
-    (see https://fastapi.tiangolo.com/advanced/behind-a-proxy/) to get real client IPs.
+    The address is the peer's, or behind `proxy_hops` proxies that append to
+    `X-Forwarded-For`, the entry that many from the right: everything left of it is the
+    client's to write. `scope["client"]` is no help there, since uvicorn's proxy headers
+    may already have replaced it with the leftmost, forgeable entry.
     """
+    forwarded: list[str] = []
     for raw_key, raw_value in scope["headers"]:
         if raw_key == b"x-api-key" and api_key and secrets.compare_digest(raw_value, api_key):
             return "key"
+        if raw_key == b"x-forwarded-for":
+            forwarded += [hop.strip() for hop in raw_value.decode("latin-1").split(",")]
+    if proxy_hops and len(forwarded) >= proxy_hops:
+        return f"ip:{forwarded[-proxy_hops]}"
     client = scope.get("client")
     return f"ip:{client[0]}" if client else "ip:unknown"

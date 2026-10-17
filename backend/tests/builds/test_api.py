@@ -46,7 +46,7 @@ def test_presets_and_preflight_are_not_read_as_build_ids(api: TestClient, sessio
     paper = known_paper(session, card=Review.DRAFT)
 
     presets = api.get(f"{API}/builds/presets")
-    check = api.get(f"{API}/builds/preflight", params={"document": paper.slug,
+    check = api.get(f"{API}/builds/preflight", headers=AUTH, params={"document": paper.slug,
                                                        "visibility": "local"})  # fmt: skip
 
     assert presets.status_code == 200

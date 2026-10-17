@@ -125,7 +125,7 @@ def test_rate_limit_returns_429_with_retry_after():
     assert statuses[-1] == 429
 
 
-def _limited_app(max_requests: int) -> TestClient:
+def _limited_app(max_requests: int, proxy_hops: int = 0) -> TestClient:
     from app.core.config import Settings
     from app.main import create_app
 
@@ -133,6 +133,7 @@ def _limited_app(max_requests: int) -> TestClient:
         environment="test",  # type: ignore[arg-type]
         rate_limit_requests=max_requests,
         rate_limit_window_seconds=60,
+        rate_limit_proxy_hops=proxy_hops,
         api_key="test-secret-key",
         log_json=False,
     )
@@ -157,6 +158,30 @@ def test_the_real_api_key_has_a_bucket_of_its_own():
         keyed = [limited.get("/api/v1/jobs", headers=AUTH).status_code for _ in range(2)]
 
     assert (anonymous, keyed) == ([200, 200, 429], [200, 200])
+
+
+def test_a_forged_forwarded_for_per_request_does_not_escape_the_rate_limit():
+    """Behind one appending proxy only the rightmost entry is the proxy's; a client that
+    writes a fresh address on the left each time still lands in its own bucket."""
+    with _limited_app(2, proxy_hops=1) as limited:
+        statuses = [
+            limited.get(
+                "/api/v1/jobs", headers={"X-Forwarded-For": f"10.0.0.{n}, 203.0.113.7"}
+            ).status_code
+            for n in range(4)
+        ]
+
+    assert statuses == [200, 200, 429, 429]
+
+
+def test_behind_a_proxy_each_real_client_has_its_own_bucket():
+    with _limited_app(1, proxy_hops=1) as limited:
+        statuses = [
+            limited.get("/api/v1/jobs", headers={"X-Forwarded-For": f"203.0.113.{n}"}).status_code
+            for n in range(3)
+        ]
+
+    assert statuses == [200, 200, 200]
 
 
 def test_an_unhandled_error_keeps_the_request_id_in_envelope_and_header():

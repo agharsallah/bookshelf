@@ -7,6 +7,7 @@ import pytest
 from qdrant_client import QdrantClient
 from sqlmodel import Session
 
+from app.core.config import get_settings
 from app.models.enums import ArtifactType
 from app.retrieval import search
 from app.retrieval.embedding import FakeEmbedder
@@ -32,6 +33,21 @@ class NoVectors(FakeEmbedder):
 
     def rerank(self, query: str, docs: Sequence[str]) -> list[float]:
         raise AssertionError("addressed queries must not rerank")
+
+
+def test_with_vector_search_off_discovery_is_unavailable_without_embedding(
+    session: Session, indexed: Shelf, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    off = get_settings().model_copy(update={"vector_search": False})
+    monkeypatch.setattr(search, "get_settings", lambda: off)
+
+    response = _search(session, NoVectors(), "balancing feedback loops stabilize a stock")
+
+    assert (response.intent, response.index_state, response.groups) == (
+        "discovery",
+        "unavailable",
+        [],
+    )
 
 
 def test_discovery_groups_distillations_with_their_scoped_evidence(

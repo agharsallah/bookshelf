@@ -73,7 +73,7 @@ def test_render_shows_what_a_new_build_would_read(api: TestClient, session: Sess
                   "extra_commands": ["make"], "license": "MIT"},
     )  # fmt: skip
 
-    response = api.post(f"{API}/papers/{paper.slug}/builds/context/render",
+    response = api.post(f"{API}/papers/{paper.slug}/builds/context/render", headers=AUTH,
                         json={"options": options})  # fmt: skip
 
     assert response.status_code == 200, response.text
@@ -105,7 +105,8 @@ def test_render_and_create_refuse_bad_options(
 ):
     paper = known_paper(session)
 
-    render = api.post(f"{API}/papers/{paper.slug}/builds/context/render", json={"options": options})
+    render = api.post(f"{API}/papers/{paper.slug}/builds/context/render", headers=AUTH,
+                      json={"options": options})  # fmt: skip
     create = api.post(f"{API}/papers/{paper.slug}/builds", json={"goal": GOAL, "options": options},
                       headers=AUTH)  # fmt: skip
 

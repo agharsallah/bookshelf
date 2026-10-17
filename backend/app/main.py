@@ -99,6 +99,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         max_requests=settings.rate_limit_requests,
         window_seconds=settings.rate_limit_window_seconds,
         api_key=settings.api_key,
+        proxy_hops=settings.rate_limit_proxy_hops,
     )
     app.add_middleware(
         CORSMiddleware,

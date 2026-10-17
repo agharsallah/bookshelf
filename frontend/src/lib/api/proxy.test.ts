@@ -22,6 +22,11 @@ describe('buildProxyRequest', () => {
     ]);
   });
 
+  it.each(['builds/preflight', 'builds/repos'])('sends the key on the guarded read %s', (path) => {
+    const req = buildProxyRequest(incoming('GET', path, {}, '?q=x'), config);
+    expect(req.headers.get('x-api-key')).toBe('s3cret');
+  });
+
   it('drops keys, cookies and auth sent by the browser but keeps content headers', () => {
     const req = buildProxyRequest(
       incoming('GET', 'documents', {

@@ -103,6 +103,10 @@ class Settings(BaseSettings):
     qdrant_timeout_seconds: Annotated[int, Field(gt=0)] = 60
     qdrant_path: Path = REPO_ROOT / ".qdrant"
     qdrant_collection_prefix: str = ""  # tests set this so they never touch real collections
+    # False: discovery and synthesis queries answer `unavailable` without opening Qdrant or
+    # loading a model. For a deployment with no index, where `/search` needs no API key and
+    # each embedding model load is memory a small instance does not have.
+    vector_search: bool = True
     dense_model: str = "BAAI/bge-small-en-v1.5"
     sparse_model: str = "Qdrant/bm25"
     rerank_model: str = "Xenova/ms-marco-MiniLM-L-6-v2"
@@ -198,6 +202,11 @@ class Settings(BaseSettings):
     max_request_bytes: Annotated[int, Field(gt=0)] = 4 * 1024 * 1024
     rate_limit_requests: Annotated[int, Field(ge=0)] = 120
     rate_limit_window_seconds: Annotated[int, Field(gt=0)] = 60
+    # Proxies in front of the app that append to `X-Forwarded-For` (Render: 1). The limiter
+    # then counts the entry that many from the right, the last one a client cannot forge.
+    # 0: the peer address. Uvicorn's `--forwarded-allow-ips` does not do: with `*` it takes
+    # the leftmost entry, which the client writes.
+    rate_limit_proxy_hops: Annotated[int, Field(ge=0)] = 0
 
     # --- Guardrails: auth -------------------------------------------------
     # When set, every mutating request must send `X-API-Key`. Required outside local/test.

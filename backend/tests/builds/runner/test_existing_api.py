@@ -61,8 +61,8 @@ def existing_options(target: dict) -> dict:
 
 
 def test_repos_are_listed_and_filtered(api: TestClient, gh: FakeGitHub) -> None:
-    every = api.get(f"{API}/builds/repos", params={"q": ""})
-    some = api.get(f"{API}/builds/repos", params={"q": "website"})
+    every = api.get(f"{API}/builds/repos", headers=AUTH, params={"q": ""})
+    some = api.get(f"{API}/builds/repos", headers=AUTH, params={"q": "website"})
 
     assert every.status_code == 200 and every.json() == REPOS
     assert [r["full_name"] for r in some.json()] == ["octo/site"]
@@ -72,14 +72,14 @@ def test_repos_are_listed_and_filtered(api: TestClient, gh: FakeGitHub) -> None:
 def test_repos_without_a_gh_login_are_a_409(api: TestClient, gh: FakeGitHub) -> None:
     gh.logged_in = False
 
-    assert api.get(f"{API}/builds/repos", params={"q": ""}).status_code == 409
+    assert api.get(f"{API}/builds/repos", headers=AUTH, params={"q": ""}).status_code == 409
 
 
-def test_inspect_takes_the_bare_target_and_needs_no_key(api: TestClient, tmp_path: Path) -> None:
+def test_inspect_takes_the_bare_target(api: TestClient, tmp_path: Path) -> None:
     repo = make_user_repo(tmp_path, extra={f"{FOLDER}/old.md": "x"})
 
-    response = api.post(f"{API}/builds/target/inspect", json=local(repo))
-    github = api.post(f"{API}/builds/target/inspect",
+    response = api.post(f"{API}/builds/target/inspect", headers=AUTH, json=local(repo))
+    github = api.post(f"{API}/builds/target/inspect", headers=AUTH,
                       json={"kind": "github", "repo": "octo/site", "folder": FOLDER})  # fmt: skip
 
     assert response.status_code == 200, response.text
@@ -94,12 +94,27 @@ def test_inspect_takes_the_bare_target_and_needs_no_key(api: TestClient, tmp_pat
 
 
 @pytest.mark.parametrize(
+    ("method", "path"),
+    [("get", "builds/repos?q="), ("get", "builds/preflight?document=x"),
+     ("post", "builds/target/inspect"), ("post", "papers/x/builds/context/render")],
+)  # fmt: skip
+def test_routes_that_read_the_machine_need_the_key(
+    api: TestClient, tmp_path: Path, method: str, path: str
+) -> None:
+    """They run git and gh on a path or repo the caller names: a key, like any write."""
+    body = local(make_user_repo(tmp_path)) if path.endswith("inspect") else {"options": {}}
+    kwargs = {"json": body} if method == "post" else {}
+
+    assert getattr(api, method)(f"{API}/{path}", **kwargs).status_code == 401
+
+
+@pytest.mark.parametrize(
     "body",
     [{"kind": "new"}, {"kind": "local", "path": "rel/x", "folder": FOLDER},
      {"kind": "github", "repo": "octo/site", "folder": "../x"}],
 )  # fmt: skip
 def test_inspect_refuses_what_it_cannot_inspect(api: TestClient, body: dict) -> None:
-    assert api.post(f"{API}/builds/target/inspect", json=body).status_code == 422
+    assert api.post(f"{API}/builds/target/inspect", headers=AUTH, json=body).status_code == 422
 
 
 def test_a_local_create_resolves_the_base_and_its_context_shows_the_folder(
@@ -151,7 +166,7 @@ def test_a_github_create_points_at_the_repo_and_defaults_to_a_pull_request(
 
     assert build["repo_url"] == "https://github.com/octo/site"
     assert build["options"]["advanced"]["delivery"] == "push_main"  # the form sent it
-    rendered = api.post(f"{API}/papers/{paper.slug}/builds/context/render",
+    rendered = api.post(f"{API}/papers/{paper.slug}/builds/context/render", headers=AUTH,
                         json={"options": {"target": options["target"]}}).json()  # fmt: skip
     assert rendered["survey_md"].startswith("# Repository\n\n`octo/site` at `main`.")
     assert rendered["files"][0]["path"] == f"{FOLDER}/docs/PAPER.md"
