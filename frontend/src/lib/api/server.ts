@@ -6,6 +6,7 @@ import { PUBLIC_API_URL } from 'astro:env/client';
 import { API_INTERNAL_URL, API_SECRET } from 'astro:env/server';
 import { createApiClient, type ApiClient } from './client';
 import { API_KEY_HEADER, type ProxyConfig } from './proxy';
+import { upstreamFetch } from './upstream';
 
 export const DEFAULT_API_URL = 'http://localhost:8000/api/v1';
 
@@ -18,11 +19,14 @@ export function proxyConfig(): ProxyConfig {
   return { backendUrl: backendBaseUrl(), apiSecret: API_SECRET };
 }
 
-/** A client that talks to the backend directly and authenticates every call. */
+/**
+ * A client that talks to the backend directly and authenticates every call. A GET the
+ * backend was not ready for is tried once more (lib/api/upstream.ts).
+ */
 export function serverApi(fetchImpl?: typeof fetch): ApiClient {
   return createApiClient({
     baseUrl: backendBaseUrl(),
-    fetch: fetchImpl,
+    fetch: fetchImpl ?? upstreamFetch(),
     headers: API_SECRET ? { [API_KEY_HEADER]: API_SECRET } : undefined,
   });
 }
