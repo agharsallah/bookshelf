@@ -6,7 +6,7 @@ The boundary is JSON in both directions.
 
 ```
 skills/<name>/
-  SKILL.md       prompt: Claude Code skill frontmatter + method + hard rules + example
+  SKILL.md       prompt: skill frontmatter + method + hard rules + example
   schema.json    JSON Schema (2020-12) the output must satisfy
   meta.yaml      version, tier, selector, artifact type, gate thresholds
 ```
@@ -126,7 +126,9 @@ The batch runner strips the frontmatter and the `interactive` section, then appe
 <the selector's JSON>
 ```
 
-and pipes the result to `claude -p --model <alias> --output-format json`. `$BOOKSHELF_API`
+and pipes the result to the model runtime: `claude -p`, or `agent -p` when
+`BOOKSHELF_MODEL_RUNTIME=cursor` (sign in with `agent login`; see the root
+[README](../README.md#cursor-instead-of-claude)). `$BOOKSHELF_API`
 defaults to `http://127.0.0.1:8000/api/v1`.
 
 ## Input envelope (what selectors produce)

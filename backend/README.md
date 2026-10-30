@@ -166,8 +166,11 @@ Every setting is an environment variable prefixed `BOOKSHELF_`, read from `.env`
 | `BOOKSHELF_API_KEY` | unset | required for writes when set; mandatory in production |
 | `BOOKSHELF_QDRANT_URL` / `_API_KEY` | unset | unset = embedded store in `.qdrant/` |
 | `BOOKSHELF_API_EMBED_RUNNER` | `true` | API runs embed jobs when Qdrant is embedded |
-| `BOOKSHELF_CLAUDE_BIN` | `claude` | the CLI the runner calls |
-| `BOOKSHELF_CLAUDE_TIMEOUT_SECONDS` | `900` | per CLI run |
+| `BOOKSHELF_MODEL_RUNTIME` | `claude` | `claude` (`claude -p`) or `cursor` (`agent -p`, Composer unless overridden) |
+| `BOOKSHELF_CLAUDE_BIN` | `claude` | the Claude CLI |
+| `BOOKSHELF_CURSOR_BIN` | `agent` | the Cursor CLI, signed in with `agent login` |
+| `BOOKSHELF_CURSOR_MODEL_EXPLORE` / `_DISTIL` / `_REASON` | `composer-2.5` | `agent --model` id per tier |
+| `BOOKSHELF_CLAUDE_TIMEOUT_SECONDS` | `900` | per model run, either runtime |
 | `BOOKSHELF_WORKER_CONCURRENCY` | `2` | parallel jobs / CLI processes |
 | `BOOKSHELF_MAX_RUNS_PER_DOCUMENT` | `400` | run ceiling |
 | `BOOKSHELF_LIBRARY_DIR` / `_MEDIA_DIR` / `_EXPORTS_DIR` / `_SKILLS_DIR` | repo folders | originals, crops, exports, skills |

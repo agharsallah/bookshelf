@@ -75,7 +75,11 @@ export interface ModelRunPublic {
   skill: string | null;
   skill_version: string | null;
   tier: string | null;
+  /** `claude` or `cursor`: which agent made this call. */
+  runtime: string;
   model: string | null;
+  /** Cursor session id (`agent --resume`), when `runtime` is `cursor`. */
+  external_run_id: string | null;
   ok: boolean;
   error: string | null;
   input_tokens: number | null;

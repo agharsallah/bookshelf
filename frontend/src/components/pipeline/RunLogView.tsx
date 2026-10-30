@@ -114,7 +114,8 @@ function Entry({ entry }: { entry: LogEntry }) {
         <li className={styles.line} data-tone="call">
           {at}
           <span>
-            Call {entry.call} on the {entry.tier} tier
+            Call {entry.call}
+            {entry.runtime ? ` · ${entry.runtime}` : ''} on the {entry.tier} tier
             <details className={styles.fold}>
               <summary>Prompt · {formatCount(entry.promptChars)} characters</summary>
               <pre className={styles.detail}>{entry.prompt}</pre>

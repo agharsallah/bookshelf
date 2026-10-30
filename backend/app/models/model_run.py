@@ -6,7 +6,7 @@ from datetime import datetime
 from sqlmodel import Field, SQLModel
 
 from app.models._columns import enum_type, timestamptz, utcnow
-from app.models.enums import JobKind, Tier
+from app.models.enums import JobKind, ModelRuntime, Tier
 
 
 class ModelRun(SQLModel, table=True):
@@ -18,10 +18,12 @@ class ModelRun(SQLModel, table=True):
         default=None, foreign_key="documents.id", ondelete="CASCADE"
     )
     kind: JobKind = Field(sa_type=enum_type(JobKind))
+    runtime: ModelRuntime = Field(default=ModelRuntime.CLAUDE, sa_type=enum_type(ModelRuntime))
     skill: str | None = None
     skill_version: str | None = None
     tier: Tier | None = Field(default=None, sa_type=enum_type(Tier))
     model: str | None = None
+    external_run_id: str | None = None  # Cursor session id (`agent --resume`), when cursor
     attempt: int = 1
     call: int = 1
     ok: bool

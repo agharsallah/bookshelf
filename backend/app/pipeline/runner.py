@@ -1,4 +1,8 @@
-"""Model runtime (D18): the Claude Code CLI behind a `ModelRunner` seam.
+"""Model runtime (D18): a `ModelRunner` seam with two implementations.
+
+`ClaudeCliRunner` is the default. `CursorCliRunner` (`app.pipeline.cursor_runner`) runs the
+same prompts through `agent -p` on Cursor's model. Both leave one `model_runs` row, and
+`app.pipeline.factory.make_runner` picks one from `BOOKSHELF_MODEL_RUNTIME`.
 
 There is no API key in the backend. `ClaudeCliRunner` pipes the rendered prompt to
 
@@ -33,7 +37,7 @@ from pathlib import Path
 from typing import Any, Protocol
 
 from app.core.config import Settings, get_settings
-from app.models.enums import Tier
+from app.models.enums import ModelRuntime, Tier
 from app.pipeline.cli_stream import pump, result_line
 from app.pipeline.models import cli_alias, cli_effort
 from app.pipeline.processes import kill_group, tracked
@@ -48,11 +52,20 @@ class RunnerError(RuntimeError):
 
     `reached_model` is False when the envelope shows the model was never called (no API
     time): the call did no work, so the run ceiling gives its run back (`app.pipeline.ceiling`).
+    `external_run_id` is set once a Cursor session exists, including when it fails, so the
+    call can still be resumed in Cursor (`agent --resume <id>`).
     """
 
-    def __init__(self, message: str, *, reached_model: bool = True) -> None:
+    def __init__(
+        self,
+        message: str,
+        *,
+        reached_model: bool = True,
+        external_run_id: str | None = None,
+    ) -> None:
         super().__init__(message)
         self.reached_model = reached_model
+        self.external_run_id = external_run_id
 
 
 class UsageLimitError(RunnerError):
@@ -62,10 +75,15 @@ class UsageLimitError(RunnerError):
 _LIMIT_TEXT = re.compile(r"\b(usage|session|weekly|rate|daily)[ -]limit\b|hit your .*limit", re.I)
 
 
+def usage_limit_message(detail: str) -> bool:
+    """Whether `detail` is an account limit (the queue should pause, not retry blindly)."""
+    return _LIMIT_TEXT.search(detail) is not None
+
+
 def _limit_error(envelope: dict[str, Any]) -> UsageLimitError | None:
     """A `UsageLimitError` when an error envelope reports a 429 or a limit message."""
     detail = str(envelope.get("result") or "")
-    if envelope.get("api_error_status") == 429 or _LIMIT_TEXT.search(detail):
+    if envelope.get("api_error_status") == 429 or usage_limit_message(detail):
         return UsageLimitError(f"usage limit reached: {(detail or 'HTTP 429')[:500]}")
     return None
 
@@ -84,7 +102,7 @@ def _envelope_error(envelope: dict[str, Any], prefix: str) -> RunnerError:
     return RunnerError(f"{prefix}: {str(detail)[:500]}", reached_model=reached)
 
 
-def _error_envelope(stdout: str) -> dict[str, Any] | None:
+def error_envelope(stdout: str) -> dict[str, Any] | None:
     """The JSON envelope a failed run printed (the CLI exits 1 with one on API errors)."""
     try:
         envelope = json.loads(result_line(stdout))
@@ -111,6 +129,7 @@ class RunResult:
     cost_usd: float | None = None  # `total_cost_usd`: what the CLI says the call cost
     api_ms: int | None = None  # `duration_api_ms`: time inside model API calls
     turns: int | None = None  # `num_turns`: model turns (tool use makes more than one)
+    external_run_id: str | None = None  # Cursor session id, for `agent --resume`
 
 
 class ModelRunner(Protocol):
@@ -298,6 +317,8 @@ def cli_slots() -> threading.BoundedSemaphore:
 class ClaudeCliRunner:
     """Runs one prompt through `claude -p`. Each call is one fresh, unsaved session."""
 
+    runtime = ModelRuntime.CLAUDE
+
     def __init__(
         self,
         claude_bin: str | None = None,
@@ -367,7 +388,7 @@ class ClaudeCliRunner:
         if stderr.strip():
             run_log.event("stderr", text=run_log.clip(stderr.strip(), _STDERR_TAIL))
         if proc.returncode != 0:
-            envelope = _error_envelope(stdout or "")
+            envelope = error_envelope(stdout or "")
             if envelope is not None:
                 raise _envelope_error(envelope, f"claude exited with {proc.returncode}")
             tail = (stderr or stdout or "")[-_STDERR_TAIL:].strip()

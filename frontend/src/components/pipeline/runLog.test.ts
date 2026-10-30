@@ -36,6 +36,17 @@ describe('logEntries', () => {
     ]);
   });
 
+  it('names the runtime on a call and keeps a Cursor run id on the session and reply', () => {
+    const [call, session, reply] = logEntries([
+      ev('call', { call: 2, tier: 'reason', runtime: 'cursor', prompt: 'P', prompt_chars: 1 }),
+      ev('session', { model: 'composer-2.5', run_id: 'run-9' }),
+      ev('reply', { ok: true, text: '{}', model: 'composer-2.5', external_run_id: 'run-9' }),
+    ]);
+    expect(call).toMatchObject({ kind: 'call', runtime: 'cursor', tier: 'reason' });
+    expect(session).toMatchObject({ kind: 'line', text: 'Session open on composer-2.5', detail: 'run run-9' });
+    expect(reply).toMatchObject({ kind: 'reply', summary: 'Reply · composer-2.5 · run run-9' });
+  });
+
   it('turns a usage warning into a share of the limit', () => {
     const [line] = logEntries([ev('limit', { status: 'allowed_warning', window: 'seven_day', utilization: 0.9 })]);
     expect(line).toMatchObject({ tone: 'warn', text: '90% of the seven day limit used' });

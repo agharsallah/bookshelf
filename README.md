@@ -12,6 +12,7 @@ Turn books, papers, and web articles into anchored notes, 1-page briefs, audio s
 [![Postgres](https://img.shields.io/badge/PostgreSQL-15+-4169E1?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org)
 [![Qdrant](https://img.shields.io/badge/Qdrant-Vector_Search-DC244C?style=flat-square)](https://qdrant.tech)
 [![Claude Code](https://img.shields.io/badge/Powered_by-Claude_Code-D97757?style=flat-square)](https://docs.claude.com/en/docs/claude-code)
+[![Cursor](https://img.shields.io/badge/or-Cursor_CLI-000000?style=flat-square)](https://cursor.com/docs/cli/overview)
 
 [**How It Works**](#-how-it-works) · [**Quickstart**](#-quickstart) · [**Usage**](#-using-bookshelf) · [**Deployment**](#️-deployment--infrastructure) · [**Docs**](#️-documentation-map)
 
@@ -21,12 +22,12 @@ Turn books, papers, and web articles into anchored notes, 1-page briefs, audio s
 
 ## ✨ How it works
 
-Drop a PDF, EPUB, or URL into `library/`. Bookshelf parses it into an addressable semantic tree, distils it bottom-up using **Claude Code skills**, routes everything through a human review queue, and indexes what you approve for cited search and cross-book concept linking.
+Drop a PDF, EPUB, or URL into `library/`. Bookshelf parses it into an addressable semantic tree, distils it bottom-up with the skill packages in `skills/`, routes everything through a human review queue, and indexes what you approve for cited search and cross-book concept linking. The same skills run through a logged-in **Claude Code** or **Cursor** CLI. No model API key.
 
 ```mermaid
 flowchart LR
     A["📄 Source\nPDF · EPUB · HTML · MD · URL"] --> B["🌳 Anchored Tree\nch03/s02/p014"]
-    B --> C["✍️ Claude Code Skills\nNotes → Chapters → Brief"]
+    B --> C["✍️ Skills\nClaude or Cursor CLI"]
     C --> D["✅ Human Review\nQuality Gates & Edits"]
     D --> E["🔎 Cited Search & Graph\nQdrant + Concept Links"]
 ```
@@ -37,7 +38,7 @@ flowchart LR
 - 🧑‍⚖️ **Human in the loop** — Automated quality gates check grounding, coverage, and compression before anything enters your review queue or search index.
 - 🔎 **Two-tier retrieval** — Search dense chapter distillations to see *what you know*, then drop to exact source blocks for *verbatim evidence*.
 - 🕸️ **Living idea graph & study tools** — Connect concepts across books, review bite-sized **Pills**, listen to narrated audio summaries, or spin up code **Builds** from scientific papers.
-- 🔑 **Zero API keys** — Every model call runs through your logged-in `claude -p` CLI session.
+- 🔑 **Zero API keys** — Every model call runs through your logged-in `claude -p` or `agent -p` session.
 
 ---
 
@@ -48,7 +49,7 @@ flowchart LR
 | **[Python](https://www.python.org) + [uv](https://docs.astral.sh/uv/)** | Python `≥ 3.12` | FastAPI backend, parser & job worker |
 | **[Node.js](https://nodejs.org) + [pnpm](https://pnpm.io/)** | Node `≥ 22.12` | Astro + React frontend |
 | **[PostgreSQL](https://www.postgresql.org)** | `15+` server binaries | Local DB in `.pgdata/` (or use Podman / Supabase) |
-| **[Claude Code](https://docs.claude.com/en/docs/claude-code)** | Logged in (`claude` → `/login`) | Runs all distillation skills & build agents |
+| **[Claude Code](https://docs.claude.com/en/docs/claude-code)** *or* **[Cursor CLI](https://cursor.com/docs/cli/overview)** | Logged in (`claude` → `/login`, or `agent login`) | Runs distillation skills and search answers. Paper builds stay on Claude. |
 
 ---
 
@@ -74,7 +75,43 @@ pnpm install
 pnpm dev
 ```
 
-🎉 **You're live!** Open `http://localhost:4321`, drop a file into `library/`, and click **Ingest**.
+🎉 **You're live!** Open `http://localhost:4321`, drop a file into `library/`, and click **Ingest**. Skills run on Claude until you switch the runtime below.
+
+### Cursor instead of Claude
+
+The skill text, JSON schema, and review gates stay the same. `BOOKSHELF_MODEL_RUNTIME` only chooses which CLI executes them.
+
+1. Install the [Cursor CLI](https://cursor.com/docs/cli/overview) so `agent` is on your `PATH`, then sign in once:
+
+```bash
+agent login
+```
+
+2. In `backend/.env`:
+
+```bash
+BOOKSHELF_MODEL_RUNTIME=cursor
+# optional: absolute path if the API process cannot see ~/.local/bin
+# BOOKSHELF_CURSOR_BIN=/Users/you/.local/bin/agent
+```
+
+3. Restart the API. The process that runs jobs must see `agent` (or `BOOKSHELF_CURSOR_BIN`).
+
+Each skill call is one headless process, the same shape as `claude -p`:
+
+```text
+agent -p --output-format stream-json --stream-partial-output
+      --model composer-2.5 --mode ask --trust --sandbox enabled
+      --workspace <empty temp dir>
+```
+
+The prompt goes in on stdin. Ask mode answers without writing files or running a shell. The workspace is that empty temp directory, not this repo. A figure or formula skill still names its image by absolute path inside the prompt, which ask mode can read.
+
+Every tier uses `composer-2.5` unless you set `BOOKSHELF_CURSOR_MODEL_EXPLORE`, `_DISTIL`, or `_REASON` to another `agent --model` id. Those overrides do not change a skill's input hash. A `CURSOR_API_KEY` left in the environment is stripped before the process starts, so a leftover key cannot replace the login.
+
+Each call is stored on `model_runs` with `runtime = cursor` and the CLI session id (`external_run_id`, the id `agent --resume` takes). The pipeline run log shows the runtime on the call line and the session id on the reply. Usage-limit text from the CLI pauses the queue, the same way a Claude limit does.
+
+Paper-to-repo builds still call Claude, because they pin a Claude model. Interactive `/distil-chapter` in Claude Code is unchanged; the Cursor path above is the batch runner.
 
 > [!TIP]
 > - **Podman shortcut:** `scripts/dev-backend.sh` starts a Podman Postgres container on port `54330` (shown as *"This computer"* in Settings → Database) alongside `fastapi dev` (`PG_KEEP=1` keeps it running; manage manually with `scripts/pg-podman.sh start|stop|status|logs|reset`).
@@ -107,7 +144,7 @@ The skill fetches the exact inputs from `GET /api/v1/skills/{name}/inputs`, work
 bookshelf/
 ├── backend/       # FastAPI app, parsers, pipeline runner, job queue & migrations
 ├── frontend/      # Astro 7 + React 19 web app, reader, graph explorer & study views
-├── skills/        # Versioned Claude Code prompt packages (SKILL.md + schema + meta)
+├── skills/        # Versioned skill packages (SKILL.md + schema + meta), run by Claude or Cursor
 ├── agents/        # Autonomous Claude Code agents for paper-to-repo builds
 ├── contracts/     # Shared JSON Schemas across backend, skills, and frontend
 ├── supabase/      # Plain-SQL PostgreSQL migrations
@@ -201,6 +238,6 @@ pnpm lint
 | [**Pills (`docs/PILLS.md`)**](docs/PILLS.md) | Bite-sized cited learning feed harvested from your shelf |
 | [**Job Queue (`docs/QUEUE.md`)**](docs/QUEUE.md) | Background workers, concurrency, retries & live SSE streaming |
 | [**Backend (`backend/README.md`)**](backend/README.md) | API endpoints, worker flags, audio narration & CLI commands |
-| [**Skills (`skills/README.md`)**](skills/README.md) | Authoring and configuring Claude Code distillation skills |
+| [**Skills (`skills/README.md`)**](skills/README.md) | Authoring distillation skills, and how Claude or Cursor runs them |
 | [**Read-Only Demo (`docs/DEMO.md`)**](docs/DEMO.md) | Deploying a public read-only showcase on Render + Vercel |
 

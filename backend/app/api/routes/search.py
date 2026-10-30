@@ -21,7 +21,8 @@ from sqlmodel import Session
 from app.api.deps import SessionDep
 from app.core.security import require_api_key
 from app.db.session import get_engine
-from app.pipeline.runner import ClaudeCliRunner, ModelRunner
+from app.pipeline.factory import make_runner
+from app.pipeline.runner import ModelRunner
 from app.retrieval import suggest
 from app.retrieval.embedding import Embedder, get_embedder
 from app.retrieval.router import QueryRouter
@@ -43,12 +44,12 @@ def get_search_router() -> QueryRouter:
 @lru_cache
 def get_answer_router() -> QueryRouter:
     """Rules, then a short, cached explore-tier classification."""
-    return QueryRouter(ClaudeCliRunner(timeout_seconds=ROUTER_TIMEOUT_SECONDS))
+    return QueryRouter(make_runner(timeout_seconds=ROUTER_TIMEOUT_SECONDS))
 
 
 @lru_cache
 def get_answer_runner() -> ModelRunner:
-    return ClaudeCliRunner(timeout_seconds=ANSWER_TIMEOUT_SECONDS)
+    return make_runner(timeout_seconds=ANSWER_TIMEOUT_SECONDS)
 
 
 def get_search_embedder() -> Embedder:

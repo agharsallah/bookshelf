@@ -117,10 +117,11 @@ def _references(session: Session, refs: list[Any]) -> list[dict[str, Any]]:
 
 def plan_runner(build: Build, settings: Settings | None = None) -> ModelRunner | None:
     """A CLI runner pinned to `advanced.plan_model`; None when it is `auto` (the default
-    runner, the skill's tier)."""
+    runner, the skill's tier). The choices are Claude aliases, so on the Cursor runtime
+    they are ignored and the plan runs on the default (Cursor) runner too."""
     settings = settings or get_settings()
     chosen = options_of(build).advanced.plan_model
-    if chosen == "auto":
+    if chosen == "auto" or settings.model_runtime == "cursor":
         return None
     pinned = settings.model_copy(
         update={"model_explore": chosen, "model_distil": chosen, "model_reason": chosen}

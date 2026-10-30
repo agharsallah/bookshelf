@@ -115,7 +115,9 @@ class ModelRunPublic(BaseModel):
     skill: str | None
     skill_version: str | None
     tier: str | None
+    runtime: str
     model: str | None
+    external_run_id: str | None = None
     ok: bool
     error: str | None
     input_tokens: int | None

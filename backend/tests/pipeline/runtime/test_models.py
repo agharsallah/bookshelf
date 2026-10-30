@@ -6,7 +6,7 @@ from pydantic import ValidationError
 
 from app.core.config import Effort, Settings
 from app.models.enums import Tier
-from app.pipeline.models import cli_alias, cli_effort
+from app.pipeline.models import cli_alias, cli_effort, cursor_model
 
 
 def _settings(**models: str) -> Settings:
@@ -18,6 +18,19 @@ def _settings(**models: str) -> Settings:
 )
 def test_unset_overrides_keep_the_ladder(tier: Tier, alias: str):
     assert cli_alias(tier, _settings()) == alias
+
+
+def test_cursor_defaults_every_tier_to_composer():
+    settings = _settings()
+
+    assert [cursor_model(tier, settings) for tier in Tier] == ["composer-2.5"] * 3
+
+
+def test_a_cursor_override_moves_only_its_own_tier():
+    settings = _settings(cursor_model_reason="composer-2.5-fast")
+
+    assert cursor_model(Tier.EXPLORE, settings) == "composer-2.5"
+    assert cursor_model(Tier.REASON, settings) == "composer-2.5-fast"
 
 
 def test_an_override_moves_only_its_own_tier():

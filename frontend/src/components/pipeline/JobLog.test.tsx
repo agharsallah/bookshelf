@@ -13,7 +13,7 @@ const failed: JobPublic = {
 
 function call(overrides: Partial<ModelRunPublic>): ModelRunPublic {
   return {
-    id: 'r1', attempt: 1, call: 1, skill: 'make-quiz', skill_version: '2', tier: 'distil', model: 'sonnet', ok: true, error: null,
+    id: 'r1', attempt: 1, call: 1, skill: 'make-quiz', skill_version: '2', tier: 'distil', runtime: 'claude', model: 'sonnet', external_run_id: null, ok: true, error: null,
     input_tokens: 12000, output_tokens: 800, cache_read_tokens: 9000, cache_write_tokens: null, cost_usd: 0.05, duration_ms: 30000,
     api_ms: 28000, turns: 3, prompt_chars: 40000, reply_chars: 3000, images: 0, created_at: '2026-09-23T10:01:00Z', ...overrides,
   };

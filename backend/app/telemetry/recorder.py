@@ -23,7 +23,7 @@ from typing import Any
 from sqlmodel import Session
 
 from app.models import Job, ModelRun
-from app.models.enums import JobKind, Tier
+from app.models.enums import JobKind, ModelRuntime, Tier
 from app.pipeline.runner import ModelRunner, RunnerError, RunResult
 from app.telemetry import run_log
 
@@ -69,10 +69,12 @@ class RecordingRunner:
     def run(self, prompt: str, *, tier: Tier, images: Sequence[Path] = ()) -> RunResult:
         self._calls += 1
         call = self._calls
+        runtime = self._runtime()
         run_log.event(
             "call",
             call=call,
             tier=tier.value,
+            runtime=runtime.value,
             images=len(images),
             prompt_chars=len(prompt),
             prompt=run_log.clip(prompt, run_log.PROMPT_CHARS),
@@ -82,13 +84,25 @@ class RecordingRunner:
             result = self._runner.run(prompt, tier=tier, images=images)
         except RunnerError as exc:
             elapsed = int((time.monotonic() - started) * 1000)
-            run_log.event("reply", call=call, ok=False, error=str(exc), duration_ms=elapsed)
-            self._record(self._row(prompt, tier, images, ok=False, duration_ms=elapsed,
-                                   error=str(exc)[:_ERROR_CHARS]))  # fmt: skip
+            run_log.event(
+                "reply",
+                call=call,
+                ok=False,
+                error=str(exc),
+                duration_ms=elapsed,
+                runtime=runtime.value,
+                external_run_id=exc.external_run_id,
+            )
+            self._record(self._row(
+                prompt, tier, images, ok=False, duration_ms=elapsed,
+                error=str(exc)[:_ERROR_CHARS], runtime=runtime,
+                external_run_id=exc.external_run_id,
+            ))  # fmt: skip
             raise
         usage = result.usage
         run_log.event("reply", call=call, ok=True, model=result.model,
                       duration_ms=result.duration_ms, tokens=result.cost_tokens,
+                      runtime=runtime.value, external_run_id=result.external_run_id,
                       text=run_log.clip(result.text, run_log.REPLY_CHARS))  # fmt: skip
         self._record(
             self._row(
@@ -98,6 +112,8 @@ class RecordingRunner:
                 ok=True,
                 duration_ms=result.duration_ms,
                 model=result.model,
+                runtime=runtime,
+                external_run_id=result.external_run_id,
                 input_tokens=_usage_int(usage, "input_tokens"),
                 output_tokens=_usage_int(usage, "output_tokens"),
                 cache_read_tokens=_usage_int(usage, "cache_read_input_tokens"),
@@ -116,6 +132,12 @@ class RecordingRunner:
             return self._skill or self._job.skill, self._job.skill_version
         except Exception:  # a detached or expired job: the row is still worth keeping
             return self._skill, None
+
+    def _runtime(self) -> ModelRuntime:
+        """The runner's runtime (`ceiling._Metered` passes its inner one through); a runner
+        that names none, like a test fake, is the Claude default."""
+        runtime = getattr(self._runner, "runtime", None)
+        return runtime if isinstance(runtime, ModelRuntime) else ModelRuntime.CLAUDE
 
     def _row(
         self,

@@ -137,13 +137,24 @@ def test_the_input_carries_references_notes_workflow_and_only_the_kept_sections(
 
 
 def test_plan_model_pins_the_planners_model(session: Session):
+    from app.core.config import Settings
     from app.models.enums import Tier
 
     auto, _ = new_build(session)
     pinned, _ = new_build(session, options={"advanced": {"plan_model": "haiku"}})
+    claude = Settings(_env_file=None, model_runtime="claude")  # type: ignore[call-arg]
 
-    assert planning.plan_runner(auto) is None
-    runner = planning.plan_runner(pinned)
+    assert planning.plan_runner(auto, settings=claude) is None
+    runner = planning.plan_runner(pinned, settings=claude)
     assert runner is not None
     argv = runner.argv(Tier.REASON)  # type: ignore[attr-defined]
     assert argv[argv.index("--model") + 1] == "haiku"
+
+
+def test_a_claude_plan_model_is_ignored_on_the_cursor_runtime(session: Session):
+    from app.core.config import Settings
+
+    pinned, _ = new_build(session, options={"advanced": {"plan_model": "haiku"}})
+    cursor = Settings(_env_file=None, model_runtime="cursor")  # type: ignore[call-arg]
+
+    assert planning.plan_runner(pinned, settings=cursor) is None

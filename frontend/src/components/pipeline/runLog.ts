@@ -11,7 +11,7 @@ export type Tone = 'plain' | 'good' | 'bad' | 'warn' | 'quiet';
 
 export type LogEntry =
   | { kind: 'line'; key: string; at: string; tone: Tone; text: string; detail?: string }
-  | { kind: 'call'; key: string; at: string; call: number; tier: string; prompt: string; promptChars: number }
+  | { kind: 'call'; key: string; at: string; call: number; tier: string; runtime: string; prompt: string; promptChars: number }
   | { kind: 'output'; key: string; at: string; text: string; thinking: string }
   | { kind: 'reply'; key: string; at: string; ok: boolean; text: string; summary: string };
 
@@ -62,14 +62,16 @@ export function logEntries(events: readonly RunLogEvent[]): LogEntry[] {
       case 'started':
         line('plain', `Attempt ${event.attempt} started`, str(event.worker) || undefined);
         break;
-      case 'session':
-        line('quiet', `Session open on ${str(event.model) || 'the model'}`);
+      case 'session': {
+        const runId = str(event.run_id);
+        line('quiet', `Session open on ${str(event.model) || 'the model'}`, runId ? `run ${runId}` : undefined);
         break;
+      }
       case 'status':
         line('quiet', `Model: ${str(event.text)}`);
         break;
       case 'call':
-        entries.push({ kind: 'call', key, at: event.at, call: num(event.call) ?? 1, tier: str(event.tier), prompt: str(event.prompt), promptChars: num(event.prompt_chars) ?? 0 });
+        entries.push({ kind: 'call', key, at: event.at, call: num(event.call) ?? 1, tier: str(event.tier), runtime: str(event.runtime), prompt: str(event.prompt), promptChars: num(event.prompt_chars) ?? 0 });
         break;
       case 'tool':
         line('plain', `Tool: ${str(event.name)}`, str(event.input) || undefined);
@@ -80,7 +82,8 @@ export function logEntries(events: readonly RunLogEvent[]): LogEntry[] {
       case 'reply': {
         const ok = event.ok === true;
         const took = num(event.duration_ms);
-        const bits = [ok ? 'Reply' : 'Call failed', str(event.model), took !== null ? formatDuration(took) : '', num(event.tokens) !== null ? `${num(event.tokens)} tokens` : ''];
+        const runId = str(event.external_run_id);
+        const bits = [ok ? 'Reply' : 'Call failed', str(event.model), took !== null ? formatDuration(took) : '', num(event.tokens) !== null ? `${num(event.tokens)} tokens` : '', runId && `run ${runId}`];
         entries.push({ kind: 'reply', key, at: event.at, ok, text: ok ? str(event.text) : str(event.error), summary: bits.filter(Boolean).join(' · ') });
         break;
       }

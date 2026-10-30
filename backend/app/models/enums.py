@@ -149,11 +149,18 @@ class RunMode(StrEnum):
 
 
 class Tier(StrEnum):
-    """Model ladder (D16). Mapped to CLI aliases in `app/pipeline/models.py` only."""
+    """Model ladder (D16). Mapped to a runtime's model names in `app/pipeline/models.py`."""
 
     EXPLORE = "explore"
     DISTIL = "distil"
     REASON = "reason"
+
+
+class ModelRuntime(StrEnum):
+    """Which agent runs a skill. `claude` is the Claude Code CLI; `cursor` is the Cursor SDK."""
+
+    CLAUDE = "claude"
+    CURSOR = "cursor"
 
 
 class Review(StrEnum):

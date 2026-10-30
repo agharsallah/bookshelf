@@ -112,8 +112,15 @@ class Settings(BaseSettings):
     rerank_model: str = "Xenova/ms-marco-MiniLM-L-6-v2"
 
     # --- Model runtime (D18) ---------------------------------------------
+    # `claude`: the logged-in Claude Code CLI. `cursor`: the logged-in Cursor CLI
+    # (`agent login`, then `agent -p`), on Composer unless a rung is overridden.
+    model_runtime: Literal["claude", "cursor"] = "claude"
     claude_bin: str = "claude"
     claude_timeout_seconds: Annotated[int, Field(gt=0)] = 900
+    cursor_bin: str = "agent"
+    cursor_model_explore: str | None = None
+    cursor_model_distil: str | None = None
+    cursor_model_reason: str | None = None
     worker_concurrency: Annotated[int, Field(ge=1, le=8)] = 2
     worker_poll_seconds: Annotated[float, Field(gt=0)] = 2.0
     # Embedded Qdrant (no `qdrant_url`) can be opened by one process only, so the API runs
@@ -252,12 +259,22 @@ class Settings(BaseSettings):
 
     @field_validator(
         "qdrant_url", "qdrant_api_key", "api_key", "model_explore", "model_distil",
-        "model_reason", "openalex_mailto", "openalex_api_key", "grobid_url", mode="before",
+        "model_reason", "cursor_model_explore", "cursor_model_distil",
+        "cursor_model_reason", "openalex_mailto", "openalex_api_key", "grobid_url",
+        mode="before",
     )  # fmt: skip
     @classmethod
     def _blank_is_unset(cls, value: object) -> object:
         """`KEY=` in a .env file means "not configured", not "the empty string"."""
         return None if isinstance(value, str) and not value.strip() else value
+
+    @field_validator("model_runtime", mode="before")
+    @classmethod
+    def _blank_runtime_is_claude(cls, value: object) -> object:
+        """`BOOKSHELF_MODEL_RUNTIME=` keeps the Claude CLI rather than failing validation."""
+        if value is None or (isinstance(value, str) and not value.strip()):
+            return "claude"
+        return value
 
     @field_validator("effort_explore", "effort_distil", "effort_reason", mode="before")
     @classmethod

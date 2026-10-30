@@ -12,7 +12,8 @@ from app.graph import bridges, dedup
 from app.graph.pipeline import is_bridge_job, is_dedup_job, run_bridge_job, run_dedup_job
 from app.jobs.registry import HandlerResult, JobContext, handler
 from app.pipeline.execution import SKILL_JOB_KINDS, execute_skill_job
-from app.pipeline.runner import ClaudeCliRunner, ModelRunner
+from app.pipeline.factory import make_runner
+from app.pipeline.runner import ModelRunner
 from app.telemetry.recorder import recorded
 
 _runner: ModelRunner | None = None
@@ -21,7 +22,7 @@ _runner: ModelRunner | None = None
 def default_runner() -> ModelRunner:
     global _runner
     if _runner is None:
-        _runner = ClaudeCliRunner()
+        _runner = make_runner()
     return _runner
 
 

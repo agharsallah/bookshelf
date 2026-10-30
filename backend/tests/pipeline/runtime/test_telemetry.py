@@ -9,9 +9,9 @@ from sqlmodel import Session, select
 from app.jobs import queue
 from app.jobs.registry import PermanentJobError
 from app.models import Document, ModelRun
-from app.models.enums import JobKind, Tier
+from app.models.enums import JobKind, ModelRuntime, Tier
 from app.pipeline.execution import execute_skill_job
-from app.pipeline.runner import FakeRunner, RunnerError, RunResult
+from app.pipeline.runner import FakeRunner, RunnerError, RunResult, UsageLimitError
 from app.telemetry.recorder import recorded
 from tests.pipeline.runtime.conftest import body, paragraph, reply
 
@@ -56,6 +56,8 @@ def test_a_successful_run_records_tokens_cost_and_model_time(
     assert (run.job_id, run.document_id, run.kind) == (job.id, book.id, JobKind.SUMMARIZE)
     assert (run.skill, run.tier, run.model, run.ok) == ("summarize", Tier.EXPLORE,
                                                         "claude-sonnet-5", True)  # fmt: skip
+    assert run.runtime is ModelRuntime.CLAUDE
+    assert run.external_run_id is None
     assert (run.input_tokens, run.output_tokens) == (1200, 300)
     assert (run.cache_read_tokens, run.cache_write_tokens) == (9000, 400)
     assert run.cost_usd == pytest.approx(0.021)
@@ -127,7 +129,7 @@ def test_each_call_logs_its_prompt_then_the_reply_the_skill_returned(
 
     events, _ = run_log.read(job.id, directory=tmp_path)
     call, reply_event = (e for e in events if e["type"] in ("call", "reply"))
-    assert (call["call"], call["tier"]) == (1, "explore")
+    assert (call["call"], call["tier"], call["runtime"]) == (1, "explore", "claude")
     assert call["prompt_chars"] == len(call["prompt"]) > 0  # the whole prompt, as sent
     assert (reply_event["ok"], reply_event["model"], reply_event["text"]) == (
         True, "claude-sonnet-5", GROUNDED,
@@ -146,3 +148,54 @@ def test_a_failed_call_logs_its_error(session: Session, book: Document, make_job
         ("call", None, None),
         ("reply", False, "claude timed out after 600s"),
     ]
+
+
+class LimitedCursor:
+    runtime = ModelRuntime.CURSOR
+
+    def run(self, prompt: str, *, tier: Tier, images: Sequence[Path] = ()) -> RunResult:
+        raise UsageLimitError("usage limit reached", external_run_id="run-3")
+
+
+def test_a_failed_cursor_call_still_records_where_to_find_it(
+    session: Session, book: Document, make_job
+):
+    job = make_job(JobKind.SUMMARIZE, book, "ch01")
+
+    with pytest.raises(UsageLimitError):
+        recorded(LimitedCursor(), job).run("P", tier=Tier.DISTIL)
+
+    [run] = runs_of(session)
+    assert run.ok is False
+    assert (run.runtime, run.external_run_id) == (ModelRuntime.CURSOR, "run-3")
+
+
+class CursorReply:
+    runtime = ModelRuntime.CURSOR
+
+    def run(self, prompt: str, *, tier: Tier, images: Sequence[Path] = ()) -> RunResult:
+        return RunResult(
+            text=GROUNDED, model="composer-2.5", cost_tokens=40, duration_ms=800,
+            external_run_id="run-1",
+        )  # fmt: skip
+
+
+def test_a_cursor_call_keeps_its_session_id(
+    session: Session, book: Document, make_job, skills_dir: Path, tmp_path: Path
+):
+    from app.telemetry import run_log
+
+    job = make_job(JobKind.SUMMARIZE, book, "ch01")
+    queue.claim(session)
+    session.refresh(job)
+
+    with run_log.job_log(job.id, attempt=1, directory=tmp_path):
+        execute_skill_job(session, job, runner=recorded(CursorReply(), job), skills_dir=skills_dir)
+
+    [run] = runs_of(session)
+    assert (run.runtime, run.model, run.external_run_id) == (
+        ModelRuntime.CURSOR, "composer-2.5", "run-1",
+    )  # fmt: skip
+    events, _ = run_log.read(job.id, directory=tmp_path)
+    reply_event = next(e for e in events if e["type"] == "reply")
+    assert reply_event["external_run_id"] == "run-1"

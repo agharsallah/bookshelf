@@ -137,6 +137,11 @@ class _Metered:
     ) -> None:
         self._runner, self._reserve, self._refund = runner, reserve, refund
 
+    @property
+    def runtime(self) -> Any:
+        """The wrapped runner's runtime, so telemetry still sees it through the ceiling."""
+        return getattr(self._runner, "runtime", None)
+
     def run(self, prompt: str, *, tier: Tier, images: Sequence[Path] = ()) -> RunResult:
         self._reserve()
         try:

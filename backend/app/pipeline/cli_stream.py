@@ -90,10 +90,18 @@ def _limit(info: dict[str, Any]) -> None:
 
 
 def pump(
-    proc: subprocess.Popen[str], stdin: str, *, timeout: float, kill: Callable[[], None]
+    proc: subprocess.Popen[str],
+    stdin: str,
+    *,
+    timeout: float,
+    kill: Callable[[], None],
+    on_line: Callable[[str], None] | None = None,
 ) -> tuple[str, str, bool]:
     """Feed `stdin`, decode stdout line by line while the process runs, and collect
-    stderr. Past `timeout` seconds `kill` ends it. Returns (stdout, stderr, timed_out)."""
+    stderr. Past `timeout` seconds `kill` ends it. Returns (stdout, stderr, timed_out).
+
+    `on_line` replaces the Claude stream decoder. The Cursor CLI speaks a different
+    stream (`app.pipeline.cursor_runner`)."""
     pipe_in, pipe_out, pipe_err = proc.stdin, proc.stdout, proc.stderr
     if pipe_in is None or pipe_out is None or pipe_err is None:
         raise ValueError("pump needs stdin, stdout and stderr piped")
@@ -117,11 +125,12 @@ def pump(
         thread.start()
     timer = threading.Timer(timeout, expire)
     timer.start()
+    observe = on_line or decode
     lines: list[str] = []
     try:
         for line in pipe_out:
             lines.append(line)
-            decode(line)
+            observe(line)
         proc.wait()
     finally:
         timer.cancel()
