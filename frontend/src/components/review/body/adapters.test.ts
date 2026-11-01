@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { walkSpans } from '../../../lib/contract';
 import { tallyGrounding } from '../evidence/grounding';
 import guideExample from '../../../../../skills/write-guide/example.json';
+import editionExample from '../../../../../skills/compose-reading/example.json';
 import { adaptBody, isSynthetic } from './adapters';
 
 const cited = (text: string, anchor = 'ch01/p001') => ({ text, cites: [anchor] });
@@ -62,6 +63,25 @@ describe('adaptBody', () => {
       if (isSynthetic(span)) labels.push(span.text);
     });
     expect(labels).toEqual(['80%', 'ch01 · Sets up']);
+  });
+
+  it('prints a reading edition as its preface, then each part with the parts it points at', () => {
+    const adapted = adaptBody('reading_edition', editionExample);
+    const headings = adapted.blocks.filter((b) => b.type === 'heading').map((b) => (b.type === 'heading' ? b.text : ''));
+    expect(headings).toEqual([
+      'through-line · Watch the stock, not the event',
+      'ch01 · The level moves only by the difference',
+      'connections · Where the book returns',
+    ]);
+    expect(adapted.facts).toEqual([{ label: 'Title', value: 'Stocks remember, flows change them' }]);
+    const labels: string[] = [];
+    walkSpans(adapted.blocks, (span) => {
+      if (isSynthetic(span)) labels.push(span.text);
+    });
+    expect(labels).toContain('The level moves only by the difference');
+    // The see-also lines are structure: every claim the skill wrote is cited.
+    const tally = tallyGrounding(adapted.blocks);
+    expect(tally.cited).toBe(tally.total);
   });
 
   it('shows quiz choices with the answer marked, and the cited explanation', () => {

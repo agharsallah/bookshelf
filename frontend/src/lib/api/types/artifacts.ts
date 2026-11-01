@@ -39,6 +39,8 @@ export const ARTIFACT_TYPES = [
   'catalogue_entry',
   // Pills (docs/PILLS.md §5)
   'pill_set',
+  // compose-reading: one linked edition of the generated notes
+  'reading_edition',
 ] as const;
 export type ArtifactType = (typeof ARTIFACT_TYPES)[number];
 

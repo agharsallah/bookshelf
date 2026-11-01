@@ -1,4 +1,4 @@
-"""Derived export bundles (§16 Q5): Markdown, JSON and CSV per document.
+"""Derived export bundles (§16 Q5): Markdown, JSON, CSV and a reading PDF per document.
 
 Regenerated on demand from the tree and the **approved** artifacts, and never read back
 as input (D2). `write_bundle` stores all three under `exports/<slug>/`.
@@ -15,6 +15,7 @@ from sqlmodel import Session, col, select
 
 from app.models import Artifact, Document, Node
 from app.models.enums import NodeKind, Review
+from app.reading import edition, pdf
 from app.schemas.document import DocumentPublic
 from app.schemas.export import DocumentExport, ExportArtifact
 from app.schemas.node import TreeNode
@@ -56,11 +57,14 @@ def load_bundle(session: Session, document: Document) -> ExportBundle:
     latest = session.exec(
         select(Artifact)
         .where(Artifact.document_id == document.id, Artifact.review == Review.APPROVED)
-        .distinct(col(Artifact.anchor), col(Artifact.type), col(Artifact.note_id))
+        .distinct(
+            col(Artifact.anchor), col(Artifact.type), col(Artifact.note_id), col(Artifact.variant)
+        )
         .order_by(
             col(Artifact.anchor),
             col(Artifact.type),
             col(Artifact.note_id),
+            col(Artifact.variant),
             col(Artifact.version).desc(),
         )
     ).all()
@@ -68,7 +72,12 @@ def load_bundle(session: Session, document: Document) -> ExportBundle:
     # Document-scope artifacts (anchor null) first, then in reading order of their anchor.
     artifacts = sorted(
         latest,
-        key=lambda a: (a.anchor is not None, position.get(a.anchor or "", 0), a.type.value),
+        key=lambda a: (
+            a.anchor is not None,
+            position.get(a.anchor or "", 0),
+            a.type.value,
+            a.variant or "",
+        ),
     )
     return ExportBundle(document=document, roots=roots, artifacts=list(artifacts))
 
@@ -238,15 +247,25 @@ def bundle_paths(exports_dir: Path, slug: str) -> dict[str, Path]:
         "markdown": folder / f"{slug}.md",
         "json": folder / f"{slug}.json",
         "csv": folder / "tables.csv",
+        "pdf": folder / f"{slug}.pdf",
     }
 
 
 def write_bundle(bundle: ExportBundle, exports_dir: Path, media_dir: Path) -> dict[str, Path]:
-    """Write the three exports to `exports_dir/<slug>/`, each file replaced atomically."""
+    """Write the exports to `exports_dir/<slug>/`, each file replaced atomically.
+
+    The reading PDF is the approved notes in reading order. When a composed edition
+    has been approved, `<slug>.edition.pdf` weaves those notes around it as well.
+    """
     paths = bundle_paths(exports_dir, bundle.document.slug)
     folder = paths["markdown"].parent
     media_base = Path(os.path.relpath(media_dir.resolve(), folder.resolve())).as_posix() + "/"
     write_atomic(paths["markdown"], to_markdown(bundle, media_base=media_base).encode())
     write_atomic(paths["json"], to_json(bundle).encode())
     write_atomic(paths["csv"], to_csv(bundle).encode())
+    write_atomic(paths["pdf"], pdf.render_pdf(edition.assemble(bundle)))
+    composed = edition.composed_artifact(bundle)
+    if composed is not None:
+        paths["edition"] = folder / f"{bundle.document.slug}.edition.pdf"
+        write_atomic(paths["edition"], pdf.render_pdf(edition.compose(bundle, composed)))
     return paths

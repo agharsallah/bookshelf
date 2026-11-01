@@ -247,7 +247,16 @@ def body_blocks(body: dict[str, Any]) -> list[Block]:
     `journey` / `themes` / `numbers`, a `takeaway` span, and the item-list bodies of FAQ
     (`question`/`answer`), quiz (`choices`/`explanation`) and flashcards (`front`/`back`).
     """
-    blocks: list[Block] = list(body.get("blocks", []))
+    blocks: list[Block] = []
+    # A composed reading edition (compose-reading): preface, then one headed part.
+    if isinstance(body.get("preface"), list):
+        blocks.extend(b for b in body["preface"] if isinstance(b, dict))
+    for part in body.get("parts") or []:
+        if isinstance(part, dict):
+            if part.get("title"):
+                blocks.append({"type": "heading", "level": 2, "text": str(part["title"])})
+            blocks.extend(b for b in part.get("blocks") or [] if isinstance(b, dict))
+    blocks.extend(body.get("blocks", []))
     for section in body.get("sections", []):
         if section.get("title"):
             blocks.append({"type": "heading", "level": 3, "text": section["title"]})

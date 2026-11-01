@@ -1,4 +1,4 @@
-"""`export` job (§7 stage 11): write the Markdown, JSON and CSV bundle to `exports/<slug>/`."""
+"""`export` job (§7 stage 11): Markdown, JSON, CSV and the reading PDF, under `exports/<slug>/`."""
 
 from app.core.config import get_settings
 from app.jobs.registry import HandlerResult, JobContext, PermanentJobError, handler

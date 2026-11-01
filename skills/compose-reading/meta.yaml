@@ -1,0 +1,16 @@
+name: compose-reading
+version: 1
+description: Weave a document's approved notes into one linked reading edition — a through-line, a short bridge per chapter printed above its notes, and the connections between them.
+tier: reason
+job_kind: derive
+artifact_type: reading_edition
+scope: document
+selector: document_reading
+vision: false
+gates:
+  grounding_min: 0.9
+  # The PDF prints every approved note after its chapter part, so the edition is only
+  # the thread: a through-line, a short bridge per chapter, the connections. Coverage is
+  # every chapter the input offered.
+  max_words: 8000
+  coverage_min: 1

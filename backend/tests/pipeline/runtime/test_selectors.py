@@ -138,6 +138,26 @@ def test_selectors_refuse_scopes_with_nothing_to_read_yet(session, book):
         select(session, "chapter_section_notes", book, "ch01")
     with pytest.raises(SelectorError, match="no chapter distillations yet"):
         select(session, "document_chapters", book, None)
+    with pytest.raises(SelectorError, match="no chapter distillations yet"):
+        select(session, "document_reading", book, None)
+
+
+def test_document_reading_offers_distilled_chapters_and_their_notes(session, book):
+    store(session, book, ArtifactType.CHAPTER_DISTILLATION, "ch01", review=Review.APPROVED)
+    store(session, book, ArtifactType.CHAPTER_SUMMARY, "ch01", review=Review.APPROVED)
+    store(session, book, ArtifactType.SECTION_NOTE, "ch01/s01", review=Review.APPROVED)
+
+    selection = select(session, "document_reading", book, None)
+
+    assert selection.chapters == ("ch01",)
+    assert selection.inputs["genre"] == "book"
+    assert selection.inputs["brief"] is None
+    (chapter,) = selection.inputs["chapters"]
+    assert chapter["anchor"] == "ch01"
+    assert chapter["heading"] == "Stocks and flows"
+    assert chapter["summary"]["blocks"][0]["spans"][0]["text"] == "chapter_summary v1"
+    assert chapter["notes"][0]["anchor"] == "ch01/s01"
+    assert "ch02" not in [item["anchor"] for item in selection.inputs["chapters"]]
 
 
 def test_document_chapters_includes_other_books_theses(session, book):

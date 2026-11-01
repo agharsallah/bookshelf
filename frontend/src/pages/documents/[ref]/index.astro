@@ -104,6 +104,9 @@ const facts = data
       .join(', ')
   : '';
 const exportsBase = data ? `/api/exports/${data.doc.slug}` : '';
+const composed = (data?.artifacts ?? []).some(
+  (artifact) => artifact.type === 'reading_edition' && artifact.review === 'approved' && artifact.anchor === null,
+);
 const study = data ? availableMaterials(data.doc.slug, data.artifacts) : [];
 const chapterStudy: Record<string, AvailableMaterial[]> = data
   ? Object.fromEntries(
@@ -328,10 +331,17 @@ const added = data ? new Date(data.doc.created_at).toLocaleDateString('en-GB', {
             <section aria-labelledby="export-title" class="card">
               <h2 id="export-title" class="side-title">Export</h2>
               <ul class="exports">
+                <li><a href={`${exportsBase}.pdf`}>Reading PDF</a><span>distillations, summaries, and the other notes</span></li>
+                {composed && (
+                  <li><a href={`${exportsBase}.pdf?edition=composed`}>Composed PDF</a><span>one linked edition</span></li>
+                )}
                 <li><a href={`${exportsBase}.md`}>Markdown</a><span>with anchors and approved artifacts</span></li>
                 <li><a href={`${exportsBase}.json`}>JSON</a><span>in the render contract</span></li>
                 <li><a href={`${exportsBase}/tables.csv`}>Tables</a><span>as CSV</span></li>
               </ul>
+              {!composed && (
+                <p class="side-hint workshop-only">Compose a linked edition with the study actions, then it exports here as one piece.</p>
+              )}
               <p class="source workshop-only">
                 {data.doc.source_uri ? <a href={data.doc.source_uri}>Original article</a> : data.doc.source_path}
               </p>

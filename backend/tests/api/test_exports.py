@@ -1,10 +1,11 @@
-"""Markdown, JSON and CSV exports, on demand and via the export job."""
+"""Markdown, JSON, CSV and reading-PDF exports, on demand and via the export job."""
 
 import csv
 import io
 import json
 from pathlib import Path
 
+import pymupdf
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
@@ -29,6 +30,13 @@ TABLE = {
     "header": ["Loop"],
     "rows": [[{"text": "balancing", "cites": ["ch01/s01/p001"]}]],
 }
+
+
+def pdf_text(content: bytes) -> str:
+    """Every page's text, with ligatures (the serif font's "fl", "fi") spelled out."""
+    flags = pymupdf.TEXTFLAGS_TEXT & ~pymupdf.TEXT_PRESERVE_LIGATURES
+    document = pymupdf.open(stream=content, filetype="pdf")
+    return "\n".join(page.get_text(flags=flags) for page in document)
 
 
 def seed(session: Session):
@@ -131,6 +139,103 @@ def test_csv_includes_table_blocks_with_cell_cites(client: TestClient, session: 
     assert artifact_rows == [("Loop", "balancing", "ch01/s01/p001")]
 
 
+def test_reading_pdf_keeps_approved_notes_in_chapter_order(client: TestClient, session: Session):
+    book = seed(session)
+
+    response = client.get(f"{URL}/{book.slug}.pdf")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/pdf"
+    document = pymupdf.open(stream=response.content, filetype="pdf")
+    text = pdf_text(response.content)
+    assert "Thinking in Systems" in text
+    assert "Donella Meadows" in text
+    assert text.index("Approved v2.") < text.index("Inflow")
+    assert "Draft only" not in text
+    outline = {entry[1]: (entry[0], entry[2]) for entry in document.get_toc()}
+    assert outline["Thinking in Systems"] == (1, 1)
+    assert outline["Contents"] == (1, 2)
+    assert outline["Chapters"][0] == 1
+    level, chapter_page = outline["Heading ch01"]
+    assert level == 2
+    # The contents prints the page each chapter starts on, and links to it.
+    contents = document[1].get_text()
+    assert "Heading ch01" in contents and str(chapter_page) in contents
+    assert chapter_page - 1 in {link["page"] for link in document[1].get_links()}
+    # Running head: the book, and the part the page belongs to.
+    head = document[chapter_page - 1].get_text()
+    assert head.count("Heading ch01") >= 2
+    # A citation links to the chapter it comes from (the chart cites ch02/f001).
+    ch02_page = outline["Heading ch02"][1]
+    cite_links = [link for link in document[ch02_page - 1].get_links() if link.get("kind") == 1]
+    assert any(link["page"] == ch02_page - 1 for link in cite_links)
+
+
+def test_composed_pdf_links_the_edition_and_is_absent_until_then(
+    client: TestClient, session: Session
+):
+    book = seed(session)
+    missing = client.get(f"{URL}/{book.slug}.pdf?edition=composed")
+    assert missing.status_code == 404
+
+    make_artifact(
+        session,
+        book,
+        type=ArtifactType.READING_EDITION,
+        anchor=None,
+        body={
+            "title": "One argument, told in order",
+            "preface": [
+                {
+                    "type": "paragraph",
+                    "spans": [{"text": "Read the through-line first.", "cites": []}],
+                }
+            ],
+            "parts": [
+                {
+                    "id": "through-line",
+                    "title": "Stocks remember",
+                    "see": ["ch01"],
+                    "blocks": [
+                        {"type": "paragraph", "spans": [{"text": "Watch the stock.", "cites": []}]}
+                    ],
+                },
+                {
+                    "id": "ch01",
+                    "title": "The bathtub",
+                    "see": ["through-line"],
+                    "blocks": [
+                        {
+                            "type": "paragraph",
+                            "spans": [{"text": "Inflow and outflow.", "cites": []}],
+                        }
+                    ],
+                },
+            ],
+        },
+    )
+
+    assembled_text = pdf_text(client.get(f"{URL}/{book.slug}.pdf").content)
+    assert "Read the through-line first." not in assembled_text
+
+    response = client.get(f"{URL}/{book.slug}.pdf?edition=composed")
+
+    assert response.status_code == 200
+    document = pymupdf.open(stream=response.content, filetype="pdf")
+    text = pdf_text(response.content)
+    assert "One argument, told in order" in text
+    # The argument opens, then each chapter: the edition's bridge before its notes.
+    assert text.index("Watch the stock.") < text.index("Inflow and outflow.")
+    assert text.index("Inflow and outflow.") < text.index("Approved v2.")
+    assert "WHERE THIS SITS" in text
+    assert "SEE ALSO" in text
+    # A chapter the edition has no part for still prints its approved notes.
+    assert "Heading ch02" in text
+    outline = {entry[1]: entry[2] for entry in document.get_toc()}
+    assert outline["Stocks remember"] < outline["The bathtub"] < outline["Heading ch02"]
+    assert any(link.get("kind") == 1 for page in document for link in page.get_links())
+
+
 def test_unknown_document_export_is_404(client: TestClient):
     assert client.get(f"{URL}/missing.md").status_code == 404
 
@@ -144,7 +249,7 @@ def test_export_job_writes_the_bundle(session: Session, exports_dir: Path, media
 
     folder = exports_dir / book.slug
     assert sorted(p.name for p in folder.iterdir()) == sorted(
-        [f"{book.slug}.md", f"{book.slug}.json", "tables.csv"]
+        [f"{book.slug}.md", f"{book.slug}.json", "tables.csv", f"{book.slug}.pdf"]
     )
     markdown = (folder / f"{book.slug}.md").read_text()
     relative_media = f"../../{media_dir.name}/doc/f001.png"

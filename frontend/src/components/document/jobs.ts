@@ -45,6 +45,7 @@ const DERIVE_LABELS: Readonly<Record<string, string>> = {
   'make-flashcards': 'Make flashcards',
   'make-glossary': 'Make a glossary',
   'write-guide': 'Write the book guide',
+  'compose-reading': 'Compose a linked edition',
   'write-audio-summary': 'Make an audio summary',
   'mark-salience': 'Mark what matters',
   'simplify-paper': 'Explain the paper',
@@ -109,7 +110,7 @@ export function deriveSkills(skills: readonly SkillPublic[], scope: DeriveScope,
     .sort((a, b) => deriveLabel(a).localeCompare(deriveLabel(b)));
 }
 
-const DISTILLATION_SELECTORS = new Set(['chapter_distillation', 'document_chapters', 'document_distillations', 'document_quotes']);
+const DISTILLATION_SELECTORS = new Set(['chapter_distillation', 'document_chapters', 'document_distillations', 'document_quotes', 'document_reading']);
 
 /** Whether the skill's input at `scope` is built from chapter distillations, which must exist (approved) first. */
 export function needsDistillation(skill: Pick<SkillPublic, 'selector' | 'document_selector'>, scope: DeriveScope = 'chapter'): boolean {

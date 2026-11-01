@@ -39,6 +39,7 @@ SELECTORS = {
     "chapter_salience",
     "note_context",
     "document_catalogue",
+    "document_reading",
     # Papers (app/papers/selectors/)
     "paper_unit_blocks",
     "paper_distillations",
@@ -346,6 +347,14 @@ def _mark_unknown_tier(out: dict[str, Any]) -> None:
     out["marks"][0]["tier"] = "important"
 
 
+def _edition_unlinked(out: dict[str, Any]) -> None:
+    out["parts"][0]["see"] = []
+
+
+def _edition_short(out: dict[str, Any]) -> None:
+    out["parts"].pop()
+
+
 # Each skill-specific tightening, and a mutation of that skill's example that must break it.
 TIGHTENINGS: list[tuple[str, Callable[[dict[str, Any]], None]]] = [
     ("write-brief", _swap_brief_sections),
@@ -367,6 +376,8 @@ TIGHTENINGS: list[tuple[str, Callable[[dict[str, Any]], None]]] = [
     ("explain-table", _table_copied_into_explanation),
     ("mark-salience", _mark_two_cites),
     ("mark-salience", _mark_unknown_tier),
+    ("compose-reading", _edition_unlinked),
+    ("compose-reading", _edition_short),
 ]
 
 

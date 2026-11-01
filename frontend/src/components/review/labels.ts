@@ -40,6 +40,7 @@ export const TYPE_LABELS: Record<ArtifactType, string> = {
   math_explainer: 'Math, explained',
   catalogue_entry: 'Library card',
   pill_set: 'Pills',
+  reading_edition: 'Reading edition',
 };
 
 export const REVIEW_LABELS: Record<Review, string> = {
@@ -86,6 +87,7 @@ const PRODUCER: Partial<Record<ArtifactType, JobKind>> = {
   math_explainer: 'derive',
   catalogue_entry: 'derive',
   pill_set: 'derive',
+  reading_edition: 'derive',
 };
 
 /**

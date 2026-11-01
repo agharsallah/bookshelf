@@ -24,7 +24,7 @@ import {
   reviewBlocks,
 } from '../../papers/study-bodies';
 import { RECOMMENDATION_LABELS } from '../../papers/study-labels';
-import { blocks, isRecord, list, spans, str, synthetic, type Json } from './read';
+import { blocks, isRecord, list, spans, str, strings, synthetic, type Json } from './read';
 
 export { isSynthetic, synthetic } from './read';
 
@@ -94,6 +94,25 @@ function guide(body: Json): RenderBlock[] {
     ...parsed.themes.map((t): RenderBlock => ({ type: 'definition', term: t.name, spans: t.spans })),
     ...section('deep_dive'),
     ...section('practice'),
+  ];
+}
+
+/**
+ * compose-reading's edition: the preface, then each part under its title with the parts
+ * it points at. Part ids and `see` targets are structure, not claims, so they are synthetic.
+ */
+function readingEdition(body: Json): RenderBlock[] {
+  const parts = list(body.parts).filter(isRecord);
+  const titles = new Map(parts.map((p) => [str(p.id), str(p.title) || str(p.id)]));
+  return [
+    ...blocks(body.preface),
+    ...parts.flatMap((part): RenderBlock[] => {
+      const see = strings(part.see).map((id) => titles.get(id) ?? id);
+      const links: RenderBlock[] = see.length
+        ? [{ type: 'paragraph', spans: [synthetic('See also: ', 'em'), synthetic(see.join(' · '), 'em')] }]
+        : [];
+      return [{ type: 'heading', level: 2, text: `${str(part.id)} · ${str(part.title)}` }, ...blocks(part.blocks), ...links];
+    }),
   ];
 }
 
@@ -258,6 +277,8 @@ export function adaptBody(type: ArtifactType, raw: unknown): AdaptedBody {
       return { blocks: journalClubBlocks(parseJournalClub(body)), facts: [], confidence };
     case 'outline_override':
       return { blocks: outline(body), facts: [], confidence };
+    case 'reading_edition':
+      return { blocks: readingEdition(body), facts: [...fact('Title', str(body.title))], confidence };
     case 'figure_description': {
       const takeaway = isRecord(body.takeaway) ? spans([body.takeaway]) : [];
       const tail: RenderBlock[] = takeaway.length ? [{ type: 'callout', tone: 'insight', title: 'Takeaway', spans: takeaway }] : [];

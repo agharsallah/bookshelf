@@ -136,6 +136,8 @@ class ArtifactType(StrEnum):
     CATALOGUE_ENTRY = "catalogue_entry"  # catalogue-document: theme, subjects, facts
     # Pills (docs/PILLS.md §5)
     PILL_SET = "pill_set"  # make-pills → harvested into `pills` (app.pills.harvest)
+    # The reading PDF's composed edition (compose-reading): one linked document.
+    READING_EDITION = "reading_edition"
 
 
 class Origin(StrEnum):

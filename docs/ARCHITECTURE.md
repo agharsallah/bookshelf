@@ -1393,6 +1393,9 @@ GET    /audio/files/{path}?download=   stream (byte ranges) or download a narrat
 GET    /exports/{document_id}.md       Markdown bundle
 GET    /exports/{document_id}.json     tree + approved artifacts, render-contract JSON
 GET    /exports/{document_id}/tables.csv  every table/chart block flattened
+GET    /exports/{document_id}.pdf?edition=assembled|composed  reading PDF (app.reading): approved
+                                   notes in reading order, or woven around the approved
+                                   compose-reading edition (404 until there is one)
 POST   /activity                       seconds of attention per minute and place {entries: [...]}
 GET    /reader-stats?tz=&days=         reader statistics across the shelf (§12)
 GET    /documents/{ref}/reader-stats   the same for one book

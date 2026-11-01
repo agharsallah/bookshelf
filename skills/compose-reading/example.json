@@ -1,0 +1,106 @@
+{
+  "title": "Stocks remember, flows change them",
+  "preface": [
+    {
+      "type": "paragraph",
+      "spans": [
+        {
+          "text": "Read the through-line first. Each chapter then opens with where it sits in the argument, before its approved notes, and the connections close the loop.",
+          "cites": [
+            "ch01/p001"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "remember",
+      "title": "Keep one question in mind",
+      "spans": [
+        {
+          "text": "What is the stock here, and which flows change it?",
+          "cites": [
+            "ch01/p001"
+          ]
+        }
+      ]
+    }
+  ],
+  "parts": [
+    {
+      "id": "through-line",
+      "title": "Watch the stock, not the event",
+      "see": [
+        "ch01"
+      ],
+      "blocks": [
+        {
+          "type": "paragraph",
+          "spans": [
+            {
+              "text": "The book asks you to watch stocks before you watch the events that fill them, because a stock is the memory the flows write.",
+              "cites": [
+                "ch01/p001"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ch01",
+      "title": "The level moves only by the difference",
+      "see": [
+        "through-line"
+      ],
+      "blocks": [
+        {
+          "type": "paragraph",
+          "spans": [
+            {
+              "text": "This is where the through-line's stock first appears, as a bathtub: the level changes only as fast as the inflow and the outflow differ.",
+              "cites": [
+                "ch01/p001"
+              ]
+            }
+          ]
+        },
+        {
+          "type": "callout",
+          "tone": "insight",
+          "title": "Watch for this in the notes",
+          "spans": [
+            {
+              "text": "Events are the flows. The thing you can point at tomorrow is the stock.",
+              "cites": [
+                "ch01/p001"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "connections",
+      "title": "Where the book returns",
+      "see": [
+        "ch01",
+        "through-line"
+      ],
+      "blocks": [
+        {
+          "type": "definition",
+          "term": "The stock as memory",
+          "spans": [
+            {
+              "text": "The bathtub is not a metaphor the book leaves behind: every later loop is the same stock, with the flows tied back to it.",
+              "cites": [
+                "ch01/p001"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

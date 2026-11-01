@@ -21,6 +21,8 @@ model. Human edits keep D15's bypass (schema only). A new paper skill adds one e
                        block (app.papers.latex_checks; a pipeline skill for every document)
     make-pills         quiz answers index a choice, threads hold 3-6 pills, no pill restates
                        a harvested one or another (app.pills.checks; not a paper skill)
+    compose-reading    through-line, then one part per offered chapter, then connections;
+                       every see names another part (app.reading.checks)
 """
 
 import re
@@ -34,6 +36,7 @@ from app.papers.math_checks import check_math_explainer
 from app.pills.checks import check_pill_set
 from app.pipeline.bodies import cited_anchors
 from app.pipeline.selectors import Selection
+from app.reading.checks import check_reading_edition
 
 Check = Callable[[dict[str, Any], Selection], list[str]]
 
@@ -124,6 +127,7 @@ CHECKS: dict[str, Check] = {
     "explain-math": check_math_explainer,  # app.papers.math_checks
     "describe-math": check_math_description,  # app.papers.latex_checks
     "make-pills": check_pill_set,  # app.pills.checks
+    "compose-reading": check_reading_edition,  # app.reading.checks
 }
 
 

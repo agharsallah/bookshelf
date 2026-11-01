@@ -1,9 +1,14 @@
 """Export bundles, regenerated on demand from the tree and approved artifacts (§16 Q5)."""
 
-from fastapi import APIRouter, Request, Response
+from typing import Annotated, Literal
+
+from fastapi import APIRouter, Query, Request, Response
 
 from app.api.deps import SessionDep
 from app.api.routes.documents import DocumentRef
+from app.core.errors import NotFoundError
+from app.reading import edition as editions
+from app.reading import pdf
 from app.schemas.export import DocumentExport
 from app.services import documents, exports
 
@@ -55,4 +60,32 @@ def export_tables(ref: DocumentRef, session: SessionDep) -> Response:
         exports.to_csv(bundle),
         media_type="text/csv; charset=utf-8",
         headers=_inline(f"{bundle.document.slug}-tables.csv"),
+    )
+
+
+@router.get(
+    "/{ref}.pdf",
+    response_class=Response,
+    responses={200: {"content": {"application/pdf": {}}}},
+    summary="Reading PDF: approved notes in order, or the composed edition",
+)
+def export_pdf(
+    ref: DocumentRef,
+    session: SessionDep,
+    edition: Annotated[Literal["assembled", "composed"], Query()] = "assembled",
+) -> Response:
+    bundle = _bundle(session, ref)
+    if edition == "composed":
+        artifact = editions.composed_artifact(bundle)
+        if artifact is None:
+            raise NotFoundError("No composed edition yet. Approve a reading edition first.")
+        reading = editions.compose(bundle, artifact)
+        name = f"{bundle.document.slug}.edition.pdf"
+    else:
+        reading = editions.assemble(bundle)
+        name = f"{bundle.document.slug}.pdf"
+    return Response(
+        pdf.render_pdf(reading),
+        media_type="application/pdf",
+        headers=_inline(name),
     )

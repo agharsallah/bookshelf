@@ -467,6 +467,63 @@ def document_catalogue(ctx: Context) -> Selection:
     )
 
 
+def document_reading(ctx: Context) -> Selection:
+    """compose-reading: each distilled chapter, with its summary and section notes, plus the
+    book-level brief, guide, glossary and quotes (a paper's card, when it has one)."""
+    document = ctx.tree.document
+    kinds = [
+        ArtifactType.CHAPTER_DISTILLATION,
+        ArtifactType.CHAPTER_SUMMARY,
+        ArtifactType.SECTION_NOTE,
+        ArtifactType.BOOK_BRIEF,
+        ArtifactType.BOOK_GUIDE,
+        ArtifactType.GLOSSARY,
+        ArtifactType.QUOTE_SET,
+        ArtifactType.PAPER_CARD,
+    ]
+    found = artifacts.preferred(ctx.session, document.id, kinds)
+    chapters = []
+    for chapter in ctx.tree.chapters():
+        distillation = found.get((ArtifactType.CHAPTER_DISTILLATION, chapter.anchor))
+        if distillation is None:
+            continue
+        summary = found.get((ArtifactType.CHAPTER_SUMMARY, chapter.anchor))
+        notes = []
+        scopes = [chapter, *(n for n in ctx.tree.walk(chapter) if n.kind is NodeKind.SECTION)]
+        for node in scopes:
+            note = found.get((ArtifactType.SECTION_NOTE, node.anchor))
+            if note is not None:
+                notes.append(_distillation_item(node, note))
+        chapters.append(
+            {
+                "anchor": chapter.anchor,
+                "heading": chapter.heading,
+                "summary": summary.body if summary is not None else None,
+                "distillation": distillation.body,
+                "notes": notes,
+            }
+        )
+    if not chapters:
+        raise SelectorError("no chapter distillations yet")
+
+    def body_of(kind: ArtifactType) -> dict[str, Any] | None:
+        chosen = found.get((kind, None))
+        return chosen.body if chosen is not None else None
+
+    return ctx.selection(
+        {
+            "genre": document.genre.value,
+            "chapters": chapters,
+            "brief": body_of(ArtifactType.BOOK_BRIEF),
+            "guide": body_of(ArtifactType.BOOK_GUIDE),
+            "glossary": body_of(ArtifactType.GLOSSARY),
+            "quotes": body_of(ArtifactType.QUOTE_SET),
+            "paper_card": body_of(ArtifactType.PAPER_CARD),
+        },
+        chapters=tuple(item["anchor"] for item in chapters),
+    )
+
+
 SELECTORS: dict[str, Callable[[Context], Selection]] = {
     "outline_pages": outline_pages,
     "element_context": element_context,
@@ -479,6 +536,7 @@ SELECTORS: dict[str, Callable[[Context], Selection]] = {
     "chapter_salience": chapter_salience,
     "note_context": note_context,
     "document_catalogue": document_catalogue,
+    "document_reading": document_reading,
 }
 
 

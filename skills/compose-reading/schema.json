@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bookshelf.local/skills/compose-reading/schema.json",
+  "title": "compose-reading output",
+  "description": "One reading edition: a preface, a through-line, one part per input chapter in order, and a closing part on the connections. Each part names the other parts it depends on.",
+  "type": "object",
+  "required": ["title", "preface", "parts"],
+  "additionalProperties": false,
+  "properties": {
+    "title": { "type": "string", "minLength": 1, "maxLength": 120 },
+    "preface": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 3,
+      "items": {
+        "anyOf": [
+          { "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/paragraph" },
+          { "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/callout" }
+        ]
+      }
+    },
+    "parts": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "object",
+        "required": ["id", "title", "see", "blocks"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "anyOf": [
+              { "enum": ["through-line", "connections"] },
+              { "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/anchor" }
+            ]
+          },
+          "title": { "type": "string", "minLength": 1, "maxLength": 140 },
+          "see": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 12,
+            "uniqueItems": true,
+            "items": {
+              "anyOf": [
+                { "enum": ["through-line", "connections"] },
+                { "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/anchor" }
+              ]
+            }
+          },
+          "blocks": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 8,
+            "items": { "$ref": "https://bookshelf.local/contracts/render-blocks.schema.json#/$defs/block" }
+          }
+        }
+      }
+    }
+  }
+}
